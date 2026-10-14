@@ -27,5 +27,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: settlements-forge-jar
-          path: forge/build/libs/*.jar
+          path: |
+            forge/build/libs/*.jar
+            !forge/build/libs/*-dev-shadow.jar
+            !forge/build/libs/*-sources.jar
           if-no-files-found: error
