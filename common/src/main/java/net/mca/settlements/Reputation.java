@@ -74,7 +74,7 @@ public final class Reputation {
         return m;
     }
 
-    // ---------- chest as treasury window ----------
+    // ---------- village chests: a small display stock ----------
 
     private static ChestBlockEntity villageChest(ScreenHandler menu, Village village) {
         if (menu instanceof GenericContainerScreenHandler g && g.getInventory() instanceof ChestBlockEntity chest
@@ -84,29 +84,11 @@ public final class Reputation {
         return null;
     }
 
-    private static void sweepIntoTreasury(Village village, Inventory inv) {
-        for (int i = 0; i < inv.size(); i++) {
-            ItemStack s = inv.getStack(i);
-            if (!s.isEmpty()) {
-                Workforce.addToTreasury(village, s.copy());
-                inv.setStack(i, ItemStack.EMPTY);
-            }
-        }
-    }
-
     public static void onOpen(ServerPlayerEntity player, ScreenHandler menu) {
         Village village = Village.findNearest(player).orElse(null);
         if (village == null) return;
         ChestBlockEntity chest = villageChest(menu, village);
         if (chest == null) return;
-        sweepIntoTreasury(village, chest);
-        int slot = 0;
-        for (Iterator<ItemStack> it = village.storageBuffer.iterator(); it.hasNext() && slot < chest.size(); ) {
-            ItemStack s = it.next();
-            chest.setStack(slot++, s.copy());
-            it.remove();
-        }
-        village.markDirty();
         SESSIONS.put(player.getUuid(), new Session(village, chest.getPos(), counts(chest)));
     }
 
@@ -117,7 +99,7 @@ public final class Reputation {
         ChestBlockEntity chest = villageChest(menu, village);
         if (chest == null) return;
         Map<Item, Integer> after = counts(chest);
-        double donated = 0, taken = 0;
+        double returned = 0, taken = 0;
         Map<Item, Integer> before = session.before();
         for (Map.Entry<Item, Integer> e : before.entrySet()) {
             int diff = after.getOrDefault(e.getKey(), 0) - e.getValue();
@@ -125,32 +107,56 @@ public final class Reputation {
         }
         for (Map.Entry<Item, Integer> e : after.entrySet()) {
             int diff = e.getValue() - before.getOrDefault(e.getKey(), 0);
-            if (diff > 0) donated += value(new ItemStack(e.getKey(), diff));
+            if (diff > 0) returned += value(new ItemStack(e.getKey(), diff));
         }
-        sweepIntoTreasury(village, chest);
-        village.markDirty();
-
-        if (donated >= 3) donate(player, village, donated);
+        if (returned > 0) settleDebt(player, village, returned);
         if (taken >= 1) steal(player, village, taken);
     }
 
-    private static void donate(ServerPlayerEntity player, Village village, double value) {
-        int hearts = (int) Math.min(30, value / 3);
+    /** Putting goods back only matters when the player owes something. There is no reward for stuffing chests. */
+    private static void settleDebt(ServerPlayerEntity player, Village village, double value) {
         Debt debt = DEBTS.get(player.getUuid());
-        if (debt != null) {
-            debt.value -= value;
-            if (debt.value <= 0) {
-                DEBTS.remove(player.getUuid());
-                village.pushHearts(player, 10);
-                player.sendMessage(Text.translatable("settlements.theft.settled"), false);
-                return;
-            }
+        if (debt == null) return;
+        debt.value -= value;
+        if (debt.value <= 0) {
+            DEBTS.remove(player.getUuid());
+            village.pushHearts(player, 10);
+            player.sendMessage(Text.translatable("settlements.theft.settled"), false);
+        } else {
             player.sendMessage(Text.translatable("settlements.theft.partial", (int) Math.ceil(debt.value)), false);
-            return;
         }
-        if (hearts > 0) {
-            village.pushHearts(player, hearts);
-            player.sendMessage(Text.translatable("settlements.donate", hearts), true);
+    }
+
+    /** Idle villagers restock the display chests a little at a time from the treasury, common goods only. */
+    public static void restock(ServerWorld world, Village village) {
+        for (BlockPos pos : village.lootChests) {
+            if (!world.isChunkLoaded(pos) || !(world.getBlockEntity(pos) instanceof ChestBlockEntity chest)) continue;
+            int total = 0;
+            for (int i = 0; i < chest.size(); i++) total += chest.getStack(i).getCount();
+            if (total >= 48) continue;
+            for (Iterator<ItemStack> it = village.storageBuffer.iterator(); it.hasNext(); ) {
+                ItemStack s = it.next();
+                if (value(new ItemStack(s.getItem())) >= 3) continue; // gems and ingots stay in the treasury
+                int move = Math.min(8, s.getCount());
+                ItemStack part = s.copy();
+                part.setCount(move);
+                for (int i = 0; i < chest.size() && !part.isEmpty(); i++) {
+                    ItemStack slot = chest.getStack(i);
+                    if (slot.isEmpty()) {
+                        chest.setStack(i, part.copy());
+                        part.setCount(0);
+                    } else if (ItemStack.canCombine(slot, part) && slot.getCount() + part.getCount() <= slot.getMaxCount()) {
+                        slot.increment(part.getCount());
+                        part.setCount(0);
+                    }
+                }
+                if (part.isEmpty()) {
+                    s.decrement(move);
+                    if (s.isEmpty()) it.remove();
+                    village.markDirty();
+                    break;
+                }
+            }
         }
     }
 

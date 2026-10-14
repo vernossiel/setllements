@@ -959,5 +959,11 @@
   "settlements.theft.demand": "Верни, что взял, или стража с тобой разберётся!",
   "settlements.theft.settled": "Хорошо. Забудем это. В этот раз.",
   "settlements.theft.partial": "Этого мало. Ты всё ещё должен товаров на %s.",
-  "settlements.theft.refused": "Ты отказался. Деревня этого не забудет!"
+  "settlements.theft.refused": "Ты отказался. Деревня этого не забудет!",
+  "settlements.need.food": "Я голодаю... не найдётся ли у вас еды?",
+  "settlements.need.planks": "Дерево для стройки кончилось. Помогут доски или брёвна.",
+  "settlements.need.wool": "Мне нужна шерсть для кровати. Есть?",
+  "settlements.need.iron": "Мне не хватает железа для кузницы.",
+  "settlements.need.cobble": "Мне нужен булыжник, чтобы закончить.",
+  "settlements.need.thanks": "Спасибо, я этого не забуду!"
 }

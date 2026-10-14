@@ -1071,5 +1071,11 @@
   "settlements.theft.demand": "Return what you took, or the guards will deal with you!",
   "settlements.theft.settled": "Good. We'll forget this. This time.",
   "settlements.theft.partial": "Not enough. You still owe goods worth %s.",
-  "settlements.theft.refused": "You refused. The village will remember this!"
+  "settlements.theft.refused": "You refused. The village will remember this!",
+  "settlements.need.food": "I'm starving... could you spare some food?",
+  "settlements.need.planks": "We're out of wood for the build. Any planks or logs would help.",
+  "settlements.need.wool": "I need wool for the bed. Do you have any?",
+  "settlements.need.iron": "I'm short of iron for the smithy.",
+  "settlements.need.cobble": "I need cobblestone to finish this.",
+  "settlements.need.thanks": "Thank you, I won't forget this!"
 }

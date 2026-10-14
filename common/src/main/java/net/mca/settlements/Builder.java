@@ -158,7 +158,7 @@ public final class Builder {
         if (!village.mineBuilt && planks >= 40 && count(village, COBBLE) < 128) {
             return start(village, world, "mine", 4, 4, 0);
         }
-        int iron = count(village, s -> s.isOf(Items.IRON_INGOT));
+        int iron = count(village, s -> s.isOf(Items.IRON_INGOT) || s.isOf(Items.RAW_IRON));
         if (!village.smithyBuilt && village.storageBuilt && iron >= 40 && count(village, COBBLE) >= 12 && planks >= 100) {
             return start(village, world, "smithy", 10, 6, 0);
         }
@@ -254,7 +254,11 @@ public final class Builder {
             }
 
             Result r = execute(world, village, step, target);
-            if (r == Result.WAIT) return worked; // waiting for materials
+            if (r == Result.WAIT) { // waiting for materials: tell the player what would help
+                Needs.set(v, needFor(step.kind()));
+                return worked;
+            }
+            if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, Needs.Need.NONE);
             if (r == Result.ABORT) {
                 village.buildOrigin = null;
                 village.markDirty();
@@ -272,6 +276,15 @@ public final class Builder {
         if (village.buildOrigin != null && village.buildStep >= steps.size()) finish(village);
         village.markDirty();
         return worked;
+    }
+
+    private static Needs.Need needFor(Kind kind) {
+        return switch (kind) {
+            case BED_FOOT -> Needs.Need.WOOL;
+            case ANVIL, SMITHING -> Needs.Need.IRON;
+            case FURNACE, STAIRS_N, STAIRS_S -> Needs.Need.COBBLE;
+            default -> Needs.Need.PLANKS;
+        };
     }
 
     private enum Result { PLACED, SKIPPED, WAIT, ABORT }
@@ -376,11 +389,18 @@ public final class Builder {
                 return Blocks.TORCH.getDefaultState();
             }
             case ANVIL: {
+                Block pyroAnvil = Compat.block("pyrotech", "anvil_granite");
+                if (pyroAnvil != null) {
+                    if (!take(village, COBBLE, 10)) return null;
+                    return pyroAnvil.getDefaultState();
+                }
                 if (!take(village, s -> s.isOf(Items.IRON_INGOT), 31)) return null;
                 return Blocks.ANVIL.getDefaultState();
             }
             case FURNACE: {
                 if (!take(village, COBBLE, 8)) return null;
+                Block pyroForge = Compat.block("pyrotech", "bloomery");
+                if (pyroForge != null) return pyroForge.getDefaultState();
                 return Blocks.FURNACE.getDefaultState().with(AbstractFurnaceBlock.FACING, Direction.SOUTH);
             }
             case GRINDSTONE: {

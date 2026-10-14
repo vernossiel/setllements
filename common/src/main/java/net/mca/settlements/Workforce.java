@@ -76,6 +76,8 @@ public final class Workforce {
             if (startEating(v, village)) return;
         }
 
+        Needs.update(v, village);
+
         // breaks: a long one when exhausted, a short one now and then
         if (!v.settlementsBreak && autonomousWorking(v, job)) {
             if (v.settlementsEnergy <= EXHAUST_AT) {
@@ -113,7 +115,11 @@ public final class Workforce {
         v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + REST_GAIN);
         if (village != null) {
             deposit(v, village);
-            if (v.age % 200 == 0) craftTorches(village);
+            if (v.age % 200 == 0) {
+                craftTorches(village);
+                smelt(village);
+                if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) Reputation.restock(sw, village);
+            }
         }
         if (!isWorkTime(time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
@@ -152,6 +158,36 @@ public final class Workforce {
     private static void startBreak(VillagerEntityMCA v, int seconds) {
         v.settlementsBreak = true;
         v.settlementsBreakLeft = seconds;
+    }
+
+    /** Idle villagers smelt raw ore from the mines into ingots. With Pyrotech the work takes twice the fuel. */
+    private static void smelt(net.mca.server.world.data.Village village) {
+        net.minecraft.item.Item[][] pairs = {
+                {net.minecraft.item.Items.RAW_IRON, net.minecraft.item.Items.IRON_INGOT},
+                {net.minecraft.item.Items.RAW_GOLD, net.minecraft.item.Items.GOLD_INGOT},
+                {net.minecraft.item.Items.RAW_COPPER, net.minecraft.item.Items.COPPER_INGOT}};
+        int fuelNeeded = Compat.pyrotech() ? 2 : 1;
+        for (net.minecraft.item.Item[] pair : pairs) {
+            ItemStack raw = null;
+            for (ItemStack s : village.storageBuffer) if (s.isOf(pair[0])) { raw = s; break; }
+            if (raw == null) continue;
+            int fuel = 0;
+            for (ItemStack s : village.storageBuffer) if (s.isOf(net.minecraft.item.Items.COAL) || s.isOf(net.minecraft.item.Items.CHARCOAL)) fuel += s.getCount();
+            if (fuel < fuelNeeded) return;
+            int need = fuelNeeded;
+            for (ItemStack s : village.storageBuffer) {
+                if (need <= 0) break;
+                if (s.isOf(net.minecraft.item.Items.COAL) || s.isOf(net.minecraft.item.Items.CHARCOAL)) {
+                    int d = Math.min(need, s.getCount());
+                    s.decrement(d);
+                    need -= d;
+                }
+            }
+            raw.decrement(1);
+            village.storageBuffer.removeIf(ItemStack::isEmpty);
+            addToTreasury(village, new ItemStack(pair[1], 1));
+            return;
+        }
     }
 
     /** Any idle villager can turn coal and a plank into torches for the builders. */
@@ -232,13 +268,13 @@ public final class Workforce {
         }
     }
 
-    private static boolean hasMeal(VillagerEntityMCA v, net.mca.server.world.data.Village village) {
+    static boolean hasMeal(VillagerEntityMCA v, net.mca.server.world.data.Village village) {
         for (int i = 0; i < v.getInventory().size(); i++) if (eatable(v.getInventory().getStack(i))) return true;
         if (village != null) for (ItemStack s : village.storageBuffer) if (eatable(s)) return true;
         return false;
     }
 
-    private static boolean eatable(ItemStack s) {
+    static boolean eatable(ItemStack s) {
         if (!s.isFood() || s.getItem().getFoodComponent() == null) return false;
         for (var effect : s.getItem().getFoodComponent().getStatusEffects()) {
             if (net.mca.entity.ai.StatusEffectDangerSet.isDanger.contains(effect.getFirst().getEffectType())) return false;

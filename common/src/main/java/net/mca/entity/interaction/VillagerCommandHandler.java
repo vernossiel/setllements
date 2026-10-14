@@ -140,6 +140,7 @@ public class VillagerCommandHandler extends EntityCommandHandler<VillagerEntityM
                 return false;
             }
             case "gift" -> {
+                if (net.mca.settlements.Needs.tryDonate(entity, player)) return true;
                 entity.getRelationships().giveGift(player, memory);
                 return true;
             }
