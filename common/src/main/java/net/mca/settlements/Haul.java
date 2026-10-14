@@ -37,7 +37,7 @@ public final class Haul {
         BlockPos best = null;
         double bd = Double.MAX_VALUE;
         for (Built b : village.built) {
-            if (!b.type().equals(type)) continue;
+            if (!Buildings.base(b.type()).equals(type)) continue;
             for (Blueprints.Step s : b.steps()) {
                 if (s.kind() != Blueprints.Kind.CHEST) continue;
                 BlockPos c = b.point(s.dx(), s.dy(), s.dz());

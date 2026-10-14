@@ -52,7 +52,10 @@ public final class Board {
         List<Text[]> signs = new ArrayList<>();
         signs.add(new Text[]{Text.literal(village.getName()).formatted(Formatting.BOLD),
                 Text.translatable("settlements.level." + Plan.level(village).name().toLowerCase()),
-                Text.translatable("settlements.board.residents", village.getPopulation(), village.getMaxPopulation()), Prosperity.describe(village)});
+                village.getPopulation() > village.getMaxPopulation()
+                        ? Text.translatable("settlements.board.crowded", village.getPopulation(), village.getMaxPopulation()).formatted(Formatting.RED)
+                        : Text.translatable("settlements.board.residents", village.getPopulation(), village.getMaxPopulation()),
+                Prosperity.describe(village)});
         signs.add(project(village));
         signs.add(needs(village));
         List<Life.News> news = Life.news(village);
@@ -79,7 +82,7 @@ public final class Board {
     private static Text[] project(Village village) {
         Text[] t = {Text.translatable("settlements.board.building").formatted(Formatting.DARK_BLUE), Text.empty(), Text.empty(), Text.empty()};
         if (village.buildOrigin != null && village.buildType != null) {
-            t[1] = Text.translatable("settlements.building." + village.buildType);
+            t[1] = Text.translatable("settlements.building." + Buildings.base(village.buildType));
             int total = Builder.stepsOf(village);
             if (total > 0) t[2] = Text.literal(Math.min(100, village.buildStep * 100 / total) + "%");
             if (Builder.shortage(village) != null) t[3] = Text.translatable("settlements.board.gathering").formatted(Formatting.DARK_RED);
@@ -100,6 +103,7 @@ public final class Board {
         int line = 1;
         for (Plan.Status s : Plan.pending(village)) {
             if (s.ready()) continue;
+            t[0] = Text.translatable("settlements.board.needs_for", Text.translatable("settlements.goal." + s.goal().id())).formatted(Formatting.DARK_RED);
             if (s.missPlanks() > 0 && line < 4) t[line++] = Text.translatable("settlements.missing.planks", s.missPlanks());
             if (s.missCobble() > 0 && line < 4) t[line++] = Text.translatable("settlements.missing.cobble", s.missCobble());
             if (s.missIron() > 0 && line < 4) t[line++] = Text.translatable("settlements.missing.iron", s.missIron());
@@ -254,7 +258,7 @@ public final class Board {
         if (p == VillagerProfession.CARTOGRAPHER) {
             if (village.buildOrigin == null) return Text.translatable("settlements.doing.builder_idle");
             if (Builder.shortage(village) != null) return Text.translatable("settlements.doing.gathering");
-            return Text.translatable("settlements.doing.building", Text.translatable("settlements.building." + village.buildType));
+            return Text.translatable("settlements.doing.building", Text.translatable("settlements.building." + Buildings.base(village.buildType)));
         }
         if (p == VillagerProfession.MASON) return Text.translatable("settlements.doing.mining", Math.max(1, village.mineLevel));
         if (p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH)

@@ -44,36 +44,70 @@ public final class Buildings {
             case "tallhouse" -> tallhouse();
             case "twin" -> twin();
             case "farmhouse" -> farmhouse();
-            default -> List.of();
+            default -> Variants.plan(type);
         };
     }
 
+    /** The kind of a building whatever its design: "storage-2" is a storage. */
+    public static String base(String type) {
+        if (type == null) return null;
+        int i = type.lastIndexOf('-');
+        if (i > 0 && i < type.length() - 1 && type.substring(i + 1).chars().allMatch(Character::isDigit)) return type.substring(0, i);
+        return type;
+    }
+
+    private static final java.util.Map<String, String[]> DESIGNS = java.util.Map.ofEntries(
+            java.util.Map.entry("storage", new String[]{"storage", "storage-2", "storage-3"}),
+            java.util.Map.entry("granary", new String[]{"granary", "granary-2"}),
+            java.util.Map.entry("sawmill", new String[]{"sawmill", "sawmill-2"}),
+            java.util.Map.entry("mason", new String[]{"mason", "mason-2"}),
+            java.util.Map.entry("mill", new String[]{"mill", "mill-2"}),
+            java.util.Map.entry("smithy", new String[]{"smithy", "smithy-2"}),
+            java.util.Map.entry("armory", new String[]{"armory", "armory-2"}),
+            java.util.Map.entry("tavern", new String[]{"tavern", "tavern-2"}),
+            java.util.Map.entry("barracks", new String[]{"barracks", "barracks-2"}),
+            java.util.Map.entry("market", new String[]{"market", "market-2"}),
+            java.util.Map.entry("chapel", new String[]{"chapel", "chapel-2", "chapel-3"}),
+            java.util.Map.entry("well", new String[]{"well", "well-2", "well-3"}),
+            java.util.Map.entry("tower", new String[]{"tower", "tower-2"}),
+            java.util.Map.entry("charcoal", new String[]{"charcoal", "charcoal-2"}));
+
+    /** One of the designs of a kind of building, at random. */
+    public static String variant(String type, net.minecraft.util.math.random.Random random) {
+        String[] d = DESIGNS.get(type);
+        return d == null ? type : d[random.nextInt(d.length)];
+    }
+
+    public static java.util.Collection<String[]> designs() {
+        return DESIGNS.values();
+    }
+
     public static boolean has(Village village, String type) {
-        for (Built b : village.built) if (b.type().equals(type)) return true;
+        for (Built b : village.built) if (base(b.type()).equals(type)) return true;
         return false;
     }
 
     public static Built find(Village village, String type) {
-        for (Built b : village.built) if (b.type().equals(type)) return b;
+        for (Built b : village.built) if (base(b.type()).equals(type)) return b;
         return null;
     }
 
     // ---------- helpers ----------
 
-    private static void at(List<Step> l, int x, int y, int z, Kind k) {
+    static void at(List<Step> l, int x, int y, int z, Kind k) {
         l.add(new Step(x, y, z, k));
     }
 
-    private static void at(List<Step> l, int x, int y, int z, Kind k, int face) {
+    static void at(List<Step> l, int x, int y, int z, Kind k, int face) {
         l.add(new Step(x, y, z, k, face));
     }
 
-    private static void shift(List<Step> from, int ox, int oz, List<Step> to) {
+    static void shift(List<Step> from, int ox, int oz, List<Step> to) {
         for (Step s : from) to.add(new Step(s.dx() + ox, s.dy(), s.dz() + oz, s.kind(), s.face()));
     }
 
     /** Floor of the footprint: stone under the edges, planks (or stone) inside. */
-    private static void footing(List<Step> l, int x0, int z0, int w, int d, Kind inside) {
+    static void footing(List<Step> l, int x0, int z0, int w, int d, Kind inside) {
         for (int x = x0; x < x0 + w; x++) {
             for (int z = z0; z < z0 + d; z++) {
                 boolean edge = x == x0 || z == z0 || x == x0 + w - 1 || z == z0 + d - 1;
@@ -83,14 +117,14 @@ public final class Buildings {
     }
 
     /** A lamp post: a fence post with a lantern on top. */
-    private static void lamp(List<Step> l, int x, int z) {
+    static void lamp(List<Step> l, int x, int z) {
         at(l, x, 0, z, Kind.FENCE);
         at(l, x, 1, z, Kind.FENCE);
         at(l, x, 2, z, Kind.LANTERN);
     }
 
     /** A training dummy or scarecrow: post, straw body, pumpkin head. */
-    private static void dummy(List<Step> l, int x, int y, int z) {
+    static void dummy(List<Step> l, int x, int y, int z) {
         at(l, x, y, z, Kind.FENCE);
         at(l, x, y + 1, z, Kind.HAY);
         at(l, x, y + 2, z, Kind.PUMPKIN, S);

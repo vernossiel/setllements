@@ -28,7 +28,7 @@ public final class Chapel {
         Built chapel = Buildings.find(village, "chapel");
         if (chapel == null) return;
         Direction facing = front(chapel);
-        for (int[] g : Buildings.GRAVES) {
+        for (int[] g : Variants.graves(chapel.type())) {
             BlockPos stone = chapel.point(g[0], 0, g[1]);
             if (!world.isChunkLoaded(stone.getX() >> 4, stone.getZ() >> 4)) return;
             if (!world.getBlockState(stone).isAir()) continue;
@@ -57,7 +57,8 @@ public final class Chapel {
         if (chapel == null) return false;
         boolean mourning = Life.news(village).stream().anyMatch(n -> n.key().equals("death") || n.key().equals("murder"));
         if (!mourning || (v.age / 20 + v.getUuid().hashCode()) % 7 != 0) return false;
-        BlockPos gate = chapel.point(10, 0, 7);
+        int[] m = Variants.mournSpot(chapel.type());
+        BlockPos gate = chapel.point(m[0], m[1], m[2]);
         if (v.squaredDistanceTo(gate.getX() + 0.5, gate.getY(), gate.getZ() + 0.5) > 9) {
             Move.to(v, gate.getX() + 0.5, gate.getY(), gate.getZ() + 0.5, 0.45);
             return true;

@@ -204,7 +204,7 @@ public final class Builder {
                 case "well" -> {
                     Layout.Slot slot = Layout.center(world, village, "well");
                     village.wellBuilt = true; // a blocked center is simply skipped
-                    if (slot != null) return startAt(village, "well", 0, 0, 0, slot);
+                    if (slot != null) return startAt(village, Buildings.variant("well", rand), 0, 0, 0, slot);
                 }
                 case "storage" -> {
                     if (startRing(village, world, "storage", 0, 0, 0, 0, 3)) return true;
@@ -327,6 +327,7 @@ public final class Builder {
     }
 
     private static boolean startRing(Village village, ServerWorld world, String type, int w, int d, int floors, int minRing, int maxRing) {
+        type = Buildings.variant(type, world.random); // one of the designs of this kind of building
         Layout.Slot slot = Layout.find(world, village, type, w, d, minRing, maxRing);
         if (slot == null) return false;
         return startAt(village, type, w, d, floors, slot);
@@ -341,7 +342,7 @@ public final class Builder {
         village.buildF = floors;
         village.buildStep = 0;
         village.plots.add(new int[]{slot.origin().getX(), slot.origin().getZ(), slot.fw(), slot.fd()});
-        announceProject = type;
+        announceProject = Buildings.base(type);
         village.markDirty();
         return true;
     }
@@ -617,7 +618,9 @@ public final class Builder {
     static {
         String[] types = {"townhall", "hut", "house", "longhouse", "porch", "twin", "farmhouse", "tallhouse", "annex", "manor", "storage", "granary", "sawmill", "charcoal", "mason", "mill",
                 "smithy", "armory", "tavern", "barracks", "jail", "market", "chapel", "well", "board", "farm", "pen", "tower"};
-        for (String t : types) {
+        java.util.List<String> all = new java.util.ArrayList<>(java.util.List.of(types));
+        for (String[] d : Buildings.designs()) for (int i = 1; i < d.length; i++) all.add(d[i]);
+        for (String t : all) {
             SHOWCASE.put(t, switch (t) {
                 case "hut" -> new int[]{5, 5, 1};
                 case "house" -> new int[]{7, 7, 1};
@@ -687,7 +690,7 @@ public final class Builder {
     private static boolean startCenter(Village village, ServerWorld world) {
         Layout.Slot slot = Layout.center(world, village, "well");
         if (slot == null) slot = Layout.find(world, village, "well", 0, 0, 0, 0);
-        return slot != null && startAt(village, "well", 0, 0, 0, slot);
+        return slot != null && startAt(village, Buildings.variant("well", world.random), 0, 0, 0, slot);
     }
 
     /**
@@ -807,7 +810,7 @@ public final class Builder {
         int rot = village.buildRot;
         if (village.buildRepair) { // a repair changes nothing in the books
             village.buildRepair = false;
-            Life.news(village, "repaired", Text.translatable("settlements.building." + type));
+            Life.news(village, "repaired", Text.translatable("settlements.building." + Buildings.base(type)));
             village.buildOrigin = null;
             village.buildStep = 0;
             village.markDirty();
@@ -825,7 +828,7 @@ public final class Builder {
             }
             default -> village.built.add(new Built(type, o, village.buildW, village.buildD, Math.max(1, village.buildF), rot));
         }
-        switch (type) {
+        switch (Buildings.base(type)) {
             case "house" -> village.houses.add(new House(o, village.buildW, village.buildD, village.buildF, rot));
             case "manor" -> village.houses.add(new House(o, 9, 8, 2, rot));
             case "upgrade" -> {
@@ -869,7 +872,7 @@ public final class Builder {
         }
         ServerWorld world = village.getWorld();
         if (world != null && !type.equals("upgrade") && !type.equals("hallup") && !type.equals("mine") && !type.equals("wall")) {
-            if (type.equals("well")) {
+            if (Buildings.base(type).equals("well")) {
                 Roads.plaza(world, village);
             } else {
                 int[] fp = Blueprints.footprint(type, village.buildW, village.buildD);
@@ -878,7 +881,7 @@ public final class Builder {
                 Roads.connect(world, village, fr);
             }
         }
-        if (!type.equals("wall") || village.wallBuilt) Life.news(village, "built", Text.translatable("settlements.building." + type));
+        if (!type.equals("wall") || village.wallBuilt) Life.news(village, "built", Text.translatable("settlements.building." + Buildings.base(type)));
         if (world != null) {
             int[] bfp = Blueprints.footprint(type, village.buildW, village.buildD);
             for (Step s : plan(village)) {
@@ -895,8 +898,8 @@ public final class Builder {
 
     private static void registerSmithy(Village village) {
         BlockPos o = village.buildOrigin;
-        int[] fp = Blueprints.footprint("smithy", 0, 0);
-        for (Step step : Blueprints.smithy()) {
+        int[] fp = Blueprints.footprint(village.buildType, 0, 0);
+        for (Step step : plan(village)) {
             int[] r = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], village.buildRot);
             BlockPos p = o.add(r[0], step.dy(), r[1]);
             if (step.kind() == Kind.FURNACE) village.smithyFurnace = p;
@@ -907,10 +910,10 @@ public final class Builder {
     /** Reads the finished tavern's working blocks back out of its plan. */
     private static void registerTavern(Village village) {
         BlockPos o = village.buildOrigin;
-        int[] fp = Blueprints.footprint("tavern", 0, 0);
+        int[] fp = Blueprints.footprint(village.buildType, 0, 0);
         BlockPos smoker = null, barrel = null, craft = null;
         List<BlockPos> seats = new java.util.ArrayList<>();
-        for (Step step : Blueprints.tavern()) {
+        for (Step step : plan(village)) {
             int[] r = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], village.buildRot);
             BlockPos p = o.add(r[0], step.dy(), r[1]);
             switch (step.kind()) {
@@ -970,7 +973,7 @@ public final class Builder {
             // glass, light and decoration are optional: without them the house is plainer, not unfinished
             return switch (step.kind()) {
                 case GLASS, TORCH, CROP, CARPET, SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY,
-                     STONECUTTER, HAY, COMPOSTER, PUMPKIN, CAULDRON, FLOWER, LOG_X, LOG_Z, WOOL -> Result.SKIPPED;
+                     STONECUTTER, HAY, COMPOSTER, PUMPKIN, CAULDRON, FLOWER, LOG_X, LOG_Z, WOOL, TARGET, CHAIN -> Result.SKIPPED;
                 default -> Result.WAIT;
             };
         }
@@ -1175,6 +1178,12 @@ public final class Builder {
             }
             case BED_HEAD:
                 return Blocks.RED_BED.getDefaultState().with(BedBlock.FACING, turn(Direction.SOUTH, rot)).with(BedBlock.PART, BedPart.HEAD);
+            case TARGET:
+                if (!take(village, s -> s.isOf(Items.HAY_BLOCK) || s.isOf(Items.WHEAT), 1)) return null;
+                return Blocks.TARGET.getDefaultState();
+            case CHAIN:
+                if (!take(village, s -> s.isOf(Items.IRON_NUGGET) || s.isOf(Items.IRON_INGOT), 1)) return null;
+                return Blocks.CHAIN.getDefaultState();
             case TORCH: {
                 if (!take(village, s -> s.isOf(Items.TORCH), 1)) return null;
                 return Blocks.TORCH.getDefaultState();

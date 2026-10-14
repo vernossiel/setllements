@@ -111,14 +111,14 @@ public final class Plan {
         if (village.buildOrigin != null && village.buildType != null) {
             int total = Builder.stepsOf(village);
             int pct = total > 0 ? Math.min(100, village.buildStep * 100 / total) : 0;
-            elder.sendChatMessage(Text.translatable("settlements.elder.building", Text.translatable("settlements.building." + village.buildType), pct), player);
+            elder.sendChatMessage(Text.translatable("settlements.elder.building", Text.translatable("settlements.building." + Buildings.base(village.buildType)), pct), player);
         } else {
             elder.sendChatMessage(Text.translatable("settlements.elder.idle"), player);
         }
         List<Status> pending = pending(village);
         Status next = null;
         for (Status s : pending) {
-            if (!s.goal().id().equals(village.buildType)) {
+            if (!s.goal().id().equals(Buildings.base(village.buildType))) {
                 next = s;
                 break;
             }

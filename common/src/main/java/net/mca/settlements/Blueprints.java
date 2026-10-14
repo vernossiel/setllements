@@ -10,7 +10,8 @@ import java.util.List;
 public final class Blueprints {
     public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE, SMOKER, BARREL, CRAFT, PLATE, SEAT_W, SEAT_E, LECTERN, HALL_CHEST, BOOKSHELF, CARPET, SIGN,
         BEAM_X, BEAM_Z, SHUTTER, POT, HEDGE, PATH, CHIMNEY, SMOKE, ACCENT, BELL, STEP, LANTERN,
-        STONECUTTER, HAY, COMPOSTER, BARS, WOOL, GRAVE, SLAB, PUMPKIN, GATE, CAULDRON, FLOWER, MOUND, PEW, LOG_X, LOG_Z }
+        STONECUTTER, HAY, COMPOSTER, BARS, WOOL, GRAVE, SLAB, PUMPKIN, GATE, CAULDRON, FLOWER, MOUND, PEW, LOG_X, LOG_Z,
+        TARGET, CHAIN }
 
     /** {@code face}: a horizontal direction index (0 south, 1 west, 2 north, 3 east) for blocks that face somewhere, -1 otherwise. */
     public record Step(int dx, int dy, int dz, Kind kind, int face) {
@@ -491,6 +492,8 @@ public final class Blueprints {
 
     /** Footprint {w, d} of a project type before rotation. */
     public static int[] footprint(String type, int w, int d) {
+        int[] variant = Variants.footprint(type);
+        if (variant != null) return variant;
         return switch (type) {
             case "storage" -> new int[]{11, 7};
             case "smithy" -> new int[]{10, 6};

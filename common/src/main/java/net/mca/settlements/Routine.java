@@ -87,7 +87,7 @@ public final class Routine {
         VillagerProfession p = r.getProfession();
         if (p == VillagerProfession.CARTOGRAPHER) {
             if (village.buildOrigin != null && village.buildType != null)
-                return Text.translatable("settlements.assembly.do.build", Text.translatable("settlements.building." + village.buildType));
+                return Text.translatable("settlements.assembly.do.build", Text.translatable("settlements.building." + Buildings.base(village.buildType)));
             return Text.translatable("settlements.assembly.do.plan");
         }
         if (p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH) return Text.translatable("settlements.assembly.do.wood");

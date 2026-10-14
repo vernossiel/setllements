@@ -109,7 +109,7 @@ public final class Rebuild {
     public static boolean start(Village village, ServerWorld world) {
         Building old = candidate(village);
         if (old == null) return false;
-        String type = replacement(village, old);
+        String type = Buildings.variant(replacement(village, old), world.random);
         int[] dm = dims(type);
         int[] fp = Blueprints.footprint(type, dm[0], dm[1]);
         BlockPos c = old.getCenter();
@@ -232,8 +232,8 @@ public final class Rebuild {
             village.buildStep = 0;
             PLANS.remove(village.getId());
             OLD_BOX.remove(village.getId());
-            Builder.announceProject = type;
-            Life.news(village, "rebuilt", net.minecraft.text.Text.translatable("settlements.building." + type));
+            Builder.announceProject = Buildings.base(type);
+            Life.news(village, "rebuilt", net.minecraft.text.Text.translatable("settlements.building." + Buildings.base(type)));
         }
         village.markDirty();
         return true;
