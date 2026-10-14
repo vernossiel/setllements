@@ -397,7 +397,7 @@ public final class Builder {
         return take(v, p, amount);
     }
 
-    private enum Result { PLACED, SKIPPED, WAIT, ABORT }
+    enum Result { PLACED, SKIPPED, WAIT, ABORT }
 
     private static void finish(Village village) {
         BlockPos o = village.buildOrigin;
@@ -413,11 +413,23 @@ public final class Builder {
                 }
             }
             case "storage" -> village.storageBuilt = true;
-            case "smithy" -> village.smithyBuilt = true;
+            case "smithy" -> {
+                village.smithyBuilt = true;
+                registerSmithy(village);
+            }
             case "armory" -> village.armoryBuilt = true;
-            case "mine" -> village.mineBuilt = true;
+            case "mine" -> {
+                village.mineBuilt = true;
+                village.mineOrigin = o;
+                village.mineLevel = 1;
+                village.mineStep = 0;
+            }
             case "farm" -> village.farms++;
-            case "tower" -> village.towers++;
+            case "tower" -> {
+                village.towers++;
+                int[] tr = Blueprints.rotate(2, 2, Blueprints.TOWER, Blueprints.TOWER, rot);
+                village.watchPoints.add(o.add(tr[0], 11, tr[1]));
+            }
             case "tavern" -> registerTavern(village);
             case "wall" -> village.wallBuilt = true;
             default -> {
@@ -437,6 +449,17 @@ public final class Builder {
         village.buildOrigin = null;
         village.buildStep = 0;
         village.markDirty();
+    }
+
+    private static void registerSmithy(Village village) {
+        BlockPos o = village.buildOrigin;
+        int[] fp = Blueprints.footprint("smithy", 0, 0);
+        for (Step step : Blueprints.smithy()) {
+            int[] r = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], village.buildRot);
+            BlockPos p = o.add(r[0], step.dy(), r[1]);
+            if (step.kind() == Kind.FURNACE) village.smithyFurnace = p;
+            else if (step.kind() == Kind.ANVIL) village.smithyAnvil = p;
+        }
     }
 
     /** Reads the finished tavern's working blocks back out of its plan. */
@@ -460,7 +483,7 @@ public final class Builder {
         if (smoker != null && barrel != null && craft != null) village.tavern = new Tavern(smoker, barrel, craft, seats);
     }
 
-    private static Result execute(ServerWorld world, Village village, Step step, BlockPos target, int rot) {
+    static Result execute(ServerWorld world, Village village, Step step, BlockPos target, int rot) {
         BlockState old = world.getBlockState(target);
         if (!old.isAir() && old.getHardness(world, target) < 0) return Result.SKIPPED; // bedrock and friends
 

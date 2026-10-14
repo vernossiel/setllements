@@ -299,6 +299,28 @@ public final class Blueprints {
         return l;
     }
 
+    /** Mine level k: a connector shaft and two new galleries, five blocks further along than the previous level. */
+    public static List<Step> mineExtension(int k) {
+        List<Step> l = new ArrayList<>();
+        int depth = 28, bottom = -(depth - 1), z0 = depth - 1 + 5 * k;
+        for (int z = depth - 1 + 5 * (k - 1) + 2; z <= z0 + 1; z++) {
+            for (int x = 0; x < 2; x++) for (int h = 0; h < 3; h++) l.add(new Step(x, bottom + h, z, Kind.DIG));
+        }
+        for (int g = 0; g < 24; g++) {
+            for (int zz = 0; zz < 2; zz++) {
+                for (int h = 0; h < 3; h++) {
+                    l.add(new Step(2 + g, bottom + h, z0 + zz, Kind.DIG));
+                    l.add(new Step(-1 - g, bottom + h, z0 + zz, Kind.DIG));
+                }
+            }
+            if (g % 5 == 4) {
+                l.add(new Step(2 + g, bottom, z0, Kind.TORCH));
+                l.add(new Step(-1 - g, bottom, z0, Kind.TORCH));
+            }
+        }
+        return l;
+    }
+
     // ---------- footprints and rotation ----------
 
     /** Footprint {w, d} of a project type before rotation. */

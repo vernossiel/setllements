@@ -109,6 +109,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public long settlementsHireUntil = 0;
     public String settlementsNeed = "NONE";
     public boolean settlementsCaravan = false;
+    public int settlementsStuck = 0;
     public boolean settlementsBreak = false;
     public int settlementsBreakLeft = 0;
     public int settlementsWorkSeconds = 0;

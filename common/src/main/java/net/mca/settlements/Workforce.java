@@ -31,7 +31,6 @@ public final class Workforce {
     public static Chore choreFor(VillagerProfession p) {
         if (p == VillagerProfession.FARMER) return Chore.HARVEST;
         if (p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH) return Chore.CHOP;
-        if (p == VillagerProfession.MASON || p == VillagerProfession.ARMORER) return Chore.PROSPECT;
         if (p == VillagerProfession.FISHERMAN) return Chore.FISH;
         if (p == VillagerProfession.LEATHERWORKER) return Chore.HUNT;
         return Chore.NONE;
@@ -53,7 +52,8 @@ public final class Workforce {
     private static final int TORCH_STOCK = 48;
 
     private static boolean isCustomWorker(VillagerProfession p) {
-        return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER;
+        return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER
+                || p == VillagerProfession.MASON || p == VillagerProfession.ARMORER || p == VillagerProfession.CLERIC;
     }
 
     /** Server side, once per second. */
@@ -127,7 +127,7 @@ public final class Workforce {
             deposit(v, village);
             if (v.age % 200 == 0) {
                 craftTorches(village);
-                smelt(village);
+                if (!village.smithyBuilt) smelt(village);
                 if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) Reputation.restock(sw, village);
             }
         }
@@ -144,8 +144,13 @@ public final class Workforce {
 
         VillagerProfession prof = v.getProfession();
         if (isCustomWorker(prof)) {
-            boolean worked = prof == VillagerProfession.CARTOGRAPHER ? Builder.work(v, village)
-                    : prof == VillagerProfession.BUTCHER ? Cooking.work(v, village) : Husbandry.work(v, village);
+            boolean worked;
+            if (prof == VillagerProfession.CARTOGRAPHER) worked = Builder.work(v, village);
+            else if (prof == VillagerProfession.BUTCHER) worked = Cooking.work(v, village);
+            else if (prof == VillagerProfession.MASON) worked = Mining.work(v, village);
+            else if (prof == VillagerProfession.ARMORER) worked = Smithing.work(v, village);
+            else if (prof == VillagerProfession.CLERIC) worked = Healing.work(v, village);
+            else worked = Husbandry.work(v, village);
             if (worked) {
                 v.settlementsEnergy -= WORK_DRAIN + REST_GAIN; // cancels the rest gain above
                 v.settlementsHunger += HUNGER_RISE;

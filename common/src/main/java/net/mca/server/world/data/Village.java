@@ -41,6 +41,9 @@ public class Village implements Iterable<Building> {
     public int buildW, buildD, buildF, buildRot;
     public boolean wellBuilt, wallBuilt;
     public net.mca.settlements.Tavern tavern;
+    public BlockPos mineOrigin, smithyFurnace, smithyAnvil;
+    public int mineLevel = 1, mineStep;
+    public final List<BlockPos> watchPoints = new LinkedList<>();
     public int farms, towers;
     /** Reserved plots as {x, z, width, depth}, so the layout never overlaps its own buildings. */
     public final List<int[]> plots = new LinkedList<>();
@@ -112,6 +115,12 @@ public class Village implements Iterable<Building> {
         }
         storageBuilt = v.getBoolean("storageBuilt");
         mineBuilt = v.getBoolean("mineBuilt");
+        if (v.contains("mineOrigin")) mineOrigin = BlockPos.fromLong(v.getLong("mineOrigin"));
+        if (v.contains("smithyFurnace")) smithyFurnace = BlockPos.fromLong(v.getLong("smithyFurnace"));
+        if (v.contains("smithyAnvil")) smithyAnvil = BlockPos.fromLong(v.getLong("smithyAnvil"));
+        mineLevel = v.contains("mineLevel") ? Math.max(1, v.getInt("mineLevel")) : 1;
+        mineStep = v.getInt("mineStep");
+        for (long l : v.getLongArray("watchPoints")) watchPoints.add(BlockPos.fromLong(l));
         if (v.contains("tavern")) tavern = net.mca.settlements.Tavern.load(v.getCompound("tavern"));
         wellBuilt = v.getBoolean("wellBuilt");
         wallBuilt = v.getBoolean("wallBuilt");
@@ -488,6 +497,12 @@ public class Village implements Iterable<Building> {
         v.putBoolean("storageBuilt", storageBuilt);
         v.putBoolean("mineBuilt", mineBuilt);
         if (tavern != null) v.put("tavern", tavern.save());
+        if (mineOrigin != null) v.putLong("mineOrigin", mineOrigin.asLong());
+        if (smithyFurnace != null) v.putLong("smithyFurnace", smithyFurnace.asLong());
+        if (smithyAnvil != null) v.putLong("smithyAnvil", smithyAnvil.asLong());
+        v.putInt("mineLevel", mineLevel);
+        v.putInt("mineStep", mineStep);
+        v.putLongArray("watchPoints", watchPoints.stream().mapToLong(BlockPos::asLong).toArray());
         v.putBoolean("wellBuilt", wellBuilt);
         v.putBoolean("wallBuilt", wallBuilt);
         v.putInt("farms", farms);
