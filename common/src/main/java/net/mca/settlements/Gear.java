@@ -120,7 +120,7 @@ public final class Gear {
         }
         int units = toolUnits(chore);
         if (village != null) {
-            for (int tier = 3; tier > have && tier >= 0; tier--) {
+            for (int tier = village.smithyBuilt ? 3 : 1; tier > have && tier >= 0; tier--) {
                 if (!canPay(village, tier, units)) continue;
                 pay(village, tier, units);
                 ItemStack crafted = new ItemStack(tool(chore, tier));
@@ -138,8 +138,8 @@ public final class Gear {
         if (village == null) return;
         int tier = -1;
         ArmorMaterial target = null;
-        if (count(village, DIAMOND) >= 24) { tier = 3; target = ArmorMaterials.DIAMOND; }
-        else if (count(village, IRON) >= 24) { tier = 2; target = ArmorMaterials.IRON; }
+        if (village.smithyBuilt && count(village, DIAMOND) >= 24) { tier = 3; target = ArmorMaterials.DIAMOND; }
+        else if (village.smithyBuilt && count(village, IRON) >= 24) { tier = 2; target = ArmorMaterials.IRON; }
         else if (count(village, LEATHER) >= 24) { tier = 0; target = ArmorMaterials.LEATHER; }
         if (target == null) return;
         if (v.getEquippedStack(EquipmentSlot.CHEST).getItem() instanceof ArmorItem a

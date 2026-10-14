@@ -47,6 +47,8 @@ public final class Builder {
             case "house" -> Blueprints.house(v.buildW, v.buildD, v.buildF);
             case "upgrade" -> Blueprints.addFloor(v.buildW, v.buildD, v.buildF);
             case "storage" -> Blueprints.storage();
+            case "smithy" -> Blueprints.smithy();
+            case "armory" -> Blueprints.armory();
             case "mine" -> Blueprints.mine();
             default -> List.of();
         });
@@ -156,11 +158,18 @@ public final class Builder {
         if (!village.mineBuilt && planks >= 40 && count(village, COBBLE) < 128) {
             return start(village, world, "mine", 4, 4, 0);
         }
+        int iron = count(village, s -> s.isOf(Items.IRON_INGOT));
+        if (!village.smithyBuilt && village.storageBuilt && iron >= 40 && count(village, COBBLE) >= 12 && planks >= 100) {
+            return start(village, world, "smithy", 10, 6, 0);
+        }
+        if (!village.armoryBuilt && village.smithyBuilt && village.getPopulation() >= 6 && planks >= 150) {
+            return start(village, world, "armory", 10, 7, 0);
+        }
         return false;
     }
 
     private static boolean start(Village village, ServerWorld world, String type, int w, int d, int floors) {
-        int fw = type.equals("mine") ? 4 : w, fd = type.equals("mine") ? 4 : d;
+        int fw = w, fd = d;
         BlockPos site = findSite(world, village, fw, fd);
         if (site == null) return false;
         village.buildType = type;
@@ -279,6 +288,8 @@ public final class Builder {
                 }
             }
             case "storage" -> village.storageBuilt = true;
+            case "smithy" -> village.smithyBuilt = true;
+            case "armory" -> village.armoryBuilt = true;
             case "mine" -> village.mineBuilt = true;
             default -> {
             }
@@ -310,7 +321,15 @@ public final class Builder {
         BlockState state = stateFor(village, step.kind());
         if (state == null) {
             // glass is optional: no glass in stock means an open window
-            return step.kind() == Kind.GLASS ? Result.SKIPPED : Result.WAIT;
+            return step.kind() == Kind.GLASS || step.kind() == Kind.TORCH ? Result.SKIPPED : Result.WAIT;
+        }
+        if (step.kind() == Kind.ARMOR_STAND) {
+            var stand = net.minecraft.entity.EntityType.ARMOR_STAND.create(world);
+            if (stand != null) {
+                stand.refreshPositionAndAngles(target.getX() + 0.5, target.getY(), target.getZ() + 0.5, 180f, 0f);
+                world.spawnEntity(stand);
+            }
+            return Result.PLACED;
         }
         world.setBlockState(target, state);
         if (step.kind() == Kind.DOOR) {
@@ -351,6 +370,34 @@ public final class Builder {
             }
             case BED_HEAD:
                 return Blocks.RED_BED.getDefaultState().with(BedBlock.FACING, Direction.SOUTH).with(BedBlock.PART, BedPart.HEAD);
+            case TORCH: {
+                if (!take(village, s -> s.isOf(Items.TORCH), 1)) return null;
+                return Blocks.TORCH.getDefaultState();
+            }
+            case ANVIL: {
+                if (!take(village, s -> s.isOf(Items.IRON_INGOT), 31)) return null;
+                return Blocks.ANVIL.getDefaultState();
+            }
+            case FURNACE: {
+                if (!take(village, COBBLE, 8)) return null;
+                return Blocks.FURNACE.getDefaultState().with(AbstractFurnaceBlock.FACING, Direction.SOUTH);
+            }
+            case GRINDSTONE: {
+                if (count(village, COBBLE) < 3 || planks(village) < 2) return null;
+                take(village, COBBLE, 3);
+                takePlanks(village, 2);
+                return Blocks.GRINDSTONE.getDefaultState();
+            }
+            case SMITHING: {
+                if (count(village, s -> s.isOf(Items.IRON_INGOT)) < 2 || planks(village) < 4) return null;
+                take(village, s -> s.isOf(Items.IRON_INGOT), 2);
+                takePlanks(village, 4);
+                return Blocks.SMITHING_TABLE.getDefaultState();
+            }
+            case ARMOR_STAND: {
+                if (!takePlanks(village, 4)) return null;
+                return Blocks.AIR.getDefaultState(); // marker, the stand itself is spawned in execute()
+            }
             case STAIRS_N, STAIRS_S: {
                 Direction facing = kind == Kind.STAIRS_N ? Direction.NORTH : Direction.SOUTH;
                 if (take(village, COBBLE, 1)) return Blocks.COBBLESTONE_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);

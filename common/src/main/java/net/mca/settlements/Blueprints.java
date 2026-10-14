@@ -8,7 +8,7 @@ import java.util.List;
  * corner, y = 0 is the ground floor plane. Everything faces south (door on the +z side).
  */
 public final class Blueprints {
-    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, LADDER, DIG, CLEAR }
+    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND }
 
     public record Step(int dx, int dy, int dz, Kind kind) {
     }
@@ -71,13 +71,13 @@ public final class Blueprints {
         int bx = w - 2;
         l.add(new Step(bx, base + 1, 1, Kind.BED_FOOT));
         l.add(new Step(bx, base + 1, 2, Kind.BED_HEAD));
+        l.add(new Step(bx, base + 1, d - 2, Kind.TORCH));
     }
 
-    // ---------- storage ----------
+    // ---------- halls: storage, smithy, armory ----------
 
-    /** A big warehouse: log frame, stone walls, rows of chests along both long walls. */
-    public static List<Step> storage() {
-        int w = 11, d = 7;
+    /** A log-framed stone hall, 4 high, double door on the south side, windows on the north side. */
+    private static List<Step> hall(int w, int d, List<Step> inside) {
         List<Step> l = new ArrayList<>();
         plane(l, w, d, 0, Kind.FLOOR, -1);
         for (int y = 1; y <= 4; y++) {
@@ -94,12 +94,40 @@ public final class Blueprints {
                 }
             }
         }
-        for (int x = 2; x <= w - 3; x += 2) {
-            l.add(new Step(x, 1, 1, Kind.CHEST));
-            l.add(new Step(x, 1, d - 2, Kind.CHEST));
-        }
+        l.addAll(inside);
+        l.add(new Step(1, 1, 1, Kind.TORCH));
+        l.add(new Step(w - 2, 1, 1, Kind.TORCH));
         plane(l, w, d, 5, Kind.ROOF, -1);
         return l;
+    }
+
+    /** A big warehouse with rows of chests along both long walls. */
+    public static List<Step> storage() {
+        int w = 11, d = 7;
+        List<Step> in = new ArrayList<>();
+        for (int x = 2; x <= w - 3; x += 2) {
+            in.add(new Step(x, 1, 1, Kind.CHEST));
+            in.add(new Step(x, 1, d - 2, Kind.CHEST));
+        }
+        return hall(w, d, in);
+    }
+
+    /** Smithy: anvil, furnace, grindstone and smithing table. Needs iron and an established village. */
+    public static List<Step> smithy() {
+        List<Step> in = new ArrayList<>();
+        in.add(new Step(2, 1, 2, Kind.ANVIL));
+        in.add(new Step(4, 1, 1, Kind.FURNACE));
+        in.add(new Step(6, 1, 1, Kind.GRINDSTONE));
+        in.add(new Step(7, 1, 1, Kind.SMITHING));
+        return hall(10, 6, in);
+    }
+
+    /** Armory: chests for spare gear and armor stands to show it. */
+    public static List<Step> armory() {
+        List<Step> in = new ArrayList<>();
+        for (int x = 2; x <= 7; x += 1) in.add(new Step(x, 1, 1, Kind.CHEST));
+        for (int x = 2; x <= 6; x += 2) in.add(new Step(x, 1, 3, Kind.ARMOR_STAND));
+        return hall(10, 7, in);
     }
 
     // ---------- mine ----------
@@ -123,6 +151,10 @@ public final class Blueprints {
                     l.add(new Step(2 + g, bottom + h, depth - 1 + zz, Kind.DIG));
                     l.add(new Step(-1 - g, bottom + h, depth - 1 + zz, Kind.DIG));
                 }
+            }
+            if (g % 5 == 4) {
+                l.add(new Step(2 + g, bottom, depth - 1, Kind.TORCH));
+                l.add(new Step(-1 - g, bottom, depth - 1, Kind.TORCH));
             }
         }
         return l;

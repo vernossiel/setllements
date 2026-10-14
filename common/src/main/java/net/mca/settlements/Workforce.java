@@ -16,7 +16,7 @@ public final class Workforce {
     private static final int HUNGER_RISE = 2;       // per second of work
     private static final int HUNGER_EAT_AT = 600;   // try to eat above this
     private static final int HUNGER_STOP_AT = 900;  // refuses to work above this
-    private static final int START_WORK_ENERGY = 600;
+    private static final int START_WORK_ENERGY = 400;
     private static final int REST_DAY_EVERY = 4;    // every 4th day is a rest day
     private static final long WORK_START = 1000, WORK_END = 11500;
 
@@ -44,6 +44,16 @@ public final class Workforce {
         return !isRestDay(worldTime) && t >= WORK_START && t < WORK_END;
     }
 
+    private static final int EXHAUST_AT = 150;       // below this the villager takes a long break
+    private static final int MICRO_BREAK_AFTER = 150; // seconds of continuous work before a short break
+    private static final int MICRO_BREAK_SECONDS = 15;
+    private static final int FIRE_REST_GAIN = 28;     // energy per second sitting at a campfire
+    private static final int TORCH_STOCK = 48;
+
+    private static boolean isCustomWorker(VillagerProfession p) {
+        return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.SHEPHERD;
+    }
+
     /** Server side, once per second. */
     public static void tick(VillagerEntityMCA v) {
         if (v.isBaby()) return;
@@ -52,52 +62,117 @@ public final class Workforce {
             return;
         }
         long time = v.getWorld().getTimeOfDay();
+        net.mca.server.world.data.Village village = net.mca.server.world.data.Village.findNearest(v).orElse(null);
         Chore job = v.getVillagerBrain().getCurrentJob();
         boolean autonomous = job != Chore.NONE && v.getVillagerBrain().getJobAssigner().isEmpty();
+        if (job != Chore.NONE && !autonomous) return; // player-assigned chores ignore this system
 
-        if (job == Chore.NONE) {
-            v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + REST_GAIN);
-            if (v.age % 60 == 0) v.settlementsHunger = Math.min(MAX, v.settlementsHunger + 1); // slow idle hunger
-            net.mca.server.world.data.Village treasury = net.mca.server.world.data.Village.findNearest(v).orElse(null);
-            if (startEating(v, treasury)) return;
-            if (treasury != null) deposit(v, treasury);
-            if (v.getProfession() == VillagerProfession.CARTOGRAPHER) {
-                if (isWorkTime(time) && v.settlementsHunger < HUNGER_STOP_AT && !v.getVillagerBrain().isPanicking()) {
-                    if (v.settlementsEnergy <= 0) v.settlementsResting = true;
-                    if (v.settlementsEnergy >= START_WORK_ENERGY) v.settlementsResting = false;
-                    if (!v.settlementsResting && Builder.work(v, treasury)) {
-                        v.settlementsEnergy -= WORK_DRAIN + REST_GAIN; // cancels the rest gain above
-                        v.settlementsHunger += HUNGER_RISE;
-                    }
-                }
-                return;
+        if (v.age % 60 == 0) v.settlementsHunger = Math.min(MAX, v.settlementsHunger + 1); // slow idle hunger
+
+        // a meal comes first, stopping work if needed
+        if (v.settlementsHunger >= HUNGER_EAT_AT && hasMeal(v, village)) {
+            if (job != Chore.NONE) v.getVillagerBrain().abandonJob();
+            if (startEating(v, village)) return;
+        }
+
+        // breaks: a long one when exhausted, a short one now and then
+        if (!v.settlementsBreak && autonomousWorking(v, job)) {
+            if (v.settlementsEnergy <= EXHAUST_AT) {
+                startBreak(v, 0);
+            } else if (v.settlementsWorkSeconds >= MICRO_BREAK_AFTER) {
+                startBreak(v, MICRO_BREAK_SECONDS);
             }
-            Chore wanted = choreFor(v.getProfession());
-            if (wanted != Chore.NONE && isWorkTime(time) && v.settlementsEnergy >= START_WORK_ENERGY
-                    && v.settlementsHunger < HUNGER_STOP_AT && quotaAllows(treasury, wanted) && !v.getVillagerBrain().isPanicking()) {
-                Gear.equipTool(v, treasury, wanted);
-                Gear.equipArmor(v, treasury);
-                v.getVillagerBrain().assignAutonomous(wanted);
+            if (v.settlementsBreak && job != Chore.NONE) {
+                v.getVillagerBrain().abandonJob();
+                job = Chore.NONE;
+            }
+        }
+        if (v.settlementsBreak) {
+            boolean seated = Camp.goAndSit(v, village);
+            v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + (seated ? FIRE_REST_GAIN : REST_GAIN));
+            if (v.settlementsBreakLeft > 0) v.settlementsBreakLeft--;
+            if (v.settlementsBreakLeft <= 0 && v.settlementsEnergy >= START_WORK_ENERGY || !isWorkTime(time)) {
+                v.settlementsBreak = false;
+                v.settlementsWorkSeconds = 0;
             }
             return;
         }
 
-        if (!autonomous) return; // player-assigned chores ignore this system
+        if (job != Chore.NONE) {
+            // an autonomous chore is running
+            v.settlementsEnergy -= WORK_DRAIN;
+            v.settlementsHunger += HUNGER_RISE;
+            v.settlementsWorkSeconds++;
+            if (v.settlementsHunger >= HUNGER_STOP_AT || !isWorkTime(time)) {
+                v.getVillagerBrain().abandonJob();
+            }
+            return;
+        }
 
-        v.settlementsEnergy -= WORK_DRAIN;
-        v.settlementsHunger += HUNGER_RISE;
-        if (v.settlementsHunger >= HUNGER_EAT_AT) {
-            net.mca.server.world.data.Village village = net.mca.server.world.data.Village.findNearest(v).orElse(null);
-            if (hasMeal(v, village)) {
-                v.getVillagerBrain().abandonJob(); // stop working, eat, the next job comes after the meal
-                if (startEating(v, village)) return;
+        v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + REST_GAIN);
+        if (village != null) {
+            deposit(v, village);
+            if (v.age % 200 == 0) craftTorches(village);
+        }
+        if (!isWorkTime(time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
+            v.settlementsWorkSeconds = 0;
+            return;
+        }
+        if (v.settlementsEnergy < START_WORK_ENERGY) return;
+
+        VillagerProfession prof = v.getProfession();
+        if (isCustomWorker(prof)) {
+            boolean worked = prof == VillagerProfession.CARTOGRAPHER ? Builder.work(v, village) : Husbandry.work(v, village);
+            if (worked) {
+                v.settlementsEnergy -= WORK_DRAIN + REST_GAIN; // cancels the rest gain above
+                v.settlementsHunger += HUNGER_RISE;
+                v.settlementsWorkSeconds++;
+            }
+            return;
+        }
+        Chore wanted = choreFor(prof);
+        if (wanted != Chore.NONE && quotaAllows(village, wanted)) {
+            Gear.equipTool(v, village, wanted);
+            Gear.equipArmor(v, village);
+            v.getVillagerBrain().assignAutonomous(wanted);
+        }
+    }
+
+    private static boolean autonomousWorking(VillagerEntityMCA v, Chore job) {
+        if (job != Chore.NONE) return true;
+        return isCustomWorker(v.getProfession()) && v.settlementsWorkSeconds > 0;
+    }
+
+    private static void startBreak(VillagerEntityMCA v, int seconds) {
+        v.settlementsBreak = true;
+        v.settlementsBreakLeft = seconds;
+    }
+
+    /** Any idle villager can turn coal and a plank into torches for the builders. */
+    private static void craftTorches(net.mca.server.world.data.Village village) {
+        int torches = 0;
+        for (ItemStack s : village.storageBuffer) if (s.isOf(net.minecraft.item.Items.TORCH)) torches += s.getCount();
+        if (torches >= TORCH_STOCK) return;
+        ItemStack fuel = null;
+        for (ItemStack s : village.storageBuffer) {
+            if (s.isOf(net.minecraft.item.Items.COAL) || s.isOf(net.minecraft.item.Items.CHARCOAL)) {
+                fuel = s;
+                break;
             }
         }
-
-        if (v.settlementsEnergy <= 0 || v.settlementsHunger >= HUNGER_STOP_AT || !isWorkTime(time)) {
-            v.settlementsEnergy = Math.max(0, v.settlementsEnergy);
-            v.getVillagerBrain().abandonJob();
+        if (fuel == null) return;
+        net.minecraft.item.Item plank = null;
+        for (ItemStack s : village.storageBuffer) {
+            if (s.isIn(net.minecraft.registry.tag.ItemTags.PLANKS)) {
+                plank = s.getItem();
+                s.decrement(1);
+                break;
+            }
         }
+        if (plank == null) return;
+        fuel.decrement(1);
+        village.storageBuffer.removeIf(ItemStack::isEmpty);
+        addToTreasury(village, new ItemStack(net.minecraft.item.Items.TORCH, 4));
     }
 
     private static final int EAT_SECONDS = 3;
