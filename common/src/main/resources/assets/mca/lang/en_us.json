@@ -1077,5 +1077,7 @@
   "settlements.need.wool": "I need wool for the bed. Do you have any?",
   "settlements.need.iron": "I'm short of iron for the smithy.",
   "settlements.need.cobble": "I need cobblestone to finish this.",
-  "settlements.need.thanks": "Thank you, I won't forget this!"
+  "settlements.need.thanks": "Thank you, I won't forget this!",
+  "settlements.break.warn": "Hey! That's village property. Stop that!",
+  "settlements.break.attack": "Enough! Guards, get them!"
 }
