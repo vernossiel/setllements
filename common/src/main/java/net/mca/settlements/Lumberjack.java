@@ -50,7 +50,12 @@ public final class Lumberjack {
                 if (trees.isEmpty()) Needs.set(v, Needs.Need.PLANKS);
                 return false;
             }
-            trees.sort((a, b) -> Double.compare(a.getSquaredDistance(v.getBlockPos()), b.getSquaredDistance(v.getBlockPos())));
+            // the nearest tree to him first; once the village has planted a grove, trees close to the village are preferred
+            BlockPos center = village == null ? v.getBlockPos() : new BlockPos(village.getCenter());
+            double near = village != null && village.groveSaplings >= 6 ? 1.0 : 0.0;
+            trees.sort((a, b) -> Double.compare(
+                    a.getSquaredDistance(v.getBlockPos()) + near * 3 * a.getSquaredDistance(center),
+                    b.getSquaredDistance(v.getBlockPos()) + near * 3 * b.getSquaredDistance(center)));
             v.lumberTarget = trees.get(0);
         }
         BlockPos base = v.lumberTarget;
@@ -84,6 +89,7 @@ public final class Lumberjack {
         Speech.say(v, "settlements.say.lumber.fell");
         if (cut >= trunk.size()) {
             plant(v, world, base);
+            if (village != null) plantGrove(v, village, world);
             v.lumberTarget = null;
             v.setStackInHand(v.getDominantHand(), ItemStack.EMPTY);
         }
@@ -179,5 +185,33 @@ public final class Lumberjack {
         if (sapling == Blocks.AIR) sapling = Blocks.OAK_SAPLING;
         world.setBlockState(base, sapling.getDefaultState());
         Speech.say(v, "settlements.say.lumber.plant");
+    }
+
+    /** Saplings from the branches go into the ground close to the village, so that wood grows where it is needed. */
+    private static void plantGrove(VillagerEntityMCA v, Village village, ServerWorld world) {
+        BlockPos c = new BlockPos(village.getCenter());
+        for (int attempt = 0; attempt < 12; attempt++) {
+            int dist = 14 + world.random.nextInt(16);
+            double angle = world.random.nextDouble() * Math.PI * 2;
+            int x = c.getX() + (int) (Math.cos(angle) * dist), z = c.getZ() + (int) (Math.sin(angle) * dist);
+            if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+            int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+            BlockPos p = new BlockPos(x, y, z);
+            BlockState ground = world.getBlockState(p.down());
+            if (!(ground.isOf(Blocks.GRASS_BLOCK) || ground.isOf(Blocks.DIRT) || ground.isOf(Blocks.PODZOL))) continue;
+            if (!world.getBlockState(p).isAir()) continue;
+            boolean crowded = false;
+            for (int[] plot : village.plots) {
+                if (x >= plot[0] - 2 && x <= plot[0] + plot[2] + 2 && z >= plot[1] - 2 && z <= plot[1] + plot[3] + 2) crowded = true;
+            }
+            for (BlockPos q : BlockPos.iterate(p.add(-2, 0, -2), p.add(2, 2, 2))) {
+                if (!world.getBlockState(q).isAir() && !world.getBlockState(q).isReplaceable()) crowded = true;
+            }
+            if (crowded) continue;
+            world.setBlockState(p, Blocks.OAK_SAPLING.getDefaultState());
+            village.groveSaplings++;
+            village.markDirty();
+            return;
+        }
     }
 }

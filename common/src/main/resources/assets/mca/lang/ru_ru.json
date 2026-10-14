@@ -1120,5 +1120,7 @@
   "settlements.say.lumber.none": "Поблизости нет деревьев. Дерево придётся взять откуда-то ещё.",
   "settlements.say.lumber.sparse": "Деревьев осталось слишком мало. Остальные оставим стоять.",
   "settlements.say.pen.noanimals": "Поблизости нет животных. Приведите пару овец или коров, и я разведу стадо.",
-  "settlements.say.pen.slaughter": "Деревне надо есть."
+  "settlements.say.pen.slaughter": "Деревне надо есть.",
+  "settlements.goal.hallup": "расширить ратушу",
+  "settlements.say.build.hallup": "Ратуше нужен ещё этаж."
 }

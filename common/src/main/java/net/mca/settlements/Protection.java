@@ -72,6 +72,12 @@ public final class Protection {
                 return true;
             }
         }
+        House hall = village.hall;
+        if (hall != null) {
+            BlockPos o = hall.origin();
+            if (pos.getX() >= o.getX() - 1 && pos.getX() <= o.getX() + hall.fw() && pos.getZ() >= o.getZ() - 1 && pos.getZ() <= o.getZ() + hall.fd()
+                    && pos.getY() >= o.getY() && pos.getY() <= o.getY() + hall.floors() * Blueprints.LEVEL_HEIGHT + 8) return true;
+        }
         for (BlockPos c : village.campfires) if (c.equals(pos)) return true;
         return false;
     }

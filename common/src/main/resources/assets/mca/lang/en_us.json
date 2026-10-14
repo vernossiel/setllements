@@ -1232,5 +1232,7 @@
   "settlements.say.lumber.none": "There are no trees nearby. We will need wood from somewhere.",
   "settlements.say.lumber.sparse": "There are too few trees left. We keep the rest standing.",
   "settlements.say.pen.noanimals": "There are no animals around. Bring me a pair of sheep or cows and I'll build up a herd.",
-  "settlements.say.pen.slaughter": "The village has to eat."
+  "settlements.say.pen.slaughter": "The village has to eat.",
+  "settlements.goal.hallup": "enlarge the town hall",
+  "settlements.say.build.hallup": "The town hall deserves another floor."
 }

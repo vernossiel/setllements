@@ -52,6 +52,7 @@ public final class Builder {
             case "armory" -> Blueprints.armory();
             case "tavern" -> Blueprints.tavern();
             case "townhall" -> Blueprints.townhall();
+            case "hallup" -> Blueprints.hallUpgrade(v.buildW, v.buildD, v.buildF);
             case "pen" -> Blueprints.pen();
             case "mine" -> Blueprints.mine();
             case "wall" -> wallPlan(v);
@@ -161,6 +162,11 @@ public final class Builder {
         return count(v, WOOL);
     }
 
+    /** A place for the mine's entrance: used by the miner, who opens the mine himself. */
+    public static BlockPos chooseMineSite(ServerWorld world, Village village) {
+        return findSite(world, village, 4, 4);
+    }
+
     // ---------- planner ----------
 
     /** The project the planner started last, so the builder can say what he is about to do. */
@@ -201,8 +207,23 @@ public final class Builder {
                 case "farm" -> {
                     if (startRing(village, world, "farm", 0, 0, 0, 2, 5)) return true;
                 }
+                case "hallup" -> {
+                    House h = village.hall;
+                    if (h != null) {
+                        village.buildType = "hallup";
+                        village.buildOrigin = h.origin();
+                        village.buildW = h.w();
+                        village.buildD = h.d();
+                        village.buildF = h.floors();
+                        village.buildRot = h.rot();
+                        village.buildStep = 0;
+                        village.markDirty();
+                        announceProject = "hallup";
+                        return true;
+                    }
+                }
                 case "mine" -> {
-                    if (start(village, world, "mine", 4, 4, 0)) return true;
+                    // the miner opens the mine himself, the builder has nothing to do with it
                 }
                 case "smithy" -> {
                     if (startRing(village, world, "smithy", 0, 0, 0, 0, 3)) return true;
@@ -216,7 +237,11 @@ public final class Builder {
                 case "townhall" -> {
                     if (startRing(village, world, "townhall", 0, 0, 0, 0, 1)) return true;
                 }
-                case "pen" -> {
+                case "townhall" -> village.hall = new House(o, Blueprints.HALL_W, Blueprints.HALL_D, 1, rot);
+            case "hallup" -> {
+                if (village.hall != null) village.hall = village.hall.withFloors(village.hall.floors() + 1);
+            }
+            case "pen" -> {
                     if (startRing(village, world, "pen", 0, 0, 0, 2, 4)) return true;
                 }
                 case "tavern" -> {
@@ -459,7 +484,7 @@ public final class Builder {
             }
         }
         ServerWorld world = village.getWorld();
-        if (world != null && !type.equals("upgrade") && !type.equals("mine") && !type.equals("wall")) {
+        if (world != null && !type.equals("upgrade") && !type.equals("hallup") && !type.equals("mine") && !type.equals("wall")) {
             if (type.equals("well")) {
                 Roads.plaza(world, village);
             } else {
@@ -528,7 +553,7 @@ public final class Builder {
         BlockState state = stateFor(village, step.kind(), rot);
         if (state == null) {
             // glass is optional: no glass in stock means an open window
-            return step.kind() == Kind.GLASS || step.kind() == Kind.TORCH || step.kind() == Kind.CROP ? Result.SKIPPED : Result.WAIT;
+            return step.kind() == Kind.GLASS || step.kind() == Kind.TORCH || step.kind() == Kind.CROP || step.kind() == Kind.CARPET ? Result.SKIPPED : Result.WAIT;
         }
         if (step.kind() == Kind.ARMOR_STAND) {
             var stand = net.minecraft.entity.EntityType.ARMOR_STAND.create(world);
@@ -626,6 +651,13 @@ public final class Builder {
                 if (take(village, COBBLE, 1)) return Blocks.COBBLESTONE_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
                 if (!takePlanks(village, 1)) return null;
                 return Blocks.OAK_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
+            }
+            case BOOKSHELF:
+                if (!takePlanks(village, 6)) return null;
+                return Blocks.BOOKSHELF.getDefaultState();
+            case CARPET: {
+                if (!take(village, WOOL, 1)) return null;
+                return Blocks.RED_CARPET.getDefaultState();
             }
             case LECTERN:
                 if (!takePlanks(village, 6)) return null;

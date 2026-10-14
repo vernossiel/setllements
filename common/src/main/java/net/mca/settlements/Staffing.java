@@ -71,7 +71,7 @@ public final class Staffing {
         roles.add(new Role(VillagerProfession.CARTOGRAPHER, Math.max(1, p / 6)));
         roles.add(new Role(VillagerProfession.FARMER, Math.max(1, p / 4)));
         roles.add(new Role(VillagerProfession.FLETCHER, Math.max(1, p / 5)));
-        if (p >= 4) roles.add(new Role(VillagerProfession.MASON, Math.max(1, p / 6)));
+        if (p >= 3) roles.add(new Role(VillagerProfession.MASON, Math.max(1, p / 6)));
         if (v.tavern != null) roles.add(new Role(VillagerProfession.BUTCHER, 1));
         if (p >= 4) roles.add(new Role(VillagerProfession.SHEPHERD, 1)); // the village has to eat
         if (v.smithyBuilt) roles.add(new Role(VillagerProfession.ARMORER, 1));

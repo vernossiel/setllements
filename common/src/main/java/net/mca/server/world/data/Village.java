@@ -42,7 +42,9 @@ public class Village implements Iterable<Building> {
     public boolean wellBuilt, wallBuilt;
     public net.mca.settlements.Tavern tavern;
     public BlockPos mineOrigin, smithyFurnace, smithyAnvil, hallPos, penCenter;
+    public net.mca.settlements.House hall;
     public boolean seeded;
+    public int groveSaplings;
     public final List<BlockPos> hallChests = new LinkedList<>();
     public int mineLevel = 1, mineStep;
     public final List<BlockPos> watchPoints = new LinkedList<>();
@@ -121,8 +123,10 @@ public class Village implements Iterable<Building> {
         mineBuilt = v.getBoolean("mineBuilt");
         if (v.contains("mineOrigin")) mineOrigin = BlockPos.fromLong(v.getLong("mineOrigin"));
         if (v.contains("hallPos")) hallPos = BlockPos.fromLong(v.getLong("hallPos"));
+        if (v.contains("hall")) hall = net.mca.settlements.House.load(v.getCompound("hall"));
         if (v.contains("penCenter")) penCenter = BlockPos.fromLong(v.getLong("penCenter"));
         seeded = v.getBoolean("seeded");
+        groveSaplings = v.getInt("groveSaplings");
         for (long l : v.getLongArray("hallChests")) hallChests.add(BlockPos.fromLong(l));
         if (v.contains("smithyFurnace")) smithyFurnace = BlockPos.fromLong(v.getLong("smithyFurnace"));
         if (v.contains("smithyAnvil")) smithyAnvil = BlockPos.fromLong(v.getLong("smithyAnvil"));
@@ -508,8 +512,10 @@ public class Village implements Iterable<Building> {
         if (tavern != null) v.put("tavern", tavern.save());
         if (mineOrigin != null) v.putLong("mineOrigin", mineOrigin.asLong());
         if (hallPos != null) v.putLong("hallPos", hallPos.asLong());
+        if (hall != null) v.put("hall", hall.save());
         if (penCenter != null) v.putLong("penCenter", penCenter.asLong());
         v.putBoolean("seeded", seeded);
+        v.putInt("groveSaplings", groveSaplings);
         v.putLongArray("hallChests", hallChests.stream().mapToLong(BlockPos::asLong).toArray());
         if (smithyFurnace != null) v.putLong("smithyFurnace", smithyFurnace.asLong());
         if (smithyAnvil != null) v.putLong("smithyAnvil", smithyAnvil.asLong());

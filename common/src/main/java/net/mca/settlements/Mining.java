@@ -24,11 +24,23 @@ public final class Mining {
     }
 
     public static boolean work(VillagerEntityMCA v, Village village) {
-        if (!village.mineBuilt || village.mineOrigin == null || !(v.getWorld() instanceof ServerWorld world)) return false;
+        if (!(v.getWorld() instanceof ServerWorld world)) return false;
+        if (village.mineOrigin == null) {
+            // the miner opens the mine himself: he picks the spot and starts digging the stair shaft
+            BlockPos site = Builder.chooseMineSite(world, village);
+            if (site == null) return false;
+            village.mineOrigin = site;
+            village.mineLevel = 0;
+            village.mineStep = 0;
+            village.plots.add(new int[]{site.getX(), site.getZ(), 4, 4});
+            village.markDirty();
+            Speech.say(v, "settlements.say.build.mine");
+        }
         if (village.mineLevel > MAX_LEVEL || Builder.stockCobble(village) >= STONE_QUOTA) return false;
 
-        List<Step> steps = LEVELS.computeIfAbsent(village.mineLevel, Blueprints::mineExtension);
+        List<Step> steps = LEVELS.computeIfAbsent(village.mineLevel, k -> k == 0 ? Blueprints.mine() : Blueprints.mineExtension(k));
         if (village.mineStep >= steps.size()) {
+            if (village.mineLevel == 0) village.mineBuilt = true; // the shaft and the first galleries are open
             village.mineLevel++;
             village.mineStep = 0;
             village.markDirty();
@@ -81,6 +93,7 @@ public final class Mining {
             Step prev = steps.get(Math.min(village.mineStep, steps.size()) - 1);
             return o.add(prev.dx(), prev.dy(), prev.dz());
         }
+        if (village.mineLevel == 0) return o; // the entrance, on the surface
         int depth = 28, bottom = -(depth - 1);
         return o.add(0, bottom, depth - 1 + 5 * (village.mineLevel - 1));
     }

@@ -8,7 +8,7 @@ import java.util.List;
  * corner, y = 0 is the ground floor plane. Everything faces south (door on the +z side).
  */
 public final class Blueprints {
-    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE, SMOKER, BARREL, CRAFT, PLATE, SEAT_W, SEAT_E, LECTERN, HALL_CHEST }
+    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE, SMOKER, BARREL, CRAFT, PLATE, SEAT_W, SEAT_E, LECTERN, HALL_CHEST, BOOKSHELF, CARPET }
 
     public record Step(int dx, int dy, int dz, Kind kind) {
     }
@@ -136,12 +136,28 @@ public final class Blueprints {
         return hall(w, d, in);
     }
 
-    /** Town hall: the village stores in four chests along the back wall and a lectern for the plans. */
+    public static final int HALL_W = 9, HALL_D = 7;
+
+    /** The first town hall: a small house with a bed for the elder, two chests with the village stores and a lectern. */
     public static List<Step> townhall() {
-        List<Step> in = new ArrayList<>();
-        for (int x = 2; x <= 8; x += 2) in.add(new Step(x, 1, 1, Kind.HALL_CHEST));
-        in.add(new Step(5, 1, 4, Kind.LECTERN));
-        return hall(11, 8, in);
+        List<Step> l = house(HALL_W, HALL_D, 1);
+        l.add(new Step(2, 1, 1, Kind.HALL_CHEST));
+        l.add(new Step(3, 1, 1, Kind.HALL_CHEST));
+        l.add(new Step(4, 1, 3, Kind.LECTERN));
+        l.add(new Step(6, 1, 4, Kind.FENCE));
+        l.add(new Step(6, 2, 4, Kind.PLATE));
+        return l;
+    }
+
+    /** One more floor for the hall, furnished: chests, bookshelves and carpets, as grand as the village can afford. */
+    public static List<Step> hallUpgrade(int w, int d, int floors) {
+        List<Step> l = addFloor(w, d, floors);
+        int base = floors * LEVEL_HEIGHT;
+        for (int x = 2; x <= 4; x++) l.add(new Step(x, base + 1, 1, Kind.HALL_CHEST));
+        for (int x = 2; x <= w - 3; x++) l.add(new Step(x, base + 1, d - 2, Kind.BOOKSHELF));
+        for (int x = 3; x <= w - 4; x++) for (int z = 3; z <= 4; z++) l.add(new Step(x, base + 1, z, Kind.CARPET));
+        l.add(new Step(w - 2, base + 1, d - 2, Kind.TORCH));
+        return l;
     }
 
     /** A sheep pen: a fence ring with a wide gate in the middle of the front side. */
@@ -339,6 +355,10 @@ public final class Blueprints {
                 l.add(new Step(2 + g, bottom, z0, Kind.TORCH));
                 l.add(new Step(-1 - g, bottom, z0, Kind.TORCH));
             }
+            if (g % 6 == 2) {
+                galleryFrame(l, 2 + g, bottom, z0);
+                galleryFrame(l, -1 - g, bottom, z0);
+            }
         }
         return l;
     }
@@ -352,7 +372,7 @@ public final class Blueprints {
             case "smithy" -> new int[]{10, 6};
             case "armory" -> new int[]{10, 7};
             case "tavern" -> new int[]{12, 9};
-            case "townhall" -> new int[]{11, 8};
+            case "townhall" -> new int[]{HALL_W, HALL_D};
             case "pen" -> new int[]{PEN, PEN};
             case "well" -> new int[]{WELL, WELL};
             case "farm" -> new int[]{FARM, FARM};
@@ -384,6 +404,7 @@ public final class Blueprints {
                 l.add(new Step(x, -i, i, Kind.DIG));
                 l.add(new Step(x, -i, i, Kind.STAIRS_N));
             }
+            if (i % 6 == 5) shaftFrame(l, i);
         }
         int bottom = -(depth - 1);
         // two galleries, 24 blocks each, 2 wide and 3 high
@@ -398,7 +419,29 @@ public final class Blueprints {
                 l.add(new Step(2 + g, bottom, depth - 1, Kind.TORCH));
                 l.add(new Step(-1 - g, bottom, depth - 1, Kind.TORCH));
             }
+            if (g % 6 == 2) {
+                galleryFrame(l, 2 + g, bottom, depth - 1);
+                galleryFrame(l, -1 - g, bottom, depth - 1);
+            }
         }
         return l;
+    }
+
+    /** A timber frame across a gallery: posts on both walls and a beam of planks over the roof, against cave-ins. */
+    private static void galleryFrame(List<Step> l, int x, int bottom, int z0) {
+        for (int h = 0; h < 3; h++) {
+            l.add(new Step(x, bottom + h, z0 - 1, Kind.PILLAR));
+            l.add(new Step(x, bottom + h, z0 + 2, Kind.PILLAR));
+        }
+        for (int z = z0 - 1; z <= z0 + 2; z++) l.add(new Step(x, bottom + 3, z, Kind.FLOOR));
+    }
+
+    /** The same for the stair shaft: posts beside it and a plank beam above the stairs. */
+    private static void shaftFrame(List<Step> l, int i) {
+        for (int h = 1; h <= 3; h++) {
+            l.add(new Step(-1, -i + h, i, Kind.PILLAR));
+            l.add(new Step(2, -i + h, i, Kind.PILLAR));
+        }
+        for (int x = -1; x <= 2; x++) l.add(new Step(x, -i + 4, i, Kind.FLOOR));
     }
 }
