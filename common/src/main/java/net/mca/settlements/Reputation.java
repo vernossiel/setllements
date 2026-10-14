@@ -2,6 +2,7 @@ package net.mca.settlements;
 
 import net.mca.entity.VillagerEntityMCA;
 import net.mca.server.world.data.Village;
+import net.mca.server.world.data.VillageManager;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.entity.ai.brain.MemoryModuleType;
 import net.minecraft.entity.ai.brain.WalkTarget;
