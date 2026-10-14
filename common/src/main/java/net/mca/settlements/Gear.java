@@ -96,6 +96,7 @@ public final class Gear {
             case HUNT -> "sword";
             default -> null;
         };
+        if (chore == Chore.FISH) return Items.FISHING_ROD;
         if (kind == null) return null;
         return Registries.ITEM.get(new Identifier(m[tier] + "_" + kind));
     }
@@ -120,7 +121,7 @@ public final class Gear {
         }
         int units = toolUnits(chore);
         if (village != null) {
-            for (int tier = village.smithyBuilt ? 3 : 1; tier > have && tier >= 0; tier--) {
+            for (int tier = chore == Chore.FISH ? 0 : village.smithyBuilt ? 3 : 1; tier > have && tier >= 0; tier--) {
                 if (!canPay(village, tier, units)) continue;
                 pay(village, tier, units);
                 ItemStack crafted = new ItemStack(tool(chore, tier));

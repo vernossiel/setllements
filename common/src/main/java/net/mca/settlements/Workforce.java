@@ -32,6 +32,8 @@ public final class Workforce {
         if (p == VillagerProfession.FARMER) return Chore.HARVEST;
         if (p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH) return Chore.CHOP;
         if (p == VillagerProfession.MASON || p == VillagerProfession.ARMORER) return Chore.PROSPECT;
+        if (p == VillagerProfession.FISHERMAN) return Chore.FISH;
+        if (p == VillagerProfession.LEATHERWORKER) return Chore.HUNT;
         return Chore.NONE;
     }
 
@@ -51,7 +53,7 @@ public final class Workforce {
     private static final int TORCH_STOCK = 48;
 
     private static boolean isCustomWorker(VillagerProfession p) {
-        return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.SHEPHERD;
+        return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER;
     }
 
     /** Server side, once per second. */
@@ -70,6 +72,13 @@ public final class Workforce {
         if (job != Chore.NONE && !autonomous) return; // player-assigned chores ignore this system
 
         if (v.age % 60 == 0) v.settlementsHunger = Math.min(MAX, v.settlementsHunger + 1); // slow idle hunger
+
+        // hungry villagers eat in the tavern when there is one with food on the shelf
+        if (village != null && village.tavern != null && v.settlementsHunger >= (job == Chore.NONE ? 250 : HUNGER_EAT_AT)
+                && v.getProfession() != VillagerProfession.BUTCHER) {
+            if (job != Chore.NONE) v.getVillagerBrain().abandonJob();
+            if (Tavern.visit(v, village)) return;
+        }
 
         // a meal comes first, stopping work if needed
         if (v.settlementsHunger >= HUNGER_EAT_AT && hasMeal(v, village)) {
@@ -135,7 +144,8 @@ public final class Workforce {
 
         VillagerProfession prof = v.getProfession();
         if (isCustomWorker(prof)) {
-            boolean worked = prof == VillagerProfession.CARTOGRAPHER ? Builder.work(v, village) : Husbandry.work(v, village);
+            boolean worked = prof == VillagerProfession.CARTOGRAPHER ? Builder.work(v, village)
+                    : prof == VillagerProfession.BUTCHER ? Cooking.work(v, village) : Husbandry.work(v, village);
             if (worked) {
                 v.settlementsEnergy -= WORK_DRAIN + REST_GAIN; // cancels the rest gain above
                 v.settlementsHunger += HUNGER_RISE;
@@ -243,12 +253,17 @@ public final class Workforce {
             }
         }
         if (meal.isEmpty()) return false;
+        beginMeal(v, meal, EAT_SECONDS);
+        return true;
+    }
+
+    /** Puts the meal in the villager's hand and makes them sit still and eat for the given number of seconds. */
+    static void beginMeal(VillagerEntityMCA v, ItemStack meal, int seconds) {
         ItemStack held = v.getStackInHand(v.getDominantHand());
         if (!held.isEmpty()) v.getInventory().addStack(held);
         v.setStackInHand(v.getDominantHand(), meal);
         v.getNavigation().stop();
-        v.settlementsEatTicks = EAT_SECONDS;
-        return true;
+        v.settlementsEatTicks = seconds;
     }
 
     /** One second of an ongoing meal. */

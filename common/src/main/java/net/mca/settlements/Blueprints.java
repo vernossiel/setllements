@@ -8,7 +8,7 @@ import java.util.List;
  * corner, y = 0 is the ground floor plane. Everything faces south (door on the +z side).
  */
 public final class Blueprints {
-    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE }
+    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE, SMOKER, BARREL, CRAFT, PLATE, SEAT_W, SEAT_E }
 
     public record Step(int dx, int dy, int dz, Kind kind) {
     }
@@ -134,6 +134,21 @@ public final class Blueprints {
             in.add(new Step(x, 1, d - 2, Kind.CHEST));
         }
         return hall(w, d, in);
+    }
+
+    /** Tavern: kitchen with a smoker, a barrel and a crafting table at the back, tables with chairs in the hall. */
+    public static List<Step> tavern() {
+        List<Step> in = new ArrayList<>();
+        in.add(new Step(2, 1, 1, Kind.SMOKER));
+        in.add(new Step(3, 1, 1, Kind.BARREL));
+        in.add(new Step(4, 1, 1, Kind.CRAFT));
+        for (int[] table : new int[][]{{3, 5}, {8, 5}, {5, 3}}) {
+            in.add(new Step(table[0], 1, table[1], Kind.FENCE));
+            in.add(new Step(table[0], 2, table[1], Kind.PLATE));
+            in.add(new Step(table[0] - 1, 1, table[1], Kind.SEAT_W));
+            in.add(new Step(table[0] + 1, 1, table[1], Kind.SEAT_E));
+        }
+        return hall(12, 9, in);
     }
 
     /** Smithy: anvil, furnace, grindstone and smithing table. Needs iron and an established village. */
@@ -292,6 +307,7 @@ public final class Blueprints {
             case "storage" -> new int[]{11, 7};
             case "smithy" -> new int[]{10, 6};
             case "armory" -> new int[]{10, 7};
+            case "tavern" -> new int[]{12, 9};
             case "well" -> new int[]{WELL, WELL};
             case "farm" -> new int[]{FARM, FARM};
             case "tower" -> new int[]{TOWER, TOWER};

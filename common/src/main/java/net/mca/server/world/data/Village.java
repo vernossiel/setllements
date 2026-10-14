@@ -40,6 +40,7 @@ public class Village implements Iterable<Building> {
     public String buildType = "";
     public int buildW, buildD, buildF, buildRot;
     public boolean wellBuilt, wallBuilt;
+    public net.mca.settlements.Tavern tavern;
     public int farms, towers;
     /** Reserved plots as {x, z, width, depth}, so the layout never overlaps its own buildings. */
     public final List<int[]> plots = new LinkedList<>();
@@ -111,6 +112,7 @@ public class Village implements Iterable<Building> {
         }
         storageBuilt = v.getBoolean("storageBuilt");
         mineBuilt = v.getBoolean("mineBuilt");
+        if (v.contains("tavern")) tavern = net.mca.settlements.Tavern.load(v.getCompound("tavern"));
         wellBuilt = v.getBoolean("wellBuilt");
         wallBuilt = v.getBoolean("wallBuilt");
         farms = v.getInt("farms");
@@ -485,6 +487,7 @@ public class Village implements Iterable<Building> {
         }
         v.putBoolean("storageBuilt", storageBuilt);
         v.putBoolean("mineBuilt", mineBuilt);
+        if (tavern != null) v.put("tavern", tavern.save());
         v.putBoolean("wellBuilt", wellBuilt);
         v.putBoolean("wallBuilt", wallBuilt);
         v.putInt("farms", farms);

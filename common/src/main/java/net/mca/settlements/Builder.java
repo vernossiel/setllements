@@ -50,6 +50,7 @@ public final class Builder {
             case "storage" -> Blueprints.storage();
             case "smithy" -> Blueprints.smithy();
             case "armory" -> Blueprints.armory();
+            case "tavern" -> Blueprints.tavern();
             case "mine" -> Blueprints.mine();
             case "wall" -> wallPlan(v);
             default -> List.of();
@@ -206,6 +207,9 @@ public final class Builder {
                 }
                 case "tower" -> {
                     if (startRing(village, world, "tower", 0, 0, 0, 4, 5)) return true;
+                }
+                case "tavern" -> {
+                    if (startRing(village, world, "tavern", 0, 0, 0, 0, 3)) return true;
                 }
                 case "wall" -> {
                     BlockPos c = new BlockPos(village.getCenter());
@@ -369,7 +373,7 @@ public final class Builder {
         return switch (kind) {
             case BED_FOOT -> Needs.Need.WOOL;
             case ANVIL, SMITHING -> Needs.Need.IRON;
-            case FURNACE, STAIRS_N, STAIRS_S, STONE -> Needs.Need.COBBLE;
+            case FURNACE, STAIRS_N, STAIRS_S, STONE, SMOKER -> Needs.Need.COBBLE;
             default -> Needs.Need.PLANKS;
         };
     }
@@ -414,6 +418,7 @@ public final class Builder {
             case "mine" -> village.mineBuilt = true;
             case "farm" -> village.farms++;
             case "tower" -> village.towers++;
+            case "tavern" -> registerTavern(village);
             case "wall" -> village.wallBuilt = true;
             default -> {
             }
@@ -432,6 +437,27 @@ public final class Builder {
         village.buildOrigin = null;
         village.buildStep = 0;
         village.markDirty();
+    }
+
+    /** Reads the finished tavern's working blocks back out of its plan. */
+    private static void registerTavern(Village village) {
+        BlockPos o = village.buildOrigin;
+        int[] fp = Blueprints.footprint("tavern", 0, 0);
+        BlockPos smoker = null, barrel = null, craft = null;
+        List<BlockPos> seats = new java.util.ArrayList<>();
+        for (Step step : Blueprints.tavern()) {
+            int[] r = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], village.buildRot);
+            BlockPos p = o.add(r[0], step.dy(), r[1]);
+            switch (step.kind()) {
+                case SMOKER -> smoker = p;
+                case BARREL -> barrel = p;
+                case CRAFT -> craft = p;
+                case SEAT_W, SEAT_E -> seats.add(p);
+                default -> {
+                }
+            }
+        }
+        if (smoker != null && barrel != null && craft != null) village.tavern = new Tavern(smoker, barrel, craft, seats);
     }
 
     private static Result execute(ServerWorld world, Village village, Step step, BlockPos target, int rot) {
@@ -549,6 +575,30 @@ public final class Builder {
                     default -> Direction.WEST;
                 };
                 Direction facing = turn(base, rot);
+                if (take(village, COBBLE, 1)) return Blocks.COBBLESTONE_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
+                if (!takePlanks(village, 1)) return null;
+                return Blocks.OAK_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
+            }
+            case SMOKER: {
+                if (count(village, COBBLE) < 8 || planks(village) < 4) return null;
+                take(village, COBBLE, 8);
+                takePlanks(village, 4);
+                return Blocks.SMOKER.getDefaultState().with(AbstractFurnaceBlock.FACING, turn(Direction.SOUTH, rot));
+            }
+            case BARREL: {
+                if (!takePlanks(village, 8)) return null;
+                return Blocks.BARREL.getDefaultState().with(BarrelBlock.FACING, Direction.UP);
+            }
+            case CRAFT: {
+                if (!takePlanks(village, 4)) return null;
+                return Blocks.CRAFTING_TABLE.getDefaultState();
+            }
+            case PLATE: {
+                if (!takePlanks(village, 2)) return null;
+                return Blocks.OAK_PRESSURE_PLATE.getDefaultState();
+            }
+            case SEAT_W, SEAT_E: {
+                Direction facing = turn(kind == Kind.SEAT_W ? Direction.WEST : Direction.EAST, rot);
                 if (take(village, COBBLE, 1)) return Blocks.COBBLESTONE_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
                 if (!takePlanks(village, 1)) return null;
                 return Blocks.OAK_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);

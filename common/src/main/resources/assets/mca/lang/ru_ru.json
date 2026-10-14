@@ -1008,5 +1008,6 @@
   "settlements.missing.planks": "досок: %s",
   "settlements.missing.cobble": "булыжника: %s",
   "settlements.missing.iron": "железа: %s",
-  "settlements.missing.wool": "шерсти: %s"
+  "settlements.missing.wool": "шерсти: %s",
+  "settlements.goal.tavern": "таверна"
 }

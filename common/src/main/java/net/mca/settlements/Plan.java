@@ -35,6 +35,7 @@ public final class Plan {
             new Goal("farm", Level.HAMLET, v -> v.farms < Math.max(1, v.getPopulation() / 4), 30, 0, 0, 0),
             new Goal("mine", Level.HAMLET, v -> !v.mineBuilt && Builder.stockCobble(v) < 128, 40, 0, 0, 0),
             new Goal("smithy", Level.VILLAGE, v -> !v.smithyBuilt && v.storageBuilt, 100, 12, 40, 0),
+            new Goal("tavern", Level.VILLAGE, v -> v.tavern == null && v.storageBuilt && v.getPopulation() >= 6, 160, 12, 0, 0),
             new Goal("armory", Level.VILLAGE, v -> v.smithyBuilt && !v.armoryBuilt && v.getPopulation() >= 6, 150, 0, 0, 0),
             new Goal("tower", Level.VILLAGE, v -> v.towers < 2 && v.getPopulation() >= 8, 150, 60, 0, 0),
             new Goal("wall", Level.TOWN, v -> !v.wallBuilt && v.storageBuilt && v.houses.size() >= 4 && v.getPopulation() >= 10 && v.towers >= 1, 0, 300, 0, 0)
