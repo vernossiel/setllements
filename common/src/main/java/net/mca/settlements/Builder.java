@@ -142,76 +142,88 @@ public final class Builder {
     private static final Predicate<ItemStack> GLASS = s -> s.isOf(Items.GLASS_PANE) || s.isOf(Items.GLASS);
     private static final Predicate<ItemStack> WOOL = s -> s.isIn(ItemTags.WOOL);
 
+    public static int stockPlanks(Village v) {
+        return planks(v);
+    }
+
+    public static int stockCobble(Village v) {
+        return count(v, COBBLE);
+    }
+
+    public static int stockIron(Village v) {
+        return count(v, x -> x.isOf(Items.IRON_INGOT) || x.isOf(Items.RAW_IRON));
+    }
+
+    public static int stockWool(Village v) {
+        return count(v, WOOL);
+    }
+
     // ---------- planner ----------
 
     private static boolean plan(Village village, ServerWorld world) {
         int planks = planks(village);
-        int cobble = count(village, COBBLE);
-        boolean full = village.getPopulation() >= village.getMaxPopulation();
         var rand = world.random;
-
-        // 1. the well makes the heart of the village
-        if (!village.wellBuilt && planks >= 30) {
-            Layout.Slot slot = Layout.center(world, village, "well");
-            village.wellBuilt = true; // a blocked center is simply skipped
-            if (slot != null) return startAt(village, "well", 0, 0, 0, slot);
-        }
-        // 2. storage
-        if (!village.storageBuilt && village.getPopulation() >= 3 && planks >= 150) {
-            return startRing(village, world, "storage", 0, 0, 0, 0, 3);
-        }
-        // 3. housing: add floors first, then new houses
-        if (full) {
-            for (House h : village.houses) {
-                if (h.floors() < 3 && h.d() >= 7 && planks >= 130) {
-                    village.buildType = "upgrade";
-                    village.buildOrigin = h.origin();
-                    village.buildW = h.w();
-                    village.buildD = h.d();
-                    village.buildF = h.floors();
-                    village.buildRot = h.rot();
+        for (Plan.Status st : Plan.pending(village)) {
+            if (!st.ready()) continue;
+            switch (st.goal().id()) {
+                case "well" -> {
+                    Layout.Slot slot = Layout.center(world, village, "well");
+                    village.wellBuilt = true; // a blocked center is simply skipped
+                    if (slot != null) return startAt(village, "well", 0, 0, 0, slot);
+                }
+                case "storage" -> {
+                    if (startRing(village, world, "storage", 0, 0, 0, 0, 3)) return true;
+                }
+                case "housing" -> {
+                    for (House h : village.houses) {
+                        if (h.floors() < 3 && h.d() >= 7 && planks >= 130) {
+                            village.buildType = "upgrade";
+                            village.buildOrigin = h.origin();
+                            village.buildW = h.w();
+                            village.buildD = h.d();
+                            village.buildF = h.floors();
+                            village.buildRot = h.rot();
+                            village.buildStep = 0;
+                            village.markDirty();
+                            return true;
+                        }
+                    }
+                    if (planks >= 320 && startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 3, 0, 3)) return true;
+                    if (planks >= 200 && startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 2, 0, 3)) return true;
+                    if (startRing(village, world, "house", 5, 5, 1, 0, 3)) return true;
+                }
+                case "farm" -> {
+                    if (startRing(village, world, "farm", 0, 0, 0, 2, 5)) return true;
+                }
+                case "mine" -> {
+                    if (start(village, world, "mine", 4, 4, 0)) return true;
+                }
+                case "smithy" -> {
+                    if (startRing(village, world, "smithy", 0, 0, 0, 0, 3)) return true;
+                }
+                case "armory" -> {
+                    if (startRing(village, world, "armory", 0, 0, 0, 0, 3)) return true;
+                }
+                case "tower" -> {
+                    if (startRing(village, world, "tower", 0, 0, 0, 4, 5)) return true;
+                }
+                case "wall" -> {
+                    BlockPos c = new BlockPos(village.getCenter());
+                    int half = 46;
+                    int cy = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, c.getX(), c.getZ());
+                    village.buildType = "wall";
+                    village.buildOrigin = new BlockPos(c.getX() - half, cy, c.getZ() - half);
+                    village.buildRot = 0;
+                    village.buildW = half * 2 + 1;
+                    village.buildD = half * 2 + 1;
+                    village.buildF = 0;
                     village.buildStep = 0;
                     village.markDirty();
                     return true;
                 }
+                default -> {
+                }
             }
-            if (planks >= 320) return startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 3, 0, 3);
-            if (planks >= 200) return startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 2, 0, 3);
-            if (planks >= 100) return startRing(village, world, "house", 5, 5, 1, 0, 3);
-        }
-        // 4. food
-        if (village.farms < Math.max(1, village.getPopulation() / 4) && planks >= 30) {
-            return startRing(village, world, "farm", 0, 0, 0, 2, 5);
-        }
-        // 5. resources
-        if (!village.mineBuilt && planks >= 40 && cobble < 128) {
-            return start(village, world, "mine", 4, 4, 0);
-        }
-        // 6. craft and defense
-        int iron = count(village, s -> s.isOf(Items.IRON_INGOT) || s.isOf(Items.RAW_IRON));
-        if (!village.smithyBuilt && village.storageBuilt && iron >= 40 && cobble >= 12 && planks >= 100) {
-            return startRing(village, world, "smithy", 0, 0, 0, 0, 3);
-        }
-        if (!village.armoryBuilt && village.smithyBuilt && village.getPopulation() >= 6 && planks >= 150) {
-            return startRing(village, world, "armory", 0, 0, 0, 0, 3);
-        }
-        if (!village.wallBuilt && village.storageBuilt && village.houses.size() >= 4 && village.getPopulation() >= 10
-                && village.towers >= 1 && cobble >= 300) {
-            BlockPos c = new BlockPos(village.getCenter());
-            int half = 46;
-            int cy = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, c.getX(), c.getZ());
-            village.buildType = "wall";
-            village.buildOrigin = new BlockPos(c.getX() - half, cy, c.getZ() - half);
-            village.buildRot = 0;
-            village.buildW = half * 2 + 1;
-            village.buildD = half * 2 + 1;
-            village.buildF = 0;
-            village.buildStep = 0;
-            village.markDirty();
-            return true;
-        }
-        if (village.towers < 2 && village.getPopulation() >= 8 && planks >= 150 && cobble >= 60) {
-            return startRing(village, world, "tower", 0, 0, 0, 4, 5);
         }
         return false;
     }
@@ -299,7 +311,11 @@ public final class Builder {
     /** One builder second. Returns true when the villager actually worked (the caller drains energy). */
     public static boolean work(VillagerEntityMCA v, Village village) {
         if (!(v.getWorld() instanceof ServerWorld world) || village == null) return false;
-        if (village.buildOrigin == null && !plan(village, world)) return false;
+        if (village.buildOrigin == null && !plan(village, world)) {
+            Needs.Need blocker = Plan.firstBlocker(village);
+            if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, blocker);
+            return false;
+        }
 
         List<Step> steps = plan(village);
         if (village.buildStep >= steps.size()) {
