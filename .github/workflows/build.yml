@@ -23,6 +23,20 @@ jobs:
       - name: Build (Forge)
         run: ./gradlew :forge:build --console=plain --non-interactive --stacktrace
 
+      - name: Inspect jars
+        run: |
+          ls -la forge/build/libs
+          for f in forge/build/libs/*.jar; do
+            echo "=== $f"
+            unzip -l "$f" | grep -E "META-INF/mods.toml|pack.mcmeta|mca.mixin.json|net/mca/MCA.class|net/mca/forge/MCAForge.class" || true
+            echo "--- mods.toml"
+            unzip -p "$f" META-INF/mods.toml 2>/dev/null | head -30 || true
+            echo "--- manifest"
+            unzip -p "$f" META-INF/MANIFEST.MF 2>/dev/null | head -20 || true
+            echo "--- sample class names"
+            unzip -l "$f" | grep -E "net/mca/entity/VillagerEntityMCA.class" || true
+          done
+
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
