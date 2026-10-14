@@ -332,6 +332,7 @@ public final class Builder {
             return Result.PLACED;
         }
         world.setBlockState(target, state);
+        if (step.kind() == Kind.CHEST) village.lootChests.add(target.toImmutable());
         if (step.kind() == Kind.DOOR) {
             world.setBlockState(target.up(), state.with(DoorBlock.HALF, DoubleBlockHalf.UPPER));
         }

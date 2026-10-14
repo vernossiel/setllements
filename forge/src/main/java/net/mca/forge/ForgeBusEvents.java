@@ -13,6 +13,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.player.PlayerContainerEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.LogicalSide;
@@ -35,6 +36,7 @@ public class ForgeBusEvents {
     public static void onWorldTick(TickEvent.LevelTickEvent event) {
         if (!event.level.isClient && event.side == LogicalSide.SERVER && event.phase == TickEvent.Phase.END) {
             VillageManager.get((ServerWorld)event.level).tick();
+            if (event.level.getTime() % 20 == 0) net.mca.settlements.Reputation.tick((ServerWorld)event.level);
         }
     }
 
@@ -52,6 +54,20 @@ public class ForgeBusEvents {
             if (MinecraftClient.getInstance().player == null || event.getEntity().getUuid().equals(MinecraftClient.getInstance().player.getUuid())) {
                 MCAClient.onLogin();
             }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onContainerOpen(PlayerContainerEvent.Open event) {
+        if (event.getEntity() instanceof ServerPlayerEntity player) {
+            net.mca.settlements.Reputation.onOpen(player, event.getContainer());
+        }
+    }
+
+    @SubscribeEvent
+    public static void onContainerClose(PlayerContainerEvent.Close event) {
+        if (event.getEntity() instanceof ServerPlayerEntity player) {
+            net.mca.settlements.Reputation.onClose(player, event.getContainer());
         }
     }
 

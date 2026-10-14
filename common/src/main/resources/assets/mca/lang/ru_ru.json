@@ -953,5 +953,11 @@
   "settlements.refuse.order": "Я здесь живу и работаю. Ни за кем не хожу.",
   "settlements.refuse.chore": "У меня своя работа, спасибо.",
   "settlements.hire.noemeralds": "Сопровождение стоит 5 изумрудов.",
-  "settlements.hire.success": "Хорошо, 5 изумрудов за день сопровождения. Идём."
+  "settlements.hire.success": "Хорошо, 5 изумрудов за день сопровождения. Идём.",
+  "settlements.donate": "Пожертвование принято: +%s репутации",
+  "settlements.theft.seen": "Эй! Это запасы деревни. Положи на место, немедленно!",
+  "settlements.theft.demand": "Верни, что взял, или стража с тобой разберётся!",
+  "settlements.theft.settled": "Хорошо. Забудем это. В этот раз.",
+  "settlements.theft.partial": "Этого мало. Ты всё ещё должен товаров на %s.",
+  "settlements.theft.refused": "Ты отказался. Деревня этого не забудет!"
 }
