@@ -32,7 +32,7 @@ import java.util.function.Predicate;
  * block from the village treasury. Logs are sawn into planks on demand, mines feed the treasury with stone and ore.
  */
 public final class Builder {
-    private static final int OPS_PER_SECOND = 2;
+    public static int opsPerSecond = 2; // the debug command raises it
     private static final int MAX_TRIVIAL_SKIPS = 60;
     private static final Map<String, List<Step>> CACHE = new HashMap<>();
 
@@ -330,7 +330,7 @@ public final class Builder {
         BlockPos origin = village.buildOrigin;
         boolean worked = false;
         int ops = 0, skips = 0;
-        while (ops < OPS_PER_SECOND && skips < MAX_TRIVIAL_SKIPS && village.buildOrigin != null && village.buildStep < steps.size()) {
+        while (ops < opsPerSecond && skips < MAX_TRIVIAL_SKIPS && village.buildOrigin != null && village.buildStep < steps.size()) {
             Step step = steps.get(village.buildStep);
             int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
             int[] rp = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], village.buildRot);

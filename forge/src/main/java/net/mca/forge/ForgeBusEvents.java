@@ -31,6 +31,7 @@ public class ForgeBusEvents {
     public static void onCommandRegister(RegisterCommandsEvent event) {
         AdminCommand.register(event.getDispatcher());
         Command.register(event.getDispatcher());
+        net.mca.settlements.SettlementsCommand.register(event.getDispatcher());
     }
 
     @SubscribeEvent

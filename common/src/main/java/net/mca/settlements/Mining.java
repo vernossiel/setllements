@@ -16,7 +16,6 @@ import java.util.Map;
  * working face after a while, so they never get stuck for good.
  */
 public final class Mining {
-    private static final int OPS_PER_SECOND = 2;
     private static final int MAX_LEVEL = 8;
     private static final int STONE_QUOTA = 1200;
     private static final Map<Integer, List<Step>> LEVELS = new HashMap<>();
@@ -51,7 +50,7 @@ public final class Mining {
 
         boolean worked = false;
         int ops = 0, skips = 0;
-        while (ops < OPS_PER_SECOND && skips < 60 && village.mineStep < steps.size()) {
+        while (ops < Builder.opsPerSecond && skips < 60 && village.mineStep < steps.size()) {
             Step step = steps.get(village.mineStep);
             BlockPos target = o.add(step.dx(), step.dy(), step.dz());
             if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 49) break;
