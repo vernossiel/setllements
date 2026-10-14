@@ -39,7 +39,7 @@ public class Village implements Iterable<Building> {
     public int buildStep;
     public String buildType = "";
     public int buildW, buildD, buildF, buildRot;
-    public boolean wellBuilt;
+    public boolean wellBuilt, wallBuilt;
     public int farms, towers;
     /** Reserved plots as {x, z, width, depth}, so the layout never overlaps its own buildings. */
     public final List<int[]> plots = new LinkedList<>();
@@ -112,6 +112,7 @@ public class Village implements Iterable<Building> {
         storageBuilt = v.getBoolean("storageBuilt");
         mineBuilt = v.getBoolean("mineBuilt");
         wellBuilt = v.getBoolean("wellBuilt");
+        wallBuilt = v.getBoolean("wallBuilt");
         farms = v.getInt("farms");
         towers = v.getInt("towers");
         int[] flatPlots = v.getIntArray("plots");
@@ -485,6 +486,7 @@ public class Village implements Iterable<Building> {
         v.putBoolean("storageBuilt", storageBuilt);
         v.putBoolean("mineBuilt", mineBuilt);
         v.putBoolean("wellBuilt", wellBuilt);
+        v.putBoolean("wallBuilt", wallBuilt);
         v.putInt("farms", farms);
         v.putInt("towers", towers);
         int[] flat = new int[plots.size() * 4];

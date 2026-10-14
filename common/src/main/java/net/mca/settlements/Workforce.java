@@ -22,7 +22,7 @@ public final class Workforce {
 
     public static final int MIN_TREES_LEFT = 6;      // lumberjacks stop when fewer trees stand nearby
     private static final int LOG_QUOTA = 256;         // stop chopping once the treasury holds this many logs
-    private static final int STONE_QUOTA = 512;
+    private static final int STONE_QUOTA = 1200;
     private static final int KEEP_FOOD = 4;
 
     private Workforce() {

@@ -42,7 +42,8 @@ public final class Builder {
     // ---------- plans ----------
 
     private static List<Step> plan(Village v) {
-        String key = v.buildType + "|" + v.buildW + "|" + v.buildD + "|" + v.buildF;
+        String key = v.buildType + "|" + v.buildW + "|" + v.buildD + "|" + v.buildF
+                + (v.buildType.equals("wall") && v.buildOrigin != null ? "|" + v.buildOrigin.asLong() : "");
         return CACHE.computeIfAbsent(key, k -> switch (v.buildType) {
             case "house" -> Blueprints.house(v.buildW, v.buildD, v.buildF);
             case "upgrade" -> Blueprints.addFloor(v.buildW, v.buildD, v.buildF);
@@ -50,7 +51,20 @@ public final class Builder {
             case "smithy" -> Blueprints.smithy();
             case "armory" -> Blueprints.armory();
             case "mine" -> Blueprints.mine();
+            case "wall" -> wallPlan(v);
             default -> List.of();
+        });
+    }
+
+    private static List<Step> wallPlan(Village v) {
+        ServerWorld world = v.getWorld();
+        BlockPos o = v.buildOrigin;
+        if (world == null || o == null) return List.of();
+        int half = (v.buildW - 1) / 2;
+        return Blueprints.wall(half, (dx, dz) -> {
+            int x = o.getX() + dx, z = o.getZ() + dz;
+            world.getChunk(x >> 4, z >> 4);
+            return world.getTopY(Heightmap.Type.WORLD_SURFACE_WG, x, z) - o.getY();
         });
     }
 
@@ -180,6 +194,21 @@ public final class Builder {
         }
         if (!village.armoryBuilt && village.smithyBuilt && village.getPopulation() >= 6 && planks >= 150) {
             return startRing(village, world, "armory", 0, 0, 0, 0, 3);
+        }
+        if (!village.wallBuilt && village.storageBuilt && village.houses.size() >= 4 && village.getPopulation() >= 10
+                && village.towers >= 1 && cobble >= 300) {
+            BlockPos c = new BlockPos(village.getCenter());
+            int half = 46;
+            int cy = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, c.getX(), c.getZ());
+            village.buildType = "wall";
+            village.buildOrigin = new BlockPos(c.getX() - half, cy, c.getZ() - half);
+            village.buildRot = 0;
+            village.buildW = half * 2 + 1;
+            village.buildD = half * 2 + 1;
+            village.buildF = 0;
+            village.buildStep = 0;
+            village.markDirty();
+            return true;
         }
         if (village.towers < 2 && village.getPopulation() >= 8 && planks >= 150 && cobble >= 60) {
             return startRing(village, world, "tower", 0, 0, 0, 4, 5);
@@ -324,7 +353,7 @@ public final class Builder {
         return switch (kind) {
             case BED_FOOT -> Needs.Need.WOOL;
             case ANVIL, SMITHING -> Needs.Need.IRON;
-            case FURNACE, STAIRS_N, STAIRS_S -> Needs.Need.COBBLE;
+            case FURNACE, STAIRS_N, STAIRS_S, STONE -> Needs.Need.COBBLE;
             default -> Needs.Need.PLANKS;
         };
     }
@@ -369,10 +398,11 @@ public final class Builder {
             case "mine" -> village.mineBuilt = true;
             case "farm" -> village.farms++;
             case "tower" -> village.towers++;
+            case "wall" -> village.wallBuilt = true;
             default -> {
             }
         }
-        if (village.getWorld() instanceof ServerWorld world && !type.equals("upgrade") && !type.equals("mine")) {
+        if (village.getWorld() instanceof ServerWorld world && !type.equals("upgrade") && !type.equals("mine") && !type.equals("wall")) {
             if (type.equals("well")) {
                 Roads.plaza(world, village);
             } else {
@@ -505,6 +535,10 @@ public final class Builder {
                 if (take(village, COBBLE, 1)) return Blocks.COBBLESTONE_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
                 if (!takePlanks(village, 1)) return null;
                 return Blocks.OAK_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
+            }
+            case STONE: {
+                if (!take(village, COBBLE, 1)) return null;
+                return Blocks.COBBLESTONE.getDefaultState();
             }
             case FENCE:
                 if (!takePlanks(village, 1)) return null;

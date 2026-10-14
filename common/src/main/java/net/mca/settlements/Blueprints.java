@@ -8,7 +8,7 @@ import java.util.List;
  * corner, y = 0 is the ground floor plane. Everything faces south (door on the +z side).
  */
 public final class Blueprints {
-    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER }
+    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE }
 
     public record Step(int dx, int dy, int dz, Kind kind) {
     }
@@ -228,6 +228,59 @@ public final class Blueprints {
             }
         }
         l.add(new Step(1, h + 1, n - 2, Kind.TORCH));
+        return l;
+    }
+
+    // ---------- wall ----------
+
+    /**
+     * A defensive wall around a square of side 2*half+1, following the terrain. {@code groundAt} gives the surface
+     * height relative to the origin for a coordinate relative to the origin. Gates open in the middle of every side,
+     * the corners carry watch posts.
+     */
+    public static List<Step> wall(int half, java.util.function.IntBinaryOperator groundAt) {
+        List<Step> l = new ArrayList<>();
+        int n = half * 2;
+        java.util.Set<Long> seen = new java.util.HashSet<>();
+        for (int side = 0; side < 4; side++) {
+            for (int i = 0; i <= n; i++) {
+                int x = side == 0 ? i : side == 1 ? n : side == 2 ? n - i : 0;
+                int z = side == 0 ? 0 : side == 1 ? i : side == 2 ? n : n - i;
+                if (!seen.add(((long) x << 32) ^ (z & 0xffffffffL))) continue;
+                boolean corner = (x == 0 || x == n) && (z == 0 || z == n);
+                if (corner) continue; // towers come separately
+                int g = groundAt.applyAsInt(x, z);
+                int low = g;
+                for (int[] o : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) low = Math.min(low, groundAt.applyAsInt(x + o[0], z + o[1]));
+                int along = (side == 0 || side == 2) ? x : z;
+                boolean gate = Math.abs(along - half) <= 2;
+                for (int y = low - 1; y <= g + 3; y++) {
+                    if (gate && y >= g && y <= g + 2) continue;
+                    l.add(new Step(x, y, z, Kind.STONE));
+                }
+                if (along % 2 == 0 || gate) l.add(new Step(x, g + 4, z, Kind.STONE));
+            }
+        }
+        for (int[] c : new int[][]{{0, 0}, {n, 0}, {0, n}, {n, n}}) {
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    boolean edge = Math.abs(dx) == 2 || Math.abs(dz) == 2;
+                    int x = c[0] + dx, z = c[1] + dz;
+                    int g = groundAt.applyAsInt(x, z);
+                    int low = g;
+                    for (int[] o : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) low = Math.min(low, groundAt.applyAsInt(x + o[0], z + o[1]));
+                    int top = g + 8;
+                    if (edge) {
+                        for (int y = low - 1; y <= top; y++) l.add(new Step(x, y, z, Kind.STONE));
+                        if ((dx + dz) % 2 == 0) l.add(new Step(x, top + 1, z, Kind.STONE));
+                    } else {
+                        l.add(new Step(x, top, z, Kind.STONE)); // deck
+                    }
+                }
+            }
+            int g = groundAt.applyAsInt(c[0], c[1]);
+            l.add(new Step(c[0], g + 9, c[1], Kind.TORCH));
+        }
         return l;
     }
 
