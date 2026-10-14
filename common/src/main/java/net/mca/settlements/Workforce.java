@@ -71,6 +71,8 @@ public final class Workforce {
         boolean autonomous = job != Chore.NONE && v.getVillagerBrain().getJobAssigner().isEmpty();
         if (job != Chore.NONE && !autonomous) return; // player-assigned chores ignore this system
 
+        Unstick.tick(v, village);
+
         // guards: tactics, gear and shifts
         if (v.isGuard() && village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) {
             GuardAI.tick(v, village, sw, time);
@@ -119,6 +121,7 @@ public final class Workforce {
 
         if (job != Chore.NONE) {
             // an autonomous chore is running
+            Worksite.check(v, job);
             v.settlementsEnergy -= WORK_DRAIN;
             v.settlementsHunger += HUNGER_RISE;
             v.settlementsWorkSeconds++;
@@ -166,7 +169,7 @@ public final class Workforce {
             return;
         }
         Chore wanted = choreFor(prof);
-        if (wanted != Chore.NONE && quotaAllows(village, wanted)) {
+        if (wanted != Chore.NONE && quotaAllows(village, wanted) && v.getWorld().getTime() >= v.settlementsNoWorkUntil) {
             Gear.equipTool(v, village, wanted);
             Gear.equipArmor(v, village);
             v.getVillagerBrain().assignAutonomous(wanted);

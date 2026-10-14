@@ -38,6 +38,7 @@ public final class Reputation {
         long deadline;
         int villageId;
         long lastShout;
+        final Map<Item, Integer> stolen = new HashMap<>();
     }
 
     private static final Map<UUID, Session> SESSIONS = new HashMap<>();
@@ -100,17 +101,21 @@ public final class Reputation {
         if (chest == null) return;
         Map<Item, Integer> after = counts(chest);
         double returned = 0, taken = 0;
+        Map<Item, Integer> takenItems = new HashMap<>();
         Map<Item, Integer> before = session.before();
         for (Map.Entry<Item, Integer> e : before.entrySet()) {
             int diff = after.getOrDefault(e.getKey(), 0) - e.getValue();
-            if (diff < 0) taken += value(new ItemStack(e.getKey(), -diff));
+            if (diff < 0) {
+                taken += value(new ItemStack(e.getKey(), -diff));
+                takenItems.put(e.getKey(), -diff);
+            }
         }
         for (Map.Entry<Item, Integer> e : after.entrySet()) {
             int diff = e.getValue() - before.getOrDefault(e.getKey(), 0);
             if (diff > 0) returned += value(new ItemStack(e.getKey(), diff));
         }
         if (returned > 0) settleDebt(player, village, returned);
-        if (taken >= 1) steal(player, village, taken);
+        if (taken >= 1) steal(player, village, taken, takenItems);
     }
 
     /** Putting goods back only matters when the player owes something. There is no reward for stuffing chests. */
@@ -160,7 +165,7 @@ public final class Reputation {
         }
     }
 
-    private static void steal(ServerPlayerEntity player, Village village, double value) {
+    private static void steal(ServerPlayerEntity player, Village village, double value, Map<Item, Integer> items) {
         VillagerEntityMCA witness = null;
         double best = WITNESS_RANGE * WITNESS_RANGE;
         for (VillagerEntityMCA v : player.getWorld().getEntitiesByClass(VillagerEntityMCA.class, player.getBoundingBox().expand(WITNESS_RANGE),
@@ -177,6 +182,7 @@ public final class Reputation {
         debt.value += value;
         debt.deadline = player.getWorld().getTime() + DEMAND_SECONDS * 20L;
         debt.villageId = village.getId();
+        items.forEach((k, n) -> debt.stolen.merge(k, n, Integer::sum));
         witness.sendChatMessage(player, "settlements.theft.seen");
     }
 
@@ -204,7 +210,64 @@ public final class Reputation {
             if (world.getTime() - debt.lastShout > 300 && nearest.squaredDistanceTo(player) < 100) {
                 debt.lastShout = world.getTime();
                 nearest.sendChatMessage(player, "settlements.theft.demand");
+                player.sendMessage(Text.empty()
+                        .append(Text.translatable("settlements.theft.return.button").styled(st -> st.withBold(true).withColor(net.minecraft.util.Formatting.GREEN)
+                                .withClickEvent(new net.minecraft.text.ClickEvent(net.minecraft.text.ClickEvent.Action.RUN_COMMAND, "/settle return"))))
+                        .append(Text.literal("   "))
+                        .append(Text.translatable("settlements.theft.refuse.button").styled(st -> st.withBold(true).withColor(net.minecraft.util.Formatting.RED)
+                                .withClickEvent(new net.minecraft.text.ClickEvent(net.minecraft.text.ClickEvent.Action.RUN_COMMAND, "/settle refuse")))), false);
             }
         }
+    }
+
+    /** /settle return: hands the stolen goods back from the player's inventory. */
+    public static int returnGoods(ServerPlayerEntity player) {
+        Debt debt = DEBTS.get(player.getUuid());
+        if (debt == null) {
+            player.sendMessage(Text.translatable("settlements.theft.nodebt"), false);
+            return 0;
+        }
+        Village village = VillageManager.get(player.getServerWorld()).getOrEmpty(debt.villageId).orElse(null);
+        if (village == null) {
+            DEBTS.remove(player.getUuid());
+            return 0;
+        }
+        double returned = 0;
+        for (Map.Entry<Item, Integer> e : debt.stolen.entrySet()) {
+            int left = e.getValue();
+            for (int i = 0; i < player.getInventory().size() && left > 0; i++) {
+                ItemStack s = player.getInventory().getStack(i);
+                if (!s.isOf(e.getKey())) continue;
+                int d = Math.min(left, s.getCount());
+                ItemStack part = s.copy();
+                part.setCount(d);
+                s.decrement(d);
+                Workforce.addToTreasury(village, part);
+                returned += value(part);
+                left -= d;
+            }
+            e.setValue(left);
+        }
+        debt.stolen.values().removeIf(n -> n <= 0);
+        debt.value -= returned;
+        village.markDirty();
+        if (debt.value <= 0 || debt.stolen.isEmpty()) {
+            DEBTS.remove(player.getUuid());
+            village.pushHearts(player, 10);
+            player.sendMessage(Text.translatable("settlements.theft.settled"), false);
+        } else if (returned > 0) {
+            player.sendMessage(Text.translatable("settlements.theft.partial", (int) Math.ceil(debt.value)), false);
+        } else {
+            player.sendMessage(Text.translatable("settlements.theft.nothing"), false);
+        }
+        return 1;
+    }
+
+    /** /settle refuse: the demand is turned down, the guards act at once. */
+    public static int refuse(ServerPlayerEntity player) {
+        Debt debt = DEBTS.get(player.getUuid());
+        if (debt == null) return 0;
+        debt.deadline = 0;
+        return 1;
     }
 }

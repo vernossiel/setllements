@@ -113,6 +113,9 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public int climbPhase = 0; // 0 none, 1 walking to the ladder, 2 climbing up, 3 climbing down
     public BlockPos climbBase, climbTop, climbDeck;
     public int climbTimer = 0;
+    public net.minecraft.util.math.Vec3d settlementsLastPos;
+    public int settlementsStuckSec = 0, settlementsIdleSec = 0, settlementsLastInv = 0;
+    public long settlementsNoWorkUntil = 0;
     public boolean settlementsBreak = false;
     public int settlementsBreakLeft = 0;
     public int settlementsWorkSeconds = 0;
@@ -1168,6 +1171,13 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     @Override
     public final Text getDisplayName() {
         Text name = super.getDisplayName();
+
+        net.minecraft.village.VillagerProfession role = getProfession();
+        if (role != net.minecraft.village.VillagerProfession.NONE && role != net.minecraft.village.VillagerProfession.NITWIT && !isBaby()) {
+            String path = net.minecraft.registry.Registries.VILLAGER_PROFESSION.getId(role).getPath();
+            name = name.copyContentOnly().append(Text.literal(" · ").formatted(Formatting.GRAY))
+                    .append(Text.translatable("settlements.role." + path).formatted(Formatting.GOLD));
+        }
 
         if (getVillagerBrain() != null) {
             MoveState state = getVillagerBrain().getMoveState();

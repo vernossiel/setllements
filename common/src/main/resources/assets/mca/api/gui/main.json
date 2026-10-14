@@ -1,20 +1,9 @@
 [
   {
-    "identifier": "gui.button.talk",
-    "x": -90,
-    "y": 10,
-    "row": 0,
-    "width": 80,
-    "height": 20,
-    "notifyServer": false,
-    "targetServer": false,
-    "constraints": ""
-  },
-  {
     "identifier": "gui.button.interact",
     "x": -90,
     "y": 10,
-    "row": 1,
+    "row": 0,
     "width": 80,
     "height": 20,
     "notifyServer": false,
@@ -55,6 +44,18 @@
     "notifyServer": false,
     "targetServer": false,
     "constraints": "!family,mercenary",
+    "hideOnFail": true
+  },
+  {
+    "identifier": "gui.button.plans",
+    "x": -90,
+    "y": 10,
+    "row": 1,
+    "width": 80,
+    "height": 20,
+    "notifyServer": true,
+    "targetServer": false,
+    "constraints": "adult",
     "hideOnFail": true
   }
 ]

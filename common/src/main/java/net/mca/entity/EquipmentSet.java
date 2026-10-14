@@ -6,6 +6,12 @@ import net.minecraft.item.Items;
 public enum EquipmentSet {
     NAKED(Items.AIR, Items.AIR, Items.AIR, Items.AIR, Items.AIR, Items.AIR),
 
+    /** Settlements: guards start with a wooden sword or a bow and wear only what the village has crafted for them. */
+    GUARD_BARE(Items.WOODEN_SWORD, Items.AIR, Items.AIR, Items.AIR, Items.AIR, Items.AIR),
+    GUARD_BARE_LEFT(Items.AIR, Items.WOODEN_SWORD, Items.AIR, Items.AIR, Items.AIR, Items.AIR),
+    ARCHER_BARE(Items.BOW, Items.AIR, Items.AIR, Items.AIR, Items.AIR, Items.AIR),
+    ARCHER_BARE_LEFT(Items.AIR, Items.BOW, Items.AIR, Items.AIR, Items.AIR, Items.AIR),
+
     GUARD_0(Items.IRON_SWORD, Items.AIR, Items.AIR, Items.IRON_CHESTPLATE, Items.LEATHER_LEGGINGS, Items.LEATHER_BOOTS),
     GUARD_0_LEFT(Items.AIR, Items.IRON_SWORD, Items.AIR, Items.IRON_CHESTPLATE, Items.LEATHER_LEGGINGS, Items.LEATHER_BOOTS),
     GUARD_1(Items.IRON_SWORD, Items.SHIELD, Items.IRON_HELMET, Items.IRON_CHESTPLATE, Items.LEATHER_LEGGINGS, Items.IRON_BOOTS),

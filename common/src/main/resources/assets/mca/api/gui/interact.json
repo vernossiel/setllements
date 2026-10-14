@@ -22,18 +22,6 @@
     "constraints": ""
   },
   {
-    "identifier": "gui.button.plans",
-    "x": -90,
-    "y": 10,
-    "row": 2,
-    "width": 80,
-    "height": 20,
-    "notifyServer": true,
-    "targetServer": false,
-    "constraints": "adult",
-    "hideOnFail": true
-  },
-  {
     "identifier": "gui.button.follow",
     "x": -90,
     "y": 10,

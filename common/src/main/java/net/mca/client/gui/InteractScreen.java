@@ -144,17 +144,9 @@ public class InteractScreen extends AbstractDynamicScreen {
         matrices.push();
         matrices.scale(iconScale, iconScale, iconScale);
 
-        if (marriageState != null) {
-            drawIcon(context, ICON_TEXTURES, marriageState.getIcon());
-        }
 
         drawIcon(context, ICON_TEXTURES, memory.getHearts() < 0 ? "blackHeart" : memory.getHearts() >= 100 ? "goldHeart" : "redHeart");
         // drawIcon(transform, "neutralEmerald");
-        drawIcon(context, ICON_TEXTURES, "genes");
-
-        if (canDrawParentsIcon()) {
-            drawIcon(context, ICON_TEXTURES, "parents");
-        }
         if (canDrawGiftIcon()) {
             drawIcon(context, ICON_TEXTURES, "gift");
         }

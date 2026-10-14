@@ -90,7 +90,7 @@ public final class Plan {
 
     public static void talk(VillagerEntityMCA speaker, PlayerEntity player) {
         Village village = Village.findNearest(speaker).orElse(null);
-        if (village == null || !(speaker.getWorld() instanceof ServerWorld world)) return;
+        if (village == null || !(speaker.getWorld() instanceof ServerWorld world) || !(player instanceof net.minecraft.server.network.ServerPlayerEntity sp)) return;
         VillagerEntityMCA elder = elder(world, village);
         if (elder != speaker) {
             if (elder != null) {
@@ -98,29 +98,51 @@ public final class Plan {
             }
             return;
         }
+        List<Text> pages = new ArrayList<>();
         Level level = level(village);
-        player.sendMessage(Text.translatable("settlements.plan.header", village.getName(), Text.translatable("settlements.level." + level.name().toLowerCase()), village.getPopulation()), false);
+        // page 1: where the village stands
+        MutableText p1 = Text.empty();
+        p1.append(Text.literal(village.getName() + "\n").formatted(net.minecraft.util.Formatting.BOLD, net.minecraft.util.Formatting.DARK_RED));
+        p1.append(Text.translatable("settlements.level." + level.name().toLowerCase()).formatted(net.minecraft.util.Formatting.DARK_GREEN));
+        p1.append(Text.translatable("settlements.book.residents", village.getPopulation(), village.getMaxPopulation()));
+        p1.append(Text.translatable("settlements.book.built", village.houses.size(), village.farms, village.towers));
+        pages.add(p1);
+        // pages 2..: the plan
         List<Status> pending = pending(village);
-        if (pending.isEmpty()) {
-            player.sendMessage(Text.translatable("settlements.plan.none"), false);
-        }
+        MutableText p2 = Text.empty();
+        p2.append(Text.translatable("settlements.book.plan").formatted(net.minecraft.util.Formatting.BOLD, net.minecraft.util.Formatting.DARK_RED));
+        if (pending.isEmpty()) p2.append(Text.translatable("settlements.plan.none"));
         int shown = 0;
         for (Status s : pending) {
-            if (shown++ >= 4) break;
-            MutableText line = Text.translatable("settlements.goal." + s.goal().id());
+            if (shown++ >= 5) break;
+            p2.append(Text.literal("\n\n• ").append(Text.translatable("settlements.goal." + s.goal().id()).formatted(net.minecraft.util.Formatting.BLUE)));
             if (s.ready()) {
-                player.sendMessage(Text.translatable("settlements.plan.ready", line), false);
+                p2.append(Text.literal("\n  ").append(Text.translatable("settlements.book.ready").formatted(net.minecraft.util.Formatting.DARK_GREEN)));
             } else {
                 MutableText missing = Text.empty();
                 if (s.missPlanks() > 0) missing.append(Text.translatable("settlements.missing.planks", s.missPlanks())).append(" ");
                 if (s.missCobble() > 0) missing.append(Text.translatable("settlements.missing.cobble", s.missCobble())).append(" ");
                 if (s.missIron() > 0) missing.append(Text.translatable("settlements.missing.iron", s.missIron())).append(" ");
                 if (s.missWool() > 0) missing.append(Text.translatable("settlements.missing.wool", s.missWool()));
-                player.sendMessage(Text.translatable("settlements.plan.waiting", line, missing), false);
+                p2.append(Text.literal("\n  ").append(Text.translatable("settlements.book.missing", missing).formatted(net.minecraft.util.Formatting.DARK_GRAY)));
             }
         }
+        pages.add(p2);
+        // last page: how the player can help
+        MutableText p3 = Text.empty();
+        p3.append(Text.translatable("settlements.book.help").formatted(net.minecraft.util.Formatting.BOLD, net.minecraft.util.Formatting.DARK_RED));
         VillagerEntityMCA builder = village.getResidents(world).stream()
                 .filter(r -> r.getProfession() == net.minecraft.village.VillagerProfession.CARTOGRAPHER).findFirst().orElse(null);
-        if (builder != null) player.sendMessage(Text.translatable("settlements.plan.help", builder.getName()), false);
+        p3.append(Text.translatable("settlements.book.help.text", builder == null ? Text.translatable("settlements.book.nobuilder") : builder.getName()));
+        pages.add(p3);
+
+        net.minecraft.item.ItemStack book = new net.minecraft.item.ItemStack(net.minecraft.item.Items.WRITTEN_BOOK);
+        net.minecraft.nbt.NbtCompound tag = book.getOrCreateNbt();
+        tag.putString("title", village.getName());
+        tag.putString("author", elder.getName().getString());
+        net.minecraft.nbt.NbtList list = new net.minecraft.nbt.NbtList();
+        for (Text page : pages) list.add(net.minecraft.nbt.NbtString.of(Text.Serializer.toJson(page)));
+        tag.put("pages", list);
+        sp.useBook(book, net.minecraft.util.Hand.MAIN_HAND);
     }
 }

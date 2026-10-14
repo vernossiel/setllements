@@ -50,28 +50,12 @@ public class VillageGuardsManager {
     }
 
 
+    /** Settlements: no free iron armor. Better gear is crafted by the village into the guard's pack (see Gear). */
     public EquipmentSet getGuardEquipment(VillagerProfession profession, Hand dominantHand) {
         if (profession == ProfessionsMCA.ARCHER.get()) {
-            if (village.hasBuilding("armory")) {
-                if (village.hasBuilding("blacksmith")) {
-                    return getEquipmentFor(dominantHand, EquipmentSet.ARCHER_2, EquipmentSet.ARCHER_2_LEFT);
-                } else {
-                    return getEquipmentFor(dominantHand, EquipmentSet.ARCHER_1, EquipmentSet.ARCHER_1_LEFT);
-                }
-            } else {
-                return getEquipmentFor(dominantHand, EquipmentSet.ARCHER_0, EquipmentSet.ARCHER_0_LEFT);
-            }
-        } else {
-            if (village.hasBuilding("armory")) {
-                if (village.hasBuilding("blacksmith")) {
-                    return EquipmentSet.GUARD_2;
-                } else {
-                    return EquipmentSet.GUARD_1;
-                }
-            } else {
-                return getEquipmentFor(dominantHand, EquipmentSet.GUARD_0, EquipmentSet.GUARD_0_LEFT);
-            }
+            return getEquipmentFor(dominantHand, EquipmentSet.ARCHER_BARE, EquipmentSet.ARCHER_BARE_LEFT);
         }
+        return getEquipmentFor(dominantHand, EquipmentSet.GUARD_BARE, EquipmentSet.GUARD_BARE_LEFT);
     }
 
     public static EquipmentSet getEquipmentFor(Hand dominantHand, EquipmentSet rightSet, EquipmentSet leftSet) {

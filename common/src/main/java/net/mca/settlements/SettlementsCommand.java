@@ -25,6 +25,10 @@ public final class SettlementsCommand {
     }
 
     public static void register(CommandDispatcher<ServerCommandSource> d) {
+        // player-facing answers to a guard's demand, opened by the clickable buttons in the chat
+        d.register(CommandManager.literal("settle")
+                .then(CommandManager.literal("return").executes(c -> Reputation.returnGoods(c.getSource().getPlayerOrThrow())))
+                .then(CommandManager.literal("refuse").executes(c -> Reputation.refuse(c.getSource().getPlayerOrThrow()))));
         d.register(CommandManager.literal("settlements").requires(s -> s.hasPermissionLevel(2))
                 .then(CommandManager.literal("status").executes(SettlementsCommand::status))
                 .then(CommandManager.literal("rich").executes(SettlementsCommand::rich))
