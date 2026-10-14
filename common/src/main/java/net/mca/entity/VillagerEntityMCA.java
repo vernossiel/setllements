@@ -638,7 +638,9 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
      */
     @Override
     public void setMovementSpeed(float speed) {
-        float cap = getWorld().getTime() < settlementsFleeUntil ? 0.36f : 0.31f;
+        boolean hurry = getWorld().getTime() < settlementsFleeUntil
+                || isGuard() && getBrain().hasMemoryModule(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET);
+        float cap = hurry ? 0.36f : 0.31f;
         if (isBaby()) cap *= 0.9f;
         super.setMovementSpeed(Math.min(speed, cap));
     }
