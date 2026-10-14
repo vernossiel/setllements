@@ -402,7 +402,8 @@ public final class Builder {
             default -> {
             }
         }
-        if (village.getWorld() instanceof ServerWorld world && !type.equals("upgrade") && !type.equals("mine") && !type.equals("wall")) {
+        ServerWorld world = village.getWorld();
+        if (world != null && !type.equals("upgrade") && !type.equals("mine") && !type.equals("wall")) {
             if (type.equals("well")) {
                 Roads.plaza(world, village);
             } else {
