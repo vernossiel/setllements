@@ -237,10 +237,6 @@ public final class Builder {
                 case "townhall" -> {
                     if (startRing(village, world, "townhall", 0, 0, 0, 0, 1)) return true;
                 }
-                case "townhall" -> village.hall = new House(o, Blueprints.HALL_W, Blueprints.HALL_D, 1, rot);
-            case "hallup" -> {
-                if (village.hall != null) village.hall = village.hall.withFloors(village.hall.floors() + 1);
-            }
             case "pen" -> {
                     if (startRing(village, world, "pen", 0, 0, 0, 2, 4)) return true;
                 }
@@ -475,6 +471,10 @@ public final class Builder {
                 village.towerLadders.add(o.add(lr[0], 1, lr[1]));
             }
             case "tavern" -> registerTavern(village);
+            case "townhall" -> village.hall = new House(o, Blueprints.HALL_W, Blueprints.HALL_D, 1, rot);
+            case "hallup" -> {
+                if (village.hall != null) village.hall = village.hall.withFloors(village.hall.floors() + 1);
+            }
             case "pen" -> {
                 int[] pr = Blueprints.rotate(Blueprints.PEN / 2, Blueprints.PEN / 2, Blueprints.PEN, Blueprints.PEN, rot);
                 village.penCenter = o.add(pr[0], 0, pr[1]);
