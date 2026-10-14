@@ -89,6 +89,7 @@ public record Tavern(BlockPos smoker, BlockPos barrel, BlockPos craft, List<Bloc
         if (seat == null) return false;
         if (v.squaredDistanceTo(seat.getX() + 0.5, seat.getY(), seat.getZ() + 0.5) > 2.5 * 2.5) {
             v.getNavigation().startMovingTo(seat.getX() + 0.5, seat.getY() + 0.5, seat.getZ() + 0.5, 0.6);
+            Speech.say(v, "settlements.say.tavern.go");
             return true;
         }
         ItemStack meal = takeMeal(barrel);
@@ -102,6 +103,7 @@ public record Tavern(BlockPos smoker, BlockPos barrel, BlockPos craft, List<Bloc
         v.refreshPositionAndAngles(seat.getX() + 0.5, seat.getY() + 0.5, seat.getZ() + 0.5, yaw, 0);
         v.setHeadYaw(yaw);
         Workforce.beginMeal(v, meal, 6);
+        Speech.say(v, "settlements.say.tavern.eat");
         return true;
     }
 

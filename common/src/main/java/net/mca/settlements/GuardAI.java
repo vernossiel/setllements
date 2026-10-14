@@ -68,7 +68,10 @@ public final class GuardAI {
         }
 
         // peace: heal up, then work the shift
-        if (g.getHealth() < g.getMaxHealth() * 0.6f && rest(g, village, world)) return;
+        if (g.getHealth() < g.getMaxHealth() * 0.6f && rest(g, village, world)) {
+            Speech.say(g, "settlements.say.guard.hurt");
+            return;
+        }
         if (!onDuty(g, time)) return;
         patrol(g, village, world, time, center);
     }
@@ -102,6 +105,7 @@ public final class GuardAI {
                     .filter(c -> g.squaredDistanceTo(c) < 49).min(Comparator.comparingDouble(g::squaredDistanceTo)).orElse(null);
             if (creeper != null && (best == null || best == creeper || bestScore < 0)) {
                 g.getBrain().forget(MemoryModuleType.ATTACK_TARGET);
+                Speech.say(g, "settlements.say.guard.creeper");
                 Vec3d away = g.getPos().subtract(creeper.getPos()).normalize().multiply(9).add(g.getPos());
                 g.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(away, 0.8f, 1));
                 return;
@@ -112,13 +116,17 @@ public final class GuardAI {
         double currentScore = current == null ? -1 : Defense.rating(current) * 8 / (1 + g.distanceTo(current));
         if (current == null || !current.isAlive() || bestScore > currentScore + 3) {
             g.getBrain().remember(MemoryModuleType.ATTACK_TARGET, best, 300);
+            Speech.say(g, "settlements.say.guard.attack");
             // call for backup: up to two idle guards join in
             final LivingEntity target = best;
             guards.stream()
                     .filter(o -> o.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).isEmpty() && !o.getVillagerBrain().isPanicking())
                     .sorted(Comparator.comparingDouble(o -> o.squaredDistanceTo(target)))
                     .limit(2)
-                    .forEach(o -> o.getBrain().remember(MemoryModuleType.ATTACK_TARGET, target, 300));
+                    .forEach(o -> {
+                        o.getBrain().remember(MemoryModuleType.ATTACK_TARGET, target, 300);
+                        Speech.say(o, "settlements.say.guard.coming");
+                    });
         }
     }
 

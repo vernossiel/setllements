@@ -139,6 +139,10 @@ public class VillagerCommandHandler extends EntityCommandHandler<VillagerEntityM
                 player.openHandledScreen(entity);
                 return false;
             }
+            case "reputation" -> {
+                net.mca.settlements.Reputation.showStanding(player);
+                return true;
+            }
             case "plans" -> {
                 net.mca.settlements.Plan.talk(entity, player);
                 return true;

@@ -50,7 +50,9 @@ public final class Worksite {
         };
         if (found != null) {
             v.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(found, 0.6f, 2));
+            Speech.say(v, "settlements.say.search");
         } else {
+            Speech.say(v, "settlements.say.nowork");
             v.getVillagerBrain().abandonJob();
             v.settlementsNoWorkUntil = world.getTime() + NO_WORK_PAUSE;
         }

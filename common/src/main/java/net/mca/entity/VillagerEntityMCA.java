@@ -116,6 +116,9 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public net.minecraft.util.math.Vec3d settlementsLastPos;
     public int settlementsStuckSec = 0, settlementsIdleSec = 0, settlementsLastInv = 0;
     public long settlementsNoWorkUntil = 0;
+    public long settlementsLastSay = -10000;
+    public String settlementsLastKey = "";
+    public boolean settlementsWalkingToEat = false;
     public boolean settlementsBreak = false;
     public int settlementsBreakLeft = 0;
     public int settlementsWorkSeconds = 0;

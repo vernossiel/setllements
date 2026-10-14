@@ -87,5 +87,6 @@ public final class Staffing {
         v.setProfession(prof);
         v.setExperience(1); // keeps the vanilla "lost my job site" logic from taking the job away again
         v.reinitializeBrain(world);
+        Speech.sayHired(v);
     }
 }

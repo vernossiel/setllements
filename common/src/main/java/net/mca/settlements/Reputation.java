@@ -271,4 +271,85 @@ public final class Reputation {
         debt.deadline = 0;
         return 1;
     }
+
+    // ---------- visualization ----------
+
+    public static final int REP_MIN = -100, REP_MAX = 150;
+    private static final Map<UUID, int[]> HUD = new HashMap<>();
+
+    /** 0 enemy .. 6 hero. */
+    public static int tier(int rep) {
+        if (rep < -100) return 0;
+        if (rep < -30) return 1;
+        if (rep < 0) return 2;
+        if (rep < 20) return 3;
+        if (rep < 60) return 4;
+        if (rep < 120) return 5;
+        return 6;
+    }
+
+    private static net.minecraft.util.Formatting tierColor(int tier) {
+        return switch (tier) {
+            case 0 -> net.minecraft.util.Formatting.DARK_RED;
+            case 1 -> net.minecraft.util.Formatting.RED;
+            case 2 -> net.minecraft.util.Formatting.GOLD;
+            case 3 -> net.minecraft.util.Formatting.GRAY;
+            case 4 -> net.minecraft.util.Formatting.GREEN;
+            case 5 -> net.minecraft.util.Formatting.DARK_GREEN;
+            default -> net.minecraft.util.Formatting.AQUA;
+        };
+    }
+
+    public static Text tierName(int rep) {
+        int t = tier(rep);
+        return Text.translatable("settlements.rep.tier." + t).formatted(tierColor(t));
+    }
+
+    /** A ten-cell bar from enemy to hero. */
+    public static Text bar(int rep) {
+        int cells = 10;
+        int filled = Math.max(0, Math.min(cells, (int) Math.round((rep - REP_MIN) / (double) (REP_MAX - REP_MIN) * cells)));
+        net.minecraft.text.MutableText t = Text.empty();
+        t.append(Text.literal("\u25A0".repeat(filled)).formatted(tierColor(tier(rep))));
+        t.append(Text.literal("\u25A1".repeat(cells - filled)).formatted(net.minecraft.util.Formatting.DARK_GRAY));
+        return t;
+    }
+
+    /** Chat: where the player stands with the village they are in. */
+    public static int showStanding(ServerPlayerEntity player) {
+        Village v = VillageManager.get(player.getServerWorld()).findNearestVillage(player).orElse(null);
+        if (v == null) {
+            player.sendMessage(Text.translatable("settlements.rep.novillage"), false);
+            return 0;
+        }
+        int rep = v.getReputation(player);
+        player.sendMessage(Text.translatable("settlements.rep.header", v.getName()).formatted(net.minecraft.util.Formatting.GOLD), false);
+        player.sendMessage(Text.empty().append(bar(rep)).append(Text.literal("  ")).append(tierName(rep)).append(Text.literal(" (" + rep + ")")), false);
+        player.sendMessage(Text.translatable("settlements.rep.hint").formatted(net.minecraft.util.Formatting.GRAY), false);
+        return 1;
+    }
+
+    /** Every two seconds: tell players when they enter a village and when their standing changes. */
+    public static void hud(ServerWorld world) {
+        VillageManager vm = VillageManager.get(world);
+        for (ServerPlayerEntity p : world.getPlayers()) {
+            Village v = vm.findNearestVillage(p).filter(vil -> vil.isWithinBorder(p)).orElse(null);
+            int[] st = HUD.get(p.getUuid());
+            if (v == null) {
+                HUD.put(p.getUuid(), new int[]{-1, 0});
+                continue;
+            }
+            int rep = v.getReputation(p);
+            if (st == null || st[0] != v.getId()) {
+                p.sendMessage(Text.empty().append(Text.literal(v.getName() + " \u00B7 ").formatted(net.minecraft.util.Formatting.GOLD))
+                        .append(Text.translatable("settlements.level." + Plan.level(v).name().toLowerCase())).append(Text.literal(" \u00B7 "))
+                        .append(bar(rep)).append(Text.literal(" ")).append(tierName(rep)), true);
+            } else if (rep != st[1]) {
+                int d = rep - st[1];
+                p.sendMessage(Text.empty().append(Text.literal((d > 0 ? "+" : "") + d + " ").formatted(d > 0 ? net.minecraft.util.Formatting.GREEN : net.minecraft.util.Formatting.RED))
+                        .append(Text.translatable("settlements.rep.word")).append(Text.literal(": ")).append(bar(rep)).append(Text.literal(" ")).append(tierName(rep)), true);
+            }
+            HUD.put(p.getUuid(), new int[]{v.getId(), rep});
+        }
+    }
 }

@@ -35,6 +35,10 @@ public final class Cooking {
             Map.entry(Items.SALMON, Items.COOKED_SALMON),
             Map.entry(Items.POTATO, Items.BAKED_POTATO));
 
+    public static boolean isRaw(ItemStack s) {
+        return RECIPES.containsKey(s.getItem());
+    }
+
     private Cooking() {
     }
 
@@ -55,6 +59,7 @@ public final class Cooking {
         if (!out.isEmpty()) {
             ItemStack rest = Tavern.insert(barrel, out);
             smoker.setStack(2, rest);
+            Speech.say(v, "settlements.say.cook.ready");
             v.swingHand(v.getDominantHand());
             return true;
         }
@@ -76,6 +81,7 @@ public final class Cooking {
         // 3. load raw food and fuel from the treasury
         ItemStack raw = takeRaw(village);
         if (!raw.isEmpty()) {
+            if (Needs.get(v) == Needs.Need.MEAT) Needs.set(v, Needs.Need.NONE);
             if (smoker.getStack(1).isEmpty()) {
                 ItemStack fuel = takeFuel(village);
                 if (!fuel.isEmpty()) smoker.setStack(1, fuel);
@@ -92,6 +98,8 @@ public final class Cooking {
             v.swingHand(v.getDominantHand());
             return true;
         }
+        // nothing to cook at all: ask for it
+        if (Tavern.mealsIn(barrel) < BARREL_TARGET / 2 && Needs.get(v) != Needs.Need.FOOD) Needs.set(v, Needs.Need.MEAT);
         return false;
     }
 

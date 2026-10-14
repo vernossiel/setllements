@@ -15,7 +15,7 @@ import net.minecraft.text.Text;
  */
 public final class Needs {
     public enum Need {
-        NONE, FOOD, PLANKS, WOOL, IRON, COBBLE;
+        NONE, FOOD, PLANKS, WOOL, IRON, COBBLE, MEAT;
 
         public boolean matches(ItemStack s) {
             return switch (this) {
@@ -24,6 +24,7 @@ public final class Needs {
                 case WOOL -> s.isIn(ItemTags.WOOL);
                 case IRON -> s.isOf(Items.IRON_INGOT) || s.isOf(Items.RAW_IRON);
                 case COBBLE -> s.isOf(Items.COBBLESTONE);
+                case MEAT -> Cooking.isRaw(s);
                 default -> false;
             };
         }
@@ -31,6 +32,7 @@ public final class Needs {
         public int wanted() {
             return switch (this) {
                 case FOOD -> 3;
+                case MEAT -> 8;
                 case WOOL -> 3;
                 default -> 16;
             };

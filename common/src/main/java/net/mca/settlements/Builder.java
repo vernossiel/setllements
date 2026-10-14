@@ -161,6 +161,9 @@ public final class Builder {
 
     // ---------- planner ----------
 
+    /** The project the planner started last, so the builder can say what he is about to do. */
+    static String announceProject = null;
+
     private static boolean plan(Village village, ServerWorld world) {
         int planks = planks(village);
         var rand = world.random;
@@ -247,6 +250,7 @@ public final class Builder {
         village.buildF = floors;
         village.buildStep = 0;
         village.plots.add(new int[]{slot.origin().getX(), slot.origin().getZ(), slot.fw(), slot.fd()});
+        announceProject = type;
         village.markDirty();
         return true;
     }
@@ -264,6 +268,7 @@ public final class Builder {
         village.buildStep = 0;
         village.plots.add(new int[]{site.getX(), site.getZ(), w, d});
         village.markDirty();
+        announceProject = type;
         return true;
     }
 
@@ -321,6 +326,10 @@ public final class Builder {
             return false;
         }
 
+        if (announceProject != null) {
+            Speech.say(v, "settlements.say.build." + announceProject);
+            announceProject = null;
+        }
         List<Step> steps = plan(village);
         if (village.buildStep >= steps.size()) {
             finish(village);

@@ -26,6 +26,7 @@ public final class Healing {
         }
         if (!takeFood(village)) return false;
         patient.heal(6f);
+        Speech.say(v, "settlements.say.heal");
         world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, patient.getX(), patient.getBodyY(0.7), patient.getZ(), 6, 0.3, 0.4, 0.3, 0.02);
         v.getLookControl().lookAt(patient, 30f, 30f);
         v.swingHand(v.getDominantHand());

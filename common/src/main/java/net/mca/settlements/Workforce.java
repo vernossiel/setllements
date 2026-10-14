@@ -100,8 +100,10 @@ public final class Workforce {
         if (!v.settlementsBreak && autonomousWorking(v, job)) {
             if (v.settlementsEnergy <= EXHAUST_AT) {
                 startBreak(v, 0);
+                Speech.say(v, "settlements.say.tired");
             } else if (v.settlementsWorkSeconds >= MICRO_BREAK_AFTER) {
                 startBreak(v, MICRO_BREAK_SECONDS);
+                Speech.say(v, "settlements.say.break");
             }
             if (v.settlementsBreak && job != Chore.NONE) {
                 v.getVillagerBrain().abandonJob();
@@ -162,6 +164,7 @@ public final class Workforce {
             else if (prof == VillagerProfession.CLERIC) worked = Healing.work(v, village);
             else worked = Husbandry.work(v, village);
             if (worked) {
+                if (v.settlementsWorkSeconds == 0) Speech.sayWork(v);
                 v.settlementsEnergy -= WORK_DRAIN + REST_GAIN; // cancels the rest gain above
                 v.settlementsHunger += HUNGER_RISE;
                 v.settlementsWorkSeconds++;
@@ -173,6 +176,7 @@ public final class Workforce {
             Gear.equipTool(v, village, wanted);
             Gear.equipArmor(v, village);
             v.getVillagerBrain().assignAutonomous(wanted);
+            Speech.sayWork(v);
         }
     }
 
@@ -284,6 +288,7 @@ public final class Workforce {
         }
         if (meal.isEmpty()) return false;
         beginMeal(v, meal, EAT_SECONDS);
+        Speech.say(v, "settlements.say.eat");
         return true;
     }
 

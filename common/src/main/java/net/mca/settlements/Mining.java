@@ -47,6 +47,7 @@ public final class Mining {
             return false;
         }
         v.settlementsStuck = 0;
+        Speech.say(v, "settlements.say.mine.dig");
 
         boolean worked = false;
         int ops = 0, skips = 0;
