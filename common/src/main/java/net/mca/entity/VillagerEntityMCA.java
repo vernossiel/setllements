@@ -106,6 +106,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public int settlementsHunger = 0;
     public boolean settlementsResting = false;
     public int settlementsEatTicks = 0;
+    public long settlementsHireUntil = 0;
     public boolean settlementsBreak = false;
     public int settlementsBreakLeft = 0;
     public int settlementsWorkSeconds = 0;
@@ -1362,6 +1363,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         super.readCustomDataFromNbt(nbt);
         settlementsEnergy = nbt.contains("SettlementsEnergy") ? nbt.getInt("SettlementsEnergy") : 1000;
         settlementsHunger = nbt.getInt("SettlementsHunger");
+        settlementsHireUntil = nbt.getLong("SettlementsHireUntil");
         getTypeDataManager().load(this, nbt);
         relations.readFromNbt(nbt);
         longTermMemory.readFromNbt(nbt);
@@ -1395,6 +1397,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         super.writeCustomDataToNbt(nbt);
         nbt.putInt("SettlementsEnergy", settlementsEnergy);
         nbt.putInt("SettlementsHunger", settlementsHunger);
+        nbt.putLong("SettlementsHireUntil", settlementsHireUntil);
         getTypeDataManager().save(this, nbt);
         relations.writeToNbt(nbt);
         longTermMemory.writeToNbt(nbt);

@@ -45,14 +45,33 @@ public class VillagerCommandHandler extends EntityCommandHandler<VillagerEntityM
     public boolean handle(ServerPlayerEntity player, String command) {
         Memories memory = entity.getVillagerBrain().getMemoriesForPlayer(player);
 
-        if (MoveState.byCommand(command).filter(state -> {
+        // Settlements: villagers are not followers. Only hired mercenaries and hired village guards take orders.
+        var moveState = MoveState.byCommand(command);
+        if (moveState.isPresent()) {
+            MoveState state = moveState.get();
+            boolean hired = net.mca.settlements.Hire.isHired(entity);
+            if (state == MoveState.MOVE) {
+                net.mca.settlements.Hire.release(entity);
+                entity.getVillagerBrain().setMoveState(state, player);
+                return true;
+            }
+            if (state == MoveState.FOLLOW && entity.isGuard() && !hired) {
+                net.mca.settlements.Hire.hireGuard(entity, player);
+                return true;
+            }
+            if (!hired && entity.getProfession() != ProfessionsMCA.MERCENARY.get()) {
+                entity.sendChatMessage(player, "settlements.refuse.order");
+                return true;
+            }
             entity.getVillagerBrain().setMoveState(state, player);
-            return true;
-        }).isPresent()) {
             return true;
         }
 
         if (Chore.byCommand(command).filter(chore -> {
+            if (entity.getProfession() != ProfessionsMCA.MERCENARY.get()) {
+                entity.sendChatMessage(player, "settlements.refuse.chore");
+                return true;
+            }
             entity.getVillagerBrain().assignJob(chore, player);
             CriterionMCA.GENERIC_EVENT_CRITERION.trigger(player, "chores");
             entity.sendChatMessage(Text.translatable("chore.success"), player);

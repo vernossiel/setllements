@@ -1061,5 +1061,9 @@
   "item.mca.yellow_mangrove_crib": "Yellow Mangrove Crib",
   "item.mca.yellow_oak_crib": "Yellow Oak Crib",
   "item.mca.yellow_spruce_crib": "Yellow Spruce Crib",
-  "item.mca.yellow_warped_crib": "Yellow Warped Crib"
+  "item.mca.yellow_warped_crib": "Yellow Warped Crib",
+  "settlements.refuse.order": "I live and work here. I'm not following anyone.",
+  "settlements.refuse.chore": "I do my own work around here, thanks.",
+  "settlements.hire.noemeralds": "An escort costs 5 emeralds.",
+  "settlements.hire.success": "Fine, 5 emeralds for a day of escort. Let's go."
 }

@@ -949,5 +949,9 @@
   "item.mca.yellow_mangrove_crib": "Yellow Mangrove Crib",
   "item.mca.yellow_oak_crib": "Yellow Oak Crib",
   "item.mca.yellow_spruce_crib": "Yellow Spruce Crib",
-  "item.mca.yellow_warped_crib": "Yellow Warped Crib"
+  "item.mca.yellow_warped_crib": "Yellow Warped Crib",
+  "settlements.refuse.order": "Я здесь живу и работаю. Ни за кем не хожу.",
+  "settlements.refuse.chore": "У меня своя работа, спасибо.",
+  "settlements.hire.noemeralds": "Сопровождение стоит 5 изумрудов.",
+  "settlements.hire.success": "Хорошо, 5 изумрудов за день сопровождения. Идём."
 }
