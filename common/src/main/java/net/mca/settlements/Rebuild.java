@@ -72,10 +72,11 @@ public final class Rebuild {
         Plan.Level lv = Plan.level(village);
         int w = b.getPos1().getX() - b.getPos0().getX(), d = b.getPos1().getZ() - b.getPos0().getZ();
         int area = Math.max(1, w) * Math.max(1, d);
-        if ((lv == Plan.Level.TOWN || lv == Plan.Level.FORTRESS) && area >= 40) return "manor";
-        if (lv != Plan.Level.HAMLET && area >= 60) return "annex";
-        if (area <= 30) return lv == Plan.Level.HAMLET ? "hut" : "house";
-        return "house";
+        int pick = Math.floorMod(b.getId() * 7 + area, 3);
+        if ((lv == Plan.Level.TOWN || lv == Plan.Level.FORTRESS) && area >= 40) return new String[]{"manor", "tallhouse", "porch"}[pick];
+        if (lv != Plan.Level.HAMLET && area >= 60) return new String[]{"annex", "farmhouse", "longhouse"}[pick];
+        if (area <= 30) return lv == Plan.Level.HAMLET ? new String[]{"hut", "hut", "twin"}[pick] : new String[]{"house", "porch", "twin"}[pick];
+        return new String[]{"house", "longhouse", "porch"}[pick];
     }
 
     private static boolean ours(Village village, BlockPos p) {
@@ -101,13 +102,7 @@ public final class Rebuild {
     }
 
     private static int[] dims(String type) {
-        return switch (type) {
-            case "hut" -> new int[]{5, 5, 1};
-            case "house" -> new int[]{7, 7, 1};
-            case "annex" -> new int[]{7, 7, 1};
-            case "manor" -> new int[]{9, 8, 2};
-            default -> new int[]{0, 0, 0};
-        };
+        return Builder.SHOWCASE.getOrDefault(type, new int[]{0, 0, 0});
     }
 
     /** Takes on the next old building: from now on the builder's project is to take it down. */

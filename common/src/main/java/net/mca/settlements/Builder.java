@@ -227,10 +227,22 @@ public final class Builder {
                     // two-storey houses for a prosperous town
                     Plan.Level lv = Plan.level(village);
                     double roll = rand.nextDouble();
-                    if ((lv == Plan.Level.TOWN || lv == Plan.Level.FORTRESS) && planks >= 260 && roll < 0.5
-                            && startRing(village, world, "manor", 9, 8, 2, 0, 3)) return true;
-                    if (lv != Plan.Level.HAMLET && planks >= 180 && roll < 0.6 && startRing(village, world, "annex", 7, 7, 1, 1, 4)) return true;
-                    if (lv == Plan.Level.HAMLET && roll < 0.45 && startRing(village, world, "hut", 5, 5, 1, 0, 3)) return true;
+                    String[] kinds = switch (lv) {
+                        case HAMLET -> new String[]{"hut", "hut", "house", "longhouse", "twin"};
+                        case VILLAGE -> new String[]{"house", "porch", "longhouse", "annex", "farmhouse", "twin"};
+                        default -> new String[]{"manor", "tallhouse", "porch", "annex", "farmhouse", "house"};
+                    };
+                    String kind = kinds[rand.nextInt(kinds.length)];
+                    int need = switch (kind) {
+                        case "manor", "farmhouse" -> 260;
+                        case "annex", "tallhouse", "twin" -> 180;
+                        case "hut" -> 0;
+                        default -> 110;
+                    };
+                    if (planks >= need && roll < 0.8) {
+                        int[] dm = SHOWCASE.get(kind);
+                        if (startRing(village, world, kind, dm[0], dm[1], dm[2], 0, 4)) return true;
+                    }
                     if (planks >= 320 && startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 3, 0, 3)) return true;
                     if (planks >= 200 && startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 2, 0, 3)) return true;
                     if (startRing(village, world, "house", 6, 7, 1, 0, 3)) return true;
@@ -603,7 +615,7 @@ public final class Builder {
     public static final java.util.LinkedHashMap<String, int[]> SHOWCASE = new java.util.LinkedHashMap<>();
 
     static {
-        String[] types = {"townhall", "hut", "house", "annex", "manor", "storage", "granary", "sawmill", "charcoal", "mason", "mill",
+        String[] types = {"townhall", "hut", "house", "longhouse", "porch", "twin", "farmhouse", "tallhouse", "annex", "manor", "storage", "granary", "sawmill", "charcoal", "mason", "mill",
                 "smithy", "armory", "tavern", "barracks", "jail", "market", "chapel", "well", "board", "farm", "pen", "tower"};
         for (String t : types) {
             SHOWCASE.put(t, switch (t) {
@@ -611,6 +623,7 @@ public final class Builder {
                 case "house" -> new int[]{7, 7, 1};
                 case "annex" -> new int[]{7, 7, 1};
                 case "manor" -> new int[]{9, 8, 2};
+                case "tallhouse" -> new int[]{5, 6, 3};
                 default -> new int[]{0, 0, 1};
             });
         }
@@ -947,6 +960,9 @@ public final class Builder {
             if (step.kind() == Kind.FLOWER) free = old.isAir() && world.getBlockState(target.down()).isIn(net.minecraft.registry.tag.BlockTags.DIRT);
             if (step.kind() == Kind.PATH) free = (old.isOf(Blocks.GRASS_BLOCK) || old.isOf(Blocks.DIRT) || old.isOf(Blocks.COARSE_DIRT) || old.isOf(Blocks.PODZOL))
                     && world.getBlockState(target.up()).isReplaceable();
+            // nothing hangs in the air: flowers, pots and hedges need ground under them
+            if (free && (step.kind() == Kind.POT || step.kind() == Kind.HEDGE || step.kind() == Kind.FLOWER)
+                    && !world.getBlockState(target.down()).isSideSolidFullSquare(world, target.down(), Direction.UP)) free = false;
             if (!free) return Result.SKIPPED;
         }
         BlockState state = stateFor(village, step, rot);
@@ -985,6 +1001,11 @@ public final class Builder {
             else if (!world.getBlockState(target.down()).isSideSolidFullSquare(world, target.down(), Direction.UP)) return Result.SKIPPED;
         }
         world.setBlockState(target, state);
+        // the floor rests on the ground: under it a stone footing goes down to solid earth
+        if (step.dy() == 0 && (step.kind() == Kind.FLOOR || step.kind() == Kind.STONE || step.kind() == Kind.ACCENT || step.kind() == Kind.PILLAR
+                || step.kind() == Kind.STEP || step.kind() == Kind.MOUND)) {
+            foundation(world, village, target.down());
+        }
         if (step.kind() == Kind.CHEST) village.lootChests.add(target.toImmutable());
         if (step.kind() == Kind.HALL_CHEST) village.hallChests.add(target.toImmutable());
         if (step.kind() == Kind.LECTERN) village.hallPos = target.toImmutable();
@@ -997,6 +1018,31 @@ public final class Builder {
         }
         world.playSound(null, target, state.getSoundGroup().getPlaceSound(), SoundCategory.BLOCKS, 0.8f, 1.0f);
         return Result.PLACED;
+    }
+
+    /** Fills the gap under a floor block down to the ground (at most six blocks) with the village's stone. */
+    private static void foundation(ServerWorld world, Village village, BlockPos below) {
+        Block stone = Palette.of(village).stone();
+        for (int i = 0; i < 6; i++) {
+            BlockPos p = below.down(i);
+            BlockState s = world.getBlockState(p);
+            if (!s.isAir() && !s.isReplaceable() && s.getFluidState().isEmpty()) return; // solid ground reached
+            if (!FREE && !take(village, COBBLE, 1)) {
+                // no stone left: earth from around will do
+                boolean paid = false;
+                for (ItemStack fs : village.storageBuffer) {
+                    if (Scavenge.isFiller(fs)) {
+                        fs.decrement(1);
+                        paid = true;
+                        break;
+                    }
+                }
+                village.storageBuffer.removeIf(ItemStack::isEmpty);
+                world.setBlockState(p, paid ? stone.getDefaultState() : Blocks.DIRT.getDefaultState());
+                continue;
+            }
+            world.setBlockState(p, stone.getDefaultState());
+        }
     }
 
     /** Pays for the block and returns what to place, or null if the treasury cannot pay. */
@@ -1104,8 +1150,11 @@ public final class Builder {
                 return pal.log().getDefaultState().with(PillarBlock.AXIS, axis);
             }
             case GLASS: {
-                if (!take(village, GLASS, 1)) return null;
-                return Blocks.GLASS_PANE.getDefaultState();
+                if (take(village, GLASS, 1)) return Blocks.GLASS_PANE.getDefaultState();
+                // no glass yet: sand from the stores is melted into a pane, otherwise a wooden lattice keeps the window
+                if (take(village, s -> s.isOf(Items.SAND) || s.isOf(Items.RED_SAND), 1)) return Blocks.GLASS_PANE.getDefaultState();
+                if (!takePlanks(village, 1)) return null;
+                return pal.fence().getDefaultState();
             }
             case DOOR:
                 if (!takePlanks(village, 6)) return null;
@@ -1180,7 +1229,8 @@ public final class Builder {
                 return Blocks.BOOKSHELF.getDefaultState();
             case CARPET: {
                 if (!take(village, WOOL, 1)) return null;
-                return Blocks.RED_CARPET.getDefaultState();
+                Block[] rugs = {Blocks.RED_CARPET, Blocks.BLUE_CARPET, Blocks.GREEN_CARPET, Blocks.BROWN_CARPET, Blocks.CYAN_CARPET, Blocks.YELLOW_CARPET};
+                return rugs[Math.floorMod(step.face(), rugs.length)].getDefaultState();
             }
             case LECTERN:
                 if (!takePlanks(village, 6)) return null;

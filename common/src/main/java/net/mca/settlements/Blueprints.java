@@ -160,21 +160,53 @@ public final class Blueprints {
             l.add(new Step(w - 2, base + 2, d - 2, Kind.TORCH));
             return;
         }
-        // furniture: a bed, a chest, a workbench, a barrel with a flower pot, a rug, a light
+        // furniture: always a bed by the back wall; the rest differs from house to house (and floor to floor)
         int bx = w - 2;
+        int style = Math.floorMod(w * 31 + d * 17 + level * 7, 3);
+        int rug = Math.floorMod(w + d * 3 + level, 6);
         l.add(new Step(bx, base + 1, 1, Kind.BED_FOOT));
         l.add(new Step(bx, base + 1, 2, Kind.BED_HEAD));
-        if (d >= 7) l.add(new Step(bx, base + 1, 3, Kind.CHEST));
         if (!grand) {
-            l.add(new Step(bx, base + 1, d - 2, Kind.CRAFT));
-            if (w >= 7 && !stairsFromBelow) {
-                l.add(new Step(2, base + 1, 1, Kind.BARREL));
-                l.add(new Step(2, base + 2, 1, Kind.POT));
+            switch (style) {
+                case 0 -> { // a plain living room: chest, workbench, barrel with flowers
+                    if (d >= 7) l.add(new Step(bx, base + 1, 3, Kind.CHEST));
+                    l.add(new Step(bx, base + 1, d - 2, Kind.CRAFT));
+                    if (w >= 7 && !stairsFromBelow) {
+                        l.add(new Step(2, base + 1, 1, Kind.BARREL));
+                        l.add(new Step(2, base + 2, 1, Kind.POT));
+                    }
+                    l.add(new Step(door, base + 1, d / 2, Kind.CARPET, rug));
+                }
+                case 1 -> { // a kitchen: smoker and barrel, a table with two chairs, a bookshelf
+                    l.add(new Step(bx, base + 1, d - 2, Kind.SMOKER));
+                    if (d >= 7) l.add(new Step(bx, base + 1, 4, Kind.BOOKSHELF));
+                    if (!stairsFromBelow && w >= 7) l.add(new Step(2, base + 1, 1, Kind.BARREL));
+                    int tz = d >= 7 ? 3 : 2;
+                    if (w >= 7) {
+                        l.add(new Step(w / 2, base + 1, tz, Kind.FENCE));
+                        l.add(new Step(w / 2, base + 2, tz, Kind.PLATE));
+                        l.add(new Step(w / 2 - 1, base + 1, tz, Kind.SEAT_W));
+                        if (w / 2 + 1 < bx) l.add(new Step(w / 2 + 1, base + 1, tz, Kind.SEAT_E));
+                    }
+                }
+                default -> { // a store room: chests and barrels, a lantern from the ceiling
+                    if (d >= 7) {
+                        l.add(new Step(bx, base + 1, 3, Kind.CHEST));
+                        l.add(new Step(bx, base + 1, 4, Kind.BARREL));
+                        l.add(new Step(bx, base + 2, 4, Kind.POT));
+                    }
+                    l.add(new Step(bx, base + 1, d - 2, Kind.CRAFT));
+                    if (!stairsFromBelow && w >= 7) {
+                        l.add(new Step(2, base + 1, 1, Kind.CHEST));
+                        l.add(new Step(3, base + 1, 1, Kind.BARREL));
+                    }
+                    l.add(new Step(door, base + 1, d / 2, Kind.CARPET, rug));
+                    l.add(new Step(door, base + 1, d / 2 - 1, Kind.CARPET, rug));
+                }
             }
         }
-        l.add(new Step(door, base + 1, d / 2, Kind.CARPET));
         l.add(new Step(bx, base + 2, d - 2, Kind.TORCH));
-        if (level > 0) l.add(new Step(w / 2, base + 3, d / 2, Kind.LANTERN));
+        if (level > 0 || style == 2) l.add(new Step(w / 2, base + 3, d / 2, Kind.LANTERN));
     }
 
     /** The outside: chimney with smoke, door step and path, lights by the door, a hedge and flowers along the front. */
@@ -199,28 +231,13 @@ public final class Blueprints {
 
     // ---------- halls: storage, smithy, armory ----------
 
-    /** A log-framed stone hall, 4 high, double door on the south side, windows on the north side. */
+    /**
+     * A workshop hall: stone ground floor under a timber gable, a door at the front, windows with shutters, a chimney.
+     * {@code inside}: the trade's furniture.
+     */
     private static List<Step> hall(int w, int d, List<Step> inside) {
-        List<Step> l = new ArrayList<>();
-        plane(l, w, d, 0, Kind.FLOOR, -1);
-        for (int y = 1; y <= 4; y++) {
-            for (int x = 0; x < w; x++) {
-                for (int z = 0; z < d; z++) {
-                    boolean edge = x == 0 || z == 0 || x == w - 1 || z == d - 1;
-                    if (!edge) continue;
-                    boolean door = (x == w / 2 || x == w / 2 + 1) && z == d - 1 && y <= 3;
-                    if (door) continue;
-                    boolean post = (x % 5 == 0) && (z == 0 || z == d - 1 || x == 0 || x == w - 1);
-                    if (post) l.add(new Step(x, y, z, Kind.PILLAR));
-                    else if (y == 3 && x % 2 == 1 && z == 0) l.add(new Step(x, y, z, Kind.GLASS));
-                    else l.add(new Step(x, y, z, Kind.WALL));
-                }
-            }
-        }
+        List<Step> l = shell(w, d, 1, false, false, true, true);
         l.addAll(inside);
-        l.add(new Step(1, 1, 1, Kind.TORCH));
-        l.add(new Step(w - 2, 1, 1, Kind.TORCH));
-        plane(l, w, d, 5, Kind.ROOF, -1);
         return l;
     }
 
@@ -367,7 +384,7 @@ public final class Blueprints {
                     if (!edge) continue;
                     boolean door = x == n / 2 && z == n - 1 && y <= 2;
                     if (door) continue;
-                    boolean slit = y % 4 == 2 && (x == n / 2 || z == n / 2);
+                    boolean slit = y % 4 == 2 && y < h && (x == n / 2 || z == n / 2);
                     l.add(new Step(x, y, z, slit ? Kind.GLASS : Kind.WALL));
                 }
             }
@@ -498,6 +515,11 @@ public final class Blueprints {
             case "hut" -> new int[]{6, 6};
             case "annex" -> new int[]{12, 12};
             case "manor" -> new int[]{9, 8};
+            case "longhouse" -> new int[]{5, 11};
+            case "porch" -> new int[]{7, 9};
+            case "tallhouse" -> new int[]{5, 6};
+            case "twin" -> new int[]{9, 6};
+            case "farmhouse" -> new int[]{13, 9};
             default -> new int[]{w, d};
         };
     }

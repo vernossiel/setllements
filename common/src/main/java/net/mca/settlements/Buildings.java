@@ -39,6 +39,11 @@ public final class Buildings {
             case "hut" -> hut();
             case "annex" -> annex();
             case "manor" -> manor();
+            case "longhouse" -> longhouse();
+            case "porch" -> porch();
+            case "tallhouse" -> tallhouse();
+            case "twin" -> twin();
+            case "farmhouse" -> farmhouse();
             default -> List.of();
         };
     }
@@ -444,6 +449,91 @@ public final class Buildings {
         at(l, 4, 3, 4, Kind.LANTERN);
         for (int x = 3; x <= 5; x++) at(l, x, 5, 1, Kind.BOOKSHELF);
         for (int x = 3; x <= 5; x++) at(l, x, 5, 5, Kind.CARPET);
+        return l;
+    }
+
+    /** A long narrow house: the kitchen by the door, the sleeping places at the far end, shutters all along. */
+    static List<Step> longhouse() {
+        int w = 5, d = 11;
+        List<Step> l = new ArrayList<>(Blueprints.shell(w, d, 1, false, false, false, true));
+        at(l, 1, 1, 1, Kind.BED_FOOT);
+        at(l, 1, 1, 2, Kind.BED_HEAD);
+        at(l, 3, 1, 1, Kind.BED_FOOT);
+        at(l, 3, 1, 2, Kind.BED_HEAD);
+        at(l, 1, 1, 4, Kind.CHEST);
+        at(l, 3, 1, 4, Kind.BARREL);
+        at(l, 3, 2, 4, Kind.POT);
+        at(l, 2, 1, 6, Kind.FENCE);
+        at(l, 2, 2, 6, Kind.PLATE);
+        at(l, 1, 1, 6, Kind.SEAT_W);
+        at(l, 3, 1, 6, Kind.SEAT_E);
+        at(l, 1, 1, 8, Kind.SMOKER);
+        at(l, 3, 1, 8, Kind.CRAFT);
+        at(l, 2, 3, 3, Kind.LANTERN);
+        at(l, 2, 3, 7, Kind.LANTERN);
+        for (int z = 2; z <= 5; z++) at(l, 2, 1, z, Kind.CARPET, 3);
+        return l;
+    }
+
+    /** A house with a covered front porch: posts, a slab roof, benches, a hanging lantern and flowers. */
+    static List<Step> porch() {
+        int w = 7, d = 6;
+        List<Step> l = new ArrayList<>(Blueprints.house(w, d, 1));
+        for (int x = 0; x < w; x++) for (int z = d; z <= d + 2; z++) at(l, x, 0, z, Kind.FLOOR);
+        for (int y = 1; y <= 3; y++) {
+            at(l, 0, y, d + 2, Kind.FENCE);
+            at(l, w - 1, y, d + 2, Kind.FENCE);
+        }
+        for (int x = -1; x <= w; x++) for (int z = d; z <= d + 2; z++) at(l, x, 4, z, Kind.SLAB);
+        at(l, 1, 1, d + 1, Kind.PEW, E);
+        at(l, w - 2, 1, d + 1, Kind.PEW, W);
+        at(l, w / 2, 3, d + 1, Kind.LANTERN);
+        at(l, 1, 1, d, Kind.POT);
+        at(l, w - 2, 1, d, Kind.POT);
+        at(l, w / 2, 0, d + 3, Kind.STEP, N);
+        for (int z = d + 4; z <= d + 5; z++) at(l, w / 2, -1, z, Kind.PATH);
+        return l;
+    }
+
+    /** A narrow three-storey town house with a stone ground floor. */
+    static List<Step> tallhouse() {
+        return Blueprints.shell(5, 6, 3, false, true, true, true);
+    }
+
+    /** Two small homes under one roof line, sharing a wall: two families, two doors, two chimneys. */
+    static List<Step> twin() {
+        List<Step> l = new ArrayList<>();
+        shift(Blueprints.shell(5, 6, 1, false, true, false, false), 0, 0, l);
+        for (int y = 0; y <= 8; y++) at(l, -1, y, 3, Kind.CHIMNEY); // the left home's chimney on its own side
+        at(l, -1, 9, 3, Kind.SMOKE);
+        shift(Blueprints.house(5, 6, 1), 4, 0, l);
+        return l;
+    }
+
+    /** A farmhouse with a barn built on at the side: hay, a composter, a cauldron, a small fenced yard. */
+    static List<Step> farmhouse() {
+        List<Step> l = new ArrayList<>(Blueprints.shell(7, 7, 1, false, true, false, false));
+        for (int y = 0; y <= 9; y++) at(l, -1, y, 3, Kind.CHIMNEY);
+        at(l, -1, 10, 3, Kind.SMOKE);
+        // the barn: x 7..12, open towards the yard in front
+        for (int x = 7; x <= 12; x++) for (int z = 0; z <= 6; z++) at(l, x, 0, z, x == 12 || z == 0 ? Kind.STONE : Kind.FLOOR);
+        for (int y = 1; y <= 3; y++) {
+            for (int z = 0; z <= 6; z++) at(l, 12, y, z, z == 0 || z == 6 ? Kind.PILLAR : y == 3 ? Kind.BEAM_Z : Kind.WALL);
+            for (int x = 8; x <= 11; x++) at(l, x, y, 0, y == 3 ? Kind.BEAM_X : Kind.WALL);
+            at(l, 7, y, 6, Kind.PILLAR);
+            at(l, 12, y, 6, Kind.PILLAR);
+        }
+        for (int x = 8; x <= 11; x++) at(l, x, 3, 6, Kind.BEAM_X);
+        for (int x = 7; x <= 12; x++) for (int z = 0; z <= 6; z++) at(l, x, 4, z, Kind.SLAB);
+        for (int[] p : new int[][]{{11, 1, 1}, {11, 1, 2}, {10, 1, 1}, {11, 2, 1}}) at(l, p[0], p[1], p[2], Kind.HAY);
+        at(l, 8, 1, 1, Kind.COMPOSTER);
+        at(l, 9, 1, 1, Kind.CAULDRON);
+        at(l, 11, 1, 4, Kind.BARREL);
+        // the yard in front of the barn
+        for (int x = 7; x <= 12; x++) at(l, x, 0, 8, Kind.FENCE);
+        at(l, 12, 0, 7, Kind.FENCE);
+        at(l, 9, 0, 8, Kind.GATE, S);
+        at(l, 8, 0, 7, Kind.PUMPKIN, S);
         return l;
     }
 }
