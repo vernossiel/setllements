@@ -4,7 +4,6 @@ import net.mca.entity.VillagerEntityMCA;
 import net.mca.entity.ai.Chore;
 import net.mca.server.world.data.Village;
 import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.inventory.Inventory;
 import net.minecraft.item.*;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.tag.ItemTags;
@@ -109,7 +108,7 @@ public final class Gear {
     public static void equipTool(VillagerEntityMCA v, Village village, Chore chore) {
         Class<?> type = chore.getToolType();
         if (type == null) return;
-        Inventory inv = v.getInventory();
+        var inv = v.getInventory();
         int slot = -1, have = -1;
         for (int i = 0; i < inv.size(); i++) {
             ItemStack s = inv.getStack(i);
