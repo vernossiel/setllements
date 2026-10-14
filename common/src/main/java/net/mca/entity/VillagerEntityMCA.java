@@ -632,6 +632,17 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         return ((VillagerEntity) partner).getVillagerData().getType();
     }
 
+    /**
+     * Villagers move at a person's pace: never faster than a walking player, a sprinting player's pace only while
+     * running from danger. Whatever asks them to move (MCA's tasks, Settlements, the personality speed), this caps it.
+     */
+    @Override
+    public void setMovementSpeed(float speed) {
+        float cap = getWorld().getTime() < settlementsFleeUntil ? 0.36f : 0.31f;
+        if (isBaby()) cap *= 0.9f;
+        super.setMovementSpeed(Math.min(speed, cap));
+    }
+
     @Override
     public final boolean damage(DamageSource source, float damageAmount) {
         // no baby squishes
