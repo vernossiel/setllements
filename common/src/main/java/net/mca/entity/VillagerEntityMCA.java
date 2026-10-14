@@ -113,6 +113,14 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public net.minecraft.util.math.BlockPos lumberTarget;
     public net.minecraft.util.math.BlockPos scavengeTarget;
     public int scavengeSec;
+    public net.minecraft.util.math.BlockPos settlementsGoal;
+    public long settlementsGoalAt;
+    public int settlementsHandSec, settlementsSidestep;
+    public net.minecraft.util.math.Vec3d settlementsHandLast;
+    public long settlementsGreetDay = -1, settlementsTalkAfter, settlementsReplyAt;
+    public String settlementsReplyKey;
+    public Object[] settlementsReplyArgs;
+    public int settlementsIdleWork;
     public net.minecraft.util.math.BlockPos penTarget;
     public net.minecraft.util.math.BlockPos settlementsKillPos;
     public long settlementsKillUntil = 0;
@@ -996,6 +1004,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         if (getWorld().isClient) {
             return;
         }
+        net.mca.settlements.Life.onDeath(this, cause);
 
         //drop stuff
         InventoryUtils.dropAllItems(this, inventory);

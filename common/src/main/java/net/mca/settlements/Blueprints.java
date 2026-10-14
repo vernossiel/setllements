@@ -8,7 +8,7 @@ import java.util.List;
  * corner, y = 0 is the ground floor plane. Everything faces south (door on the +z side).
  */
 public final class Blueprints {
-    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE, SMOKER, BARREL, CRAFT, PLATE, SEAT_W, SEAT_E, LECTERN, HALL_CHEST, BOOKSHELF, CARPET }
+    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE, SMOKER, BARREL, CRAFT, PLATE, SEAT_W, SEAT_E, LECTERN, HALL_CHEST, BOOKSHELF, CARPET, SIGN }
 
     public record Step(int dx, int dy, int dz, Kind kind) {
     }
@@ -378,8 +378,19 @@ public final class Blueprints {
             case "farm" -> new int[]{FARM, FARM};
             case "tower" -> new int[]{TOWER, TOWER};
             case "mine" -> new int[]{4, 4};
+            case "board" -> new int[]{3, 2};
             default -> new int[]{w, d};
         };
+    }
+
+    /** The notice board: a plank board on two posts, six signs facing the plaza. */
+    public static List<Step> board() {
+        List<Step> l = new ArrayList<>();
+        l.add(new Step(0, 0, 0, Kind.FENCE));
+        l.add(new Step(2, 0, 0, Kind.FENCE));
+        for (int y = 1; y <= 2; y++) for (int x = 0; x < 3; x++) l.add(new Step(x, y, 0, Kind.FLOOR));
+        for (int y = 2; y >= 1; y--) for (int x = 0; x < 3; x++) l.add(new Step(x, y, 1, Kind.SIGN));
+        return l;
     }
 
     /** Rotates a plan coordinate clockwise by {@code rot} quarter turns inside a w x d footprint. */

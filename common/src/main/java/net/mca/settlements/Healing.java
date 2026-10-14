@@ -21,7 +21,7 @@ public final class Healing {
                 .stream().min(Comparator.comparingDouble(o -> o.getHealth())).orElse(null);
         if (patient == null) return false;
         if (v.squaredDistanceTo(patient) > 6) {
-            v.getNavigation().startMovingTo(patient, 0.6);
+            Move.to(v, patient, 0.6);
             return false;
         }
         if (!takeFood(village)) return false;

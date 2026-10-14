@@ -46,6 +46,7 @@ public class ForgeBusEvents {
             if (event.level.getTime() % 100 == 0) net.mca.settlements.Defense.tick((ServerWorld)event.level);
             if (event.level.getTime() % 40 == 0) net.mca.settlements.Reputation.hud((ServerWorld)event.level);
             if (event.level.getTime() % 600 == 0) net.mca.settlements.Staffing.tick((ServerWorld)event.level);
+            if (event.level.getTime() % 200 == 0) net.mca.settlements.Board.tick((ServerWorld)event.level);
             if (event.level.getTime() % 24000 == 6000) {
                 net.mca.settlements.Diplomacy.daily((ServerWorld)event.level);
                 net.mca.settlements.Expansion.daily((ServerWorld)event.level);
@@ -67,6 +68,13 @@ public class ForgeBusEvents {
             if (MinecraftClient.getInstance().player == null || event.getEntity().getUuid().equals(MinecraftClient.getInstance().player.getUuid())) {
                 MCAClient.onLogin();
             }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onRightClickBlock(net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock event) {
+        if (!event.getLevel().isClient && event.getHand() == net.minecraft.util.Hand.MAIN_HAND && net.mca.settlements.Board.onUse(event.getEntity(), event.getPos())) {
+            event.setCanceled(true);
         }
     }
 

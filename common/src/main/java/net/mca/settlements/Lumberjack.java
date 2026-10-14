@@ -67,7 +67,7 @@ public final class Lumberjack {
         }
         BlockPos base = v.lumberTarget;
         if (v.squaredDistanceTo(base.getX() + 0.5, base.getY(), base.getZ() + 0.5) > 12) {
-            v.getNavigation().startMovingTo(base.getX() + 0.5, base.getY(), base.getZ() + 0.5, 0.6);
+            Move.to(v, base.getX() + 0.5, base.getY(), base.getZ() + 0.5, 0.6);
             return false;
         }
 

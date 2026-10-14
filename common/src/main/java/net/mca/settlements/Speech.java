@@ -31,6 +31,16 @@ public final class Speech {
         v.sendChatMessage(Text.translatable(key, args).formatted(Formatting.WHITE), p);
     }
 
+    /** Conversation lines and replies: no gap, but still only when somebody can hear it. */
+    public static void sayNow(VillagerEntityMCA v, String key, Object... args) {
+        if (v.getWorld().isClient) return;
+        PlayerEntity p = v.getWorld().getClosestPlayer(v, HEARING + 4);
+        if (p == null) return;
+        v.settlementsLastSay = v.getWorld().getTime();
+        v.settlementsLastKey = key;
+        v.sendChatMessage(Text.translatable(key, args == null ? new Object[0] : args).formatted(Formatting.WHITE), p);
+    }
+
     /** "I am a lumberjack now" style line keyed by profession. */
     public static void sayWork(VillagerEntityMCA v) {
         VillagerProfession p = v.getProfession();

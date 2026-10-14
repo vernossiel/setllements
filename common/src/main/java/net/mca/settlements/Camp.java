@@ -71,7 +71,7 @@ public final class Camp {
         if (fire == null) fire = buildNear(village, world, v);
         if (fire == null) return false;
         if (v.squaredDistanceTo(fire.getX() + 0.5, fire.getY(), fire.getZ() + 0.5) > 9) {
-            v.getNavigation().startMovingTo(fire.getX() + 0.5, fire.getY(), fire.getZ() + 0.5, 0.6);
+            Move.to(v, fire.getX() + 0.5, fire.getY(), fire.getZ() + 0.5, 0.6);
             return false;
         }
         v.getNavigation().stop();

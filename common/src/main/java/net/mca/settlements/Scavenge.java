@@ -71,7 +71,7 @@ public final class Scavenge {
                 best.discard();
                 v.swingHand(v.getDominantHand());
             } else {
-                v.getNavigation().startMovingTo(best, 0.65);
+                Move.to(v, best, 0.65);
             }
             return true;
         }
@@ -79,7 +79,8 @@ public final class Scavenge {
         // 2. only wood will do: fell a tree
         if (!anyBlock && need == Needs.Need.PLANKS && Lumberjack.work(v, village, true)) return true;
 
-        // 3. dig the ground and stone around
+        // 3. dig the ground and stone around (enough is enough: no craters around the village)
+        if (anyBlock && stockFiller(village) >= 256) return false;
         BlockPos t = v.scavengeTarget;
         if (t != null && (v.scavengeSec++ > 30 || !valid(world, village, t, need, anyBlock))) {
             t = null;
@@ -92,7 +93,7 @@ public final class Scavenge {
             v.scavengeSec = 0;
         }
         if (v.squaredDistanceTo(t.getX() + 0.5, t.getY() + 1, t.getZ() + 0.5) > 9) {
-            v.getNavigation().startMovingTo(t.getX() + 0.5, t.getY() + 1, t.getZ() + 0.5, 0.65);
+            Move.to(v, t.getX() + 0.5, t.getY() + 1, t.getZ() + 0.5, 0.65);
             return true;
         }
         v.getLookControl().lookAt(t.getX() + 0.5, t.getY() + 0.5, t.getZ() + 0.5);

@@ -46,6 +46,7 @@ public class Village implements Iterable<Building> {
     public boolean seeded;
     public int groveSaplings;
     public final List<BlockPos> hallChests = new LinkedList<>();
+    public final List<BlockPos> boardSigns = new LinkedList<>();
     public int mineLevel = 1, mineStep;
     public final List<BlockPos> watchPoints = new LinkedList<>();
     /** Bottom cell of each tower's ladder, same order as {@link #watchPoints}. */
@@ -128,6 +129,7 @@ public class Village implements Iterable<Building> {
         seeded = v.getBoolean("seeded");
         groveSaplings = v.getInt("groveSaplings");
         for (long l : v.getLongArray("hallChests")) hallChests.add(BlockPos.fromLong(l));
+        for (long l : v.getLongArray("boardSigns")) boardSigns.add(BlockPos.fromLong(l));
         if (v.contains("smithyFurnace")) smithyFurnace = BlockPos.fromLong(v.getLong("smithyFurnace"));
         if (v.contains("smithyAnvil")) smithyAnvil = BlockPos.fromLong(v.getLong("smithyAnvil"));
         mineLevel = v.contains("mineLevel") ? Math.max(1, v.getInt("mineLevel")) : 1;
@@ -517,6 +519,7 @@ public class Village implements Iterable<Building> {
         v.putBoolean("seeded", seeded);
         v.putInt("groveSaplings", groveSaplings);
         v.putLongArray("hallChests", hallChests.stream().mapToLong(BlockPos::asLong).toArray());
+        v.putLongArray("boardSigns", boardSigns.stream().mapToLong(BlockPos::asLong).toArray());
         if (smithyFurnace != null) v.putLong("smithyFurnace", smithyFurnace.asLong());
         if (smithyAnvil != null) v.putLong("smithyAnvil", smithyAnvil.asLong());
         v.putInt("mineLevel", mineLevel);

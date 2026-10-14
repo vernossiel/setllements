@@ -88,7 +88,7 @@ public record Tavern(BlockPos smoker, BlockPos barrel, BlockPos craft, List<Bloc
         BlockPos seat = freeSeat(world, v, t);
         if (seat == null) return false;
         if (v.squaredDistanceTo(seat.getX() + 0.5, seat.getY(), seat.getZ() + 0.5) > 2.5 * 2.5) {
-            v.getNavigation().startMovingTo(seat.getX() + 0.5, seat.getY() + 0.5, seat.getZ() + 0.5, 0.6);
+            Move.to(v, seat.getX() + 0.5, seat.getY() + 0.5, seat.getZ() + 0.5, 0.6);
             Speech.say(v, "settlements.say.tavern.go");
             return true;
         }

@@ -35,7 +35,7 @@ public final class Smithing {
         if (fp == null || !(v.getWorld() instanceof ServerWorld world) || !world.isChunkLoaded(fp.getX() >> 4, fp.getZ() >> 4)) return false;
         BlockPos anvil = village.smithyAnvil != null ? village.smithyAnvil : fp;
         if (v.squaredDistanceTo(fp.getX() + 0.5, fp.getY(), fp.getZ() + 0.5) > 25) {
-            v.getNavigation().startMovingTo(fp.getX() + 0.5, fp.getY(), fp.getZ() + 0.5, 0.6);
+            Move.to(v, fp.getX() + 0.5, fp.getY(), fp.getZ() + 0.5, 0.6);
             return false;
         }
 
@@ -87,7 +87,7 @@ public final class Smithing {
     /** The smith walks to the anvil and strikes it while the furnace works. */
     private static boolean hammer(VillagerEntityMCA v, ServerWorld world, BlockPos anvil) {
         if (v.squaredDistanceTo(anvil.getX() + 0.5, anvil.getY(), anvil.getZ() + 0.5) > 6) {
-            v.getNavigation().startMovingTo(anvil.getX() + 0.5, anvil.getY(), anvil.getZ() + 0.5, 0.6);
+            Move.to(v, anvil.getX() + 0.5, anvil.getY(), anvil.getZ() + 0.5, 0.6);
             return false;
         }
         v.getLookControl().lookAt(anvil.getX() + 0.5, anvil.getY() + 0.5, anvil.getZ() + 0.5);

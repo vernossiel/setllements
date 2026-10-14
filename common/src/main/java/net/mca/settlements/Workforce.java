@@ -58,7 +58,10 @@ public final class Workforce {
 
     /** Server side, once per second. */
     public static void tick(VillagerEntityMCA v) {
-        if (v.isBaby()) return;
+        if (v.isBaby()) {
+            Life.child(v);
+            return;
+        }
         if (v.settlementsCaravan) return; // trade caravan merchants only walk the road
         if (Hire.tick(v)) return; // hired escorts and mercenaries take no village work
         if (v.settlementsEatTicks > 0) {
@@ -83,6 +86,8 @@ public final class Workforce {
         }
 
         Unstick.tick(v, village);
+        Move.tick(v, village);
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld lifeWorld && Life.tick(v, village, lifeWorld, time)) return;
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld watchWorld) GuardIntel.civilianWatch(v, watchWorld);
 
         // the elder keeps office by the town hall's lectern
@@ -174,8 +179,14 @@ public final class Workforce {
 
         VillagerProfession prof = v.getProfession();
         if (isCustomWorker(prof)) {
-            boolean worked;
-            if (prof == VillagerProfession.CARTOGRAPHER) worked = Builder.work(v, village);
+            boolean worked = false;
+            // a worker with nothing to do for a while lends the builders a hand (and looks for his own work now and then)
+            boolean helping = prof != VillagerProfession.CARTOGRAPHER && village != null && v.settlementsIdleWork >= 45 && v.settlementsIdleWork % 60 != 0
+                    && v.getWorld() instanceof net.minecraft.server.world.ServerWorld hw && Life.helpBuilders(v, village, hw);
+            if (helping) {
+                v.settlementsIdleWork++;
+                worked = true;
+            } else if (prof == VillagerProfession.CARTOGRAPHER) worked = Builder.work(v, village);
             else if (prof == VillagerProfession.BUTCHER) worked = Cooking.work(v, village);
             else if (prof == VillagerProfession.MASON) worked = Mining.work(v, village);
             else if (prof == VillagerProfession.ARMORER) worked = Smithing.work(v, village);
@@ -185,6 +196,7 @@ public final class Workforce {
                 worked = Lumberjack.work(v, village);
             }
             else worked = Husbandry.work(v, village);
+            if (!helping) v.settlementsIdleWork = worked ? 0 : v.settlementsIdleWork + 1;
             if (worked) {
                 if (v.settlementsWorkSeconds == 0) Speech.sayWork(v);
                 v.settlementsEnergy -= WORK_DRAIN + REST_GAIN; // cancels the rest gain above

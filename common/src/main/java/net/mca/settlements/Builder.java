@@ -16,6 +16,7 @@ import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.util.Identifier;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.Heightmap;
@@ -41,6 +42,11 @@ public final class Builder {
 
     // ---------- plans ----------
 
+    /** Number of steps of the running project, for the progress shown on the notice board. */
+    public static int stepsOf(Village v) {
+        return v.buildOrigin == null || v.buildType == null ? 0 : plan(v).size();
+    }
+
     private static List<Step> plan(Village v) {
         String key = v.buildType + "|" + v.buildW + "|" + v.buildD + "|" + v.buildF
                 + (v.buildType.equals("wall") && v.buildOrigin != null ? "|" + v.buildOrigin.asLong() : "");
@@ -52,6 +58,7 @@ public final class Builder {
             case "armory" -> Blueprints.armory();
             case "tavern" -> Blueprints.tavern();
             case "townhall" -> Blueprints.townhall();
+            case "board" -> Blueprints.board();
             case "hallup" -> Blueprints.hallUpgrade(v.buildW, v.buildD, v.buildF);
             case "pen" -> Blueprints.pen();
             case "mine" -> Blueprints.mine();
@@ -246,6 +253,10 @@ public final class Builder {
                 case "tavern" -> {
                     if (startRing(village, world, "tavern", 0, 0, 0, 0, 3)) return true;
                 }
+                case "board" -> {
+                    if (startRing(village, world, "board", 0, 0, 0, 0, 1)) return true;
+                    if (start(village, world, "board", 3, 2, 0)) return true;
+                }
                 case "wall" -> {
                     BlockPos c = new BlockPos(village.getCenter());
                     int half = 46;
@@ -354,6 +365,7 @@ public final class Builder {
         if (!(v.getWorld() instanceof ServerWorld world) || village == null) return false;
         if (village.buildOrigin == null && !plan(village, world)) {
             Needs.Need blocker = Plan.firstBlocker(village);
+            markShort(village, blocker, blocker == Needs.Need.PLANKS || blocker == Needs.Need.COBBLE);
             if (blocker != Needs.Need.NONE && Scavenge.work(v, village, world, blocker, blocker == Needs.Need.PLANKS || blocker == Needs.Need.COBBLE)) {
                 if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, Needs.Need.NONE);
                 Speech.say(v, "settlements.say.build.scavenge");
@@ -385,8 +397,13 @@ public final class Builder {
             // the mine is dug from its entrance, everything else is built standing next to the block
             double limit = village.buildType.equals("mine") ? 12 * 12 : 6 * 6;
             BlockPos stand = village.buildType.equals("mine") ? origin : target;
-            if (v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > limit) {
-                v.getNavigation().startMovingTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, 0.6);
+            // builders reach up to the roof from the ground (ladders and scaffolding), so only the horizontal distance counts
+            double bx = stand.getX() + 0.5 - v.getX(), bz = stand.getZ() + 0.5 - v.getZ();
+            boolean far = village.buildType.equals("mine")
+                    ? v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > limit
+                    : bx * bx + bz * bz > limit || Math.abs(stand.getY() - v.getY()) > 12;
+            if (far) {
+                Move.to(v, stand.getX() + 0.5, village.buildType.equals("mine") ? stand.getY() : origin.getY(), stand.getZ() + 0.5, 0.6);
                 return worked;
             }
 
@@ -397,6 +414,7 @@ public final class Builder {
                     case FLOOR, ROOF, WALL, PILLAR, STONE, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, SEAT_W, SEAT_E -> true;
                     default -> false;
                 };
+                markShort(village, need, any);
                 if (Scavenge.work(v, village, world, need, any)) {
                     if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, Needs.Need.NONE);
                     Speech.say(v, "settlements.say.build.scavenge");
@@ -413,6 +431,7 @@ public final class Builder {
             }
             village.buildStep++;
             if (r == Result.PLACED) {
+                SHORT.remove(village.getId());
                 ops++;
                 worked = true;
                 v.swingHand(v.getDominantHand());
@@ -454,6 +473,24 @@ public final class Builder {
     }
 
     enum Result { PLACED, SKIPPED, WAIT, ABORT }
+
+    /** What the builders of a village are short of right now, so idle hands can go and gather it. */
+    public record Shortage(Needs.Need need, boolean any, long since) {
+    }
+
+    private static final java.util.Map<Integer, Shortage> SHORT = new java.util.HashMap<>();
+
+    public static Shortage shortage(Village village) {
+        Shortage s = SHORT.get(village.getId());
+        ServerWorld w = village.getWorld();
+        if (s == null || w == null || w.getTime() - s.since() > 1200) return null;
+        return s;
+    }
+
+    private static void markShort(Village village, Needs.Need need, boolean any) {
+        ServerWorld w = village.getWorld();
+        if (w != null && need != Needs.Need.NONE) SHORT.put(village.getId(), new Shortage(need, any, w.getTime()));
+    }
 
     private static void finish(Village village) {
         BlockPos o = village.buildOrigin;
@@ -512,6 +549,7 @@ public final class Builder {
                 Roads.connect(world, village, fr);
             }
         }
+        if (!type.equals("wall") || village.wallBuilt) Life.news(village, "built", Text.translatable("settlements.building." + type));
         village.buildOrigin = null;
         village.buildStep = 0;
         village.markDirty();
@@ -585,6 +623,10 @@ public final class Builder {
         if (step.kind() == Kind.CHEST) village.lootChests.add(target.toImmutable());
         if (step.kind() == Kind.HALL_CHEST) village.hallChests.add(target.toImmutable());
         if (step.kind() == Kind.LECTERN) village.hallPos = target.toImmutable();
+        if (step.kind() == Kind.SIGN) {
+            village.boardSigns.add(target.toImmutable());
+            Board.refresh(world, village);
+        }
         if (step.kind() == Kind.DOOR) {
             world.setBlockState(target.up(), state.with(DoorBlock.HALF, DoubleBlockHalf.UPPER));
         }
@@ -711,6 +753,9 @@ public final class Builder {
                 if (!take(village, COBBLE, 1)) return null;
                 return Blocks.COBBLESTONE.getDefaultState();
             }
+            case SIGN:
+                if (!takePlanks(village, 2)) return null;
+                return Blocks.OAK_WALL_SIGN.getDefaultState().with(WallSignBlock.FACING, turn(Direction.SOUTH, rot));
             case FENCE:
                 if (!takePlanks(village, 1)) return null;
                 return Blocks.OAK_FENCE.getDefaultState();

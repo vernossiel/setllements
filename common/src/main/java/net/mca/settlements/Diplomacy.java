@@ -209,6 +209,8 @@ public final class Diplomacy {
                 shift(attacker, defender, -5);
             }
             rewardPlayers(world, attacker, defender, won);
+            Life.news(attacker, won ? "raid_won" : "raid_lost", defender.getName());
+            Life.news(defender, won ? "raided" : "raid_repelled", attacker.getName());
         }
     }
 

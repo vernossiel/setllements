@@ -97,7 +97,7 @@ public final class Caravans {
                 }
                 double ahead = Math.min(1.0, t + 20.0 / Math.max(1, Math.hypot(c.ex - c.sx, c.ez - c.sz)));
                 BlockPos goal = surface(world, c.sx + (c.ex - c.sx) * ahead, c.sz + (c.ez - c.sz) * ahead);
-                merchant.getNavigation().startMovingTo(goal.getX() + 0.5, goal.getY(), goal.getZ() + 0.5, 0.6);
+                Move.to(merchant, goal.getX() + 0.5, goal.getY(), goal.getZ() + 0.5, 0.6);
                 c.lastX = merchant.getX();
                 c.lastY = merchant.getY();
                 c.lastZ = merchant.getZ();

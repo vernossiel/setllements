@@ -60,6 +60,7 @@ public final class Unstick {
             return;
         }
 
+        if (Move.goal(v) != null) return; // errands are walked by Move, which works its way by hand
         Optional<BlockPos> goal = target(v);
         Vec3d pos = v.getPos();
         boolean wants = goal.isPresent() && goal.get().getSquaredDistance(v.getBlockPos()) > 6 && v.getNavigation().isFollowingPath();

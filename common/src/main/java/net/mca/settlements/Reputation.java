@@ -202,6 +202,7 @@ public final class Reputation {
             }
         }
         if (witness == null) return; // nobody saw it
+        Life.news(village, "theft", player.getName().getString());
         if (!witness.isGuard() && player.getWorld() instanceof ServerWorld sw) {
             Speech.say(witness, "settlements.say.report.thief");
             GuardIntel.alertNearestGuard(sw, witness, player);

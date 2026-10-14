@@ -60,7 +60,7 @@ public final class Mining {
                 v.refreshPositionAndAngles(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, v.getYaw(), 0);
                 v.settlementsStuck = 0;
             } else {
-                v.getNavigation().startMovingTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, 0.6);
+                Move.to(v, stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, 0.6);
             }
             return false;
         }

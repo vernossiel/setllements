@@ -31,6 +31,7 @@ public final class Plan {
     public static final List<Goal> GOALS = List.of(
             new Goal("townhall", Level.HAMLET, v -> v.hall == null, 55, 0, 0, 0),
             new Goal("hallup", Level.HAMLET, v -> v.hall != null && v.hall.floors() < 3 && v.getPopulation() >= (v.hall.floors() == 1 ? 6 : 12), 150, 0, 0, 0),
+            new Goal("board", Level.HAMLET, v -> v.boardSigns.isEmpty(), 16, 0, 0, 0),
             new Goal("well", Level.HAMLET, v -> !v.wellBuilt, 30, 0, 0, 0),
             new Goal("storage", Level.HAMLET, v -> !v.storageBuilt && v.getPopulation() >= 3, 150, 0, 0, 0),
             new Goal("housing", Level.HAMLET, v -> v.getPopulation() >= v.getMaxPopulation(), 100, 0, 0, 3),

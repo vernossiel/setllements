@@ -49,7 +49,7 @@ public final class Cooking {
         if (!world.isChunkLoaded(t.smoker().getX() >> 4, t.smoker().getZ() >> 4)) return false;
 
         if (v.squaredDistanceTo(t.barrel().getX() + 0.5, t.barrel().getY(), t.barrel().getZ() + 0.5) > 9) {
-            v.getNavigation().startMovingTo(t.barrel().getX() + 0.5, t.barrel().getY(), t.barrel().getZ() + 0.5, 0.6);
+            Move.to(v, t.barrel().getX() + 0.5, t.barrel().getY(), t.barrel().getZ() + 0.5, 0.6);
             return false;
         }
         if (!(world.getBlockEntity(t.smoker()) instanceof AbstractFurnaceBlockEntity smoker) || !(world.getBlockEntity(t.barrel()) instanceof Inventory barrel)) return false;

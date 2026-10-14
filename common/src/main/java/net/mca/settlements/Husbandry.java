@@ -82,12 +82,12 @@ public final class Husbandry {
             AnimalEntity stray = outside.stream().min(Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
             if (stray != null && inside.size() < PER_SPECIES_CAP * 3) {
                 if (v.squaredDistanceTo(stray) > 12) {
-                    v.getNavigation().startMovingTo(stray, 0.65);
+                    Move.to(v, stray, 0.65);
                     return false;
                 }
                 stray.getNavigation().startMovingTo(pen.getX() + 0.5, pen.getY(), pen.getZ() + 0.5, 1.15);
                 Vec3d toPen = new Vec3d(pen.getX() + 0.5 - v.getX(), 0, pen.getZ() + 0.5 - v.getZ()).normalize();
-                v.getNavigation().startMovingTo(stray.getX() + toPen.x * 2, stray.getY(), stray.getZ() + toPen.z * 2, 0.6);
+                Move.to(v, stray.getX() + toPen.x * 2, stray.getY(), stray.getZ() + toPen.z * 2, 0.6);
                 Speech.say(v, "settlements.say.pen.herd");
                 return true;
             }
@@ -100,7 +100,7 @@ public final class Husbandry {
                     .min(Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
             if (target != null) {
                 if (v.squaredDistanceTo(target) > 6) {
-                    v.getNavigation().startMovingTo(target, 0.6);
+                    Move.to(v, target, 0.6);
                     return false;
                 }
                 target.setSheared(true);
@@ -117,7 +117,7 @@ public final class Husbandry {
         if (breed(v, village, inside)) return true;
 
         if (pen != null && v.squaredDistanceTo(pen.getX() + 0.5, pen.getY(), pen.getZ() + 0.5) > 100) {
-            v.getNavigation().startMovingTo(pen.getX() + 0.5, pen.getY(), pen.getZ() + 0.5, 0.6);
+            Move.to(v, pen.getX() + 0.5, pen.getY(), pen.getZ() + 0.5, 0.6);
         }
         return false;
     }
@@ -129,7 +129,7 @@ public final class Husbandry {
 
     private static boolean slaughter(VillagerEntityMCA v, ServerWorld world, AnimalEntity prey) {
         if (v.squaredDistanceTo(prey) > 5) {
-            v.getNavigation().startMovingTo(prey, 0.7);
+            Move.to(v, prey, 0.7);
             return false;
         }
         v.getLookControl().lookAt(prey, 30f, 30f);
@@ -149,7 +149,7 @@ public final class Husbandry {
         if (drops.isEmpty()) return false;
         ItemEntity e = drops.stream().min(Comparator.comparingDouble(v::squaredDistanceTo)).get();
         if (v.squaredDistanceTo(e) > 4) {
-            v.getNavigation().startMovingTo(e, 0.7);
+            Move.to(v, e, 0.7);
             return true;
         }
         Workforce.addToTreasury(village, e.getStack().copy());
@@ -174,7 +174,7 @@ public final class Husbandry {
                 AnimalEntity b = ready.stream().filter(o -> o != a && o.squaredDistanceTo(a) < 64).findFirst().orElse(null);
                 if (b == null) continue;
                 if (v.squaredDistanceTo(a) > 6) {
-                    v.getNavigation().startMovingTo(a, 0.6);
+                    Move.to(v, a, 0.6);
                     return false;
                 }
                 food.decrement(2);
