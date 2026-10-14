@@ -104,6 +104,7 @@ import static net.mca.client.model.CommonVillagerModel.getVillager;
 public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<VillagerEntityMCA>, NamedScreenHandlerFactory, CompassionateEntity<BreedableRelationship>, CrossbowUser {
     public int settlementsEnergy = 1000;
     public int settlementsHunger = 0;
+    public boolean settlementsResting = false;
 
     final UUID EXTRA_HEALTH_EFFECT_ID = UUID.fromString("87f56a96-686f-4796-b035-22e16ee9e038");
 

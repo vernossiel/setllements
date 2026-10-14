@@ -53,9 +53,21 @@ public final class Workforce {
 
         if (job == Chore.NONE) {
             v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + REST_GAIN);
-            tryEat(v);
+            if (v.age % 60 == 0) v.settlementsHunger = Math.min(MAX, v.settlementsHunger + 1); // slow idle hunger
             net.mca.server.world.data.Village treasury = net.mca.server.world.data.Village.findNearest(v).orElse(null);
+            tryEat(v, treasury);
             if (treasury != null) deposit(v, treasury);
+            if (v.getProfession() == VillagerProfession.CARTOGRAPHER) {
+                if (isWorkTime(time) && v.settlementsHunger < HUNGER_STOP_AT && !v.getVillagerBrain().isPanicking()) {
+                    if (v.settlementsEnergy <= 0) v.settlementsResting = true;
+                    if (v.settlementsEnergy >= START_WORK_ENERGY) v.settlementsResting = false;
+                    if (!v.settlementsResting && Builder.work(v, treasury)) {
+                        v.settlementsEnergy -= WORK_DRAIN + REST_GAIN; // cancels the rest gain above
+                        v.settlementsHunger += HUNGER_RISE;
+                    }
+                }
+                return;
+            }
             Chore wanted = choreFor(v.getProfession());
             if (wanted != Chore.NONE && isWorkTime(time) && v.settlementsEnergy >= START_WORK_ENERGY
                     && v.settlementsHunger < HUNGER_STOP_AT && quotaAllows(treasury, wanted) && !v.getVillagerBrain().isPanicking()) {
@@ -70,7 +82,7 @@ public final class Workforce {
 
         v.settlementsEnergy -= WORK_DRAIN;
         v.settlementsHunger += HUNGER_RISE;
-        if (v.settlementsHunger >= HUNGER_EAT_AT) tryEat(v);
+        if (v.settlementsHunger >= HUNGER_EAT_AT) tryEat(v, net.mca.server.world.data.Village.findNearest(v).orElse(null));
 
         if (v.settlementsEnergy <= 0 || v.settlementsHunger >= HUNGER_STOP_AT || !isWorkTime(time)) {
             v.settlementsEnergy = Math.max(0, v.settlementsEnergy);
@@ -78,17 +90,40 @@ public final class Workforce {
         }
     }
 
-    private static void tryEat(VillagerEntityMCA v) {
+    private static void tryEat(VillagerEntityMCA v, net.mca.server.world.data.Village village) {
         if (v.settlementsHunger < HUNGER_EAT_AT) return;
         for (int i = 0; i < v.getInventory().size(); i++) {
             ItemStack s = v.getInventory().getStack(i);
-            if (s.isFood() && s.getItem().getFoodComponent() != null) {
-                int nutrition = s.getItem().getFoodComponent().getHunger();
+            if (eatable(s)) {
+                v.settlementsHunger = Math.max(0, v.settlementsHunger - nutrition(s));
                 s.decrement(1);
-                v.settlementsHunger = Math.max(0, v.settlementsHunger - nutrition * 120);
                 return;
             }
         }
+        // nothing on them: take a meal from the village stores
+        if (village == null) return;
+        for (java.util.Iterator<ItemStack> it = village.storageBuffer.iterator(); it.hasNext(); ) {
+            ItemStack s = it.next();
+            if (eatable(s)) {
+                v.settlementsHunger = Math.max(0, v.settlementsHunger - nutrition(s));
+                s.decrement(1);
+                if (s.isEmpty()) it.remove();
+                village.markDirty();
+                return;
+            }
+        }
+    }
+
+    private static boolean eatable(ItemStack s) {
+        if (!s.isFood() || s.getItem().getFoodComponent() == null) return false;
+        for (var effect : s.getItem().getFoodComponent().getStatusEffects()) {
+            if (net.mca.entity.ai.StatusEffectDangerSet.isDanger.contains(effect.getFirst().getEffectType())) return false;
+        }
+        return true;
+    }
+
+    private static int nutrition(ItemStack s) {
+        return s.getItem().getFoodComponent().getHunger() * 120;
     }
 
     private static boolean quotaAllows(net.mca.server.world.data.Village village, Chore chore) {

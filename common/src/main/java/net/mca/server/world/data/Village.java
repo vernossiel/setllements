@@ -35,6 +35,8 @@ public class Village implements Iterable<Building> {
 
     private String name = API.getVillagePool().pickVillageName("village");
 
+    public BlockPos buildOrigin;
+    public int buildStep;
     public final List<ItemStack> storageBuffer = new LinkedList<>();
 
     private final Map<Integer, Building> buildings = new HashMap<>();
@@ -83,6 +85,10 @@ public class Village implements Iterable<Building> {
         residentNames = NbtHelper.toMap(v.getCompound("residentNames"), UUID::fromString, NbtElement::asString);
         residentHomes = NbtHelper.toMap(v.getCompound("residentHomes"), UUID::fromString, i -> ((NbtLong) i).longValue());
         unspentMood = v.getInt("unspentMood");
+        if (v.contains("buildOrigin")) {
+            buildOrigin = BlockPos.fromLong(v.getLong("buildOrigin"));
+            buildStep = v.getInt("buildStep");
+        }
         NbtList treasury = v.getList("treasury", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < treasury.size(); i++) {
             net.minecraft.item.ItemStack st = net.minecraft.item.ItemStack.fromNbt(treasury.getCompound(i));
@@ -432,6 +438,10 @@ public class Village implements Iterable<Building> {
             if (!st.isEmpty()) treasury.add(st.writeNbt(new NbtCompound()));
         }
         v.put("treasury", treasury);
+        if (buildOrigin != null) {
+            v.putLong("buildOrigin", buildOrigin.asLong());
+            v.putInt("buildStep", buildStep);
+        }
         v.put("unspentHearts", NbtHelper.fromMap(new NbtCompound(), unspentHearts, UUID::toString, NbtInt::of));
         v.put("reputation", NbtHelper.fromMap(new NbtCompound(), reputation, UUID::toString, i ->
                 NbtHelper.fromMap(new NbtCompound(), i, UUID::toString, NbtInt::of)
