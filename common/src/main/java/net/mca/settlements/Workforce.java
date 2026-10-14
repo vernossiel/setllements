@@ -2,11 +2,7 @@ package net.mca.settlements;
 
 import net.mca.entity.VillagerEntityMCA;
 import net.mca.entity.ai.Chore;
-import net.minecraft.item.AxeItem;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.item.PickaxeItem;
-import net.minecraft.item.HoeItem;
 import net.minecraft.village.VillagerProfession;
 
 /**
@@ -56,7 +52,9 @@ public final class Workforce {
             Chore wanted = choreFor(v.getProfession());
             if (wanted != Chore.NONE && isWorkTime(time) && v.settlementsEnergy >= START_WORK_ENERGY
                     && v.settlementsHunger < HUNGER_STOP_AT && !v.getVillagerBrain().isPanicking()) {
-                giveTool(v, wanted);
+                net.mca.server.world.data.Village village = net.mca.server.world.data.Village.findNearest(v).orElse(null);
+                Gear.equipTool(v, village, wanted);
+                Gear.equipArmor(v, village);
                 v.getVillagerBrain().assignAutonomous(wanted);
             }
             return;
@@ -85,16 +83,5 @@ public final class Workforce {
                 return;
             }
         }
-    }
-
-    private static void giveTool(VillagerEntityMCA v, Chore chore) {
-        Class<?> type = chore.getToolType();
-        if (type == null) return;
-        for (int i = 0; i < v.getInventory().size(); i++) {
-            if (type.isInstance(v.getInventory().getStack(i).getItem())) return;
-        }
-        if (type == AxeItem.class) v.getInventory().addStack(new ItemStack(Items.STONE_AXE));
-        else if (type == PickaxeItem.class) v.getInventory().addStack(new ItemStack(Items.STONE_PICKAXE));
-        else if (type == HoeItem.class) v.getInventory().addStack(new ItemStack(Items.STONE_HOE));
     }
 }
