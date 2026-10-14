@@ -37,6 +37,10 @@ public class Village implements Iterable<Building> {
 
     public BlockPos buildOrigin;
     public int buildStep;
+    public String buildType = "";
+    public int buildW, buildD, buildF;
+    public boolean storageBuilt, mineBuilt;
+    public final List<net.mca.settlements.House> houses = new LinkedList<>();
     public final List<ItemStack> storageBuffer = new LinkedList<>();
 
     private final Map<Integer, Building> buildings = new HashMap<>();
@@ -88,7 +92,15 @@ public class Village implements Iterable<Building> {
         if (v.contains("buildOrigin")) {
             buildOrigin = BlockPos.fromLong(v.getLong("buildOrigin"));
             buildStep = v.getInt("buildStep");
+            buildType = v.getString("buildType");
+            buildW = v.getInt("buildW");
+            buildD = v.getInt("buildD");
+            buildF = v.getInt("buildF");
         }
+        storageBuilt = v.getBoolean("storageBuilt");
+        mineBuilt = v.getBoolean("mineBuilt");
+        NbtList houseList = v.getList("houses", NbtElement.COMPOUND_TYPE);
+        for (int i = 0; i < houseList.size(); i++) houses.add(net.mca.settlements.House.load(houseList.getCompound(i)));
         NbtList treasury = v.getList("treasury", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < treasury.size(); i++) {
             net.minecraft.item.ItemStack st = net.minecraft.item.ItemStack.fromNbt(treasury.getCompound(i));
@@ -441,7 +453,16 @@ public class Village implements Iterable<Building> {
         if (buildOrigin != null) {
             v.putLong("buildOrigin", buildOrigin.asLong());
             v.putInt("buildStep", buildStep);
+            v.putString("buildType", buildType);
+            v.putInt("buildW", buildW);
+            v.putInt("buildD", buildD);
+            v.putInt("buildF", buildF);
         }
+        v.putBoolean("storageBuilt", storageBuilt);
+        v.putBoolean("mineBuilt", mineBuilt);
+        NbtList houseList = new NbtList();
+        for (net.mca.settlements.House h : houses) houseList.add(h.save());
+        v.put("houses", houseList);
         v.put("unspentHearts", NbtHelper.fromMap(new NbtCompound(), unspentHearts, UUID::toString, NbtInt::of));
         v.put("reputation", NbtHelper.fromMap(new NbtCompound(), reputation, UUID::toString, i ->
                 NbtHelper.fromMap(new NbtCompound(), i, UUID::toString, NbtInt::of)

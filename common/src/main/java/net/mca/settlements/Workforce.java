@@ -198,7 +198,7 @@ public final class Workforce {
         }
     }
 
-    private static void addToTreasury(net.mca.server.world.data.Village village, ItemStack stack) {
+    public static void addToTreasury(net.mca.server.world.data.Village village, ItemStack stack) {
         for (ItemStack s : village.storageBuffer) {
             if (ItemStack.canCombine(s, stack)) {
                 int move = Math.min(stack.getCount(), s.getMaxCount() - s.getCount());
