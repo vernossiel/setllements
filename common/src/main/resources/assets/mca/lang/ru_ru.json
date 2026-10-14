@@ -968,7 +968,7 @@
   "settlements.need.thanks": "Спасибо, я этого не забуду!",
   "settlements.break.warn": "Эй! Это собственность деревни. Прекрати!",
   "settlements.break.attack": "Хватит! Стража, взять его!",
-  "settlements.caravan": "Караван из %s доставил в %s: %s %s",
+  "settlements.caravan": "Караван из %s прибыл в %s: %s ед. %s",
   "settlements.cat.wood": "дерева",
   "settlements.cat.stone": "камня",
   "settlements.cat.food": "еды",

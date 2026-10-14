@@ -1080,7 +1080,7 @@
   "settlements.need.thanks": "Thank you, I won't forget this!",
   "settlements.break.warn": "Hey! That's village property. Stop that!",
   "settlements.break.attack": "Enough! Guards, get them!",
-  "settlements.caravan": "A caravan from %s brought %s to %s: %s %s",
+  "settlements.caravan": "A caravan from %s arrived in %s with %s units of %s",
   "settlements.cat.wood": "wood",
   "settlements.cat.stone": "stone",
   "settlements.cat.food": "food",
