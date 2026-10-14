@@ -116,6 +116,11 @@ public final class Workforce {
         }
         if (!isWorkTime(time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
+            // supper and chat: eat a little earlier in the evening
+            if (Leisure.isLeisureTime(time)) {
+                if (v.settlementsHunger >= 250 && hasMeal(v, village) && startEating(v, village, 250)) return;
+                Leisure.tick(v, village, time);
+            }
             return;
         }
         if (v.settlementsEnergy < START_WORK_ENERGY) return;
@@ -179,7 +184,11 @@ public final class Workforce {
 
     /** Starts a meal: the food goes into the hand and the villager stands still for a few seconds. */
     private static boolean startEating(VillagerEntityMCA v, net.mca.server.world.data.Village village) {
-        if (v.settlementsHunger < HUNGER_EAT_AT) return false;
+        return startEating(v, village, HUNGER_EAT_AT);
+    }
+
+    private static boolean startEating(VillagerEntityMCA v, net.mca.server.world.data.Village village, int threshold) {
+        if (v.settlementsHunger < threshold) return false;
         ItemStack meal = ItemStack.EMPTY;
         for (int i = 0; i < v.getInventory().size() && meal.isEmpty(); i++) {
             ItemStack s = v.getInventory().getStack(i);
