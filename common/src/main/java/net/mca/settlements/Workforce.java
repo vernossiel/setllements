@@ -57,6 +57,7 @@ public final class Workforce {
     /** Server side, once per second. */
     public static void tick(VillagerEntityMCA v) {
         if (v.isBaby()) return;
+        if (v.settlementsCaravan) return; // trade caravan merchants only walk the road
         if (Hire.tick(v)) return; // hired escorts and mercenaries take no village work
         if (v.settlementsEatTicks > 0) {
             eatTick(v);

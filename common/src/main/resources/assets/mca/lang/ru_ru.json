@@ -976,5 +976,13 @@
   "settlements.cat.iron": "железа",
   "settlements.raid.start": "%s нападает на %s!",
   "settlements.raid.won": "%s прорвались и разграбили %s.",
-  "settlements.raid.failed": "Набег %s на %s отбит."
+  "settlements.raid.failed": "Набег %s на %s отбит.",
+  "settlements.caravan.merchant": "Караван из %s",
+  "settlements.caravan.arrived": "Караван из %s прибыл в %s.",
+  "settlements.caravan.escorted": "Вы довели караван до места. Обе деревни благодарны.",
+  "settlements.caravan.robbed.player": "%s не забудет, что вы ограбили их караван.",
+  "settlements.raid.defended": "Вы помогли отбить набег. %s этого не забудет.",
+  "settlements.raid.shared": "Вы пошли с налётчиками и получили долю добычи. %s довольна.",
+  "settlements.defense.major": "%s подвергается нападению: %s! Прячьтесь или помогите стражникам!",
+  "settlements.expansion": "Поселенцы из %s отправились основывать новую деревню."
 }

@@ -1088,5 +1088,13 @@
   "settlements.cat.iron": "iron",
   "settlements.raid.start": "%s is raiding %s!",
   "settlements.raid.won": "%s broke through and plundered %s.",
-  "settlements.raid.failed": "%s raid on %s was repelled."
+  "settlements.raid.failed": "%s raid on %s was repelled.",
+  "settlements.caravan.merchant": "Caravan of %s",
+  "settlements.caravan.arrived": "The caravan from %s has reached %s.",
+  "settlements.caravan.escorted": "You saw the caravan safely to its destination. Both villages are grateful.",
+  "settlements.caravan.robbed.player": "%s will not forget that you robbed their caravan.",
+  "settlements.raid.defended": "You helped drive off the raid. %s will remember it.",
+  "settlements.raid.shared": "You rode with the raiders and took your share of the loot. %s is pleased.",
+  "settlements.defense.major": "%s is under attack by %s! Take cover or help the guards!",
+  "settlements.expansion": "Settlers from %s have set out to found a new village."
 }

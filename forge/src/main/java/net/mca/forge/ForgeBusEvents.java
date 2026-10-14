@@ -38,7 +38,15 @@ public class ForgeBusEvents {
         if (!event.level.isClient && event.side == LogicalSide.SERVER && event.phase == TickEvent.Phase.END) {
             VillageManager.get((ServerWorld)event.level).tick();
             if (event.level.getTime() % 20 == 0) net.mca.settlements.Reputation.tick((ServerWorld)event.level);
-            if (event.level.getTime() % 24000 == 6000) net.mca.settlements.Diplomacy.daily((ServerWorld)event.level);
+            if (event.level.getTime() % 20 == 0) {
+                net.mca.settlements.Caravans.tick((ServerWorld)event.level);
+                net.mca.settlements.Diplomacy.tickRaids((ServerWorld)event.level);
+            }
+            if (event.level.getTime() % 100 == 0) net.mca.settlements.Defense.tick((ServerWorld)event.level);
+            if (event.level.getTime() % 24000 == 6000) {
+                net.mca.settlements.Diplomacy.daily((ServerWorld)event.level);
+                net.mca.settlements.Expansion.daily((ServerWorld)event.level);
+            }
         }
     }
 

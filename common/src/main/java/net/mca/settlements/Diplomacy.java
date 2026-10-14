@@ -107,7 +107,7 @@ public final class Diplomacy {
             if (sa > ta * 1.5 && sb < tb) traded |= send(world, a, b, c, Math.min((int) (sa - ta * 1.5), tb - sb));
             else if (sb > tb * 1.5 && sa < ta) traded |= send(world, b, a, c, Math.min((int) (sb - tb * 1.5), ta - sa));
         }
-        if (traded) shift(a, b, 3);
+        if (traded) shift(a, b, 1);
         else if (competing) shift(a, b, -3);
 
         if (relation(a, b) <= RAID_RELATION) maybeRaid(world, a, b);
@@ -117,6 +117,7 @@ public final class Diplomacy {
         amount = Math.min(amount, 64);
         if (amount <= 0) return false;
         int left = amount, moved = 0;
+        List<ItemStack> cargo = new ArrayList<>();
         for (Iterator<ItemStack> it = from.storageBuffer.iterator(); it.hasNext() && left > 0; ) {
             ItemStack s = it.next();
             if (!cat.match.test(s)) continue;
@@ -126,13 +127,22 @@ public final class Diplomacy {
             s.decrement(d);
             left -= d;
             moved += d;
-            Workforce.addToTreasury(to, part);
+            cargo.add(part);
             if (s.isEmpty()) it.remove();
         }
         if (moved == 0) return false;
         from.markDirty();
+        Caravans.launch(world, from, to, cargo);
         announce(world, from, to, Text.translatable("settlements.caravan", from.getName(), to.getName(), moved, Text.translatable("settlements.cat." + cat.key)));
         return true;
+    }
+
+    public static void shiftRelation(Village a, Village b, int delta) {
+        shift(a, b, delta);
+    }
+
+    public static void announceNear(ServerWorld world, Village v, Text text) {
+        announce(world, v, v, text);
     }
 
     // ---------- raids ----------
@@ -147,22 +157,85 @@ public final class Diplomacy {
         return Math.max(sum, v.getPopulation() / 6.0);
     }
 
+    private record PendingRaid(int attackerId, int defenderId, long resolveAt) {
+    }
+
+    private static final List<PendingRaid> PENDING = new ArrayList<>();
+
     private static void maybeRaid(ServerWorld world, Village a, Village b) {
         if (world.random.nextFloat() > 0.35f) return;
         double ma = military(world, a), mb = military(world, b);
         Village attacker = ma >= mb ? a : b, defender = attacker == a ? b : a;
         double att = Math.max(ma, mb), def = Math.min(ma, mb) * 1.2;
         if (att < def * 1.1) return; // not strong enough to risk it
+        for (PendingRaid r : PENDING) if (r.defenderId() == defender.getId()) return;
+        PENDING.add(new PendingRaid(attacker.getId(), defender.getId(), world.getTime() + 3600));
         announce(world, attacker, defender, Text.translatable("settlements.raid.start", attacker.getName(), defender.getName()));
-        double roll = att * (0.8 + world.random.nextDouble() * 0.4);
-        if (roll > def) {
-            loot(attacker, defender);
-            burnHouse(world, defender);
-            announce(world, attacker, defender, Text.translatable("settlements.raid.won", attacker.getName(), defender.getName()));
-            shift(attacker, defender, -20);
-        } else {
-            announce(world, attacker, defender, Text.translatable("settlements.raid.failed", attacker.getName(), defender.getName()));
-            shift(attacker, defender, -5);
+    }
+
+    /** Players near a village count as fighters for that side: 2 each plus a bonus for chest armor. */
+    private static double playerStrength(ServerWorld world, Village v) {
+        double sum = 0;
+        var c = v.getCenter();
+        for (var p : world.getPlayers()) {
+            if (p.isSpectator() || p.squaredDistanceTo(c.getX(), p.getY(), c.getZ()) > 90 * 90) continue;
+            sum += 2;
+            if (p.getEquippedStack(EquipmentSlot.CHEST).getItem() instanceof ArmorItem a) sum += a.getMaterial().getProtection(ArmorItem.Type.CHESTPLATE) / 4.0;
+        }
+        return sum;
+    }
+
+    /** Once per second per world: raids announced earlier come to a head, with time for players to take a side. */
+    public static void tickRaids(ServerWorld world) {
+        if (PENDING.isEmpty()) return;
+        VillageManager vm = VillageManager.get(world);
+        for (Iterator<PendingRaid> it = PENDING.iterator(); it.hasNext(); ) {
+            PendingRaid r = it.next();
+            if (world.getTime() < r.resolveAt()) continue;
+            it.remove();
+            Village attacker = vm.getOrEmpty(r.attackerId()).orElse(null), defender = vm.getOrEmpty(r.defenderId()).orElse(null);
+            if (attacker == null || defender == null) continue;
+            double att = military(world, attacker) + playerStrength(world, attacker);
+            double def = (military(world, defender) + playerStrength(world, defender)) * 1.2;
+            double roll = att * (0.8 + world.random.nextDouble() * 0.4);
+            boolean won = roll > def;
+            if (won) {
+                loot(attacker, defender);
+                burnHouse(world, defender);
+                announce(world, attacker, defender, Text.translatable("settlements.raid.won", attacker.getName(), defender.getName()));
+                shift(attacker, defender, -20);
+            } else {
+                announce(world, attacker, defender, Text.translatable("settlements.raid.failed", attacker.getName(), defender.getName()));
+                shift(attacker, defender, -5);
+            }
+            rewardPlayers(world, attacker, defender, won);
+        }
+    }
+
+    private static void rewardPlayers(ServerWorld world, Village attacker, Village defender, boolean attackerWon) {
+        var ca = attacker.getCenter();
+        var cd = defender.getCenter();
+        for (var p : world.getPlayers()) {
+            boolean withDefender = p.squaredDistanceTo(cd.getX(), p.getY(), cd.getZ()) <= 90 * 90;
+            boolean withAttacker = p.squaredDistanceTo(ca.getX(), p.getY(), ca.getZ()) <= 90 * 90;
+            if (withDefender && !withAttacker) {
+                if (attackerWon) {
+                    defender.pushHearts(p, 5);
+                } else {
+                    defender.pushHearts(p, 30);
+                    attacker.pushHearts(p, -20);
+                    p.sendMessage(Text.translatable("settlements.raid.defended", defender.getName()), false);
+                }
+            } else if (withAttacker && !withDefender) {
+                if (attackerWon) {
+                    attacker.pushHearts(p, 30);
+                    defender.pushHearts(p, -40);
+                    p.giveItemStack(new ItemStack(Items.EMERALD, 5));
+                    p.sendMessage(Text.translatable("settlements.raid.shared", attacker.getName()), false);
+                } else {
+                    attacker.pushHearts(p, -10);
+                }
+            }
         }
     }
 

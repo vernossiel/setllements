@@ -287,6 +287,16 @@ public final class Builder {
         };
     }
 
+    /** Places a whole plan at once, paying from the treasury. Used for the settlers' starter house. */
+    public static boolean buildInstantly(ServerWorld world, Village payer, BlockPos origin, List<Step> steps) {
+        if (planks(payer) < 120 || count(payer, WOOL) < 3) return false;
+        for (Step step : steps) {
+            Result r = execute(world, payer, step, origin.add(step.dx(), step.dy(), step.dz()));
+            if (r == Result.ABORT) return false;
+        }
+        return true;
+    }
+
     private enum Result { PLACED, SKIPPED, WAIT, ABORT }
 
     private static void finish(Village village) {
