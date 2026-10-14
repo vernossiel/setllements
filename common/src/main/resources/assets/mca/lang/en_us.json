@@ -1576,5 +1576,21 @@
   "settlements.talk.news.founded.outpost.b": "We'll sleep easy.",
   "settlements.news.founded.trading": "A trading village was founded.",
   "settlements.talk.news.founded.trading.a": "Roads come here from all sides.",
-  "settlements.talk.news.founded.trading.b": "So there'll be trade."
+  "settlements.talk.news.founded.trading.b": "So there'll be trade.",
+  "settlements.building.demolish:hut": "taking down an old building",
+  "settlements.building.demolish:house": "taking down an old building",
+  "settlements.building.demolish:annex": "taking down an old building",
+  "settlements.building.demolish:manor": "taking down an old building",
+  "settlements.building.demolish:smithy": "taking down an old building",
+  "settlements.building.demolish:mason": "taking down an old building",
+  "settlements.building.demolish:sawmill": "taking down an old building",
+  "settlements.building.demolish:storage": "taking down an old building",
+  "settlements.building.demolish:tavern": "taking down an old building",
+  "settlements.building.demolish:jail": "taking down an old building",
+  "settlements.goal.rebuild": "rebuild an old house",
+  "settlements.say.build.rebuild": "That old house has had its day. I'll take it down and build a new one.",
+  "settlements.say.build.demolish": "Taking it apart piece by piece, nothing goes to waste.",
+  "settlements.news.rebuilt": "Where the old house stood, they're building: %s.",
+  "settlements.talk.news.rebuilt.a": "They took down the old house, there'll be a %s.",
+  "settlements.talk.news.rebuilt.b": "About time."
 }

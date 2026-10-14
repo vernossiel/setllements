@@ -37,6 +37,7 @@ public final class Plan {
             new Goal("housing", Level.HAMLET, v -> v.getPopulation() >= v.getMaxPopulation(), 100, 0, 0, 3),
             new Goal("farm", Level.HAMLET, v -> v.farms < Math.max(1, v.getPopulation() / 4), 30, 0, 0, 0),
             new Goal("pen", Level.HAMLET, v -> v.penCenter == null && v.getPopulation() >= 4, 50, 0, 0, 0),
+            new Goal("rebuild", Level.HAMLET, v -> v.getPopulation() >= 3 && v.hall != null && Rebuild.candidate(v) != null, 120, 0, 0, 0),
             new Goal("sawmill", Level.HAMLET, v -> !Buildings.has(v, "sawmill") && v.getPopulation() >= 3, 40, 8, 0, 0),
             new Goal("charcoal", Level.HAMLET, v -> !Buildings.has(v, "charcoal") && v.getPopulation() >= 3, 12, 16, 0, 0),
             new Goal("granary", Level.HAMLET, v -> !Buildings.has(v, "granary") && v.getPopulation() >= 5, 70, 20, 0, 0),

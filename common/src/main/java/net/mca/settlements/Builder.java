@@ -286,6 +286,9 @@ public final class Builder {
                 case "granary", "jail", "market" -> {
                     if (startRing(village, world, st.goal().id(), 0, 0, 0, 0, 3)) return true;
                 }
+                case "rebuild" -> {
+                    if (Rebuild.start(village, world)) return true;
+                }
                 case "board" -> {
                     if (startRing(village, world, "board", 0, 0, 0, 0, 1)) return true;
                     if (start(village, world, "board", 3, 2, 0)) return true;
@@ -415,6 +418,7 @@ public final class Builder {
             Speech.say(v, "settlements.say.build." + announceProject);
             announceProject = null;
         }
+        if (Rebuild.active(village)) return Rebuild.work(v, village, world); // taking an old building down first
         List<Step> steps = plan(village);
         if (village.buildStep >= steps.size()) {
             finish(village);
@@ -803,6 +807,15 @@ public final class Builder {
             }
         }
         if (!type.equals("wall") || village.wallBuilt) Life.news(village, "built", Text.translatable("settlements.building." + type));
+        if (world != null) {
+            int[] bfp = Blueprints.footprint(type, village.buildW, village.buildD);
+            for (Step s : plan(village)) {
+                if (s.kind() != Kind.BED_FOOT) continue;
+                int[] r = Blueprints.rotate(s.dx(), s.dz(), bfp[0], bfp[1], rot);
+                net.mca.server.world.data.VillageManager.get(world).reportBuilding(o.add(r[0], s.dy(), r[1]));
+                break;
+            }
+        }
         village.buildOrigin = null;
         village.buildStep = 0;
         village.markDirty();
