@@ -1002,10 +1002,7 @@ public final class Builder {
         }
         world.setBlockState(target, state);
         // the floor rests on the ground: under it a stone footing goes down to solid earth
-        if (step.dy() == 0 && (step.kind() == Kind.FLOOR || step.kind() == Kind.STONE || step.kind() == Kind.ACCENT || step.kind() == Kind.PILLAR
-                || step.kind() == Kind.STEP || step.kind() == Kind.MOUND)) {
-            foundation(world, village, target.down());
-        }
+        if (step.dy() == 0 && needsFooting(step.kind())) foundation(world, village, target.down());
         if (step.kind() == Kind.CHEST) village.lootChests.add(target.toImmutable());
         if (step.kind() == Kind.HALL_CHEST) village.hallChests.add(target.toImmutable());
         if (step.kind() == Kind.LECTERN) village.hallPos = target.toImmutable();
@@ -1018,6 +1015,14 @@ public final class Builder {
         }
         world.playSound(null, target, state.getSoundGroup().getPlaceSound(), SoundCategory.BLOCKS, 0.8f, 1.0f);
         return Result.PLACED;
+    }
+
+    /** Everything standing on the ground plane gets a footing; small things on top of others do not. */
+    private static boolean needsFooting(Kind k) {
+        return switch (k) {
+            case CARPET, TORCH, CROP, FARMLAND, WATER, PLATE, SIGN, LANTERN, SMOKE, POT, FLOWER, HEDGE, PATH, DIG, CLEAR -> false;
+            default -> true;
+        };
     }
 
     /** Fills the gap under a floor block down to the ground (at most six blocks) with the village's stone. */
