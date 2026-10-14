@@ -28,6 +28,11 @@ public final class SettlementsCommand {
         // player-facing answers to a guard's demand, opened by the clickable buttons in the chat
         d.register(CommandManager.literal("settle")
                 .then(CommandManager.literal("return").executes(c -> Reputation.returnGoods(c.getSource().getPlayerOrThrow())))
+                .then(CommandManager.literal("pay").executes(c -> Justice.pay(c.getSource().getPlayerOrThrow())))
+                .then(CommandManager.literal("deny").executes(c -> Justice.deny(c.getSource().getPlayerOrThrow())))
+                .then(CommandManager.literal("leave").executes(c -> Justice.leave(c.getSource().getPlayerOrThrow())))
+                .then(CommandManager.literal("surrender").executes(c -> Justice.surrender(c.getSource().getPlayerOrThrow())))
+                .then(CommandManager.literal("resist").executes(c -> Justice.resist(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("rep").executes(c -> Reputation.showStanding(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("hall").executes(c -> {
                     var player = c.getSource().getPlayerOrThrow();

@@ -103,7 +103,11 @@ public final class Protection {
                 break;
             }
         }
-        if (!seen) return;
+        if (!seen) {
+            // nobody saw it, but a broken wall or a smashed bed is noticed sooner or later
+            if (sev >= 2) Justice.suspect(world, village, player, Justice.Crime.VANDALISM, sev, null, pos);
+            return;
+        }
 
         if (reporter != null && !reporter.isGuard()) {
             Speech.say(reporter, "settlements.say.report.player");
@@ -117,11 +121,9 @@ public final class Protection {
         int standing = village.getReputation(player);
         double limit = standing >= 50 ? 25 : standing >= 0 ? 14 : standing >= -20 ? 8 : 5;
         if (o.score >= limit) {
-            o.score = limit * 0.6; // they calm down a bit once the guards are on you
-            for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, player.getBoundingBox().expand(40), VillagerEntityMCA::isGuard)) {
-                g.getBrain().remember(MemoryModuleType.ATTACK_TARGET, player, 1200);
-            }
-            player.sendMessage(Text.translatable("settlements.break.attack"), false);
+            // enough is enough: a case for the guards (pay for the damage, or be arrested)
+            Justice.report(world, village, player, Justice.Crime.VANDALISM, o.score, null, true);
+            o.score = 0;
         } else if (o.score >= limit * 0.4 && world.getTime() - o.lastWarn > 200) {
             o.lastWarn = world.getTime();
             VillagerEntityMCA guard = world.getEntitiesByClass(VillagerEntityMCA.class, player.getBoundingBox().expand(40), VillagerEntityMCA::isGuard)

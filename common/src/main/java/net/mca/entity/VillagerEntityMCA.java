@@ -422,6 +422,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
 
     @Override
     public boolean tryAttack(Entity target) {
+        // the guards beat a resisting man down, they do not kill him: at his last strength he is arrested instead
+        if (isGuard() && target instanceof PlayerEntity p && net.mca.settlements.Justice.subdue(this, p)) return true;
         //player just get a beating
         attackedEntity(target);
 

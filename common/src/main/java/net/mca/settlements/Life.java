@@ -67,7 +67,10 @@ public final class Life {
         if (!(v.getWorld() instanceof ServerWorld world)) return;
         Village village = Village.findNearest(v).orElse(null);
         String name = v.getName().getString();
-        if (cause.getAttacker() instanceof PlayerEntity p) news(village, "murder", name, p.getName().getString());
+        if (cause.getAttacker() instanceof PlayerEntity p) {
+            news(village, "murder", name, p.getName().getString());
+            Justice.report(world, village, p, Justice.Crime.MURDER, 50, null, true);
+        }
         else news(village, "death", name);
         if (village != null) Chapel.bury(world, village, name);
         for (VillagerEntityMCA o : world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(16), o -> o != v && o.isAlive() && !o.isBaby())) {
@@ -95,15 +98,31 @@ public final class Life {
     /** Players the guards go for on sight: those who attacked the village, and outlaws with a bad name here. */
     public static boolean hostile(Village village, PlayerEntity p) {
         if (village == null || p.isCreative() || p.isSpectator()) return false;
-        return feared(village, p) || Reputation.tier(village.getReputation(p)) <= 1;
+        // the guards go for those resisting arrest, the exiled, and the village's sworn enemies; a bad name alone
+        // gets a guard watching you, not a sword
+        return Justice.hunted(village, p) || Reputation.tier(village.getReputation(p)) == 0;
+    }
+
+    /** The sentence is served: the village stops running from him. */
+    public static void forgive(Village village, PlayerEntity p) {
+        FEAR.remove(key(village, p));
     }
 
     public static PlayerEntity hostilePlayer(ServerWorld world, Village village, VillagerEntityMCA watcher, double range) {
+        return nearestPlayer(world, watcher, range, p -> hostile(village, p));
+    }
+
+    /** Whom the villagers run from: everyone the guards fight, and whoever beat one of them lately. */
+    static PlayerEntity scaryPlayer(ServerWorld world, Village village, VillagerEntityMCA watcher, double range) {
+        return nearestPlayer(world, watcher, range, p -> hostile(village, p) || feared(village, p) && !p.isCreative());
+    }
+
+    private static PlayerEntity nearestPlayer(ServerWorld world, VillagerEntityMCA watcher, double range, java.util.function.Predicate<PlayerEntity> which) {
         PlayerEntity best = null;
         double bd = range * range;
         for (PlayerEntity p : world.getPlayers()) {
             double d = p.squaredDistanceTo(watcher);
-            if (d < bd && hostile(village, p) && watcher.canSee(p)) {
+            if (d < bd && which.test(p) && watcher.canSee(p)) {
                 bd = d;
                 best = p;
             }
@@ -117,6 +136,13 @@ public final class Life {
         Village village = Village.findNearest(victim).orElse(null);
         if (village == null) return;
         long now = world.getTime();
+        // a first or second blow is pestering: the victim protests and the guard has a word (see Justice);
+        // only a third makes it an assault that frightens the village
+        if (Justice.hit(world, village, attacker) == Justice.Crime.HARASSMENT) {
+            Speech.sayNow(victim, "settlements.react.hit");
+            victim.getLookControl().lookAt(attacker, 30f, 30f);
+            return;
+        }
         String k = key(village, attacker);
         boolean fresh = !feared(village, attacker);
         FEAR.put(k, now + FEAR_TICKS);
@@ -207,7 +233,7 @@ public final class Life {
     private static boolean notice(VillagerEntityMCA v, Village village, ServerWorld world, long time) {
         // somebody who attacked the village, or an outlaw: seen from afar, the alarm is raised and everybody runs
         if (!v.isGuard() && village != null) {
-            PlayerEntity enemy = hostilePlayer(world, village, v, 20);
+            PlayerEntity enemy = scaryPlayer(world, village, v, 20);
             if (enemy != null) {
                 flee(v, enemy, village, world);
                 Speech.say(v, feared(village, enemy) ? "settlements.react.attacker_seen" : "settlements.react.fear");

@@ -145,16 +145,7 @@ public final class Reputation {
 
     /** Putting goods back only matters when the player owes something. There is no reward for stuffing chests. */
     private static void settleDebt(ServerPlayerEntity player, Village village, double value) {
-        Debt debt = DEBTS.get(player.getUuid());
-        if (debt == null) return;
-        debt.value -= value;
-        if (debt.value <= 0) {
-            DEBTS.remove(player.getUuid());
-            village.pushHearts(player, 10);
-            player.sendMessage(Text.translatable("settlements.theft.settled"), false);
-        } else {
-            player.sendMessage(Text.translatable("settlements.theft.partial", (int) Math.ceil(debt.value)), false);
-        }
+        Justice.credit(player, value);
     }
 
     /** Idle villagers restock the display chests a little at a time from the treasury, common goods only. */
@@ -201,105 +192,37 @@ public final class Reputation {
                 witness = v;
             }
         }
-        if (witness == null) return; // nobody saw it
-        Life.news(village, "theft", player.getName().getString());
-        if (!witness.isGuard() && player.getWorld() instanceof ServerWorld sw) {
+        if (!(player.getWorld() instanceof ServerWorld sw)) return;
+        if (witness == null) { // nobody saw it: found out later, perhaps
+            Justice.suspect(sw, village, player, Justice.Crime.THEFT, value, items, player.getBlockPos());
+            return;
+        }
+        if (!witness.isGuard()) {
             Speech.say(witness, "settlements.say.report.thief");
             GuardIntel.alertNearestGuard(sw, witness, player);
         }
         village.pushHearts(player, -(int) Math.ceil(value * 1.5));
-        Debt debt = DEBTS.computeIfAbsent(player.getUuid(), k -> new Debt());
-        debt.value += value;
-        debt.deadline = player.getWorld().getTime() + DEMAND_SECONDS * 20L;
-        debt.villageId = village.getId();
-        items.forEach((k, n) -> debt.stolen.merge(k, n, Integer::sum));
         witness.sendChatMessage(player, "settlements.theft.seen");
+        Justice.report(sw, village, player, Justice.Crime.THEFT, value, items, true);
     }
 
     // ---------- guards react ----------
 
-    /** Once per second per world. */
+    /** Once per second per world: the village's justice takes its course. */
     public static void tick(ServerWorld world) {
-        if (DEBTS.isEmpty()) return;
-        for (Iterator<Map.Entry<UUID, Debt>> it = DEBTS.entrySet().iterator(); it.hasNext(); ) {
-            Map.Entry<UUID, Debt> e = it.next();
-            ServerPlayerEntity player = world.getServer().getPlayerManager().getPlayer(e.getKey());
-            if (player == null || player.getWorld() != world) continue;
-            Debt debt = e.getValue();
-            var guards = world.getEntitiesByClass(VillagerEntityMCA.class, player.getBoundingBox().expand(40), g -> g.isGuard() && g.isAlive());
-            if (world.getTime() >= debt.deadline) {
-                it.remove();
-                Village.findNearest(player).ifPresent(v -> v.pushHearts(player, -(int) Math.ceil(debt.value * 3)));
-                for (VillagerEntityMCA g : guards) g.getBrain().remember(MemoryModuleType.ATTACK_TARGET, player, 1200);
-                player.sendMessage(Text.translatable("settlements.theft.refused"), false);
-                continue;
-            }
-            VillagerEntityMCA nearest = guards.stream().min(java.util.Comparator.comparingDouble(g -> g.squaredDistanceTo(player))).orElse(null);
-            if (nearest == null) continue;
-            nearest.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(player, 0.6f, 2));
-            if (world.getTime() - debt.lastShout > 300 && nearest.squaredDistanceTo(player) < 100) {
-                debt.lastShout = world.getTime();
-                nearest.sendChatMessage(player, "settlements.theft.demand");
-                player.sendMessage(Text.empty()
-                        .append(Text.translatable("settlements.theft.return.button").styled(st -> st.withBold(true).withColor(net.minecraft.util.Formatting.GREEN)
-                                .withClickEvent(new net.minecraft.text.ClickEvent(net.minecraft.text.ClickEvent.Action.RUN_COMMAND, "/settle return"))))
-                        .append(Text.literal("   "))
-                        .append(Text.translatable("settlements.theft.refuse.button").styled(st -> st.withBold(true).withColor(net.minecraft.util.Formatting.RED)
-                                .withClickEvent(new net.minecraft.text.ClickEvent(net.minecraft.text.ClickEvent.Action.RUN_COMMAND, "/settle refuse")))), false);
-            }
-        }
+        Justice.tick(world);
     }
 
     /** /settle return: hands the stolen goods back from the player's inventory. */
     public static int returnGoods(ServerPlayerEntity player) {
-        Debt debt = DEBTS.get(player.getUuid());
-        if (debt == null) {
-            player.sendMessage(Text.translatable("settlements.theft.nodebt"), false);
-            return 0;
-        }
-        Village village = VillageManager.get(player.getServerWorld()).getOrEmpty(debt.villageId).orElse(null);
-        if (village == null) {
-            DEBTS.remove(player.getUuid());
-            return 0;
-        }
-        double returned = 0;
-        for (Map.Entry<Item, Integer> e : debt.stolen.entrySet()) {
-            int left = e.getValue();
-            for (int i = 0; i < player.getInventory().size() && left > 0; i++) {
-                ItemStack s = player.getInventory().getStack(i);
-                if (!s.isOf(e.getKey())) continue;
-                int d = Math.min(left, s.getCount());
-                ItemStack part = s.copy();
-                part.setCount(d);
-                s.decrement(d);
-                Workforce.addToTreasury(village, part);
-                returned += value(part);
-                left -= d;
-            }
-            e.setValue(left);
-        }
-        debt.stolen.values().removeIf(n -> n <= 0);
-        debt.value -= returned;
-        village.markDirty();
-        if (debt.value <= 0 || debt.stolen.isEmpty()) {
-            DEBTS.remove(player.getUuid());
-            village.pushHearts(player, 10);
-            player.sendMessage(Text.translatable("settlements.theft.settled"), false);
-        } else if (returned > 0) {
-            player.sendMessage(Text.translatable("settlements.theft.partial", (int) Math.ceil(debt.value)), false);
-        } else {
-            player.sendMessage(Text.translatable("settlements.theft.nothing"), false);
-        }
-        return 1;
+        return Justice.giveBack(player);
     }
 
     /** /settle refuse: the demand is turned down, the guards act at once. */
     public static int refuse(ServerPlayerEntity player) {
-        Debt debt = DEBTS.get(player.getUuid());
-        if (debt == null) return 0;
-        debt.deadline = 0;
-        return 1;
+        return Justice.resist(player);
     }
+
 
     // ---------- visualization ----------
 
