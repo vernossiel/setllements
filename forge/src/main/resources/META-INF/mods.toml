@@ -1,7 +1,6 @@
 modLoader = "javafml"
 loaderVersion = "[44,)"
 #issueTrackerURL = ""
-updateJSONURL = "${update_json_url}"
 license = "GNU"
 
 [[mods]]
