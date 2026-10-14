@@ -121,6 +121,14 @@ public class VillagerBrain<E extends MobEntity & VillagerLike<E>> {
         resetsBrain();
     }
 
+    /** Village-driven job without an assigning player. */
+    public void assignAutonomous(Chore chore) {
+        entity.getBrain().doExclusively(ActivityMCA.CHORE.get());
+        entity.setTrackedValue(ACTIVE_CHORE, chore);
+        entity.setTrackedValue(CHORE_ASSIGNING_PLAYER, Optional.empty());
+        resetsBrain();
+    }
+
     public void randomize() {
         entity.setTrackedValue(PERSONALITY, Personality.getRandom());
         entity.setTrackedValue(MOOD, entity.getWorld().random.nextInt(MoodGroup.MAX_LEVEL - MoodGroup.NORMAL_MIN_LEVEL + 1) + MoodGroup.NORMAL_MIN_LEVEL);

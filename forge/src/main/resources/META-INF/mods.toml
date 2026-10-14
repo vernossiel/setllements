@@ -7,10 +7,10 @@ license = "GNU"
 [[mods]]
 modId = "mca"
 version = "${version}"
-displayName = "Minecraft Comes Alive"
+displayName = "Settlements"
 authors = "Luke100000, S0llace, CDAGaming, ffrannny, jahx_senpoopie, WildBamaBoy, SheWolfDeadly"
 description = '''
-No more squidward-villagers! Interact with male and female human villagers and raise a family.
+Smart villagers with real professions, needs and reputation. Built on Minecraft Comes Alive Reborn (GPL-3.0).
 '''
 logoFile = "mca.png"
 

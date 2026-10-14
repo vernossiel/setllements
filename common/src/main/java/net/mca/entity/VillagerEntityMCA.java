@@ -102,6 +102,9 @@ import java.util.function.Predicate;
 import static net.mca.client.model.CommonVillagerModel.getVillager;
 
 public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<VillagerEntityMCA>, NamedScreenHandlerFactory, CompassionateEntity<BreedableRelationship>, CrossbowUser {
+    public int settlementsEnergy = 1000;
+    public int settlementsHunger = 0;
+
     final UUID EXTRA_HEALTH_EFFECT_ID = UUID.fromString("87f56a96-686f-4796-b035-22e16ee9e038");
 
     private static final CDataParameter<Float> INFECTION_PROGRESS = CParameter.create("infectionProgress", 0.0f);
@@ -746,6 +749,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
             // Brain and pregnancy depend on the above states, so we tick them last
             // Every 1 second
             mcaBrain.think();
+            if (age % 20 == 0) net.mca.settlements.Workforce.tick(this);
 
             // pop a item from the desaturation queue
             if (age % Config.getInstance().giftDesaturationReset == 0) {
@@ -1351,6 +1355,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     @Override
     public void readCustomDataFromNbt(NbtCompound nbt) {
         super.readCustomDataFromNbt(nbt);
+        settlementsEnergy = nbt.contains("SettlementsEnergy") ? nbt.getInt("SettlementsEnergy") : 1000;
+        settlementsHunger = nbt.getInt("SettlementsHunger");
         getTypeDataManager().load(this, nbt);
         relations.readFromNbt(nbt);
         longTermMemory.readFromNbt(nbt);
@@ -1382,6 +1388,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     @Override
     public final void writeCustomDataToNbt(NbtCompound nbt) {
         super.writeCustomDataToNbt(nbt);
+        nbt.putInt("SettlementsEnergy", settlementsEnergy);
+        nbt.putInt("SettlementsHunger", settlementsHunger);
         getTypeDataManager().save(this, nbt);
         relations.writeToNbt(nbt);
         longTermMemory.writeToNbt(nbt);
