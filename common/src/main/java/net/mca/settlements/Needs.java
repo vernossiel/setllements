@@ -63,10 +63,18 @@ public final class Needs {
             set(v, Need.NONE);
         }
         current = get(v);
+        // hunger shows: grumbling first, then real distress
+        if (v.age % 1200 == 600) {
+            if (v.settlementsHunger >= 900) Speech.sayAny(v, "settlements.say.starving", 5);
+            else if (v.settlementsHunger >= 600) Speech.sayAny(v, "settlements.say.hungry", 6);
+            else if (v.settlementsEnergy < 250) Speech.sayAny(v, "settlements.say.weary", 4);
+        }
         if (current == Need.NONE || v.age % 400 != 0) return;
         PlayerEntity p = v.getWorld().getClosestPlayer(v, 10);
         if (p != null) {
-            v.sendChatMessage(Text.translatable("settlements.need." + current.name().toLowerCase()), p);
+            String key = "settlements.need." + current.name().toLowerCase();
+            if (current == Need.FOOD && v.getRandom().nextInt(3) > 0) key = key + "." + (1 + v.getRandom().nextInt(3));
+            v.sendChatMessage(Text.translatable(key), p);
         }
     }
 

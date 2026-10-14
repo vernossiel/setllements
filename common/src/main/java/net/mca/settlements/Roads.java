@@ -26,6 +26,59 @@ public final class Roads {
         }
     }
 
+    /** The cells of the road from a building's front to the plaza (two wide), as {x, z}. */
+    public static java.util.List<int[]> route(Village village, BlockPos front) {
+        java.util.List<int[]> out = new java.util.ArrayList<>();
+        BlockPos c = new BlockPos(village.getCenter());
+        int x0 = front.getX(), z0 = front.getZ(), x1 = c.getX(), z1 = c.getZ();
+        int dx = Math.abs(x1 - x0), dz = Math.abs(z1 - z0), sx = x0 < x1 ? 1 : -1, sz = z0 < z1 ? 1 : -1;
+        int err = dx - dz, steps = 0;
+        while (steps++ < 90 && Math.hypot(x0 - x1, z0 - z1) > 5) {
+            out.add(new int[]{x0, z0});
+            out.add(new int[]{x0 + (dx > dz ? 0 : 1), z0 + (dx > dz ? 1 : 0)});
+            int e2 = 2 * err;
+            if (e2 > -dz) {
+                err -= dz;
+                x0 += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                z0 += sz;
+            }
+        }
+        return out;
+    }
+
+    /** A road cell that needs mending: grass grew back over it, or somebody dug it up. */
+    public static boolean broken(ServerWorld world, int x, int z) {
+        if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
+        int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+        BlockPos ground = new BlockPos(x, y - 1, z);
+        if (pavable(world.getBlockState(ground)) && world.getBlockState(ground.up()).isAir()) return true;
+        return hole(world, x, y, z);
+    }
+
+    /** One block lower than the road on both sides along it: a pit dug into the road. */
+    private static boolean hole(ServerWorld world, int x, int y, int z) {
+        int higher = 0;
+        for (int[] o : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            int ny = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x + o[0], z + o[1]);
+            BlockPos n = new BlockPos(x + o[0], ny - 1, z + o[1]);
+            if (ny > y && world.getBlockState(n).isOf(Blocks.DIRT_PATH)) higher++;
+        }
+        return higher >= 2;
+    }
+
+    /** Mends one road cell: fills a pit with earth and lays the path again. */
+    public static void mend(ServerWorld world, Village village, int x, int z) {
+        int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+        if (hole(world, x, y, z)) {
+            BlockPos fill = new BlockPos(x, y, z);
+            if (world.getBlockState(fill).isReplaceable()) world.setBlockState(fill, Blocks.DIRT.getDefaultState());
+        }
+        pave(world, x, z);
+    }
+
     /** Straight road from the front of a building to the plaza ring. */
     public static void connect(ServerWorld world, Village village, BlockPos front) {
         BlockPos c = new BlockPos(village.getCenter());

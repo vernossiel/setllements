@@ -132,10 +132,10 @@ public final class Workforce {
             if (v.settlementsEnergy <= EXHAUST_AT) {
                 startBreak(v, 0);
                 v.settlementsBreakLong = true; // worn out: back to work only when properly rested
-                Speech.say(v, "settlements.say.tired");
+                Speech.sayAny(v, "settlements.say.tired", 5);
             } else if (v.settlementsWorkSeconds >= MICRO_BREAK_AFTER) {
                 startBreak(v, MICRO_BREAK_SECONDS);
-                Speech.say(v, "settlements.say.break");
+                Speech.sayAny(v, "settlements.say.break", 5);
             }
             if (v.settlementsBreak && job != Chore.NONE) {
                 v.getVillagerBrain().abandonJob();
@@ -173,6 +173,7 @@ public final class Workforce {
             if (v.age % 200 == 0) {
                 craftTorches(village);
                 craftArrows(village);
+                if (Buildings.has(village, "mill")) bake(village);
                 if (!village.smithyBuilt) smelt(village);
                 if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) Reputation.restock(sw, village);
             }
@@ -249,10 +250,30 @@ public final class Workforce {
         v.settlementsBreakLeft = seconds;
     }
 
+    /** The mill grinds the farmer's wheat and the bakery turns it into bread: three sheaves a loaf. */
+    private static void bake(net.mca.server.world.data.Village village) {
+        for (int i = 0; i < 4; i++) {
+            int wheat = 0;
+            for (ItemStack s : village.storageBuffer) if (s.isOf(net.minecraft.item.Items.WHEAT)) wheat += s.getCount();
+            if (wheat < 3) return;
+            int need = 3;
+            for (ItemStack s : village.storageBuffer) {
+                if (need > 0 && s.isOf(net.minecraft.item.Items.WHEAT)) {
+                    int d = Math.min(need, s.getCount());
+                    s.decrement(d);
+                    need -= d;
+                }
+            }
+            village.storageBuffer.removeIf(ItemStack::isEmpty);
+            addToTreasury(village, new ItemStack(net.minecraft.item.Items.BREAD, 1));
+        }
+    }
+
     private static boolean burnCharcoal(net.mca.server.world.data.Village village) {
         int logs = 0;
         for (ItemStack s : village.storageBuffer) if (s.isIn(net.minecraft.registry.tag.ItemTags.LOGS)) logs += s.getCount();
-        boolean furnace = village.smithyFurnace != null || village.tavern != null;
+        boolean pit = Buildings.has(village, "charcoal");
+        boolean furnace = pit || village.smithyFurnace != null || village.tavern != null;
         if (logs < (furnace ? 2 : 8)) return false;
         for (ItemStack s : village.storageBuffer) {
             if (s.isIn(net.minecraft.registry.tag.ItemTags.LOGS)) {
@@ -261,7 +282,7 @@ public final class Workforce {
             }
         }
         village.storageBuffer.removeIf(ItemStack::isEmpty);
-        addToTreasury(village, new ItemStack(net.minecraft.item.Items.CHARCOAL, 1));
+        addToTreasury(village, new ItemStack(net.minecraft.item.Items.CHARCOAL, pit ? 2 : 1)); // the pit burns a whole stack at once
         return true;
     }
 
@@ -378,35 +399,33 @@ public final class Workforce {
         }
         if (meal.isEmpty()) return false;
         beginMeal(v, meal, EAT_SECONDS);
-        Speech.say(v, "settlements.say.eat");
+        Speech.sayAny(v, "settlements.say.eat", 5);
         return true;
     }
 
-    /** Puts the meal in the villager's hand and makes them sit still and eat for the given number of seconds. */
+    /** Puts the meal in the villager's hand and has him eat it like a player does: hand up, crumbs, the sound. */
     static void beginMeal(VillagerEntityMCA v, ItemStack meal, int seconds) {
         ItemStack held = v.getStackInHand(v.getDominantHand());
         if (!held.isEmpty()) v.getInventory().addStack(held);
         v.setStackInHand(v.getDominantHand(), meal);
         v.getNavigation().stop();
-        v.settlementsEatTicks = seconds;
+        v.settlementsMealValue = nutrition(meal);
+        v.settlementsEatTicks = seconds + 3; // a safety limit; the bite itself ends the meal
+        v.setCurrentHand(v.getDominantHand());
     }
 
     /** One second of an ongoing meal. */
     private static void eatTick(VillagerEntityMCA v) {
         v.getNavigation().stop();
-        ItemStack meal = v.getStackInHand(v.getDominantHand());
-        if (meal.isEmpty() || !meal.isFood()) {
-            v.settlementsEatTicks = 0;
-            return;
-        }
-        v.getWorld().playSound(null, v.getBlockPos(), net.minecraft.sound.SoundEvents.ENTITY_GENERIC_EAT, net.minecraft.sound.SoundCategory.NEUTRAL, 0.8f, 1.0f);
-        v.getWorld().sendEntityStatus(v, (byte) 45); // eating particles for the held item
-        v.swingHand(v.getDominantHand());
-        if (--v.settlementsEatTicks <= 0) {
-            v.settlementsHunger = Math.max(0, v.settlementsHunger - nutrition(meal));
-            v.eatFood(v.getWorld(), meal); // applies the food effects and consumes the item
-            v.setStackInHand(v.getDominantHand(), ItemStack.EMPTY);
-        }
+        if (v.isUsingItem() && --v.settlementsEatTicks > 0) return; // still chewing
+        if (v.isUsingItem()) v.stopUsingItem();
+        // the meal is eaten (the food item used itself up), or it took too long: either way he has had his meal
+        v.settlementsHunger = Math.max(0, v.settlementsHunger - v.settlementsMealValue);
+        v.settlementsMealValue = 0;
+        v.settlementsEatTicks = 0;
+        ItemStack left = v.getStackInHand(v.getDominantHand());
+        if (!left.isEmpty()) v.getInventory().addStack(left); // the bowl, or a meal he did not finish
+        v.setStackInHand(v.getDominantHand(), ItemStack.EMPTY);
     }
 
     static boolean hasMeal(VillagerEntityMCA v, net.mca.server.world.data.Village village) {

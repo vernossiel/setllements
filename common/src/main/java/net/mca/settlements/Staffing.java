@@ -96,6 +96,7 @@ public final class Staffing {
         // guards first when the village is big enough to need them
         int guards = (int) adults.stream().filter(VillagerEntityMCA::isGuard).count();
         int guardTarget = p >= 5 ? Math.max(1, p / 7) : 0;
+        if (Buildings.has(v, "barracks")) guardTarget = Math.max(2, p / 4); // the barracks house and train more guards
         while (guards < guardTarget && !pool.isEmpty()) {
             assign(world, pool.remove(world.random.nextInt(pool.size())), ProfessionsMCA.GUARD.get());
             guards++;

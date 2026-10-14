@@ -17,15 +17,43 @@ public final class Haul {
     private Haul() {
     }
 
-    /** Where the stores are: the first hall chest, or the hall itself. */
-    public static BlockPos store(Village village) {
+    /**
+     * Where this villager takes his goods: the lumberjack to the sawmill, the miner to the stonemason's, everybody
+     * to the nearest storehouse chest; without those, to the town hall.
+     */
+    public static BlockPos store(VillagerEntityMCA v, Village village) {
+        var p = v.getProfession();
+        String trade = p == net.minecraft.village.VillagerProfession.FLETCHER || p == net.minecraft.village.VillagerProfession.TOOLSMITH ? "sawmill"
+                : p == net.minecraft.village.VillagerProfession.MASON ? "mason" : null;
+        BlockPos best = trade == null ? null : nearestChest(v, village, trade);
+        if (best == null) best = nearestChest(v, village, "storage");
+        if (best == null) best = nearestChest(v, village, "granary");
+        if (best != null) return best;
         if (!village.hallChests.isEmpty()) return village.hallChests.get(0);
         return village.hallPos;
     }
 
+    private static BlockPos nearestChest(VillagerEntityMCA v, Village village, String type) {
+        BlockPos best = null;
+        double bd = Double.MAX_VALUE;
+        for (Built b : village.built) {
+            if (!b.type().equals(type)) continue;
+            for (Blueprints.Step s : b.steps()) {
+                if (s.kind() != Blueprints.Kind.CHEST) continue;
+                BlockPos c = b.point(s.dx(), s.dy(), s.dz());
+                double d = v.squaredDistanceTo(c.getX() + 0.5, c.getY(), c.getZ() + 0.5);
+                if (d < bd) {
+                    bd = d;
+                    best = c;
+                }
+            }
+        }
+        return best;
+    }
+
     /** Walks to the stores. True once he stands at the chest. */
     public static boolean reach(VillagerEntityMCA v, Village village) {
-        BlockPos s = store(village);
+        BlockPos s = store(v, village);
         if (s == null) return true; // no hall yet: the stores are wherever he is
         if (v.squaredDistanceTo(s.getX() + 0.5, s.getY(), s.getZ() + 0.5) > 9) {
             Move.to(v, s.getX() + 0.5, s.getY(), s.getZ() + 0.5, 0.6);
@@ -84,8 +112,8 @@ public final class Haul {
 
     /** The builder picks up a load before building; true while he is on his way to the stores. */
     public static boolean fetch(VillagerEntityMCA v, Village village) {
-        if (v.settlementsCarry > 0 || store(village) == null) return false;
-        BlockPos s = store(village);
+        BlockPos s = store(v, village);
+        if (v.settlementsCarry > 0 || s == null) return false;
         if (!s.isWithinDistance(v.getBlockPos(), 160)) {
             v.settlementsCarry = FULL_LOAD; // too far to walk back for every load
             return false;

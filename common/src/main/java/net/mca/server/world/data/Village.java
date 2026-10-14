@@ -59,6 +59,8 @@ public class Village implements Iterable<Building> {
     public final Map<Integer, Integer> relations = new HashMap<>();
     public final java.util.Set<BlockPos> lootChests = new java.util.HashSet<>();
     public final List<net.mca.settlements.House> houses = new LinkedList<>();
+    public final List<net.mca.settlements.Built> built = new java.util.ArrayList<>();
+    public boolean buildRepair;
     public final List<ItemStack> storageBuffer = new LinkedList<>();
 
     private final Map<Integer, Building> buildings = new HashMap<>();
@@ -149,6 +151,9 @@ public class Village implements Iterable<Building> {
         NbtCompound relNbt = v.getCompound("relations");
         for (String k : relNbt.getKeys()) relations.put(Integer.parseInt(k), relNbt.getInt(k));
         for (long l : v.getLongArray("lootChests")) lootChests.add(BlockPos.fromLong(l));
+        NbtList builtList = v.getList("built", NbtElement.COMPOUND_TYPE);
+        for (int i = 0; i < builtList.size(); i++) built.add(net.mca.settlements.Built.load(builtList.getCompound(i)));
+        buildRepair = v.getBoolean("buildRepair");
         NbtList houseList = v.getList("houses", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < houseList.size(); i++) houses.add(net.mca.settlements.House.load(houseList.getCompound(i)));
         NbtList treasury = v.getList("treasury", NbtElement.COMPOUND_TYPE);
@@ -543,6 +548,10 @@ public class Village implements Iterable<Building> {
         NbtList houseList = new NbtList();
         for (net.mca.settlements.House h : houses) houseList.add(h.save());
         v.put("houses", houseList);
+        NbtList builtOut = new NbtList();
+        for (net.mca.settlements.Built b : built) builtOut.add(b.save());
+        v.put("built", builtOut);
+        v.putBoolean("buildRepair", buildRepair);
         v.put("unspentHearts", NbtHelper.fromMap(new NbtCompound(), unspentHearts, UUID::toString, NbtInt::of));
         v.put("reputation", NbtHelper.fromMap(new NbtCompound(), reputation, UUID::toString, i ->
                 NbtHelper.fromMap(new NbtCompound(), i, UUID::toString, NbtInt::of)

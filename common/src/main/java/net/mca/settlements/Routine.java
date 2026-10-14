@@ -52,8 +52,8 @@ public final class Routine {
                 v.settlementsLunchSec++;
                 v.settlementsEnergy = Math.min(Workforce.MAX, v.settlementsEnergy + 20);
                 if (v.settlementsLunchSec == 3) {
-                    if (!Workforce.lunch(v, village)) Speech.say(v, "settlements.say.lunch.none");
-                    else Speech.say(v, "settlements.say.lunch");
+                    if (!Workforce.lunch(v, village)) Speech.sayAny(v, "settlements.say.lunch.none", 3);
+                    else Speech.sayAny(v, "settlements.say.lunch", 4);
                 }
                 if (v.settlementsLunchSec >= LUNCH_SECONDS) {
                     v.settlementsLunchDay = day;

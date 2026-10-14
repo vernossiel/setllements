@@ -65,4 +65,6 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
     public Block roofSlab() { return get(roofWood + "_slab", Blocks.SPRUCE_SLAB); }
     public Block roofPlanks() { return get(roofWood + "_planks", Blocks.SPRUCE_PLANKS); }
     public Block stairs() { return get(wood + "_stairs", Blocks.OAK_STAIRS); }
+    public Block fenceGate() { return get(wood + "_fence_gate", Blocks.OAK_FENCE_GATE); }
+    public Block plainFlower() { return flower instanceof net.minecraft.block.FlowerPotBlock pot ? pot.getContent() : Blocks.POPPY; }
 }

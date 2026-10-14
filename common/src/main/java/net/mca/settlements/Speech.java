@@ -31,6 +31,12 @@ public final class Speech {
         v.sendChatMessage(Text.translatable(key, args).formatted(Formatting.WHITE), p);
     }
 
+    /** One of several ways to say the same thing: the base key or base.1 .. base.(n-1). */
+    public static void sayAny(VillagerEntityMCA v, String base, int variants, Object... args) {
+        int i = v.getRandom().nextInt(variants);
+        say(v, i == 0 ? base : base + "." + i, args);
+    }
+
     /** Conversation lines and replies: no gap, but still only when somebody can hear it. */
     public static void sayNow(VillagerEntityMCA v, String key, Object... args) {
         if (v.getWorld().isClient) return;

@@ -48,22 +48,32 @@ public final class Builder {
     }
 
     private static List<Step> plan(Village v) {
-        String key = v.buildType + "|" + v.buildW + "|" + v.buildD + "|" + v.buildF
-                + (v.buildType.equals("wall") && v.buildOrigin != null ? "|" + v.buildOrigin.asLong() : "");
-        return CACHE.computeIfAbsent(key, k -> switch (v.buildType) {
-            case "house" -> Blueprints.house(v.buildW, v.buildD, v.buildF);
-            case "upgrade" -> Blueprints.addFloor(v.buildW, v.buildD, v.buildF);
+        if (v.buildType.equals("wall")) {
+            String key = "wall|" + v.buildW + "|" + (v.buildOrigin == null ? 0 : v.buildOrigin.asLong());
+            return CACHE.computeIfAbsent(key, k -> wallPlan(v));
+        }
+        return stepsFor(v.buildType, v.buildW, v.buildD, v.buildF);
+    }
+
+    /** The plan of a building type with its parameters (cached). */
+    public static List<Step> stepsFor(String type, int w, int d, int f) {
+        String key = type + "|" + w + "|" + d + "|" + f;
+        return CACHE.computeIfAbsent(key, k -> switch (type) {
+            case "house" -> Blueprints.house(w, d, f);
+            case "upgrade" -> Blueprints.addFloor(w, d, f);
             case "storage" -> Blueprints.storage();
             case "smithy" -> Blueprints.smithy();
             case "armory" -> Blueprints.armory();
             case "tavern" -> Blueprints.tavern();
             case "townhall" -> Blueprints.townhall();
             case "board" -> Blueprints.board();
-            case "hallup" -> Blueprints.hallUpgrade(v.buildW, v.buildD, v.buildF);
+            case "hallup" -> Blueprints.hallUpgrade(w, d, f);
             case "pen" -> Blueprints.pen();
             case "mine" -> Blueprints.mine();
-            case "wall" -> wallPlan(v);
-            default -> List.of();
+            case "well" -> Blueprints.well();
+            case "farm" -> Blueprints.farm();
+            case "tower" -> Blueprints.tower();
+            default -> Buildings.plan(type, w, d, f);
         });
     }
 
@@ -140,7 +150,7 @@ public final class Builder {
                 Item planks = planksOf(s.getItem());
                 s.decrement(1);
                 if (s.isEmpty()) it.remove();
-                v.storageBuffer.add(0, new ItemStack(planks, 3));
+                v.storageBuffer.add(0, new ItemStack(planks, Buildings.has(v, "sawmill") ? 5 : 3)); // the saw wastes less
                 v.markDirty();
                 return planks;
             }
@@ -213,6 +223,14 @@ public final class Builder {
                             return true;
                         }
                     }
+                    // different homes for different means: huts in a young hamlet, family houses with gardens later,
+                    // two-storey houses for a prosperous town
+                    Plan.Level lv = Plan.level(village);
+                    double roll = rand.nextDouble();
+                    if ((lv == Plan.Level.TOWN || lv == Plan.Level.FORTRESS) && planks >= 260 && roll < 0.5
+                            && startRing(village, world, "manor", 9, 8, 2, 0, 3)) return true;
+                    if (lv != Plan.Level.HAMLET && planks >= 180 && roll < 0.6 && startRing(village, world, "annex", 7, 7, 1, 1, 4)) return true;
+                    if (lv == Plan.Level.HAMLET && roll < 0.45 && startRing(village, world, "hut", 5, 5, 1, 0, 3)) return true;
                     if (planks >= 320 && startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 3, 0, 3)) return true;
                     if (planks >= 200 && startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 2, 0, 3)) return true;
                     if (startRing(village, world, "house", 6, 7, 1, 0, 3)) return true;
@@ -258,6 +276,15 @@ public final class Builder {
                 }
                 case "tavern" -> {
                     if (startRing(village, world, "tavern", 0, 0, 0, 0, 3)) return true;
+                }
+                case "sawmill", "mason", "barracks", "chapel" -> {
+                    if (startRing(village, world, st.goal().id(), 0, 0, 0, 1, 4)) return true;
+                }
+                case "charcoal", "mill" -> {
+                    if (startRing(village, world, st.goal().id(), 0, 0, 0, 2, 5)) return true;
+                }
+                case "granary", "jail", "market" -> {
+                    if (startRing(village, world, st.goal().id(), 0, 0, 0, 0, 3)) return true;
                 }
                 case "board" -> {
                     if (startRing(village, world, "board", 0, 0, 0, 0, 1)) return true;
@@ -369,6 +396,9 @@ public final class Builder {
     /** One builder second. Returns true when the villager actually worked (the caller drains energy). */
     public static boolean work(VillagerEntityMCA v, Village village) {
         if (!(v.getWorld() instanceof ServerWorld world) || village == null) return false;
+        // upkeep first: a damaged building, then the roads
+        if (village.buildOrigin == null && Repair.start(village)) Speech.say(v, "settlements.say.build.repair");
+        if (village.buildOrigin == null && Repair.roadWork(v, village, world)) return true;
         if (village.buildOrigin == null && !plan(village, world)) {
             Needs.Need blocker = Plan.firstBlocker(village);
             markShort(village, blocker, blocker == Needs.Need.PLANKS || blocker == Needs.Need.COBBLE);
@@ -395,6 +425,7 @@ public final class Builder {
         if (Haul.fetch(v, village)) return true;
         boolean worked = false;
         int ops = 0, skips = 0;
+        int checks = 0;
         int budget = Prosperity.ops(v, village, opsPerSecond); // tired builders and struggling villages build slower
         if (budget == 0) return true; // working, just slowly
         while (ops < budget && skips < MAX_TRIVIAL_SKIPS && village.buildOrigin != null && village.buildStep < steps.size()) {
@@ -402,6 +433,11 @@ public final class Builder {
             int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
             int[] rp = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], village.buildRot);
             BlockPos target = origin.add(rp[0], step.dy(), rp[1]);
+            if (village.buildRepair && !Repair.missing(world, step, target)) { // repairs only put back what is gone
+                village.buildStep++;
+                if (++checks > 4000) break;
+                continue;
+            }
 
             // the mine is dug from its entrance, everything else is built standing next to the block
             double limit = village.buildType.equals("mine") ? 12 * 12 : 6 * 6;
@@ -632,8 +668,29 @@ public final class Builder {
         if (o == null) return;
         String type = village.buildType;
         int rot = village.buildRot;
+        if (village.buildRepair) { // a repair changes nothing in the books
+            village.buildRepair = false;
+            Life.news(village, "repaired", Text.translatable("settlements.building." + type));
+            village.buildOrigin = null;
+            village.buildStep = 0;
+            village.markDirty();
+            return;
+        }
+        // the village's register of buildings, for use and repairs
+        switch (type) {
+            case "upgrade", "hallup" -> {
+                for (int i = 0; i < village.built.size(); i++) {
+                    Built b = village.built.get(i);
+                    if (b.origin().equals(o)) village.built.set(i, b.withFloors(b.f() + 1));
+                }
+            }
+            case "mine", "wall" -> {
+            }
+            default -> village.built.add(new Built(type, o, village.buildW, village.buildD, Math.max(1, village.buildF), rot));
+        }
         switch (type) {
             case "house" -> village.houses.add(new House(o, village.buildW, village.buildD, village.buildF, rot));
+            case "manor" -> village.houses.add(new House(o, 9, 8, 2, rot));
             case "upgrade" -> {
                 for (int i = 0; i < village.houses.size(); i++) {
                     House h = village.houses.get(i);
@@ -747,13 +804,14 @@ public final class Builder {
         }
 
         boolean decoration = switch (step.kind()) {
-            case SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY -> true;
+            case SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY, FLOWER -> true;
             default -> false;
         };
         if (decoration) {
             // decorations never push anything aside: a tree, a neighbour's wall or a chest stays where it is
             boolean free = old.isAir() || old.isReplaceable();
             if (step.kind() == Kind.CHIMNEY) free = free || old.getBlock() instanceof StairsBlock; // through the eaves
+            if (step.kind() == Kind.FLOWER) free = old.isAir() && world.getBlockState(target.down()).isIn(net.minecraft.registry.tag.BlockTags.DIRT);
             if (step.kind() == Kind.PATH) free = (old.isOf(Blocks.GRASS_BLOCK) || old.isOf(Blocks.DIRT) || old.isOf(Blocks.COARSE_DIRT) || old.isOf(Blocks.PODZOL))
                     && world.getBlockState(target.up()).isReplaceable();
             if (!free) return Result.SKIPPED;
@@ -762,13 +820,15 @@ public final class Builder {
         if (state == null) {
             // glass, light and decoration are optional: without them the house is plainer, not unfinished
             return switch (step.kind()) {
-                case GLASS, TORCH, CROP, CARPET, SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY -> Result.SKIPPED;
+                case GLASS, TORCH, CROP, CARPET, SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY,
+                     STONECUTTER, HAY, COMPOSTER, PUMPKIN, CAULDRON, FLOWER, LOG_X, LOG_Z, WOOL -> Result.SKIPPED;
                 default -> Result.WAIT;
             };
         }
         if (step.kind() == Kind.LANTERN) {
-            if (world.getBlockState(target.up()).isSideSolidFullSquare(world, target.up(), Direction.DOWN)) state = state.with(LanternBlock.HANGING, true);
-            else if (!world.getBlockState(target.down()).isSideSolidFullSquare(world, target.down(), Direction.UP)) return Result.SKIPPED;
+            if (Block.sideCoversSmallSquare(world, target.down(), Direction.UP)) state = state.with(LanternBlock.HANGING, false);
+            else if (Block.sideCoversSmallSquare(world, target.up(), Direction.DOWN)) state = state.with(LanternBlock.HANGING, true);
+            else return Result.SKIPPED;
         }
         if (step.kind() == Kind.ARMOR_STAND) {
             var stand = net.minecraft.entity.EntityType.ARMOR_STAND.create(world);
@@ -867,6 +927,48 @@ public final class Builder {
             case LANTERN: {
                 if (!take(village, s -> s.isOf(Items.TORCH), 1)) return null;
                 return Blocks.LANTERN.getDefaultState();
+            }
+            case STONECUTTER:
+                if (!take(village, COBBLE, 3)) return null;
+                return Blocks.STONECUTTER.getDefaultState().with(StonecutterBlock.FACING, turn(Direction.SOUTH, rot));
+            case HAY:
+                if (!take(village, s -> s.isOf(Items.WHEAT), 9) && !take(village, s -> s.isOf(Items.HAY_BLOCK), 1)) return null;
+                return Blocks.HAY_BLOCK.getDefaultState();
+            case COMPOSTER:
+                if (!takePlanks(village, 3)) return null;
+                return Blocks.COMPOSTER.getDefaultState();
+            case BARS:
+                if (take(village, s -> s.isOf(Items.IRON_INGOT), 1)) return Blocks.IRON_BARS.getDefaultState();
+                if (!takePlanks(village, 1)) return null;
+                return pal.fence().getDefaultState(); // no iron: wooden bars
+            case WOOL: {
+                Block[] colors = {Blocks.RED_WOOL, Blocks.BLUE_WOOL, Blocks.YELLOW_WOOL, Blocks.GREEN_WOOL};
+                if (take(village, WOOL, 1)) return (step.face() < 0 ? Blocks.WHITE_WOOL : colors[step.face() % colors.length]).getDefaultState();
+                if (!takePlanks(village, 1)) return null;
+                return pal.roofSlab().getDefaultState(); // a wooden awning instead of cloth
+            }
+            case SLAB:
+                if (!takePlanks(village, 1)) return null;
+                return pal.roofSlab().getDefaultState();
+            case PUMPKIN:
+                return Blocks.CARVED_PUMPKIN.getDefaultState().with(CarvedPumpkinBlock.FACING, face(step, rot));
+            case GATE:
+                if (!takePlanks(village, 2)) return null;
+                return pal.fenceGate().getDefaultState().with(FenceGateBlock.FACING, face(step, rot));
+            case CAULDRON:
+                if (!take(village, s -> s.isOf(Items.IRON_INGOT), 7)) return null;
+                return Blocks.CAULDRON.getDefaultState();
+            case FLOWER:
+                return pal.plainFlower().getDefaultState();
+            case MOUND:
+                return Blocks.COARSE_DIRT.getDefaultState();
+            case PEW:
+                if (!takePlanks(village, 1)) return null;
+                return pal.stairs().getDefaultState().with(StairsBlock.FACING, face(step, rot));
+            case LOG_X, LOG_Z: {
+                Direction.Axis axis = (kind == Kind.LOG_X) == ((rot & 1) == 0) ? Direction.Axis.X : Direction.Axis.Z;
+                if (!take(village, LOG, 1)) return null;
+                return pal.log().getDefaultState().with(PillarBlock.AXIS, axis);
             }
             case GLASS: {
                 if (!take(village, GLASS, 1)) return null;
@@ -977,7 +1079,7 @@ public final class Builder {
                 return pal.stairs().getDefaultState().with(StairsBlock.FACING, facing);
             }
             case STONE: {
-                if (take(village, COBBLE, 1)) return pal.stone().getDefaultState();
+                if (take(village, COBBLE, 1)) return (Buildings.has(village, "mason") ? pal.accent() : pal.stone()).getDefaultState();
                 return plank(village, pal.planks()); // stone or earth from around, or wood
             }
             case SIGN:

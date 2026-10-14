@@ -63,11 +63,13 @@ public final class Prosperity {
         f *= 1 - Math.min(0.45, danger(village) * 0.04);
         int food = 0;
         for (ItemStack s : village.storageBuffer) if (s.isFood()) food += s.getCount();
+        if (Buildings.has(village, "granary")) food = food * 3 / 2; // stored well, food goes further
         int pop = Math.max(1, village.getPopulation());
         if (food < pop) f *= 0.75;
         else if (food < pop * 3) f *= 0.9;
         else if (food > pop * 10) f *= 1.1;
         if (village.hall != null && village.hall.floors() >= 2) f *= 1.05;
+        if (Buildings.has(village, "market")) f *= 1.05;
         f = Math.max(0.35, Math.min(1.2, f));
         CACHE.put(village.getId(), new double[]{f, now});
         return f;

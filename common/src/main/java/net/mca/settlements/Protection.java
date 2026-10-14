@@ -79,6 +79,7 @@ public final class Protection {
                     && pos.getY() >= o.getY() && pos.getY() <= o.getY() + hall.floors() * Blueprints.LEVEL_HEIGHT + 8) return true;
         }
         for (BlockPos c : village.campfires) if (c.equals(pos)) return true;
+        for (Built b : village.built) if (b.contains(pos)) return true;
         return false;
     }
 

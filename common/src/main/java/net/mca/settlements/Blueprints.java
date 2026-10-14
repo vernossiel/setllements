@@ -9,7 +9,8 @@ import java.util.List;
  */
 public final class Blueprints {
     public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE, SMOKER, BARREL, CRAFT, PLATE, SEAT_W, SEAT_E, LECTERN, HALL_CHEST, BOOKSHELF, CARPET, SIGN,
-        BEAM_X, BEAM_Z, SHUTTER, POT, HEDGE, PATH, CHIMNEY, SMOKE, ACCENT, BELL, STEP, LANTERN }
+        BEAM_X, BEAM_Z, SHUTTER, POT, HEDGE, PATH, CHIMNEY, SMOKE, ACCENT, BELL, STEP, LANTERN,
+        STONECUTTER, HAY, COMPOSTER, BARS, WOOL, GRAVE, SLAB, PUMPKIN, GATE, CAULDRON, FLOWER, MOUND, PEW, LOG_X, LOG_Z }
 
     /** {@code face}: a horizontal direction index (0 south, 1 west, 2 north, 3 east) for blocks that face somewhere, -1 otherwise. */
     public record Step(int dx, int dy, int dz, Kind kind, int face) {
@@ -39,6 +40,14 @@ public final class Blueprints {
      * stone corners.
      */
     static List<Step> house(int w, int d, int floors, boolean grand) {
+        return shell(w, d, floors, grand, true, false, true);
+    }
+
+    /**
+     * The common frame of houses and workshops. {@code furnished}: beds and furniture inside; {@code stoneGround}:
+     * a ground floor of stone under the timber; {@code chimney}: a smoking chimney on the east side.
+     */
+    static List<Step> shell(int w, int d, int floors, boolean grand, boolean furnished, boolean stoneGround, boolean chimney) {
         List<Step> l = new ArrayList<>();
         // footing: stone under the walls, planks inside
         for (int x = 0; x < w; x++) {
@@ -47,11 +56,11 @@ public final class Blueprints {
                 l.add(new Step(x, 0, z, edge ? (grand ? Kind.ACCENT : Kind.STONE) : Kind.FLOOR));
             }
         }
-        for (int level = 0; level < floors; level++) level(l, w, d, level, level > 0, grand);
+        for (int level = 0; level < floors; level++) level(l, w, d, level, level > 0, grand, furnished, stoneGround);
         int top = floors * LEVEL_HEIGHT;
         plane(l, w, d, top, Kind.ROOF, -1);
         gable(l, w, d, top, false);
-        outside(l, w, d, top, grand);
+        outside(l, w, d, top, grand, chimney);
         return l;
     }
 
@@ -65,7 +74,7 @@ public final class Blueprints {
         gable(l, w, d, floors * LEVEL_HEIGHT, true); // take the old pitched roof off first
         int oldTop = floors * LEVEL_HEIGHT, chimneyTop = oldTop + 2 + w / 2;
         for (int y = oldTop + 1; y <= chimneyTop + 1; y++) l.add(new Step(w, y, d / 2, Kind.CLEAR)); // and the old chimney top
-        level(l, w, d, floors, true, grand);
+        level(l, w, d, floors, true, grand, true, false);
         int top = (floors + 1) * LEVEL_HEIGHT;
         plane(l, w, d, top, Kind.ROOF, -1);
         gable(l, w, d, top, false);
@@ -75,7 +84,7 @@ public final class Blueprints {
     }
 
     /** A pitched roof along the depth axis, overhanging one block front and back; {@code clear} removes it. */
-    private static void gable(List<Step> l, int w, int d, int yBase, boolean clear) {
+    static void gable(List<Step> l, int w, int d, int yBase, boolean clear) {
         for (int i = 0; ; i++) {
             int left = -1 + i, right = w - i;
             if (left > right) break;
@@ -95,11 +104,11 @@ public final class Blueprints {
         }
     }
 
-    private static void plane(List<Step> l, int w, int d, int y, Kind kind, int skipX) {
+    static void plane(List<Step> l, int w, int d, int y, Kind kind, int skipX) {
         for (int x = 0; x < w; x++) for (int z = 0; z < d; z++) l.add(new Step(x, y, z, kind));
     }
 
-    private static boolean window(int x, int z, int w, int d) {
+    static boolean window(int x, int z, int w, int d) {
         int door = w / 2;
         if (z == d - 1) return x == 1 || x == w - 2 || (w >= 9 && (x == door - 2 || x == door + 2));
         if (z == 0) return x == w / 2 || (w >= 8 && (x == 2 || x == w - 3));
@@ -108,8 +117,9 @@ public final class Blueprints {
     }
 
     /** Walls with windows and shutters, posts, a beam under the ceiling, furniture, stairs from the floor below. */
-    private static void level(List<Step> l, int w, int d, int level, boolean stairsFromBelow, boolean grand) {
+    static void level(List<Step> l, int w, int d, int level, boolean stairsFromBelow, boolean grand, boolean furnished, boolean stoneGround) {
         int base = level * LEVEL_HEIGHT;
+        boolean stone = stoneGround && level == 0;
         if (stairsFromBelow) {
             int prev = base - LEVEL_HEIGHT;
             for (int i = 0; i < 3; i++) l.add(new Step(1, base, 1 + i, Kind.CLEAR));
@@ -124,10 +134,10 @@ public final class Blueprints {
                     if (!edge) continue;
                     boolean corner = (x == 0 || x == w - 1) && (z == 0 || z == d - 1);
                     if (level == 0 && x == door && z == d - 1 && y <= 2) continue;
-                    if (corner) l.add(new Step(x, base + y, z, grand ? Kind.ACCENT : Kind.PILLAR));
+                    if (corner) l.add(new Step(x, base + y, z, grand || stone ? Kind.ACCENT : Kind.PILLAR));
                     else if (y == 3) l.add(new Step(x, base + y, z, (z == 0 || z == d - 1) ? Kind.BEAM_X : Kind.BEAM_Z));
                     else if (y == 2 && window(x, z, w, d)) l.add(new Step(x, base + y, z, Kind.GLASS));
-                    else l.add(new Step(x, base + y, z, Kind.WALL));
+                    else l.add(new Step(x, base + y, z, stone ? Kind.STONE : Kind.WALL));
                 }
             }
         }
@@ -145,6 +155,11 @@ public final class Blueprints {
             }
         }
         if (level == 0) l.add(new Step(door, 1, d - 1, Kind.DOOR));
+        if (!furnished) {
+            l.add(new Step(1, base + 2, d - 2, Kind.TORCH));
+            l.add(new Step(w - 2, base + 2, d - 2, Kind.TORCH));
+            return;
+        }
         // furniture: a bed, a chest, a workbench, a barrel with a flower pot, a rug, a light
         int bx = w - 2;
         l.add(new Step(bx, base + 1, 1, Kind.BED_FOOT));
@@ -163,11 +178,13 @@ public final class Blueprints {
     }
 
     /** The outside: chimney with smoke, door step and path, lights by the door, a hedge and flowers along the front. */
-    private static void outside(List<Step> l, int w, int d, int top, boolean grand) {
+    static void outside(List<Step> l, int w, int d, int top, boolean grand, boolean chimney) {
         int door = w / 2;
         int chimneyTop = top + 2 + w / 2;
-        for (int y = 0; y <= chimneyTop; y++) l.add(new Step(w, y, d / 2, Kind.CHIMNEY));
-        l.add(new Step(w, chimneyTop + 1, d / 2, Kind.SMOKE));
+        if (chimney) {
+            for (int y = 0; y <= chimneyTop; y++) l.add(new Step(w, y, d / 2, Kind.CHIMNEY));
+            l.add(new Step(w, chimneyTop + 1, d / 2, Kind.SMOKE));
+        }
         l.add(new Step(door, 0, d, Kind.STEP, N));
         for (int z = d + 1; z <= d + 3; z++) l.add(new Step(door, -1, z, Kind.PATH));
         l.add(new Step(door - 1, 2, d, Kind.TORCH));
@@ -469,6 +486,18 @@ public final class Blueprints {
             case "tower" -> new int[]{TOWER, TOWER};
             case "mine" -> new int[]{4, 4};
             case "board" -> new int[]{3, 2};
+            case "sawmill" -> new int[]{Buildings.SAWMILL_W, Buildings.SAWMILL_D};
+            case "charcoal" -> new int[]{6, 6};
+            case "mason" -> new int[]{9, 6};
+            case "granary" -> new int[]{8, 7};
+            case "mill" -> new int[]{12, 8};
+            case "barracks" -> new int[]{11, 10};
+            case "jail" -> new int[]{10, 6};
+            case "market" -> new int[]{11, 11};
+            case "chapel" -> new int[]{14, 10};
+            case "hut" -> new int[]{6, 6};
+            case "annex" -> new int[]{12, 12};
+            case "manor" -> new int[]{9, 8};
             default -> new int[]{w, d};
         };
     }

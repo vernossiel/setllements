@@ -34,6 +34,7 @@ public final class Leisure {
 
         // supper at the fire
         boolean hungry = v.settlementsHunger >= 250;
+        if (village != null && Chapel.visit(v, village)) return; // remembering the dead at the churchyard
         boolean seated = Camp.goAndSit(v, village);
         long phase = (v.age / 20 + v.getUuid().hashCode()) % 60; // each villager has their own rhythm
         if (seated || (hungry && phase < 40)) {

@@ -69,6 +69,7 @@ public final class Life {
         String name = v.getName().getString();
         if (cause.getAttacker() instanceof PlayerEntity p) news(village, "murder", name, p.getName().getString());
         else news(village, "death", name);
+        if (village != null) Chapel.bury(world, village, name);
         for (VillagerEntityMCA o : world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(16), o -> o != v && o.isAlive() && !o.isBaby())) {
             Speech.say(o, "settlements.react.mourn", name);
         }
