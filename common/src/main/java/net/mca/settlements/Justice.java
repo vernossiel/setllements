@@ -365,7 +365,10 @@ public final class Justice {
             s.decrement(d);
             left -= d;
         }
-        if (village != null) Workforce.addToTreasury(village, new ItemStack(Items.EMERALD, fine));
+        if (village != null) {
+            Workforce.addToTreasury(village, new ItemStack(Items.EMERALD, fine));
+            if (!c.stolen.isEmpty()) takeBack(p, c, village); // the fine is on top: the stolen goods go back too
+        }
         CASES.remove(p.getUuid());
         p.sendMessage(Text.translatable("settlements.justice.paid", fine).formatted(Formatting.GREEN), false);
         return 1;

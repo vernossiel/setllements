@@ -1649,7 +1649,7 @@
   "settlements.justice.demand.harassment": "%s, you won't leave people in peace. Pay the fine.",
   "settlements.justice.demand.assault": "%s, you beat a man. You'll answer to the law.",
   "settlements.justice.demand.murder": "%s, you're a murderer.",
-  "settlements.justice.fine_or_return": "Give back what you took, or pay a fine of %s emeralds.",
+  "settlements.justice.fine_or_return": "Give back what you took, or pay a fine of %s emeralds (the stolen goods are taken back all the same).",
   "settlements.justice.fine": "Fine: %s emeralds.",
   "settlements.justice.button.return": "Give it back",
   "settlements.justice.button.pay": "Pay",
