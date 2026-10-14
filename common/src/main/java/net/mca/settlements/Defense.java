@@ -51,10 +51,7 @@ public final class Defense {
 
             List<VillagerEntityMCA> residents = world.getEntitiesByClass(VillagerEntityMCA.class, box, VillagerEntityMCA::isAlive);
             List<VillagerEntityMCA> guards = residents.stream().filter(VillagerEntityMCA::isGuard).toList();
-            for (VillagerEntityMCA g : guards) {
-                LivingEntity nearest = threats.stream().min(Comparator.comparingDouble(g::squaredDistanceTo)).orElse(null);
-                if (nearest != null) g.getBrain().remember(MemoryModuleType.ATTACK_TARGET, nearest, 400);
-            }
+            // the guards are not set on every monster around: they learn of threats from what they see and what they are told
             // monsters are the guards' business: only a village without guards runs for cover, and nobody makes a fuss
             if (total >= MAJOR && guards.isEmpty() && world.getTime() % 200 < 100) {
                 for (VillagerEntityMCA r : residents) {

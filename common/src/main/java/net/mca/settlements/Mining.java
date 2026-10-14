@@ -81,6 +81,10 @@ public final class Mining {
             Step step = steps.get(village.mineStep);
             BlockPos target = o.add(step.dx(), step.dy(), step.dz());
             if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 49) break;
+            if (step.kind() == Blueprints.Kind.DIG && !world.getBlockState(target).isAir()) {
+                if (!Gear.wear(v, net.minecraft.item.PickaxeItem.class)) break; // the pick broke: a new one first
+                Gear.face(v, target);
+            }
             Builder.COLLECTOR = v;
             Builder.Result r;
             try {
@@ -125,7 +129,7 @@ public final class Mining {
             return o.add(prev.dx(), prev.dy(), prev.dz());
         }
         if (village.mineLevel == 0) return o; // the entrance, on the surface
-        int depth = 28, bottom = -(depth - 1);
-        return o.add(0, bottom, depth - 1 + 5 * (village.mineLevel - 1));
+        int depth = Blueprints.MINE_DEPTH;
+        return o.add(0, -depth + 1, depth + 4 + 8 * (village.mineLevel - 1)); // the end of the drift so far
     }
 }

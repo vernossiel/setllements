@@ -52,7 +52,8 @@ public final class Plan {
             new Goal("tavern", Level.VILLAGE, v -> v.tavern == null && v.storageBuilt && v.getPopulation() >= 6, 160, 12, 0, 0),
             new Goal("armory", Level.VILLAGE, v -> v.smithyBuilt && !v.armoryBuilt && v.getPopulation() >= 6, 150, 0, 0, 0),
             new Goal("tower", Level.VILLAGE, v -> v.towers < 2 && v.getPopulation() >= 8, 150, 60, 0, 0),
-            new Goal("wall", Level.TOWN, v -> !v.wallBuilt && v.storageBuilt && v.houses.size() >= 4 && v.getPopulation() >= 10 && v.towers >= 1, 0, 300, 0, 0)
+            new Goal("palisade", Level.HAMLET, v -> v.palisadeR == 0 && (v.getPopulation() >= 6 || Prosperity.danger(v) >= 3), 150, 0, 0, 0),
+            new Goal("wall", Level.TOWN, v -> !v.wallBuilt && v.palisadeR > 0 && v.getPopulation() >= 10, 0, 300, 0, 0)
     );
 
     private Plan() {
@@ -77,7 +78,51 @@ public final class Plan {
                     Math.max(0, g.iron() - Builder.stockIron(v)),
                     Math.max(0, g.wool() - Builder.stockWool(v))));
         }
+        // most needed first: what the village lacks right now decides, not a fixed order
+        list.sort(java.util.Comparator.comparingInt((Status s) -> -urgency(s.goal().id(), v)));
         return list;
+    }
+
+    /** How badly the village needs this now. */
+    public static int urgency(String id, Village v) {
+        int pop = v.getPopulation(), beds = v.getMaxPopulation();
+        int food = 0;
+        for (net.minecraft.item.ItemStack s : v.storageBuffer) if (s.isFood()) food += s.getCount();
+        boolean hungry = food < Math.max(1, pop) * 3;
+        double danger = Prosperity.danger(v);
+        Builder.Shortage sh = Builder.shortage(v);
+        boolean recentDeath = false, recentTheft = false;
+        for (Life.News n : Life.news(v)) {
+            if (n.key().equals("death") || n.key().equals("murder")) recentDeath = true;
+            if (n.key().equals("theft")) recentTheft = true;
+        }
+        return switch (id) {
+            case "townhall" -> 1000;
+            case "board" -> 300;
+            case "housing" -> pop >= beds ? 220 + 30 * (pop - beds) : 40;
+            case "farm" -> hungry ? 260 : 70;
+            case "granary" -> hungry ? 150 : 40;
+            case "mill" -> hungry ? 140 : 45;
+            case "pen" -> hungry ? 120 : 45;
+            case "well" -> 160;
+            case "storage" -> 90 + Math.min(80, v.storageBuffer.size() * 2);
+            case "sawmill" -> sh != null && sh.need() == Needs.Need.PLANKS ? 170 : 75;
+            case "charcoal" -> 65;
+            case "mason" -> sh != null && sh.need() == Needs.Need.COBBLE ? 140 : 55;
+            case "tower" -> danger >= 3 ? 200 : 55;
+            case "palisade" -> danger >= 3 ? 230 : 85;
+            case "wall" -> danger >= 3 ? 190 : 50;
+            case "barracks" -> danger >= 3 ? 180 : 45;
+            case "armory" -> danger >= 3 ? 120 : 35;
+            case "smithy" -> 80;
+            case "tavern" -> 60;
+            case "market" -> 45;
+            case "chapel" -> recentDeath ? 150 : 35;
+            case "jail" -> recentTheft ? 160 : 30;
+            case "hallup" -> 75;
+            case "rebuild" -> 55;
+            default -> 50;
+        };
     }
 
     /** What the builder lacks for the first goal that is waiting on materials, for the "needs help" marker. */

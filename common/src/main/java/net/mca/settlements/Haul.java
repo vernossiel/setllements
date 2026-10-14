@@ -88,7 +88,8 @@ public final class Haul {
     public static boolean carry(VillagerEntityMCA v, Village village, boolean done) {
         int load = load(v);
         if (!v.settlementsHauling) {
-            if (load >= FULL_LOAD || pocketsFull(v) || done && load > 0) {
+            if (load >= FULL_LOAD || pocketsFull(v) || done && load > 0 || v.settlementsDeliverNow && load > 0) {
+                v.settlementsDeliverNow = false;
                 v.settlementsHauling = true;
                 Speech.say(v, "settlements.say.haul");
             } else {

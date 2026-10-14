@@ -204,7 +204,8 @@ public final class GuardAI {
 
         List<BlockPos> route = route(village, world, center, night);
         if (route.isEmpty()) return;
-        int index = Math.floorMod((int) (time / 800) + g.getUuid().hashCode(), route.size());
+        // each guard walks the round on his own, starting somewhere else, pausing a while at every stop
+        int index = Math.floorMod((int) (time / 500) + Math.floorMod(g.getUuid().hashCode(), 97) * 5, route.size());
         BlockPos stop = route.get(index);
         if (g.squaredDistanceTo(stop.getX() + 0.5, stop.getY(), stop.getZ() + 0.5) > 16) {
             g.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(stop, 0.5f, 2));
@@ -215,6 +216,17 @@ public final class GuardAI {
     private static List<BlockPos> route(Village village, ServerWorld world, BlockPos center, boolean night) {
         List<BlockPos> stops = new ArrayList<>();
         stops.add(ground(world, center.getX(), center.getZ()));
+        // the edge of the village all round, and the doors of its buildings
+        int r = Math.max(18, Math.min(60, Bounds.radius(village) - 4));
+        for (int i = 0; i < 10; i++) {
+            double a = i * Math.PI / 5;
+            stops.add(ground(world, center.getX() + (int) (Math.cos(a) * r), center.getZ() + (int) (Math.sin(a) * r)));
+        }
+        for (Built b : village.built) {
+            int[] fp = b.footprint();
+            BlockPos f = b.point(fp[0] / 2, 0, fp[1] + 2);
+            stops.add(ground(world, f.getX(), f.getZ()));
+        }
         if (village.wallBuilt) {
             int half = 46;
             stops.add(ground(world, center.getX() + half, center.getZ()));

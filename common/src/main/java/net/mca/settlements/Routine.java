@@ -56,6 +56,7 @@ public final class Routine {
                     else Speech.sayAny(v, "settlements.say.lunch", 4);
                 }
                 if (v.settlementsLunchSec >= LUNCH_SECONDS) {
+                    Rest.end(v);
                     v.settlementsLunchDay = day;
                     v.settlementsLunchSec = 0;
                     v.settlementsWorkSeconds = 0;

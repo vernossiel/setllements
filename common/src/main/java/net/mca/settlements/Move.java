@@ -67,8 +67,24 @@ public final class Move {
         return village == null || Protection.severity(world, village, pos, state) == 0 && !Protection.insideStructure(village, pos);
     }
 
+    /** Gravel and sand above a block about to be dug come down first, so nobody is buried. */
+    static void clearFalling(ServerWorld world, BlockPos p, java.util.function.Consumer<ItemStack> drops) {
+        java.util.List<BlockPos> column = new java.util.ArrayList<>();
+        BlockPos q = p.up();
+        while (column.size() < 8 && world.getBlockState(q).getBlock() instanceof net.minecraft.block.FallingBlock) {
+            column.add(q);
+            q = q.up();
+        }
+        for (int i = column.size() - 1; i >= 0; i--) {
+            BlockPos c = column.get(i);
+            for (ItemStack drop : Block.getDroppedStacks(world.getBlockState(c), world, c, null)) drops.accept(drop);
+            world.breakBlock(c, false);
+        }
+    }
+
     /** Breaks the block as a player would: the drops go into the villager's pockets. */
     static void dig(VillagerEntityMCA v, ServerWorld world, BlockPos p) {
+        clearFalling(world, p, d -> v.getInventory().addStack(d));
         BlockState s = world.getBlockState(p);
         for (ItemStack drop : Block.getDroppedStacks(s, world, p, world.getBlockEntity(p))) v.getInventory().addStack(drop);
         world.breakBlock(p, false, v);
@@ -175,6 +191,7 @@ public final class Move {
                     v.settlementsGoal = new BlockPos(feet.getX(), top + 1, feet.getZ());
                     v.settlementsGoalAt = world.getTime() + 200; // stays wanted while he climbs
                     v.settlementsHandSec = HAND_AFTER;
+                    v.settlementsEscaping = true;
                     Speech.say(v, "settlements.react.trapped");
                     goal = v.settlementsGoal;
                 }
@@ -183,6 +200,7 @@ public final class Move {
         Vec3d pos = v.getPos();
         if (goal == null) {
             v.settlementsHandSec = 0;
+            v.settlementsEscaping = false;
             return false;
         }
         double hx = goal.getX() + 0.5 - pos.x, hz = goal.getZ() + 0.5 - pos.z;
@@ -200,8 +218,8 @@ public final class Move {
         v.getNavigation().stop();
         BlockPos feet = v.getBlockPos();
 
-        // right above or below the goal: build up or dig down
-        if (horiz < 1.5) {
+        // right above or below the goal: build up or dig down, but only to get out of a pit; errands never tunnel or tower
+        if (horiz < 1.5 && v.settlementsEscaping) {
             if (dy > 1 && dy <= 12) return pillar(v, village, world, feet);
             if (dy < -1) {
                 BlockPos down = feet.down();
@@ -236,7 +254,7 @@ public final class Move {
                 }
             }
             if (dug) return true;
-            if (dy > 0 && dy <= 12) return pillar(v, village, world, feet); // a wall nobody may break: climb over it
+            if (v.settlementsEscaping && dy > 0 && dy <= 12) return pillar(v, village, world, feet); // out of the pit
             v.settlementsSidestep = 3;
             return false;
         }

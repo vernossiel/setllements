@@ -133,6 +133,12 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public double settlementsPace;
     public boolean settlementsBreakLong;
     public int settlementsMealValue;
+    public boolean settlementsEscaping;
+    public net.minecraft.util.math.BlockPos settlementsExplore;
+    public int settlementsExploreTries;
+    public net.minecraft.util.math.BlockPos settlementsRestSpot;
+    public boolean settlementsDeliverNow;
+    public long settlementsHelloAfter;
     public net.minecraft.util.math.BlockPos penTarget;
     public net.minecraft.util.math.BlockPos settlementsKillPos;
     public long settlementsKillUntil = 0;

@@ -44,7 +44,7 @@ public final class Leisure {
             }
             return;
         }
-        if (phase < 25) return; // stand around for a while
+        if (phase < 25 || Seat.seated(v)) return; // stand around (or sit) for a while
         // stroll
         Vec3d target = FuzzyTargeting.find(v, 12, 4);
         if (target != null) {
@@ -58,6 +58,5 @@ public final class Leisure {
         if (near.isEmpty()) return;
         VillagerEntityMCA other = near.get(0);
         v.getLookControl().lookAt(other, 30f, 30f);
-        v.getWorld().playSoundFromEntity(null, v, SoundEvents.ENTITY_VILLAGER_AMBIENT, SoundCategory.NEUTRAL, 0.6f, 1.0f);
     }
 }

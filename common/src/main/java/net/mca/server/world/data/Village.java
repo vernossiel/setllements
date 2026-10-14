@@ -40,6 +40,7 @@ public class Village implements Iterable<Building> {
     public String buildType = "";
     public int buildW, buildD, buildF, buildRot;
     public boolean wellBuilt, wallBuilt;
+    public int palisadeR;
     public net.mca.settlements.Tavern tavern;
     public BlockPos mineOrigin, smithyFurnace, smithyAnvil, hallPos, penCenter;
     public net.mca.settlements.House hall;
@@ -141,6 +142,7 @@ public class Village implements Iterable<Building> {
         if (v.contains("tavern")) tavern = net.mca.settlements.Tavern.load(v.getCompound("tavern"));
         wellBuilt = v.getBoolean("wellBuilt");
         wallBuilt = v.getBoolean("wallBuilt");
+        palisadeR = v.getInt("palisadeR");
         farms = v.getInt("farms");
         towers = v.getInt("towers");
         int[] flatPlots = v.getIntArray("plots");
@@ -533,6 +535,7 @@ public class Village implements Iterable<Building> {
         v.putLongArray("towerLadders", towerLadders.stream().mapToLong(BlockPos::asLong).toArray());
         v.putBoolean("wellBuilt", wellBuilt);
         v.putBoolean("wallBuilt", wallBuilt);
+        v.putInt("palisadeR", palisadeR);
         v.putInt("farms", farms);
         v.putInt("towers", towers);
         int[] flat = new int[plots.size() * 4];

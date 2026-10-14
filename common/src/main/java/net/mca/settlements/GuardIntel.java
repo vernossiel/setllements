@@ -39,9 +39,8 @@ public final class GuardIntel {
             if (until >= world.getTime()) return true;
             REPORTED.remove(enemy.getUuid());
         }
-        // in the open, close to the village, and seen by a resident
-        return !world.getEntitiesByClass(VillagerEntityMCA.class, enemy.getBoundingBox().expand(SIGHT),
-                v -> v.isAlive() && !v.isSleeping() && v.canSee(enemy)).isEmpty();
+        // otherwise only what the guard sees with his own eyes, close by
+        return guard.squaredDistanceTo(enemy) < 14 * 14 && guard.canSee(enemy);
     }
 
     /** Called every second for civilians: a monster in plain view is reported to the nearest guards. */
@@ -64,8 +63,10 @@ public final class GuardIntel {
                 .stream().min(Comparator.comparingDouble(reporter::squaredDistanceTo)).orElse(null);
         if (guard == null) return;
         if (subject instanceof Monster) {
-            if (subject instanceof net.minecraft.entity.mob.CreeperEntity && !GuardAI.isArcher(guard)) return; // melee guards leave creepers to the archers
-            guard.getBrain().remember(MemoryModuleType.ATTACK_TARGET, subject, 300);
+            // told about it, the guard goes to have a look; he fights once he sees it himself (or it is known to attack)
+            if (guard.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) return;
+            guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(subject.getBlockPos(), 0.7f, 3));
+            Speech.say(guard, "settlements.say.guard.scout");
         } else {
             guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(subject, 0.7f, 2));
         }

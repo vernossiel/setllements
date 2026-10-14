@@ -72,12 +72,16 @@ public final class Staffing {
         VillagerEntityMCA elder = Plan.elder(world, v);
         for (VillagerEntityMCA r : adults) r.setElder(r == elder);
 
-        // for now the village runs on its core trades: builders, lumberjacks, miners, and a farmer so that it eats
-        List<Role> roles = new ArrayList<>();
+        // the elder decides who does what, after what the village needs right now
+        Builder.Shortage short_ = Builder.shortage(v);
+        int food = 0;
+        for (net.minecraft.item.ItemStack s : v.storageBuffer) if (s.isFood()) food += s.getCount();
+        boolean hungry = food < p * 3;
+        List<Role> roles = new ArrayList<>(); // in order of importance
         roles.add(new Role(VillagerProfession.CARTOGRAPHER, Math.max(1, p / 5)));
-        roles.add(new Role(VillagerProfession.FLETCHER, Math.max(1, p / 4)));
-        if (p >= 3) roles.add(new Role(VillagerProfession.MASON, Math.max(1, p / 5)));
-        if (p >= 4) roles.add(new Role(VillagerProfession.FARMER, Math.max(1, p / 6)));
+        if (p >= 3) roles.add(new Role(VillagerProfession.FARMER, Math.max(1, p / 6) + (hungry ? 1 : 0)));
+        roles.add(new Role(VillagerProfession.FLETCHER, Math.max(1, p / 4) + (short_ != null && short_.need() == Needs.Need.PLANKS ? 1 : 0)));
+        if (p >= 3) roles.add(new Role(VillagerProfession.MASON, Math.max(1, p / 5) + (short_ != null && short_.need() == Needs.Need.COBBLE ? 1 : 0)));
 
         // trades that are switched off for now go back to the pool
         for (VillagerEntityMCA r : adults) {
@@ -93,21 +97,45 @@ public final class Staffing {
             if (!r.isGuard() && !r.isElder() && isFree(r.getProfession())) pool.add(r);
         }
 
-        // guards first when the village is big enough to need them
+        // guards when the village is big enough to need them (more with barracks, more when it is attacked often)
         int guards = (int) adults.stream().filter(VillagerEntityMCA::isGuard).count();
         int guardTarget = p >= 5 ? Math.max(1, p / 7) : 0;
-        if (Buildings.has(v, "barracks")) guardTarget = Math.max(2, p / 4); // the barracks house and train more guards
+        if (Buildings.has(v, "barracks")) guardTarget = Math.max(2, p / 4);
+        if (p >= 4 && Prosperity.danger(v) >= 4) guardTarget++;
         while (guards < guardTarget && !pool.isEmpty()) {
-            assign(world, pool.remove(world.random.nextInt(pool.size())), ProfessionsMCA.GUARD.get());
+            announce(elder, assign(world, pool.remove(world.random.nextInt(pool.size())), ProfessionsMCA.GUARD.get()), ProfessionsMCA.GUARD.get());
             guards++;
         }
         for (Role role : roles) {
             int have = (int) adults.stream().filter(r -> r.getProfession() == role.profession()).count();
-            while (have < role.target() && !pool.isEmpty()) {
-                assign(world, pool.remove(world.random.nextInt(pool.size())), role.profession());
+            while (have < role.target()) {
+                VillagerEntityMCA who = null;
+                if (!pool.isEmpty()) {
+                    who = pool.remove(world.random.nextInt(pool.size()));
+                } else {
+                    // nobody free: someone from a trade that has more hands than it needs right now
+                    for (Role other : roles) {
+                        if (other == role) continue;
+                        List<VillagerEntityMCA> in = adults.stream().filter(r -> r.getProfession() == other.profession()).toList();
+                        if (in.size() > other.target() && roles.indexOf(other) > roles.indexOf(role)) {
+                            who = in.get(in.size() - 1);
+                            break;
+                        }
+                    }
+                }
+                if (who == null) break;
+                announce(elder, assign(world, who, role.profession()), role.profession());
                 have++;
             }
         }
+    }
+
+    /** The elder says it out loud, the next time he speaks. */
+    private static void announce(VillagerEntityMCA elder, VillagerEntityMCA who, VillagerProfession prof) {
+        if (elder == null || who == null) return;
+        String role = Registries.VILLAGER_PROFESSION.getId(prof).getPath();
+        elder.settlementsQueue.add(net.minecraft.text.Text.translatable("settlements.elder.assign", who.getName(),
+                net.minecraft.text.Text.translatable("settlements.role." + role)));
     }
 
     private static final java.util.Map<Integer, Long> HALL_RETRY = new java.util.HashMap<>();
@@ -138,10 +166,11 @@ public final class Staffing {
         }
     }
 
-    static void assign(ServerWorld world, VillagerEntityMCA v, VillagerProfession prof) {
+    static VillagerEntityMCA assign(ServerWorld world, VillagerEntityMCA v, VillagerProfession prof) {
         v.setProfession(prof);
         v.setExperience(1); // keeps the vanilla "lost my job site" logic from taking the job away again
         v.reinitializeBrain(world);
         Speech.sayHired(v);
+        return v;
     }
 }

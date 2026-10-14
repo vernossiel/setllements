@@ -127,6 +127,7 @@ public final class Gear {
                 ItemStack crafted = new ItemStack(tool(chore, tier));
                 if (slot >= 0) inv.setStack(slot, crafted);
                 else inv.addStack(crafted);
+                Speech.say(v, "settlements.say.tool.craft", crafted.getName());
                 return;
             }
         }
@@ -210,5 +211,46 @@ public final class Gear {
                 village.markDirty();
             }
         }
+    }
+
+    /** Turns the villager to face the block he is working on, body and head, like a player would. */
+    public static void face(VillagerEntityMCA v, net.minecraft.util.math.BlockPos p) {
+        double dx = p.getX() + 0.5 - v.getX(), dz = p.getZ() + 0.5 - v.getZ();
+        float yaw = (float) (net.minecraft.util.math.MathHelper.atan2(dz, dx) * (180 / Math.PI)) - 90f;
+        v.setYaw(yaw);
+        v.setBodyYaw(yaw);
+        v.setHeadYaw(yaw);
+        v.getLookControl().lookAt(p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5);
+    }
+
+    /**
+     * One use of the tool of this kind: it is taken in hand and wears down; worn out, it breaks. False when the
+     * villager has no such tool (he has to make one first).
+     */
+    public static boolean wear(VillagerEntityMCA v, Class<?> type) {
+        var inv = v.getInventory();
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack s = inv.getStack(i);
+            if (!type.isInstance(s.getItem())) continue;
+            if (s.isDamageable()) {
+                s.setDamage(s.getDamage() + 1);
+                if (s.getDamage() >= s.getMaxDamage()) {
+                    inv.setStack(i, ItemStack.EMPTY);
+                    v.setStackInHand(v.getDominantHand(), ItemStack.EMPTY);
+                    v.getWorld().playSoundFromEntity(null, v, net.minecraft.sound.SoundEvents.ENTITY_ITEM_BREAK, net.minecraft.sound.SoundCategory.NEUTRAL, 0.8f, 1f);
+                    Speech.say(v, "settlements.say.tool.broke");
+                    return false;
+                }
+            }
+            v.setStackInHand(v.getDominantHand(), s.copy());
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean has(VillagerEntityMCA v, Class<?> type) {
+        var inv = v.getInventory();
+        for (int i = 0; i < inv.size(); i++) if (type.isInstance(inv.getStack(i).getItem())) return true;
+        return false;
     }
 }

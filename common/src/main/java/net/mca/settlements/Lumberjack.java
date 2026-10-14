@@ -45,10 +45,34 @@ public final class Lumberjack {
 
         if (world.getTime() < v.settlementsNoWorkUntil) return false; // no trees around, look again later
 
+        // out looking for a wood further away
+        if (v.settlementsExplore != null && v.lumberTarget == null) {
+            BlockPos e = v.settlementsExplore;
+            if (v.squaredDistanceTo(e.getX() + 0.5, v.getY(), e.getZ() + 0.5) > 64) {
+                Move.to(v, e.getX() + 0.5, e.getY(), e.getZ() + 0.5, 0.6);
+                return false;
+            }
+            v.settlementsExplore = null; // arrived: look around here
+        }
         if (v.lumberTarget == null || !world.getBlockState(v.lumberTarget).isIn(BlockTags.LOGS)) {
             v.lumberTarget = null;
             List<BlockPos> trees = trees(world, v.getBlockPos(), village);
+            if (trees.size() <= (force ? 1 : MIN_TREES_LEFT) && !force && v.settlementsExploreTries < 6) {
+                // no wood worth cutting around here: go further and look again
+                BlockPos from = village != null ? new BlockPos(village.getCenter()) : v.getBlockPos();
+                for (int attempt = 0; attempt < 8; attempt++) {
+                    double a = world.random.nextDouble() * Math.PI * 2;
+                    int dist = 48 + world.random.nextInt(40) + 16 * v.settlementsExploreTries;
+                    int x = from.getX() + (int) (Math.cos(a) * dist), z = from.getZ() + (int) (Math.sin(a) * dist);
+                    if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+                    v.settlementsExplore = new BlockPos(x, world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z), z);
+                    v.settlementsExploreTries++;
+                    Speech.say(v, "settlements.say.lumber.explore");
+                    return false;
+                }
+            }
             if (trees.size() <= (force ? 1 : MIN_TREES_LEFT)) {
+                v.settlementsExploreTries = 0;
                 // leave the forest alone; with no forest at all the village has to ask for wood
                 v.settlementsNoWorkUntil = world.getTime() + 1200;
                 if (!force) {
@@ -64,6 +88,7 @@ public final class Lumberjack {
                     a.getSquaredDistance(v.getBlockPos()) + near * 3 * a.getSquaredDistance(center),
                     b.getSquaredDistance(v.getBlockPos()) + near * 3 * b.getSquaredDistance(center)));
             v.lumberTarget = trees.get(0);
+            v.settlementsExploreTries = 0;
         }
         BlockPos base = v.lumberTarget;
         if (v.squaredDistanceTo(base.getX() + 0.5, base.getY(), base.getZ() + 0.5) > 12) {
@@ -86,10 +111,13 @@ public final class Lumberjack {
         }
         int cut = 0, budget = Prosperity.ops(v, village, LOGS_PER_SECOND);
         if (budget == 0) return true; // a tired man swings slowly
+        Gear.face(v, base);
         for (BlockPos p : trunk) {
             if (cut >= budget) break;
+            if (!Gear.wear(v, net.minecraft.item.AxeItem.class)) break; // the axe broke: a new one first
             BlockState s = world.getBlockState(p);
             for (ItemStack drop : Block.getDroppedStacks(s, world, p, null)) v.getInventory().addStack(drop);
+            Move.clearFalling(world, p, d -> v.getInventory().addStack(d));
             world.setBlockState(p, Blocks.AIR.getDefaultState());
             cut++;
         }

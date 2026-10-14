@@ -462,29 +462,35 @@ public final class Blueprints {
         return l;
     }
 
-    /** Mine level k: a connector shaft and two new galleries, five blocks further along than the previous level. */
+    public static final int MINE_DEPTH = 16;
+
+    /**
+     * Mine level k (k >= 1): the main drift goes on eight blocks (2 wide, 3 high, a timber frame at its start, a
+     * torch on the wall), and two side branches run off it left and right, 1 wide and 2 high, a torch at each end.
+     */
     public static List<Step> mineExtension(int k) {
         List<Step> l = new ArrayList<>();
-        int depth = 28, bottom = -(depth - 1), z0 = depth - 1 + 5 * k;
-        for (int z = depth - 1 + 5 * (k - 1) + 2; z <= z0 + 1; z++) {
+        int bottom = -MINE_DEPTH + 1, z0 = MINE_DEPTH + 5 + 8 * (k - 1);
+        for (int z = z0; z < z0 + 8; z++) {
             for (int x = 0; x < 2; x++) for (int h = 0; h < 3; h++) l.add(new Step(x, bottom + h, z, Kind.DIG));
         }
-        for (int g = 0; g < 24; g++) {
-            for (int zz = 0; zz < 2; zz++) {
-                for (int h = 0; h < 3; h++) {
-                    l.add(new Step(2 + g, bottom + h, z0 + zz, Kind.DIG));
-                    l.add(new Step(-1 - g, bottom + h, z0 + zz, Kind.DIG));
-                }
-            }
-            if (g % 5 == 4) {
-                l.add(new Step(2 + g, bottom + 1, z0, Kind.TORCH));
-                l.add(new Step(-1 - g, bottom + 1, z0, Kind.TORCH));
-            }
-            if (g % 6 == 2) {
-                galleryFrame(l, 2 + g, bottom, z0);
-                galleryFrame(l, -1 - g, bottom, z0);
+        for (int h = 0; h < 3; h++) {
+            l.add(new Step(-1, bottom + h, z0, Kind.PILLAR));
+            l.add(new Step(2, bottom + h, z0, Kind.PILLAR));
+        }
+        for (int x = -1; x <= 2; x++) l.add(new Step(x, bottom + 3, z0, Kind.FLOOR));
+        l.add(new Step(0, bottom + 1, z0 + 2, Kind.TORCH));
+        int bz = z0 + 4;
+        for (int i = 1; i <= 10; i++) {
+            for (int h = 0; h < 2; h++) {
+                l.add(new Step(-i, bottom + h, bz, Kind.DIG));
+                l.add(new Step(1 + i, bottom + h, bz, Kind.DIG));
             }
         }
+        l.add(new Step(-9, bottom + 1, bz, Kind.TORCH));
+        l.add(new Step(10, bottom + 1, bz, Kind.TORCH));
+        l.add(new Step(-4, bottom + 1, bz, Kind.TORCH));
+        l.add(new Step(5, bottom + 1, bz, Kind.TORCH));
         return l;
     }
 
@@ -550,36 +556,37 @@ public final class Blueprints {
     // ---------- mine ----------
 
     /** A real mine: a two-wide stair shaft down 28 blocks and two straight galleries at the bottom. */
+    /**
+     * The mine's opening: a stair shaft two wide going down {@link #MINE_DEPTH} blocks, the steps cut into the ground,
+     * a timber frame and a wall torch every five steps, and a landing at the bottom with a chest and lights, from where
+     * the main drift will run on (see {@link #mineExtension}).
+     */
     public static List<Step> mine() {
         List<Step> l = new ArrayList<>();
-        int depth = 28;
+        int depth = MINE_DEPTH;
         for (int i = 0; i < depth; i++) {
             for (int x = 0; x < 2; x++) {
-                // headroom above the step, then the step itself one block into the ground (never on the grass)
                 for (int h = 0; h <= 2; h++) l.add(new Step(x, -i + h, i, Kind.DIG));
                 l.add(new Step(x, -i - 1, i, Kind.DIG));
                 l.add(new Step(x, -i - 1, i, Kind.STAIRS_N));
             }
-            if (i % 6 == 5) shaftFrame(l, i);
+            if (i % 5 == 4) shaftFrame(l, i);
         }
-        int bottom = -(depth - 1);
-        // two galleries, 24 blocks each, 2 wide and 3 high
-        for (int g = 0; g < 24; g++) {
-            for (int zz = 0; zz < 2; zz++) {
-                for (int h = 0; h < 3; h++) {
-                    l.add(new Step(2 + g, bottom + h, depth - 1 + zz, Kind.DIG));
-                    l.add(new Step(-1 - g, bottom + h, depth - 1 + zz, Kind.DIG));
-                }
-            }
-            if (g % 5 == 4) {
-                l.add(new Step(2 + g, bottom + 1, depth - 1, Kind.TORCH));
-                l.add(new Step(-1 - g, bottom + 1, depth - 1, Kind.TORCH));
-            }
-            if (g % 6 == 2) {
-                galleryFrame(l, 2 + g, bottom, depth - 1);
-                galleryFrame(l, -1 - g, bottom, depth - 1);
+        int floor = -depth, bottom = floor + 1;
+        for (int x = -1; x <= 3; x++) {
+            for (int z = depth; z <= depth + 4; z++) {
+                for (int h = 0; h < 3; h++) l.add(new Step(x, bottom + h, z, Kind.DIG));
+                l.add(new Step(x, floor, z, Kind.STONE));
             }
         }
+        for (int[] c : new int[][]{{-1, depth}, {3, depth}, {-1, depth + 4}, {3, depth + 4}}) {
+            for (int h = 0; h < 3; h++) l.add(new Step(c[0], bottom + h, c[1], Kind.PILLAR));
+        }
+        for (int x = -1; x <= 3; x++) l.add(new Step(x, bottom + 3, depth + 2, Kind.BEAM_X));
+        l.add(new Step(3, bottom, depth + 1, Kind.CHEST));
+        l.add(new Step(3, bottom, depth + 2, Kind.BARREL));
+        l.add(new Step(-1, bottom + 1, depth + 2, Kind.TORCH));
+        l.add(new Step(3, bottom + 1, depth + 3, Kind.TORCH));
         return l;
     }
 

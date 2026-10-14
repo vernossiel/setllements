@@ -48,9 +48,9 @@ public final class Builder {
     }
 
     private static List<Step> plan(Village v) {
-        if (v.buildType.equals("wall")) {
-            String key = "wall|" + v.buildW + "|" + (v.buildOrigin == null ? 0 : v.buildOrigin.asLong());
-            return CACHE.computeIfAbsent(key, k -> wallPlan(v));
+        if (v.buildType.equals("wall") || v.buildType.equals("palisade")) {
+            String key = v.buildType + "|" + v.buildW + "|" + (v.buildOrigin == null ? 0 : v.buildOrigin.asLong());
+            return CACHE.computeIfAbsent(key, k -> Walls.plan(v, v.buildType.equals("wall")));
         }
         return stepsFor(v.buildType, v.buildW, v.buildD, v.buildF);
     }
@@ -305,18 +305,20 @@ public final class Builder {
                     if (startRing(village, world, "board", 0, 0, 0, 0, 1)) return true;
                     if (start(village, world, "board", 3, 2, 0)) return true;
                 }
-                case "wall" -> {
+                case "palisade", "wall" -> {
+                    // the border round the village: marked out by the builder, then raised along the line
                     BlockPos c = new BlockPos(village.getCenter());
-                    int half = 46;
                     int cy = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, c.getX(), c.getZ());
-                    village.buildType = "wall";
-                    village.buildOrigin = new BlockPos(c.getX() - half, cy, c.getZ() - half);
+                    int r = st.goal().id().equals("wall") && village.palisadeR > 0 ? village.palisadeR : Walls.radius(village);
+                    village.buildType = st.goal().id();
+                    village.buildOrigin = new BlockPos(c.getX(), cy, c.getZ());
                     village.buildRot = 0;
-                    village.buildW = half * 2 + 1;
-                    village.buildD = half * 2 + 1;
+                    village.buildW = r;
+                    village.buildD = r;
                     village.buildF = 0;
                     village.buildStep = 0;
                     village.markDirty();
+                    announceProject = st.goal().id();
                     return true;
                 }
                 default -> {
@@ -418,6 +420,7 @@ public final class Builder {
         if (village.buildOrigin == null && !plan(village, world)) {
             Needs.Need blocker = Plan.firstBlocker(village);
             markShort(village, blocker, blocker == Needs.Need.PLANKS || blocker == Needs.Need.COBBLE);
+            Life.askForHelp(v, village, world, blocker);
             if (blocker != Needs.Need.NONE && Scavenge.work(v, village, world, blocker, blocker == Needs.Need.PLANKS || blocker == Needs.Need.COBBLE)) {
                 if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, Needs.Need.NONE);
                 Speech.say(v, "settlements.say.build.scavenge");
@@ -465,7 +468,8 @@ public final class Builder {
                     ? v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > limit
                     : bx * bx + bz * bz > limit || Math.abs(stand.getY() - v.getY()) > 12;
             if (far) {
-                Move.to(v, stand.getX() + 0.5, village.buildType.equals("mine") ? stand.getY() : origin.getY(), stand.getZ() + 0.5, 0.6);
+                boolean border = village.buildType.equals("palisade") || village.buildType.equals("wall");
+                Move.to(v, stand.getX() + 0.5, village.buildType.equals("mine") || border ? stand.getY() : origin.getY(), stand.getZ() + 0.5, 0.6);
                 return worked;
             }
 
@@ -477,6 +481,7 @@ public final class Builder {
                     default -> false;
                 };
                 markShort(village, need, any);
+                Life.askForHelp(v, village, world, need);
                 if (Scavenge.work(v, village, world, need, any)) {
                     if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, Needs.Need.NONE);
                     Speech.say(v, "settlements.say.build.scavenge");
@@ -497,6 +502,10 @@ public final class Builder {
                 v.settlementsCarry--;
                 ops++;
                 worked = true;
+                // the block in hand, facing the spot, like a player laying it
+                Gear.face(v, target);
+                Item held = world.getBlockState(target).getBlock().asItem();
+                if (held != Items.AIR) v.setStackInHand(v.getDominantHand(), new ItemStack(held));
                 v.swingHand(v.getDominantHand());
             } else {
                 skips++;
@@ -824,7 +833,7 @@ public final class Builder {
                     if (b.origin().equals(o)) village.built.set(i, b.withFloors(b.f() + 1));
                 }
             }
-            case "mine", "wall" -> {
+            case "mine", "wall", "palisade" -> {
             }
             default -> village.built.add(new Built(type, o, village.buildW, village.buildD, Math.max(1, village.buildF), rot));
         }
@@ -867,11 +876,12 @@ public final class Builder {
                 village.penCenter = o.add(pr[0], 0, pr[1]);
             }
             case "wall" -> village.wallBuilt = true;
+            case "palisade" -> village.palisadeR = village.buildW;
             default -> {
             }
         }
         ServerWorld world = village.getWorld();
-        if (world != null && !type.equals("upgrade") && !type.equals("hallup") && !type.equals("mine") && !type.equals("wall")) {
+        if (world != null && !type.equals("upgrade") && !type.equals("hallup") && !type.equals("mine") && !type.equals("wall") && !type.equals("palisade")) {
             if (Buildings.base(type).equals("well")) {
                 Roads.plaza(world, village);
             } else {
@@ -939,6 +949,12 @@ public final class Builder {
                     if (!world.getFluidState(target.offset(dir)).isEmpty()) return Result.ABORT; // water or lava, stop mining
                 }
                 if (old.getBlock() instanceof BlockWithEntity) return Result.SKIPPED;
+                Move.clearFalling(world, target, drop -> {
+                    if (COLLECTOR != null) {
+                        ItemStack rest = COLLECTOR.getInventory().addStack(drop);
+                        if (!rest.isEmpty()) Workforce.addToTreasury(village, rest);
+                    } else Workforce.addToTreasury(village, drop);
+                });
                 for (ItemStack drop : Block.getDroppedStacks(old, world, target, world.getBlockEntity(target))) {
                     if (COLLECTOR != null) {
                         ItemStack rest = COLLECTOR.getInventory().addStack(drop);

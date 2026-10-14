@@ -135,12 +135,18 @@ public final class Camp {
         if (fire == null) fire = ensureHearth(village, world);
         if (fire == null) return false;
         BlockPos place = slot(v, world, fire);
+        if (Seat.seated(v)) return true;
         if (v.squaredDistanceTo(place.getX() + 0.5, place.getY(), place.getZ() + 0.5) > 2.5) {
             Move.to(v, place.getX() + 0.5, place.getY(), place.getZ() + 0.5, 0.55);
             return false;
         }
         v.getNavigation().stop();
         v.getLookControl().lookAt(fire.getX() + 0.5, fire.getY() + 0.5, fire.getZ() + 0.5);
+        if (!Seat.seated(v)) { // sit down at his place, facing the fire
+            double dx = fire.getX() - place.getX(), dz = fire.getZ() - place.getZ();
+            float yaw = (float) (Math.atan2(dz, dx) * (180 / Math.PI)) - 90f;
+            Seat.sitHere(v, yaw);
+        }
         return true;
     }
 }

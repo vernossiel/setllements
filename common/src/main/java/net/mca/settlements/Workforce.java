@@ -127,13 +127,14 @@ public final class Workforce {
         // the day's rhythm: morning gathering with the elder, lunch at the hearth
         if (isWorkTime(time) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld rw && Routine.tick(v, village, rw, time)) return;
 
-        // breaks: a long one when exhausted, a short one now and then
+        // breaks come with tiredness, not by the clock: a long one when worn out, a short one when the strength
+        // runs low (each at a moment of his own, so they do not all stop together)
         if (!v.settlementsBreak && autonomousWorking(v, job)) {
             if (v.settlementsEnergy <= EXHAUST_AT) {
                 startBreak(v, 0);
                 v.settlementsBreakLong = true; // worn out: back to work only when properly rested
                 Speech.sayAny(v, "settlements.say.tired", 5);
-            } else if (v.settlementsWorkSeconds >= MICRO_BREAK_AFTER) {
+            } else if (v.settlementsEnergy <= 450 && v.getRandom().nextInt(45) == 0) {
                 startBreak(v, MICRO_BREAK_SECONDS);
                 Speech.sayAny(v, "settlements.say.break", 5);
             }
@@ -143,12 +144,13 @@ public final class Workforce {
             }
         }
         if (v.settlementsBreak) {
-            boolean seated = Camp.goAndSit(v, village);
+            boolean seated = Rest.tick(v, village);
             v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + (seated ? FIRE_REST_GAIN : REST_GAIN));
             // the break only counts once he sits at the fire (or after a long walk that got him nowhere)
             if (v.settlementsBreakLeft > 0 && (seated || v.settlementsBreakWalk++ > 60)) v.settlementsBreakLeft--;
             if (v.settlementsBreakLeft <= 0 && v.settlementsEnergy >= (v.settlementsBreakLong ? RESUME_AFTER_EXHAUST : START_WORK_ENERGY) || !isWorkTime(time)) {
                 v.settlementsBreak = false;
+                Rest.end(v);
                 v.settlementsBreakLong = false;
                 v.settlementsWorkSeconds = 0;
             }
@@ -181,6 +183,7 @@ public final class Workforce {
         if (!isWorkTime(time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
             // supper and chat: eat a little earlier in the evening
+            if (!Leisure.isLeisureTime(time)) Rest.end(v); // bedtime: up and off home
             if (Leisure.isLeisureTime(time) && !(v.isGuard() && GuardAI.onDuty(v, time))) {
                 if (v.settlementsHunger >= 250 && hasMeal(v, village) && startEating(v, village, 250)) return;
                 Leisure.tick(v, village, time);
@@ -190,6 +193,7 @@ public final class Workforce {
         if (v.settlementsEnergy < START_WORK_ENERGY) return;
 
         VillagerProfession prof = v.getProfession();
+        if (Seat.seated(v)) Rest.end(v); // up, back to work
         if (isCustomWorker(prof)) {
             boolean worked = false;
             // a worker with nothing to do for a while lends the builders a hand (and looks for his own work now and then)
@@ -209,7 +213,7 @@ public final class Workforce {
             else if (prof == VillagerProfession.ARMORER) worked = Smithing.work(v, village);
             else if (prof == VillagerProfession.CLERIC) worked = Healing.work(v, village);
             else if (prof == VillagerProfession.FLETCHER || prof == VillagerProfession.TOOLSMITH) {
-                if (v.age % 400 == 0 || v.getInventory().isEmpty()) Gear.equipTool(v, village, Chore.CHOP);
+                if (v.age % 400 == 0 || !Gear.has(v, net.minecraft.item.AxeItem.class)) Gear.equipTool(v, village, Chore.CHOP);
                 worked = Lumberjack.work(v, village);
             }
             else worked = Husbandry.work(v, village);
@@ -217,7 +221,9 @@ public final class Workforce {
             if (!worked) v.settlementsWorkSeconds++; // time on the job counts, walking included, for the next break
             if (worked) {
                 if (v.settlementsWorkSeconds == 0) Speech.sayWork(v);
-                v.settlementsEnergy -= WORK_DRAIN + REST_GAIN; // cancels the rest gain above
+                // digging and felling wear a man out faster than laying blocks
+                int drain = prof == VillagerProfession.MASON || prof == VillagerProfession.FLETCHER || prof == VillagerProfession.TOOLSMITH ? 3 : 2;
+                v.settlementsEnergy -= drain + REST_GAIN; // cancels the rest gain above
                 v.settlementsHunger += HUNGER_RISE;
                 v.settlementsWorkSeconds++;
             }

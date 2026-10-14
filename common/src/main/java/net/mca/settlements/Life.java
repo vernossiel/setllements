@@ -145,6 +145,7 @@ public final class Life {
 
     /** Runs from the danger: towards the town hall if it lies away from the threat, otherwise simply away. */
     static void flee(VillagerEntityMCA v, PlayerEntity from, Village village, ServerWorld world) {
+        Rest.end(v); // up from the seat first
         Vec3d away = null;
         if (village != null && village.hallPos != null) {
             Vec3d hall = Vec3d.ofBottomCenter(village.hallPos);
@@ -196,6 +197,7 @@ public final class Life {
         if (now < v.settlementsFleeUntil && !v.isGuard()) return true; // still running and shaking
 
         if (!v.isGuard() && shelter(v, village, world, time)) return true;
+        if (!Seat.seated(v)) passing(v, world);
         if (share(v, village, world)) return true;
         if (!Workforce.isWorkTime(time) || v.settlementsBreak) converse(v, village, world);
         return false;
@@ -263,6 +265,7 @@ public final class Life {
             if (!world.isSkyVisible(q) && Move.passable(world, q) && Move.passable(world, q.up()) && world.getBlockState(q.down()).isSolidBlock(world, q.down())) roof = q;
         }
         if (roof == null) return false;
+        Rest.end(v);
         Move.to(v, roof.getX() + 0.5, roof.getY(), roof.getZ() + 0.5, 0.7);
         Speech.say(v, storm ? "settlements.react.storm" : "settlements.react.rain");
         return true;
@@ -301,7 +304,59 @@ public final class Life {
         return true;
     }
 
+    // ---------- asking each other ----------
+
+    private static final Map<Integer, Long> ASKED = new HashMap<>();
+
+    /**
+     * The builder short of something calls on the one who brings it: the lumberjack for wood, the miner for stone.
+     * The other answers and takes what he carries to the stores at once.
+     */
+    public static void askForHelp(VillagerEntityMCA builder, Village village, ServerWorld world, Needs.Need need) {
+        if (village == null || need == null || need == Needs.Need.NONE) return;
+        long now = world.getTime();
+        if (now < ASKED.getOrDefault(village.getId(), 0L)) return;
+        VillagerProfession who = need == Needs.Need.PLANKS ? VillagerProfession.FLETCHER : need == Needs.Need.COBBLE ? VillagerProfession.MASON : null;
+        if (who == null) return;
+        VillagerEntityMCA helper = world.getEntitiesByClass(VillagerEntityMCA.class, builder.getBoundingBox().expand(96, 24, 96),
+                o -> o.isAlive() && (o.getProfession() == who || who == VillagerProfession.FLETCHER && o.getProfession() == VillagerProfession.TOOLSMITH))
+                .stream().min(java.util.Comparator.comparingDouble(o -> o.squaredDistanceTo(builder))).orElse(null);
+        if (helper == null) return;
+        ASKED.put(village.getId(), now + 2400);
+        Speech.sayNow(builder, "settlements.say.ask." + need.name().toLowerCase(), helper.getName());
+        helper.settlementsReplyKey = "settlements.say.ask.ok";
+        helper.settlementsReplyArgs = new Object[]{builder.getName()};
+        helper.settlementsReplyAt = now + 60;
+        helper.settlementsDeliverNow = true;
+    }
+
+    // ---------- passing by ----------
+
+    /** Two villagers passing each other say hello now and then: a wave, a word, an answer. */
+    private static void passing(VillagerEntityMCA v, ServerWorld world) {
+        long now = world.getTime();
+        if (now < v.settlementsHelloAfter || v.getRandom().nextInt(6) != 0) return;
+        VillagerEntityMCA other = world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(3),
+                o -> o != v && o.isAlive() && !o.isBaby() && !o.isSleeping() && o.settlementsReplyKey == null && now >= o.settlementsHelloAfter)
+                .stream().findFirst().orElse(null);
+        if (other == null) return;
+        v.settlementsHelloAfter = now + 2400 + v.getRandom().nextInt(2400);
+        other.settlementsHelloAfter = v.settlementsHelloAfter;
+        v.getLookControl().lookAt(other, 30f, 30f);
+        v.swingHand(v.getDominantHand());
+        Speech.say(v, "settlements.talk.hello." + v.getRandom().nextInt(4), other.getName());
+        other.settlementsReplyKey = "settlements.talk.hello_back." + v.getRandom().nextInt(4);
+        other.settlementsReplyArgs = new Object[]{v.getName()};
+        other.settlementsReplyAt = now + 30;
+    }
+
     // ---------- conversations ----------
+
+    /** A word with whoever sits nearby during a break. */
+    public static void restingChat(VillagerEntityMCA v, ServerWorld world) {
+        Village village = Village.findNearest(v).orElse(null);
+        converse(v, village, world);
+    }
 
     private static void converse(VillagerEntityMCA v, Village village, ServerWorld world) {
         long now = world.getTime();
@@ -322,7 +377,6 @@ public final class Life {
         long pause = 1600 + world.random.nextInt(1600);
         v.settlementsTalkAfter = now + pause;
         other.settlementsTalkAfter = now + pause;
-        world.playSoundFromEntity(null, v, SoundEvents.ENTITY_VILLAGER_AMBIENT, SoundCategory.NEUTRAL, 0.5f, 1.0f);
     }
 
     /** What is on this villager's mind: {topic} or {topic, argument}. */
@@ -365,7 +419,6 @@ public final class Life {
             v.getNavigation().startMovingTo(friend, 0.8);
             if (v.squaredDistanceTo(friend) < 3) {
                 Speech.say(v, "settlements.kid.tag." + world.random.nextInt(3));
-                world.playSoundFromEntity(null, v, SoundEvents.ENTITY_VILLAGER_CELEBRATE, SoundCategory.NEUTRAL, 0.5f, 1.6f);
                 Vec3d run = NoPenaltyTargeting.findFrom(friend, 10, 3, v.getPos());
                 if (run != null) friend.getNavigation().startMovingTo(run.x, run.y, run.z, 0.85);
             }
