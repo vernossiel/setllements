@@ -40,6 +40,8 @@ public class GuardEnemiesSensor extends NearestLivingEntitiesSensor<LivingEntity
     private Optional<LivingEntity> getNearestHostile(LivingEntity entity) {
         return getVisibleMobs(entity).flatMap((list) -> list.stream(e -> isGuardEnemy(e, entity))
                 .filter(e -> e.squaredDistanceTo(entity) <= 48.0 * 48.0)
+                .filter(e -> !(e instanceof net.minecraft.entity.mob.CreeperEntity) || (entity instanceof VillagerEntityMCA g && net.mca.settlements.GuardAI.isArcher(g)))
+                .filter(e -> !(entity.getWorld() instanceof ServerWorld sw) || !(e instanceof net.minecraft.entity.mob.Monster) || net.mca.settlements.GuardIntel.isKnown(sw, entity, e))
                 .min((a, b) -> this.compareEntities(entity, a, b)));
     }
 

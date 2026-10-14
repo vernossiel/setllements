@@ -1100,5 +1100,20 @@
   "settlements.say.cook.ready": "Обед готов!",
   "settlements.say.mine.dig": "Копаю глубже.",
   "settlements.say.search": "Здесь делать нечего, поищу в другом месте.",
-  "settlements.say.nowork": "Работы тут нет. Пока отдохну."
+  "settlements.say.nowork": "Работы тут нет. Пока отдохну.",
+  "settlements.role.elder": "Старейшина",
+  "settlements.goal.townhall": "ратуша",
+  "settlements.goal.pen": "загон для овец",
+  "settlements.say.build.townhall": "Сначала ратуша. Там будут наши запасы.",
+  "settlements.say.build.pen": "Загон для овец.",
+  "settlements.say.pen.herd": "Идём, в загон.",
+  "settlements.say.pen.feed": "Немного пшеницы для стада.",
+  "settlements.say.pen.shear": "Стой спокойно, остригу.",
+  "settlements.say.lumber.fell": "Берегись!",
+  "settlements.say.lumber.plant": "Посажу саженец на этом месте.",
+  "settlements.say.guard.reported": "Мне доложили. Иду.",
+  "settlements.say.report.mob": "Стража! Там монстр!",
+  "settlements.say.report.player": "Стража! Кто-то портит деревню!",
+  "settlements.say.report.thief": "Стража! Кто-то грабит запасы!",
+  "settlements.seed": "Старейшина открыл деревенские запасы."
 }

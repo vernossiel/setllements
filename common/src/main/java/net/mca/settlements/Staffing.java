@@ -49,6 +49,23 @@ public final class Staffing {
         int p = adults.size();
         if (p < 2) return;
 
+        // the founders' supplies: a new village starts with enough to begin, the rest it has to earn
+        if (!v.seeded) {
+            v.seeded = true;
+            int pop = Math.max(p, 4);
+            Workforce.addToTreasury(v, new net.minecraft.item.ItemStack(net.minecraft.item.Items.OAK_PLANKS, 60 + pop * 10));
+            Workforce.addToTreasury(v, new net.minecraft.item.ItemStack(net.minecraft.item.Items.OAK_LOG, 12));
+            Workforce.addToTreasury(v, new net.minecraft.item.ItemStack(net.minecraft.item.Items.COBBLESTONE, 24));
+            Workforce.addToTreasury(v, new net.minecraft.item.ItemStack(net.minecraft.item.Items.BREAD, pop * 2));
+            Workforce.addToTreasury(v, new net.minecraft.item.ItemStack(net.minecraft.item.Items.WHITE_WOOL, 6));
+            Workforce.addToTreasury(v, new net.minecraft.item.ItemStack(net.minecraft.item.Items.WHEAT_SEEDS, 8));
+            v.markDirty();
+        }
+
+        // the elder: the first civilian by id, always the same one, and he keeps no other job
+        VillagerEntityMCA elder = Plan.elder(world, v);
+        for (VillagerEntityMCA r : adults) r.setElder(r == elder);
+
         int wool = Builder.stockWool(v);
         List<Role> roles = new ArrayList<>();
         roles.add(new Role(VillagerProfession.CARTOGRAPHER, Math.max(1, p / 6)));
@@ -64,7 +81,7 @@ public final class Staffing {
 
         List<VillagerEntityMCA> pool = new ArrayList<>();
         for (VillagerEntityMCA r : adults) {
-            if (!r.isGuard() && isFree(r.getProfession())) pool.add(r);
+            if (!r.isGuard() && !r.isElder() && isFree(r.getProfession())) pool.add(r);
         }
 
         // guards first when the village is big enough to need them

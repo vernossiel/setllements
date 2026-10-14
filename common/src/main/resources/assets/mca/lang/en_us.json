@@ -1212,5 +1212,20 @@
   "settlements.say.cook.ready": "Dinner's ready!",
   "settlements.say.mine.dig": "Digging deeper.",
   "settlements.say.search": "Nothing to do here, I'll look elsewhere.",
-  "settlements.say.nowork": "There's no work here. I'll rest for now."
+  "settlements.say.nowork": "There's no work here. I'll rest for now.",
+  "settlements.role.elder": "Elder",
+  "settlements.goal.townhall": "a town hall",
+  "settlements.goal.pen": "a sheep pen",
+  "settlements.say.build.townhall": "First, a town hall. It will keep our stores.",
+  "settlements.say.build.pen": "A pen for the sheep.",
+  "settlements.say.pen.herd": "Come on, into the pen.",
+  "settlements.say.pen.feed": "A little wheat for the flock.",
+  "settlements.say.pen.shear": "Hold still, I'll shear you.",
+  "settlements.say.lumber.fell": "Timber!",
+  "settlements.say.lumber.plant": "I'll plant a sapling in its place.",
+  "settlements.say.guard.reported": "I was told about this. I'm on my way.",
+  "settlements.say.report.mob": "Guards! There's a monster over there!",
+  "settlements.say.report.player": "Guards! Someone is damaging the village!",
+  "settlements.say.report.thief": "Guards! Someone is stealing from the stores!",
+  "settlements.seed": "The elder opened the village stores."
 }

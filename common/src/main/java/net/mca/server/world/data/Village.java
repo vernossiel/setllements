@@ -41,7 +41,9 @@ public class Village implements Iterable<Building> {
     public int buildW, buildD, buildF, buildRot;
     public boolean wellBuilt, wallBuilt;
     public net.mca.settlements.Tavern tavern;
-    public BlockPos mineOrigin, smithyFurnace, smithyAnvil;
+    public BlockPos mineOrigin, smithyFurnace, smithyAnvil, hallPos, penCenter;
+    public boolean seeded;
+    public final List<BlockPos> hallChests = new LinkedList<>();
     public int mineLevel = 1, mineStep;
     public final List<BlockPos> watchPoints = new LinkedList<>();
     /** Bottom cell of each tower's ladder, same order as {@link #watchPoints}. */
@@ -118,6 +120,10 @@ public class Village implements Iterable<Building> {
         storageBuilt = v.getBoolean("storageBuilt");
         mineBuilt = v.getBoolean("mineBuilt");
         if (v.contains("mineOrigin")) mineOrigin = BlockPos.fromLong(v.getLong("mineOrigin"));
+        if (v.contains("hallPos")) hallPos = BlockPos.fromLong(v.getLong("hallPos"));
+        if (v.contains("penCenter")) penCenter = BlockPos.fromLong(v.getLong("penCenter"));
+        seeded = v.getBoolean("seeded");
+        for (long l : v.getLongArray("hallChests")) hallChests.add(BlockPos.fromLong(l));
         if (v.contains("smithyFurnace")) smithyFurnace = BlockPos.fromLong(v.getLong("smithyFurnace"));
         if (v.contains("smithyAnvil")) smithyAnvil = BlockPos.fromLong(v.getLong("smithyAnvil"));
         mineLevel = v.contains("mineLevel") ? Math.max(1, v.getInt("mineLevel")) : 1;
@@ -501,6 +507,10 @@ public class Village implements Iterable<Building> {
         v.putBoolean("mineBuilt", mineBuilt);
         if (tavern != null) v.put("tavern", tavern.save());
         if (mineOrigin != null) v.putLong("mineOrigin", mineOrigin.asLong());
+        if (hallPos != null) v.putLong("hallPos", hallPos.asLong());
+        if (penCenter != null) v.putLong("penCenter", penCenter.asLong());
+        v.putBoolean("seeded", seeded);
+        v.putLongArray("hallChests", hallChests.stream().mapToLong(BlockPos::asLong).toArray());
         if (smithyFurnace != null) v.putLong("smithyFurnace", smithyFurnace.asLong());
         if (smithyAnvil != null) v.putLong("smithyAnvil", smithyAnvil.asLong());
         v.putInt("mineLevel", mineLevel);

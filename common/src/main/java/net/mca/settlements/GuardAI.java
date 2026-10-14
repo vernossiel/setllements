@@ -61,7 +61,7 @@ public final class GuardAI {
         }
 
         List<LivingEntity> hostiles = world.getEntitiesByClass(LivingEntity.class, g.getBoundingBox().expand(SIGHT, 8, SIGHT),
-                e -> e instanceof Monster && e.isAlive() && !(e instanceof VillagerEntityMCA));
+                e -> e instanceof Monster && e.isAlive() && !(e instanceof VillagerEntityMCA) && GuardIntel.isKnown(world, g, e));
         if (!hostiles.isEmpty()) {
             fight(g, village, world, hostiles, current);
             return;

@@ -110,6 +110,25 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public String settlementsNeed = "NONE";
     public boolean settlementsCaravan = false;
     public int settlementsStuck = 0;
+    public net.minecraft.util.math.BlockPos lumberTarget;
+    public net.minecraft.util.math.BlockPos penTarget;
+
+    public boolean isElder() {
+        return getTrackedValue(ELDER);
+    }
+
+    public void setElder(boolean elder) {
+        if (isElder() != elder) setTrackedValue(ELDER, elder);
+    }
+
+    /** The role shown to the player: the elder, one of the village jobs, or the plain profession name. */
+    public Text settlementsRoleText() {
+        if (isElder()) return Text.translatable("settlements.role.elder").formatted(Formatting.GOLD);
+        VillagerProfession p = getProfession();
+        if (p == VillagerProfession.NONE || p == VillagerProfession.NITWIT) return getProfessionText();
+        String path = net.minecraft.registry.Registries.VILLAGER_PROFESSION.getId(p).getPath();
+        return Text.translatable("settlements.role." + path).formatted(Formatting.GOLD);
+    }
     public int climbPhase = 0; // 0 none, 1 walking to the ladder, 2 climbing up, 3 climbing down
     public BlockPos climbBase, climbTop, climbDeck;
     public int climbTimer = 0;
@@ -127,6 +146,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
 
     private static final CDataParameter<Float> INFECTION_PROGRESS = CParameter.create("infectionProgress", 0.0f);
     private static final CDataParameter<Integer> GROWTH_AMOUNT = CParameter.create("growthAmount", -AgeState.getMaxAge());
+    private static final CDataParameter<Boolean> ELDER = CParameter.create("settlementsElder", false);
     private static final CDataManager<VillagerEntityMCA> DATA = createTrackedData(VillagerEntityMCA.class).build();
 
     public final ConversationManager conversationManager = new ConversationManager(this);
@@ -152,7 +172,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     private static final int RECALCULATE_DIMENSIONS_EVERY_N_TICKS = 100;
 
     public static <E extends Entity> CDataManager.Builder<E> createTrackedData(Class<E> type) {
-        return VillagerLike.createTrackedData(type).addAll(INFECTION_PROGRESS, GROWTH_AMOUNT)
+        return VillagerLike.createTrackedData(type).addAll(INFECTION_PROGRESS, GROWTH_AMOUNT, ELDER)
                 .add(Residency::createTrackedData)
                 .add(BreedableRelationship::createTrackedData);
     }
@@ -1175,11 +1195,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public final Text getDisplayName() {
         Text name = super.getDisplayName();
 
-        net.minecraft.village.VillagerProfession role = getProfession();
-        if (role != net.minecraft.village.VillagerProfession.NONE && role != net.minecraft.village.VillagerProfession.NITWIT && !isBaby()) {
-            String path = net.minecraft.registry.Registries.VILLAGER_PROFESSION.getId(role).getPath();
-            name = name.copyContentOnly().append(Text.literal(" · ").formatted(Formatting.GRAY))
-                    .append(Text.translatable("settlements.role." + path).formatted(Formatting.GOLD));
+        if (!isBaby() && (isElder() || (getProfession() != net.minecraft.village.VillagerProfession.NONE && getProfession() != net.minecraft.village.VillagerProfession.NITWIT))) {
+            name = name.copyContentOnly().append(Text.literal(" \u00B7 ").formatted(Formatting.GRAY)).append(settlementsRoleText());
         }
 
         if (getVillagerBrain() != null) {

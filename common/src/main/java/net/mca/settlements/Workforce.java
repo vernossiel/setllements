@@ -30,7 +30,6 @@ public final class Workforce {
 
     public static Chore choreFor(VillagerProfession p) {
         if (p == VillagerProfession.FARMER) return Chore.HARVEST;
-        if (p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH) return Chore.CHOP;
         if (p == VillagerProfession.FISHERMAN) return Chore.FISH;
         if (p == VillagerProfession.LEATHERWORKER) return Chore.HUNT;
         return Chore.NONE;
@@ -53,7 +52,8 @@ public final class Workforce {
 
     private static boolean isCustomWorker(VillagerProfession p) {
         return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER
-                || p == VillagerProfession.MASON || p == VillagerProfession.ARMORER || p == VillagerProfession.CLERIC;
+                || p == VillagerProfession.MASON || p == VillagerProfession.ARMORER || p == VillagerProfession.CLERIC
+                || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH;
     }
 
     /** Server side, once per second. */
@@ -72,6 +72,13 @@ public final class Workforce {
         if (job != Chore.NONE && !autonomous) return; // player-assigned chores ignore this system
 
         Unstick.tick(v, village);
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld watchWorld) GuardIntel.civilianWatch(v, watchWorld);
+
+        // the elder keeps office by the town hall's lectern
+        if (v.isElder() && village != null && village.hallPos != null && isWorkTime(time) && v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET).isEmpty()
+                && v.squaredDistanceTo(village.hallPos.getX() + 0.5, village.hallPos.getY(), village.hallPos.getZ() + 0.5) > 64) {
+            v.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET, new net.minecraft.entity.ai.brain.WalkTarget(village.hallPos, 0.5f, 3));
+        }
 
         // guards: tactics, gear and shifts
         if (v.isGuard() && village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) {
@@ -162,6 +169,10 @@ public final class Workforce {
             else if (prof == VillagerProfession.MASON) worked = Mining.work(v, village);
             else if (prof == VillagerProfession.ARMORER) worked = Smithing.work(v, village);
             else if (prof == VillagerProfession.CLERIC) worked = Healing.work(v, village);
+            else if (prof == VillagerProfession.FLETCHER || prof == VillagerProfession.TOOLSMITH) {
+                if (v.age % 400 == 0 || v.getInventory().isEmpty()) Gear.equipTool(v, village, Chore.CHOP);
+                worked = Lumberjack.work(v, village);
+            }
             else worked = Husbandry.work(v, village);
             if (worked) {
                 if (v.settlementsWorkSeconds == 0) Speech.sayWork(v);

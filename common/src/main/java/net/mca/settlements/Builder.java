@@ -51,6 +51,8 @@ public final class Builder {
             case "smithy" -> Blueprints.smithy();
             case "armory" -> Blueprints.armory();
             case "tavern" -> Blueprints.tavern();
+            case "townhall" -> Blueprints.townhall();
+            case "pen" -> Blueprints.pen();
             case "mine" -> Blueprints.mine();
             case "wall" -> wallPlan(v);
             default -> List.of();
@@ -210,6 +212,12 @@ public final class Builder {
                 }
                 case "tower" -> {
                     if (startRing(village, world, "tower", 0, 0, 0, 4, 5)) return true;
+                }
+                case "townhall" -> {
+                    if (startRing(village, world, "townhall", 0, 0, 0, 0, 1)) return true;
+                }
+                case "pen" -> {
+                    if (startRing(village, world, "pen", 0, 0, 0, 2, 4)) return true;
                 }
                 case "tavern" -> {
                     if (startRing(village, world, "tavern", 0, 0, 0, 0, 3)) return true;
@@ -442,6 +450,10 @@ public final class Builder {
                 village.towerLadders.add(o.add(lr[0], 1, lr[1]));
             }
             case "tavern" -> registerTavern(village);
+            case "pen" -> {
+                int[] pr = Blueprints.rotate(Blueprints.PEN / 2, Blueprints.PEN / 2, Blueprints.PEN, Blueprints.PEN, rot);
+                village.penCenter = o.add(pr[0], 0, pr[1]);
+            }
             case "wall" -> village.wallBuilt = true;
             default -> {
             }
@@ -528,6 +540,8 @@ public final class Builder {
         }
         world.setBlockState(target, state);
         if (step.kind() == Kind.CHEST) village.lootChests.add(target.toImmutable());
+        if (step.kind() == Kind.HALL_CHEST) village.hallChests.add(target.toImmutable());
+        if (step.kind() == Kind.LECTERN) village.hallPos = target.toImmutable();
         if (step.kind() == Kind.DOOR) {
             world.setBlockState(target.up(), state.with(DoorBlock.HALF, DoubleBlockHalf.UPPER));
         }
@@ -613,6 +627,12 @@ public final class Builder {
                 if (!takePlanks(village, 1)) return null;
                 return Blocks.OAK_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
             }
+            case LECTERN:
+                if (!takePlanks(village, 6)) return null;
+                return Blocks.LECTERN.getDefaultState().with(LecternBlock.FACING, turn(Direction.SOUTH, rot));
+            case HALL_CHEST:
+                if (!takePlanks(village, 8)) return null;
+                return Blocks.CHEST.getDefaultState().with(ChestBlock.FACING, turn(Direction.SOUTH, rot));
             case SMOKER: {
                 if (count(village, COBBLE) < 8 || planks(village) < 4) return null;
                 take(village, COBBLE, 8);

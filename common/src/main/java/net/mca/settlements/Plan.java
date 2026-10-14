@@ -29,10 +29,12 @@ public final class Plan {
     }
 
     public static final List<Goal> GOALS = List.of(
+            new Goal("townhall", Level.HAMLET, v -> v.hallPos == null, 60, 0, 0, 0),
             new Goal("well", Level.HAMLET, v -> !v.wellBuilt, 30, 0, 0, 0),
             new Goal("storage", Level.HAMLET, v -> !v.storageBuilt && v.getPopulation() >= 3, 150, 0, 0, 0),
             new Goal("housing", Level.HAMLET, v -> v.getPopulation() >= v.getMaxPopulation(), 100, 0, 0, 3),
             new Goal("farm", Level.HAMLET, v -> v.farms < Math.max(1, v.getPopulation() / 4), 30, 0, 0, 0),
+            new Goal("pen", Level.HAMLET, v -> v.penCenter == null && v.getPopulation() >= 4, 50, 0, 0, 0),
             new Goal("mine", Level.HAMLET, v -> !v.mineBuilt && Builder.stockCobble(v) < 128, 40, 0, 0, 0),
             new Goal("smithy", Level.VILLAGE, v -> !v.smithyBuilt && v.storageBuilt, 100, 12, 40, 0),
             new Goal("tavern", Level.VILLAGE, v -> v.tavern == null && v.storageBuilt && v.getPopulation() >= 6, 160, 12, 0, 0),

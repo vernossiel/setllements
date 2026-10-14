@@ -80,10 +80,20 @@ public final class Reputation {
 
     private static ChestBlockEntity villageChest(ScreenHandler menu, Village village) {
         if (menu instanceof GenericContainerScreenHandler g && g.getInventory() instanceof ChestBlockEntity chest
-                && village.lootChests.contains(chest.getPos())) {
+                && (village.lootChests.contains(chest.getPos()) || village.hallChests.contains(chest.getPos()))) {
             return chest;
         }
         return null;
+    }
+
+    private static void sweepIntoTreasury(Village village, Inventory inv) {
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack s = inv.getStack(i);
+            if (!s.isEmpty()) {
+                Workforce.addToTreasury(village, s.copy());
+                inv.setStack(i, ItemStack.EMPTY);
+            }
+        }
     }
 
     public static void onOpen(ServerPlayerEntity player, ScreenHandler menu) {
@@ -91,6 +101,16 @@ public final class Reputation {
         if (village == null) return;
         ChestBlockEntity chest = villageChest(menu, village);
         if (chest == null) return;
+        if (village.hallChests.contains(chest.getPos())) {
+            // the town hall chests are a window into the stores: what is in the treasury is what you see
+            sweepIntoTreasury(village, chest);
+            int slot = 0;
+            for (java.util.Iterator<ItemStack> it = village.storageBuffer.iterator(); it.hasNext() && slot < chest.size(); ) {
+                chest.setStack(slot++, it.next().copy());
+                it.remove();
+            }
+            village.markDirty();
+        }
         SESSIONS.put(player.getUuid(), new Session(village, chest.getPos(), counts(chest)));
     }
 
@@ -114,6 +134,10 @@ public final class Reputation {
         for (Map.Entry<Item, Integer> e : after.entrySet()) {
             int diff = e.getValue() - before.getOrDefault(e.getKey(), 0);
             if (diff > 0) returned += value(new ItemStack(e.getKey(), diff));
+        }
+        if (village.hallChests.contains(chest.getPos())) {
+            sweepIntoTreasury(village, chest); // whatever is left goes back into the stores
+            village.markDirty();
         }
         if (returned > 0) settleDebt(player, village, returned);
         if (taken >= 1) steal(player, village, taken, takenItems);

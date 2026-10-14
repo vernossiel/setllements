@@ -8,7 +8,7 @@ import java.util.List;
  * corner, y = 0 is the ground floor plane. Everything faces south (door on the +z side).
  */
 public final class Blueprints {
-    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE, SMOKER, BARREL, CRAFT, PLATE, SEAT_W, SEAT_E }
+    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE, SMOKER, BARREL, CRAFT, PLATE, SEAT_W, SEAT_E, LECTERN, HALL_CHEST }
 
     public record Step(int dx, int dy, int dz, Kind kind) {
     }
@@ -136,6 +136,28 @@ public final class Blueprints {
         return hall(w, d, in);
     }
 
+    /** Town hall: the village stores in four chests along the back wall and a lectern for the plans. */
+    public static List<Step> townhall() {
+        List<Step> in = new ArrayList<>();
+        for (int x = 2; x <= 8; x += 2) in.add(new Step(x, 1, 1, Kind.HALL_CHEST));
+        in.add(new Step(5, 1, 4, Kind.LECTERN));
+        return hall(11, 8, in);
+    }
+
+    /** A sheep pen: a fence ring with a wide gate in the middle of the front side. */
+    public static List<Step> pen() {
+        List<Step> l = new ArrayList<>();
+        int n = PEN;
+        for (int x = 0; x < n; x++) {
+            for (int z = 0; z < n; z++) {
+                boolean border = x == 0 || z == 0 || x == n - 1 || z == n - 1;
+                boolean gate = z == n - 1 && Math.abs(x - n / 2) <= 1;
+                if (border && !gate) l.add(new Step(x, 0, z, Kind.FENCE));
+            }
+        }
+        return l;
+    }
+
     /** Tavern: kitchen with a smoker, a barrel and a crafting table at the back, tables with chairs in the hall. */
     public static List<Step> tavern() {
         List<Step> in = new ArrayList<>();
@@ -171,7 +193,7 @@ public final class Blueprints {
 
     // ---------- well, farm, tower ----------
 
-    public static final int WELL = 5, FARM = 9, TOWER = 5;
+    public static final int WELL = 5, FARM = 9, TOWER = 5, PEN = 11;
 
     /** A village well with a cobblestone rim, four posts and a small roof. */
     public static List<Step> well() {
@@ -330,6 +352,8 @@ public final class Blueprints {
             case "smithy" -> new int[]{10, 6};
             case "armory" -> new int[]{10, 7};
             case "tavern" -> new int[]{12, 9};
+            case "townhall" -> new int[]{11, 8};
+            case "pen" -> new int[]{PEN, PEN};
             case "well" -> new int[]{WELL, WELL};
             case "farm" -> new int[]{FARM, FARM};
             case "tower" -> new int[]{TOWER, TOWER};

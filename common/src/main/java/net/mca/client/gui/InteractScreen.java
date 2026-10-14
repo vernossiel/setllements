@@ -2,6 +2,7 @@ package net.mca.client.gui;
 
 import net.mca.MCA;
 import net.mca.cobalt.network.NetworkHandler;
+import net.mca.entity.VillagerEntityMCA;
 import net.mca.entity.VillagerLike;
 import net.mca.entity.ai.Genetics;
 import net.mca.entity.ai.Memories;
@@ -168,7 +169,7 @@ public class InteractScreen extends AbstractDynamicScreen {
         }
 
         //age or profession
-        context.drawTooltip(textRenderer, villager.asEntity().isBaby() ? villager.getAgeState().getName() : villager.getProfessionText(), 10, 30 + h);
+        context.drawTooltip(textRenderer, villager.asEntity().isBaby() ? villager.getAgeState().getName() : (villager.asEntity() instanceof VillagerEntityMCA m ? m.settlementsRoleText() : villager.getProfessionText()), 10, 30 + h);
 
         VillagerBrain<?> brain = villager.getVillagerBrain();
 
