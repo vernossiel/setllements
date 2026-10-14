@@ -967,5 +967,14 @@
   "settlements.need.cobble": "Мне нужен булыжник, чтобы закончить.",
   "settlements.need.thanks": "Спасибо, я этого не забуду!",
   "settlements.break.warn": "Эй! Это собственность деревни. Прекрати!",
-  "settlements.break.attack": "Хватит! Стража, взять его!"
+  "settlements.break.attack": "Хватит! Стража, взять его!",
+  "settlements.caravan": "Караван из %s доставил в %s: %s %s",
+  "settlements.cat.wood": "дерева",
+  "settlements.cat.stone": "камня",
+  "settlements.cat.food": "еды",
+  "settlements.cat.wool": "шерсти",
+  "settlements.cat.iron": "железа",
+  "settlements.raid.start": "%s нападает на %s!",
+  "settlements.raid.won": "%s прорвались и разграбили %s.",
+  "settlements.raid.failed": "Набег %s на %s отбит."
 }

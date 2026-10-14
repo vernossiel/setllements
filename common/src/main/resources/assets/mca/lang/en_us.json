@@ -1079,5 +1079,14 @@
   "settlements.need.cobble": "I need cobblestone to finish this.",
   "settlements.need.thanks": "Thank you, I won't forget this!",
   "settlements.break.warn": "Hey! That's village property. Stop that!",
-  "settlements.break.attack": "Enough! Guards, get them!"
+  "settlements.break.attack": "Enough! Guards, get them!",
+  "settlements.caravan": "A caravan from %s brought %s to %s: %s %s",
+  "settlements.cat.wood": "wood",
+  "settlements.cat.stone": "stone",
+  "settlements.cat.food": "food",
+  "settlements.cat.wool": "wool",
+  "settlements.cat.iron": "iron",
+  "settlements.raid.start": "%s is raiding %s!",
+  "settlements.raid.won": "%s broke through and plundered %s.",
+  "settlements.raid.failed": "%s raid on %s was repelled."
 }

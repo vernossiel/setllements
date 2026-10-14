@@ -41,6 +41,7 @@ public class Village implements Iterable<Building> {
     public int buildW, buildD, buildF;
     public boolean storageBuilt, mineBuilt, smithyBuilt, armoryBuilt;
     public final List<BlockPos> campfires = new LinkedList<>();
+    public final Map<Integer, Integer> relations = new HashMap<>();
     public final java.util.Set<BlockPos> lootChests = new java.util.HashSet<>();
     public final List<net.mca.settlements.House> houses = new LinkedList<>();
     public final List<ItemStack> storageBuffer = new LinkedList<>();
@@ -104,6 +105,8 @@ public class Village implements Iterable<Building> {
         smithyBuilt = v.getBoolean("smithyBuilt");
         armoryBuilt = v.getBoolean("armoryBuilt");
         for (long l : v.getLongArray("campfires")) campfires.add(BlockPos.fromLong(l));
+        NbtCompound relNbt = v.getCompound("relations");
+        for (String k : relNbt.getKeys()) relations.put(Integer.parseInt(k), relNbt.getInt(k));
         for (long l : v.getLongArray("lootChests")) lootChests.add(BlockPos.fromLong(l));
         NbtList houseList = v.getList("houses", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < houseList.size(); i++) houses.add(net.mca.settlements.House.load(houseList.getCompound(i)));
@@ -468,6 +471,9 @@ public class Village implements Iterable<Building> {
         v.putBoolean("mineBuilt", mineBuilt);
         v.putBoolean("smithyBuilt", smithyBuilt);
         v.putBoolean("armoryBuilt", armoryBuilt);
+        NbtCompound rel = new NbtCompound();
+        relations.forEach((k, val) -> rel.putInt(String.valueOf(k), val));
+        v.put("relations", rel);
         v.putLongArray("lootChests", lootChests.stream().mapToLong(BlockPos::asLong).toArray());
         v.putLongArray("campfires", campfires.stream().mapToLong(BlockPos::asLong).toArray());
         NbtList houseList = new NbtList();
