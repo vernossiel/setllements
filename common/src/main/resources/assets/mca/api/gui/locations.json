@@ -1,0 +1,46 @@
+[
+  {
+    "identifier": "gui.button.backarrow",
+    "x": -113,
+    "y": 10,
+    "row": 0,
+    "width": 20,
+    "height": 20,
+    "notifyServer": false,
+    "targetServer": false,
+    "constraints": ""
+  },
+  {
+    "identifier": "gui.button.sethome",
+    "x": -90,
+    "y": 10,
+    "row": 0,
+    "width": 80,
+    "height": 20,
+    "notifyServer": true,
+    "targetServer": false,
+    "constraints": ""
+  },
+  {
+    "identifier": "gui.button.setworkplace",
+    "x": -90,
+    "y": 10,
+    "row": 1,
+    "width": 80,
+    "height": 20,
+    "notifyServer": true,
+    "targetServer": false,
+    "constraints": ""
+  },
+  {
+    "identifier": "gui.button.gohome",
+    "x": -90,
+    "y": 10,
+    "row": 2,
+    "width": 80,
+    "height": 20,
+    "notifyServer": true,
+    "targetServer": false,
+    "constraints": ""
+  }
+]

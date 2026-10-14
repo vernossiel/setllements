@@ -1,0 +1,11 @@
+{
+  "color": "ff0000ff",
+  "visible": true,
+  "priority": 4,
+  "blocks": {
+    "minecraft:lectern": 1,
+    "#mca:chests": 4
+  },
+  "iconU": 3,
+  "iconV": 1
+}

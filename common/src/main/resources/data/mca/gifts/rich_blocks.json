@@ -1,0 +1,52 @@
+{
+  "conditions": [
+    {
+      "personality": "Greedy",
+      "satisfaction_boost": 15
+    }
+  ],
+  "items": {
+    "minecraft:netherite_block": 100,
+    "minecraft:diamond_block": 80,
+    "minecraft:emerald_block": 60,
+    "minecraft:gold_block": 60,
+    "minecraft:iron_block": 40,
+    "minecraft:lapis_block": 40,
+    "minecraft:waxed_cut_copper": 30,
+    "minecraft:waxed_cut_copper_stairs": 30,
+    "minecraft:waxed_cut_copper_slab": 30,
+    "minecraft:cut_copper": 25,
+    "minecraft:cut_copper_stairs": 25,
+    "minecraft:cut_copper_slab": 25,
+    "minecraft:waxed_copper_block": 20,
+    "minecraft:copper_block": 15,
+    "minecraft:waxed_exposed_cut_copper": 30,
+    "minecraft:waxed_exposed_cut_copper_stairs": 30,
+    "minecraft:waxed_exposed_cut_copper_slab": 30,
+    "minecraft:exposed_cut_copper": 25,
+    "minecraft:exposed_copper_stairs": 25,
+    "minecraft:exposed_copper_slab": 25,
+    "minecraft:waxed_exposed_copper": 20,
+    "minecraft:exposed_copper": 15,
+    "minecraft:waxed_weathered_cut_copper": 30,
+    "minecraft:waxed_weathered_cut_copper_stairs": 30,
+    "minecraft:waxed_weathered_cut_copper_slab": 30,
+    "minecraft:weathered_cut_copper": 25,
+    "minecraft:weathered_copper_stairs": 25,
+    "minecraft:weathered_copper_slab": 25,
+    "minecraft:waxed_weathered_copper": 20,
+    "minecraft:weathered_copper": 15,
+    "minecraft:waxed_oxidized_cut_copper": 30,
+    "minecraft:waxed_oxidized_cut_copper_stairs": 30,
+    "minecraft:waxed_oxidized_cut_copper_slab": 30,
+    "minecraft:oxidized_cut_copper": 25,
+    "minecraft:oxidized_copper_stairs": 25,
+    "minecraft:oxidized_copper_slab": 25,
+    "minecraft:waxed_oxidized_copper": 20,
+    "minecraft:oxidized_copper": 15,
+    "minecraft:amethyst_block": 30,
+    "minecraft:amethyst_cluster": 20,
+    "minecraft:coal_block": 10,
+    "mca:rose_gold_block": 50
+  }
+}

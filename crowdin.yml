@@ -1,0 +1,7 @@
+files:
+  - source: /common/src/main/resources/assets/mca/lang/en_us.json
+    translation: /common/src/main/resources/assets/mca/lang/%locale_with_underscore%.json
+  - source: /common/src/main/resources/assets/mca_dialogue/lang/en_us.json
+    translation: /common/src/main/resources/assets/mca_dialogue/lang/%locale_with_underscore%.json
+  - source: /common/src/main/resources/assets/mca_books/lang/en_us.json
+    translation: /common/src/main/resources/assets/mca_books/lang/%locale_with_underscore%.json

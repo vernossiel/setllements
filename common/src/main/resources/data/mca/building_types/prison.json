@@ -1,0 +1,12 @@
+{
+  "color": "ff888888",
+  "visible": true,
+  "priority": 4,
+  "blocks": {
+    "#mca:iron_bars": 8,
+    "#mca:iron_doors": 1,
+    "#minecraft:beds": 1
+  },
+  "iconU": 6,
+  "iconV": 1
+}

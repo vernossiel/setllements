@@ -1,0 +1,19 @@
+{
+  "conditions": [
+    {
+      "profession": "mca:farmer",
+      "satisfaction_boost": 10
+    },
+    {
+      "profession": "mca:librarian",
+      "satisfaction_boost": -5
+    },
+    {
+      "trait": "vegetarian",
+      "satisfaction_boost": 5
+    }
+  ],
+  "items": {
+    "bakery:strawberry": 3
+  }
+}

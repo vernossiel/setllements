@@ -1,0 +1,10 @@
+{
+  "color": "ff03fca1",
+  "visible": true,
+  "priority": 3,
+  "blocks": {
+    "#minecraft:beds": 4
+  },
+  "iconU": 4,
+  "iconV": 1
+}

@@ -1,0 +1,17 @@
+{
+  "replace": false,
+  "values": [
+    "mca:book_death",
+    "mca:book_romance",
+    "mca:book_family",
+    "mca:book_rose_gold",
+    "mca:book_infection",
+    "mca:book_blueprint",
+    "mca:book_supporters",
+    "mca:book_cult_0",
+    "mca:book_cult_1",
+    "mca:book_cult_2",
+    "mca:book_cult_ancient",
+    "mca:letter"
+  ]
+}

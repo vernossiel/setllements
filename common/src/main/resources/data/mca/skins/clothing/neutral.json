@@ -1,0 +1,55 @@
+{
+  "mca:skins/clothing/normal/neutral/none/%d.png": {
+    "count": 13,
+    "profession": "minecraft:none",
+    "chance": 0.5
+  },
+  "mca:skins/clothing/normal/neutral/armorer/%d.png": {
+    "count": 3,
+    "profession": "minecraft:armorer"
+  },
+  "mca:skins/clothing/normal/neutral/cartographer/%d.png": {
+    "count": 3,
+    "profession": "minecraft:cartographer"
+  },
+  "mca:skins/clothing/normal/neutral/cleric/%d.png": {
+    "count": 0,
+    "profession": "minecraft:cleric"
+  },
+  "mca:skins/clothing/normal/neutral/farmer/%d.png": {
+    "count": 3,
+    "profession": "minecraft:farmer"
+  },
+  "mca:skins/clothing/normal/neutral/fisherman/%d.png": {
+    "count": 1,
+    "profession": "minecraft:fisherman"
+  },
+  "mca:skins/clothing/normal/neutral/fletcher/%d.png": {
+    "count": 2,
+    "profession": "minecraft:fletcher"
+  },
+  "mca:skins/clothing/normal/neutral/leatherworker/%d.png": {
+    "count": 1,
+    "profession": "minecraft:leatherworker"
+  },
+  "mca:skins/clothing/normal/neutral/librarian/%d.png": {
+    "count": 6,
+    "profession": "minecraft:librarian"
+  },
+  "mca:skins/clothing/normal/neutral/mason/%d.png": {
+    "count": 3,
+    "profession": "minecraft:mason"
+  },
+  "mca:skins/clothing/normal/neutral/shepherd/%d.png": {
+    "count": 4,
+    "profession": "minecraft:shepherd"
+  },
+  "mca:skins/clothing/normal/neutral/toolsmith/%d.png": {
+    "count": 1,
+    "profession": "minecraft:toolsmith"
+  },
+  "mca:skins/clothing/normal/neutral/weaponsmith/%d.png": {
+    "count": 4,
+    "profession": "minecraft:weaponsmith"
+  }
+}

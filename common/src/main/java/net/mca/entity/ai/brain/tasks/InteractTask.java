@@ -1,0 +1,73 @@
+package net.mca.entity.ai.brain.tasks;
+
+import com.google.common.collect.ImmutableMap;
+import net.mca.entity.VillagerEntityMCA;
+import net.mca.entity.ai.Chore;
+import net.minecraft.entity.ai.brain.*;
+import net.minecraft.entity.ai.brain.task.MultiTickTask;
+import net.minecraft.server.world.ServerWorld;
+
+public class InteractTask extends MultiTickTask<VillagerEntityMCA> {
+    private final float speedModifier;
+
+    public InteractTask(float speedModifier) {
+        super(ImmutableMap.of(
+                MemoryModuleType.WALK_TARGET, MemoryModuleState.REGISTERED,
+                MemoryModuleType.LOOK_TARGET, MemoryModuleState.REGISTERED
+        ), Integer.MAX_VALUE);
+        this.speedModifier = speedModifier;
+    }
+
+    @Override
+    protected boolean shouldRun(ServerWorld world, VillagerEntityMCA villager) {
+        return shouldRun(villager);
+    }
+
+    public static boolean shouldRun(VillagerEntityMCA villager) {
+        return villager.isAlive()
+                && villager.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).isEmpty()
+                && villager.getInteractions().getInteractingPlayer().filter(player -> villager.squaredDistanceTo(player) <= 25).isPresent()
+                && !villager.isTouchingWater()
+                && !villager.velocityModified
+                && villager.getVillagerBrain().getCurrentJob() == Chore.NONE;
+    }
+
+    @Override
+    protected boolean shouldKeepRunning(ServerWorld world, VillagerEntityMCA villager, long time) {
+        return this.shouldRun(world, villager);
+    }
+
+    @Override
+    protected void run(ServerWorld world, VillagerEntityMCA villager, long time) {
+        this.followPlayer(villager);
+    }
+
+    @Override
+    protected void finishRunning(ServerWorld world, VillagerEntityMCA villager, long time) {
+        Brain<?> brain = villager.getBrain();
+        brain.forget(MemoryModuleType.WALK_TARGET);
+        brain.forget(MemoryModuleType.LOOK_TARGET);
+    }
+
+    @Override
+    protected void keepRunning(ServerWorld world, VillagerEntityMCA villager, long time) {
+        this.followPlayer(villager);
+    }
+
+    @Override
+    protected boolean isTimeLimitExceeded(long time) {
+        return false;
+    }
+
+    private void followPlayer(VillagerEntityMCA villager) {
+        Brain<?> brain = villager.getBrain();
+
+        villager.getInteractions().getInteractingPlayer().ifPresentOrElse(player -> {
+            brain.remember(MemoryModuleType.WALK_TARGET, new WalkTarget(player, this.speedModifier, 2));
+            brain.remember(MemoryModuleType.LOOK_TARGET, new EntityLookTarget(player, true));
+        }, () -> {
+            brain.forget(MemoryModuleType.WALK_TARGET);
+            brain.forget(MemoryModuleType.LOOK_TARGET);
+        });
+    }
+}

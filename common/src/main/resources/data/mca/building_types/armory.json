@@ -1,0 +1,12 @@
+{
+  "color": "ffcccccc",
+  "visible": true,
+  "priority": 4,
+  "blocks": {
+    "minecraft:smithing_table": 1,
+    "minecraft:grindstone": 1,
+    "#mca:anvils": 1
+  },
+  "iconU": 3,
+  "iconV": 0
+}

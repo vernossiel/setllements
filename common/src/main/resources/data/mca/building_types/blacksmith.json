@@ -1,0 +1,12 @@
+{
+  "color": "ffff0000",
+  "visible": true,
+  "priority": 4,
+  "blocks": {
+    "minecraft:grindstone": 1,
+    "minecraft:blast_furnace": 2,
+    "#mca:anvils": 1
+  },
+  "iconU": 0,
+  "iconV": 1
+}

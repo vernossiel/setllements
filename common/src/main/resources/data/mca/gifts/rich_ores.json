@@ -1,0 +1,20 @@
+{
+  "conditions": [
+    {
+      "personality": "Greedy",
+      "satisfaction_boost": 15
+    }
+  ],
+  "items": {
+    "minecraft:netherite_ingot": 30,
+    "minecraft:diamond": 25,
+    "minecraft:emerald": 20,
+    "minecraft:gold_ingot": 25,
+    "minecraft:iron_ingot": 15,
+    "minecraft:lapis_lazuli": 10,
+    "minecraft:amethyst_shard": 15,
+    "minecraft:copper_ingot": 5,
+    "minecraft:coal": 5,
+    "mca:rose_gold_ingot": 20
+  }
+}

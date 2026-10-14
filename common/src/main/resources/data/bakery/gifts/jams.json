@@ -1,0 +1,33 @@
+{
+  "conditions": [
+    {
+      "profession": "mca:baker",
+      "satisfaction_boost": 10
+    },
+    {
+      "profession": "mca:guard",
+      "satisfaction_boost": -5
+    },
+    {
+      "age_group": "child",
+      "satisfaction_boost": 10
+    },
+    {
+      "trait": "diabetes",
+      "satisfaction_boost": -15
+    }
+  ],
+  "responses": {
+    "fail": "gift.confectionary.fail",
+    "good": "gift.confectionary.good",
+    "better": "gift.confectionary.better",
+    "best": "gift.confectionary.best"
+  },
+  "items": {
+    "bakery:chocolate_jam": 8,
+    "bakery:apple_jam": 8,
+    "bakery:glowberry_jam": 8,
+    "bakery:sweetberry_jam": 8,
+    "bakery:strawberry_jam": 8
+  }
+}

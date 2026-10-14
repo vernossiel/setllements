@@ -1,0 +1,38 @@
+{
+  "conditions": [
+    {
+      "profession": "mca:baker",
+      "satisfaction_boost": 10
+    },
+    {
+      "profession": "mca:guard",
+      "satisfaction_boost": -5
+    },
+    {
+      "age_group": "child",
+      "satisfaction_boost": 10
+    },
+    {
+      "trait": "coeliac_disease",
+      "satisfaction_boost": -20
+    }
+  ],
+  "responses": {
+    "fail": "gift.confectionary.fail",
+    "good": "gift.confectionary.good",
+    "better": "gift.confectionary.better",
+    "best": "gift.confectionary.best"
+  },
+  "items": {
+    "bakery:bread_crate": 20,
+    "bakery:croissant": 10,
+    "bakery:crusty_bread": 10,
+    "bakery:bread": 10,
+    "bakery:baguette": 10,
+    "bakery:braided_bread": 10,
+    "bakery:bun": 10,
+    "bakery:toast": 7,
+    "bakery:dough": -5,
+    "bakery:vegetable_sandwich": 13
+  }
+}

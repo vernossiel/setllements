@@ -1,0 +1,11 @@
+{
+  "conditions": [
+    {
+      "profession": "minecraft:fisherman",
+      "satisfaction_boost": 25
+    }
+  ],
+  "items": {
+    "minecraft:conduit": 30
+  }
+}

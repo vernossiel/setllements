@@ -1,0 +1,9 @@
+{
+  "conditions": [],
+  "items": {
+    "minecraft:music_disc_pigstep": 20,
+    "minecraft:music_disc_otherside": 20,
+    "minecraft:music_disc_relic": 20,
+    "#minecraft:creeper_drop_music_discs": 15
+  }
+}

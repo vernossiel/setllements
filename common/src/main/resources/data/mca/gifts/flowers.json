@@ -1,0 +1,17 @@
+{
+  "conditions": [
+    {
+      "age_group": "child",
+      "satisfaction_boost": 10
+    }
+  ],
+  "responses": {
+    "fail": "gift.flowers.fail",
+    "good": "gift.flowers.good",
+    "better": "gift.flowers.better",
+    "best": "gift.flowers.best"
+  },
+  "items": {
+    "#minecraft:flowers": 5
+  }
+}

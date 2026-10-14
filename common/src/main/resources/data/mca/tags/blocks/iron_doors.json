@@ -1,0 +1,34 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:iron_door",
+    {
+      "id": "immersive_weathering:exposed_iron_door",
+      "required": false
+    },
+    {
+      "id": "immersive_weathering:weathered_iron_door",
+      "required": false
+    },
+    {
+      "id": "immersive_weathering:rusted_iron_door",
+      "required": false
+    },
+    {
+      "id": "immersive_weathering:waxed_iron_door",
+      "required": false
+    },
+    {
+      "id": "immersive_weathering:waxed_exposed_iron_door",
+      "required": false
+    },
+    {
+      "id": "immersive_weathering:waxed_weathered_iron_door",
+      "required": false
+    },
+    {
+      "id": "immersive_weathering:waxed_rusted_iron_door",
+      "required": false
+    }
+  ]
+}

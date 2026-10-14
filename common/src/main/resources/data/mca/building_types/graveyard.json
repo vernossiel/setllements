@@ -1,0 +1,14 @@
+{
+  "margin": 8,
+  "color": "ffff00ff",
+  "visible": true,
+  "priority": 0,
+  "blocks": {
+    "#mca:tombstones": 3
+  },
+  "icon": true,
+  "iconU": 0,
+  "iconV": 0,
+  "grouped": true,
+  "mergeRange": 24
+}

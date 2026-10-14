@@ -1,0 +1,98 @@
+{
+  "mca:skins/clothing/normal/female/none/%d.png": {
+    "count": 10,
+    "profession": "minecraft:none",
+    "chance": 0.85
+  },
+  "mca:skins/clothing/normal/female/armorer/%d.png": {
+    "count": 5,
+    "profession": "minecraft:armorer"
+  },
+  "mca:skins/clothing/normal/female/butcher/%d.png": {
+    "count": 6,
+    "profession": "minecraft:butcher"
+  },
+  "mca:skins/clothing/normal/female/cartographer/%d.png": {
+    "count": 5,
+    "profession": "minecraft:cartographer"
+  },
+  "mca:skins/clothing/normal/female/cleric/%d.png": {
+    "count": 5,
+    "profession": "minecraft:cleric"
+  },
+  "mca:skins/clothing/normal/female/farmer/%d.png": {
+    "count": 5,
+    "profession": "minecraft:farmer"
+  },
+  "mca:skins/clothing/normal/female/fisherman/%d.png": {
+    "count": 5,
+    "profession": "minecraft:fisherman"
+  },
+  "mca:skins/clothing/normal/female/fletcher/%d.png": {
+    "count": 5,
+    "profession": "minecraft:fletcher"
+  },
+  "mca:skins/clothing/normal/female/leatherworker/%d.png": {
+    "count": 5,
+    "profession": "minecraft:leatherworker"
+  },
+  "mca:skins/clothing/normal/female/librarian/%d.png": {
+    "count": 5,
+    "profession": "minecraft:librarian"
+  },
+  "mca:skins/clothing/normal/female/mason/%d.png": {
+    "count": 5,
+    "profession": "minecraft:mason"
+  },
+  "mca:skins/clothing/normal/female/nitwit/%d.png": {
+    "count": 1,
+    "profession": "minecraft:nitwit"
+  },
+  "mca:skins/clothing/normal/female/shepherd/%d.png": {
+    "count": 5,
+    "profession": "minecraft:shepherd"
+  },
+  "mca:skins/clothing/normal/female/toolsmith/%d.png": {
+    "count": 5,
+    "profession": "minecraft:toolsmith"
+  },
+  "mca:skins/clothing/normal/female/weaponsmith/%d.png": {
+    "count": 5,
+    "profession": "minecraft:weaponsmith"
+  },
+  "mca:skins/clothing/normal/female/baker/%d.png": {
+    "count": 5,
+    "profession": "mca:baker"
+  },
+  "mca:skins/clothing/normal/female/miner/%d.png": {
+    "count": 5,
+    "profession": "mca:miner"
+  },
+  "mca:skins/clothing/normal/female/archer/%d.png": {
+    "count": 5,
+    "profession": "mca:archer"
+  },
+  "mca:skins/clothing/normal/female/guard/%d.png": {
+    "count": 5,
+    "profession": "mca:guard"
+  },
+  "mca:skins/clothing/normal/female/child/%d.png": {
+    "count": 10,
+    "profession": "mca:child",
+    "exclude": true
+  },
+  "mca:skins/clothing/normal/female/baby/%d.png": {
+    "count": 10,
+    "profession": "mca:baby",
+    "exclude": true
+  },
+  "mca:skins/clothing/normal/female/toddler/%d.png": {
+    "count": 20,
+    "profession": "mca:toddler",
+    "exclude": true
+  },
+  "mca:skins/clothing/normal/female/cultist/%d.png": {
+    "count": 1,
+    "profession": "mca:cultist"
+  }
+}

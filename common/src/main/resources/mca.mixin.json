@@ -1,0 +1,43 @@
+{
+  "required": true,
+  "minVersion": "0.7",
+  "package": "net.mca.mixin",
+  "refmap": "mca.refmap.json",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "MixinAbstractFurnaceBlockEntity",
+    "MixinActivity",
+    "MixinAdvancementRewards",
+    "MixinAdvancementRewardsAccessor",
+    "MixinCriteria",
+    "MixinDefaultParticleType",
+    "MixinEntityType",
+    "MixinFlintAndSteelItem",
+    "MixinGoatEntity",
+    "MixinHorseBaseEntity",
+    "MixinIronGolem",
+    "MixinMemoryModuleType",
+    "MixinMilkBucketItem",
+    "MixinPlayerEntity",
+    "MixinPlayerInventory",
+    "MixinProtoChunk",
+    "MixinScreenHandler",
+    "MixinSensorType",
+    "MixinServerPlayNetworkHandler",
+    "MixinServerWorld",
+    "MixinTranslatableText",
+    "MixinVillagerEntity",
+    "MixinVillagerEntityInvoker",
+    "MixinVillagerProfession",
+    "MixinZombieEntity",
+    "MixinZombieVillagerEntity"
+  ],
+  "client": [
+    "client.MixinArmorFeatureRenderer", "client.MixinGameRenderer", "client.MixinHeldItemFeatureRenderer",
+    "client.MixinLivingEntityRenderer", "client.MixinPlayerEntityClient",
+    "client.MixinPlayerEntityRenderer", "client.MixinSoundLoader", "client.MixinTranslationStorage"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

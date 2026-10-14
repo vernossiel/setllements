@@ -1,0 +1,14 @@
+{
+  "color": "ffff00ff",
+  "visible": true,
+  "priority": 4,
+  "blocks": {
+    "minecraft:brewing_stand": 1,
+    "#minecraft:cauldrons": 1,
+    "#minecraft:beds": 1,
+    "#minecraft:flower_pots": 1
+  },
+  "noBeds": true,
+  "iconU": 7,
+  "iconV": 1
+}

@@ -1,0 +1,14 @@
+{
+  "margin": 8,
+  "color": "ffff00ff",
+  "visible": false,
+  "priority": 0,
+  "blocks": {
+    "#mca:town_center": 1
+  },
+  "icon": true,
+  "iconU": 1,
+  "iconV": 0,
+  "grouped": true,
+  "mergeRange": 32
+}

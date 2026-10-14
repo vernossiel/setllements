@@ -1,0 +1,98 @@
+{
+  "mca:skins/clothing/normal/male/none/%d.png": {
+    "count": 10,
+    "profession": "minecraft:none",
+    "chance": 0.85
+  },
+  "mca:skins/clothing/normal/male/armorer/%d.png": {
+    "count": 5,
+    "profession": "minecraft:armorer"
+  },
+  "mca:skins/clothing/normal/male/butcher/%d.png": {
+    "count": 5,
+    "profession": "minecraft:butcher"
+  },
+  "mca:skins/clothing/normal/male/cartographer/%d.png": {
+    "count": 5,
+    "profession": "minecraft:cartographer"
+  },
+  "mca:skins/clothing/normal/male/cleric/%d.png": {
+    "count": 5,
+    "profession": "minecraft:cleric"
+  },
+  "mca:skins/clothing/normal/male/farmer/%d.png": {
+    "count": 5,
+    "profession": "minecraft:farmer"
+  },
+  "mca:skins/clothing/normal/male/fisherman/%d.png": {
+    "count": 5,
+    "profession": "minecraft:fisherman"
+  },
+  "mca:skins/clothing/normal/male/fletcher/%d.png": {
+    "count": 5,
+    "profession": "minecraft:fletcher"
+  },
+  "mca:skins/clothing/normal/male/leatherworker/%d.png": {
+    "count": 5,
+    "profession": "minecraft:leatherworker"
+  },
+  "mca:skins/clothing/normal/male/librarian/%d.png": {
+    "count": 5,
+    "profession": "minecraft:librarian"
+  },
+  "mca:skins/clothing/normal/male/mason/%d.png": {
+    "count": 5,
+    "profession": "minecraft:mason"
+  },
+  "mca:skins/clothing/normal/male/nitwit/%d.png": {
+    "count": 1,
+    "profession": "minecraft:nitwit"
+  },
+  "mca:skins/clothing/normal/male/shepherd/%d.png": {
+    "count": 5,
+    "profession": "minecraft:shepherd"
+  },
+  "mca:skins/clothing/normal/male/toolsmith/%d.png": {
+    "count": 5,
+    "profession": "minecraft:toolsmith"
+  },
+  "mca:skins/clothing/normal/male/weaponsmith/%d.png": {
+    "count": 5,
+    "profession": "minecraft:weaponsmith"
+  },
+  "mca:skins/clothing/normal/male/baker/%d.png": {
+    "count": 5,
+    "profession": "mca:baker"
+  },
+  "mca:skins/clothing/normal/male/miner/%d.png": {
+    "count": 5,
+    "profession": "mca:miner"
+  },
+  "mca:skins/clothing/normal/male/archer/%d.png": {
+    "count": 5,
+    "profession": "mca:archer"
+  },
+  "mca:skins/clothing/normal/male/guard/%d.png": {
+    "count": 6,
+    "profession": "mca:guard"
+  },
+  "mca:skins/clothing/normal/male/child/%d.png": {
+    "count": 12,
+    "profession": "mca:child",
+    "exclude": true
+  },
+  "mca:skins/clothing/normal/male/baby/%d.png": {
+    "count": 10,
+    "profession": "mca:baby",
+    "exclude": true
+  },
+  "mca:skins/clothing/normal/male/toddler/%d.png": {
+    "count": 20,
+    "profession": "mca:toddler",
+    "exclude": true
+  },
+  "mca:skins/clothing/normal/male/cultist/%d.png": {
+    "count": 1,
+    "profession": "mca:cultist"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "conditions": [
+    {
+      "profession": "mca:baker",
+      "satisfaction_boost": 10
+    },
+    {
+      "age_group": "child",
+      "satisfaction_boost": 10
+    },
+    {
+      "trait": "diabetes",
+      "satisfaction_boost": -15
+    },
+    {
+      "trait": "lactose_intolerant",
+      "satisfaction_boost": -15
+    },
+    {
+      "trait": "coeliac_disease",
+      "satisfaction_boost": -15
+    }
+  ],
+  "responses": {
+    "fail": "gift.confectionary.fail",
+    "good": "gift.confectionary.good",
+    "better": "gift.confectionary.better",
+    "best": "gift.confectionary.best"
+  },
+  "items": {
+    "bakery:chocolate_glazed_cookie": 10,
+    "bakery:sweetberry_glazed_cookie": 10,
+    "bakery:strawberry_glazed_cookie": 10,
+    "bakery:jam_roll": 10,
+    "bakery:strawberry_cake_slice": 15,
+    "bakery:pudding_slice": 15,
+    "bakery:bundt_cake_slice": 12,
+    "bakery:linzer_tart_slice": 12,
+    "bakery:apple_pie_slice": 12,
+    "bakery:glowberry_pie_slice": 12,
+    "bakery:chocolate_cake_slice": 12,
+    "bakery:apple_cupcake": 10,
+    "bakery:sweetberry_cupcake": 10,
+    "bakery:strawberry_cupcake": 10,
+    "bakery:waffle": 12,
+    "bakery:chocolate_cake": 20,
+    "bakery:strawberry_cake": 20,
+    "bakery:sweetberry_cake": 20,
+    "bakery:pudding": 20,
+    "bakery:bundt_cake": 18,
+    "bakery:linzer_tart": 18,
+    "bakery:apple_pie": 18,
+    "bakery:glowberry_tart": 18,
+    "bakery:chocolate_tart": 18,
+    "bakery:sweet_dough": -5,
+    "bakery:chocolate_truffle": 3,
+    "bakery:chocolate_box": 19
+  }
+}

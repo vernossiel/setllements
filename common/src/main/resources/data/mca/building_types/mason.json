@@ -1,0 +1,8 @@
+{
+  "color": "ffaaaaaa",
+  "visible": false,
+  "priority": 1,
+  "blocks": {
+    "minecraft:stonecutter": 1
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "conditions": [
+    {
+      "profession": "mca:farmer",
+      "satisfaction_boost": 10
+    },
+    {
+      "profession": "mca:librarian",
+      "satisfaction_boost": -5
+    },
+  
+ {
+      "trait": "vegetarian",
+      "satisfaction_boost": -5
+    }
+  ],
+  "responses": {
+    "fail": "gift.meats.fail",
+    "good": "gift.meats.good",
+    "better": "gift.meats.better",
+    "best": "gift.meats.best"
+  },
+  "items": {
+    "bakery:sandwich": 8
+  }
+}

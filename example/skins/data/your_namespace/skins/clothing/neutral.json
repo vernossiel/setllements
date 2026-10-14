@@ -1,0 +1,7 @@
+{
+  "your_namespace:skins/clothing/normal/neutral/weaponsmith/0.png": {
+    "profession": "minecraft:weaponsmith",
+    "chance": 0.85,
+    "temperature": 0
+  }
+}
