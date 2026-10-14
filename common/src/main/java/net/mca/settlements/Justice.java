@@ -366,8 +366,9 @@ public final class Justice {
             left -= d;
         }
         if (village != null) {
+            // bought off: the goods stay with him, the fine is worth more than they are, and it is not forgotten
             Workforce.addToTreasury(village, new ItemStack(Items.EMERALD, fine));
-            if (!c.stolen.isEmpty()) takeBack(p, c, village); // the fine is on top: the stolen goods go back too
+            village.pushHearts(p, -(int) Math.ceil(c.value / 2));
         }
         CASES.remove(p.getUuid());
         p.sendMessage(Text.translatable("settlements.justice.paid", fine).formatted(Formatting.GREEN), false);
