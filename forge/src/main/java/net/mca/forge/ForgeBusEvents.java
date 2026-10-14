@@ -47,6 +47,7 @@ public class ForgeBusEvents {
             if (event.level.getTime() % 40 == 0) net.mca.settlements.Reputation.hud((ServerWorld)event.level);
             if (event.level.getTime() % 600 == 0) net.mca.settlements.Staffing.tick((ServerWorld)event.level);
             if (event.level.getTime() % 200 == 0) net.mca.settlements.Board.tick((ServerWorld)event.level);
+            if (event.level.getTime() % 40 == 0) net.mca.settlements.Staffing.foundHalls((ServerWorld)event.level);
             if (event.level.getTime() % 24000 == 6000) {
                 net.mca.settlements.Diplomacy.daily((ServerWorld)event.level);
                 net.mca.settlements.Expansion.daily((ServerWorld)event.level);

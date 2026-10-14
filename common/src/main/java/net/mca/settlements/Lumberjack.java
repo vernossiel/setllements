@@ -117,9 +117,13 @@ public final class Lumberjack {
                 int x = center.getX() + dx, z = center.getZ() + dz;
                 if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
                 int top = world.getTopY(Heightmap.Type.WORLD_SURFACE, x, z);
-                for (int y = top - 1; y >= top - 12 && y > world.getBottomY(); y--) {
+                for (int y = top - 1; y >= top - 40 && y > world.getBottomY(); y--) {
                     BlockPos p = new BlockPos(x, y, z);
-                    if (!world.getBlockState(p).isIn(BlockTags.LOGS)) continue;
+                    BlockState here = world.getBlockState(p);
+                    if (!here.isIn(BlockTags.LOGS)) {
+                        if (here.isIn(BlockTags.LEAVES) || !here.isSolidBlock(world, p)) continue; // crown, snow, air
+                        break; // the ground: no tree in this column
+                    }
                     BlockPos below = p.down();
                     BlockState bs = world.getBlockState(below);
                     if (bs.isIn(BlockTags.LOGS)) continue; // still inside the trunk, go down to its base

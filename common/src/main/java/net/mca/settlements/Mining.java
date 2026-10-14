@@ -66,6 +66,12 @@ public final class Mining {
         }
         v.settlementsStuck = 0;
         Speech.say(v, "settlements.say.mine.dig");
+        for (int i = 0; i < v.getInventory().size(); i++) {
+            if (v.getInventory().getStack(i).getItem() instanceof net.minecraft.item.PickaxeItem) {
+                if (!(v.getMainHandStack().getItem() instanceof net.minecraft.item.PickaxeItem)) v.setStackInHand(v.getDominantHand(), v.getInventory().getStack(i).copy());
+                break;
+            }
+        }
 
         boolean worked = false;
         int ops = 0, skips = 0;
@@ -91,6 +97,11 @@ public final class Mining {
         }
         village.markDirty();
         return worked;
+    }
+
+    public static boolean hasPick(VillagerEntityMCA v) {
+        for (int i = 0; i < v.getInventory().size(); i++) if (v.getInventory().getStack(i).getItem() instanceof net.minecraft.item.PickaxeItem) return true;
+        return false;
     }
 
     /** An already dug cell next to the next block to dig. */

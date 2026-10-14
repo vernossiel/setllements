@@ -60,7 +60,7 @@ public final class Protection {
         return 0;
     }
 
-    private static boolean insideStructure(Village village, BlockPos pos) {
+    static boolean insideStructure(Village village, BlockPos pos) {
         for (Building b : village.getBuildings().values()) {
             if (b.containsPos(pos)) return true;
         }

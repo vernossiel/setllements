@@ -92,6 +92,31 @@ public final class Plan {
                 .orElse(null);
     }
 
+    /** The elder tells the player in a few words where the village stands, what comes next and how he can help. */
+    private static void tell(VillagerEntityMCA elder, Village village, ServerWorld world, PlayerEntity player) {
+        elder.getLookControl().lookAt(player, 30f, 30f);
+        elder.sendChatMessage(Text.translatable("settlements.elder.intro", village.getName(),
+                Text.translatable("settlements.level." + level(village).name().toLowerCase()), village.getPopulation()), player);
+        if (village.buildOrigin != null && village.buildType != null) {
+            int total = Builder.stepsOf(village);
+            int pct = total > 0 ? Math.min(100, village.buildStep * 100 / total) : 0;
+            elder.sendChatMessage(Text.translatable("settlements.elder.building", Text.translatable("settlements.building." + village.buildType), pct), player);
+        } else {
+            elder.sendChatMessage(Text.translatable("settlements.elder.idle"), player);
+        }
+        List<Status> pending = pending(village);
+        Status next = null;
+        for (Status s : pending) {
+            if (!s.goal().id().equals(village.buildType)) {
+                next = s;
+                break;
+            }
+        }
+        if (next != null) elder.sendChatMessage(Text.translatable("settlements.elder.next", Text.translatable("settlements.goal." + next.goal().id())), player);
+        Needs.Need need = firstBlocker(village);
+        elder.sendChatMessage(Text.translatable(need == Needs.Need.NONE ? "settlements.elder.fine" : "settlements.elder.help." + need.name().toLowerCase()), player);
+    }
+
     public static void talk(VillagerEntityMCA speaker, PlayerEntity player) {
         Village village = Village.findNearest(speaker).orElse(null);
         if (village == null) {
@@ -101,7 +126,13 @@ public final class Plan {
         }
         if (!(speaker.getWorld() instanceof ServerWorld world) || !(player instanceof net.minecraft.server.network.ServerPlayerEntity sp)) return;
         VillagerEntityMCA elder = elder(world, village);
-        if (elder == null) elder = speaker; // the plans are not a secret: any villager can read them out
+        if (elder != null && elder != speaker) {
+            // plans are the elder's business: everybody else sends the player to the town hall
+            speaker.sendChatMessage(Text.translatable("settlements.elder.ask", elder.getName()), player);
+            return;
+        }
+        if (elder == null) elder = speaker;
+        tell(elder, village, world, player);
         List<Text> pages = new ArrayList<>();
         Level level = level(village);
         // page 1: where the village stands
@@ -111,6 +142,10 @@ public final class Plan {
         p1.append(Text.translatable("settlements.book.residents", village.getPopulation(), village.getMaxPopulation()));
         p1.append(Text.translatable("settlements.book.built", village.houses.size(), village.farms, village.towers));
         pages.add(p1);
+        for (int i = 1; i <= 3; i++) {
+            pages.add(Text.empty().append(Text.translatable("settlements.book.how.title").formatted(net.minecraft.util.Formatting.BOLD, net.minecraft.util.Formatting.DARK_BLUE))
+                    .append(Text.literal("\n\n")).append(Text.translatable("settlements.book.how." + i)));
+        }
         // pages 2..: the plan
         List<Status> pending = pending(village);
         MutableText p2 = Text.empty();

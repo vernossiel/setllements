@@ -118,6 +118,10 @@ public final class Life {
         long day = time / 24000L;
         if (v.settlementsGreetDay != day && d < 36) {
             v.settlementsGreetDay = day;
+            if (v.isElder() && tier >= 2 && village != null) {
+                Speech.say(v, "settlements.greet.elder", p.getName(), village.getName());
+                return;
+            }
             long t = time % 24000L;
             if (tier >= 3 && t < 2000) Speech.say(v, "settlements.greet.morning", p.getName());
             else if (tier >= 3 && t > 11500) Speech.say(v, "settlements.greet.evening", p.getName());

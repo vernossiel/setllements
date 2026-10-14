@@ -188,7 +188,10 @@ public final class Workforce {
                 worked = true;
             } else if (prof == VillagerProfession.CARTOGRAPHER) worked = Builder.work(v, village);
             else if (prof == VillagerProfession.BUTCHER) worked = Cooking.work(v, village);
-            else if (prof == VillagerProfession.MASON) worked = Mining.work(v, village);
+            else if (prof == VillagerProfession.MASON) {
+                if (v.age % 400 == 0 || !Mining.hasPick(v)) Gear.equipTool(v, village, Chore.PROSPECT);
+                worked = Mining.work(v, village);
+            }
             else if (prof == VillagerProfession.ARMORER) worked = Smithing.work(v, village);
             else if (prof == VillagerProfession.CLERIC) worked = Healing.work(v, village);
             else if (prof == VillagerProfession.FLETCHER || prof == VillagerProfession.TOOLSMITH) {
@@ -196,7 +199,7 @@ public final class Workforce {
                 worked = Lumberjack.work(v, village);
             }
             else worked = Husbandry.work(v, village);
-            if (!helping) v.settlementsIdleWork = worked ? 0 : v.settlementsIdleWork + 1;
+            if (!helping) v.settlementsIdleWork = worked || Move.goal(v) != null ? 0 : v.settlementsIdleWork + 1; // walking to work is not idling
             if (worked) {
                 if (v.settlementsWorkSeconds == 0) Speech.sayWork(v);
                 v.settlementsEnergy -= WORK_DRAIN + REST_GAIN; // cancels the rest gain above

@@ -37,7 +37,9 @@ public final class SettlementsCommand {
                         return 0;
                     }
                     near.sort(java.util.Comparator.comparingDouble(x -> x.squaredDistanceTo(player)));
-                    Plan.talk(near.get(0), player);
+                    var vil = net.mca.server.world.data.Village.findNearest(near.get(0)).orElse(null);
+                    var elder = vil == null ? null : Plan.elder((net.minecraft.server.world.ServerWorld) player.getWorld(), vil);
+                    Plan.talk(elder != null ? elder : near.get(0), player);
                     return 1;
                 }))
                 .then(CommandManager.literal("refuse").executes(c -> Reputation.refuse(c.getSource().getPlayerOrThrow()))));

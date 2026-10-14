@@ -61,9 +61,10 @@ public final class Move {
         if (state.isAir() || !state.getFluidState().isEmpty() || state.getHardness(world, pos) < 0) return false;
         boolean natural = state.isIn(BlockTags.DIRT) || state.isIn(BlockTags.SAND) || state.isIn(BlockTags.LEAVES)
                 || state.isIn(BlockTags.REPLACEABLE) || state.isIn(BlockTags.SNOW) || state.isIn(BlockTags.BASE_STONE_OVERWORLD)
-                || state.isOf(Blocks.GRAVEL) || state.isOf(Blocks.CLAY) || state.isOf(Blocks.COBBLESTONE) && village != null && village.hallPos != null && !village.hallPos.isWithinDistance(pos, 12);
+                || state.isOf(Blocks.GRAVEL) || state.isOf(Blocks.CLAY);
         if (!natural) return false;
-        return village == null || Protection.severity(world, village, pos, state) == 0;
+        for (Direction d : Direction.values()) if (d != Direction.DOWN && !world.getFluidState(pos.offset(d)).isEmpty()) return false; // would let water in
+        return village == null || Protection.severity(world, village, pos, state) == 0 && !Protection.insideStructure(village, pos);
     }
 
     /** Breaks the block as a player would: the drops go into the villager's pockets. */
@@ -106,10 +107,79 @@ public final class Move {
         return true;
     }
 
+    /** Doors and gates count as open: villagers use them. */
+    private static boolean walkable(ServerWorld world, BlockPos p) {
+        BlockState s = world.getBlockState(p);
+        return passable(world, p) || s.getBlock() instanceof net.minecraft.block.DoorBlock || s.getBlock() instanceof net.minecraft.block.FenceGateBlock;
+    }
+
+    private static boolean standable(ServerWorld world, BlockPos p) {
+        if (!walkable(world, p) || !walkable(world, p.up())) return false;
+        return !world.getFluidState(p).isEmpty() || !passable(world, p.down());
+    }
+
+    /**
+     * Fallen into a pit, a hole or a basin with no way out on foot: a short walk search finds no cell six blocks away.
+     */
+    static boolean trapped(ServerWorld world, BlockPos start) {
+        java.util.ArrayDeque<BlockPos> queue = new java.util.ArrayDeque<>();
+        java.util.Set<BlockPos> seen = new java.util.HashSet<>();
+        queue.add(start);
+        seen.add(start);
+        while (!queue.isEmpty() && seen.size() < 500) {
+            BlockPos p = queue.poll();
+            if (Math.abs(p.getX() - start.getX()) + Math.abs(p.getZ() - start.getZ()) >= 6) return false;
+            for (Direction dir : Direction.Type.HORIZONTAL) {
+                BlockPos n = p.offset(dir);
+                BlockPos next = null;
+                if (standable(world, n)) next = n;
+                else if (standable(world, n.up()) && walkable(world, p.up(2))) next = n.up(); // a one block step
+                else if (walkable(world, n) && walkable(world, n.up())) {
+                    for (int d = 1; d <= 3; d++) {
+                        if (standable(world, n.down(d))) {
+                            next = n.down(d);
+                            break;
+                        }
+                        if (!walkable(world, n.down(d))) break;
+                    }
+                }
+                if (next != null && seen.add(next)) queue.add(next);
+            }
+        }
+        return seen.size() < 500;
+    }
+
+    /** The level the villager has to climb to: the highest ground around the pit, plus one to stand on it. */
+    private static int rim(ServerWorld world, BlockPos feet) {
+        int best = feet.getY();
+        for (Direction dir : Direction.Type.HORIZONTAL) {
+            BlockPos n = feet.offset(dir);
+            int y = feet.getY();
+            while (y < feet.getY() + 24 && !(walkable(world, new BlockPos(n.getX(), y, n.getZ())) && walkable(world, new BlockPos(n.getX(), y + 1, n.getZ())))) y++;
+            best = Math.max(best, y);
+        }
+        return best;
+    }
+
     /** Once per second: true if the villager worked his way by hand this second. */
     public static boolean tick(VillagerEntityMCA v, Village village) {
         if (!(v.getWorld() instanceof ServerWorld world) || v.hasVehicle() || v.isSleeping() || v.climbPhase != 0) return false;
         BlockPos goal = goal(v);
+        // stuck in a pit with nowhere to go: climb out like a player, building up under himself
+        if (goal == null && (v.age / 20 + v.getId()) % 3 == 0 && (v.getNavigation().isIdle() || v.getVelocity().horizontalLengthSquared() < 0.001)
+                && !(v.isGuard() && village != null && village.watchPoints.stream().anyMatch(w -> w.isWithinDistance(v.getBlockPos(), 4)))) {
+            BlockPos feet = v.getBlockPos();
+            if (trapped(world, feet)) {
+                int top = rim(world, feet);
+                if (top > feet.getY()) {
+                    v.settlementsGoal = new BlockPos(feet.getX(), top + 1, feet.getZ());
+                    v.settlementsGoalAt = world.getTime() + 200; // stays wanted while he climbs
+                    v.settlementsHandSec = HAND_AFTER;
+                    Speech.say(v, "settlements.react.trapped");
+                    goal = v.settlementsGoal;
+                }
+            }
+        }
         Vec3d pos = v.getPos();
         if (goal == null) {
             v.settlementsHandSec = 0;

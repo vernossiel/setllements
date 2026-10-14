@@ -352,8 +352,8 @@ public final class Blueprints {
                 }
             }
             if (g % 5 == 4) {
-                l.add(new Step(2 + g, bottom, z0, Kind.TORCH));
-                l.add(new Step(-1 - g, bottom, z0, Kind.TORCH));
+                l.add(new Step(2 + g, bottom + 1, z0, Kind.TORCH));
+                l.add(new Step(-1 - g, bottom + 1, z0, Kind.TORCH));
             }
             if (g % 6 == 2) {
                 galleryFrame(l, 2 + g, bottom, z0);
@@ -411,9 +411,10 @@ public final class Blueprints {
         int depth = 28;
         for (int i = 0; i < depth; i++) {
             for (int x = 0; x < 2; x++) {
-                for (int h = 1; h <= 3; h++) l.add(new Step(x, -i + h, i, Kind.DIG));
-                l.add(new Step(x, -i, i, Kind.DIG));
-                l.add(new Step(x, -i, i, Kind.STAIRS_N));
+                // headroom above the step, then the step itself one block into the ground (never on the grass)
+                for (int h = 0; h <= 2; h++) l.add(new Step(x, -i + h, i, Kind.DIG));
+                l.add(new Step(x, -i - 1, i, Kind.DIG));
+                l.add(new Step(x, -i - 1, i, Kind.STAIRS_N));
             }
             if (i % 6 == 5) shaftFrame(l, i);
         }
@@ -427,8 +428,8 @@ public final class Blueprints {
                 }
             }
             if (g % 5 == 4) {
-                l.add(new Step(2 + g, bottom, depth - 1, Kind.TORCH));
-                l.add(new Step(-1 - g, bottom, depth - 1, Kind.TORCH));
+                l.add(new Step(2 + g, bottom + 1, depth - 1, Kind.TORCH));
+                l.add(new Step(-1 - g, bottom + 1, depth - 1, Kind.TORCH));
             }
             if (g % 6 == 2) {
                 galleryFrame(l, 2 + g, bottom, depth - 1);
@@ -449,10 +450,11 @@ public final class Blueprints {
 
     /** The same for the stair shaft: posts beside it and a plank beam above the stairs. */
     private static void shaftFrame(List<Step> l, int i) {
-        for (int h = 1; h <= 3; h++) {
+        for (int h = 0; h <= 2; h++) {
             l.add(new Step(-1, -i + h, i, Kind.PILLAR));
             l.add(new Step(2, -i + h, i, Kind.PILLAR));
         }
-        for (int x = -1; x <= 2; x++) l.add(new Step(x, -i + 4, i, Kind.FLOOR));
+        for (int x = -1; x <= 2; x++) l.add(new Step(x, -i + 3, i, Kind.FLOOR));
+        l.add(new Step(0, -i + 1, i, Kind.TORCH)); // on the post, lighting the stairs
     }
 }

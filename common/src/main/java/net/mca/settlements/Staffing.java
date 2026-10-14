@@ -47,6 +47,7 @@ public final class Staffing {
                 .filter(r -> !r.isBaby() && r.isAlive() && !Hire.isHired(r) && r.getProfession() != ProfessionsMCA.MERCENARY.get())
                 .toList();
         int p = adults.size();
+        if (v.hall == null) openHall(world, v);
         if (p < 2) return;
 
         // the founders' supplies: a new village starts with enough to begin, the rest it has to earn
@@ -97,6 +98,33 @@ public final class Staffing {
                 assign(world, pool.remove(world.random.nextInt(pool.size())), role.profession());
                 have++;
             }
+        }
+    }
+
+    private static final java.util.Map<Integer, Long> HALL_RETRY = new java.util.HashMap<>();
+
+    /** Every two seconds: a village without a town hall gets one at once. */
+    public static void foundHalls(ServerWorld world) {
+        for (Village v : VillageManager.get(world)) if (v.hall == null) openHall(world, v);
+    }
+
+    private static void openHall(ServerWorld world, Village v) {
+        if (world.getTime() < HALL_RETRY.getOrDefault(v.getId(), 0L)) return;
+        if (!Builder.foundHall(world, v)) {
+            HALL_RETRY.put(v.getId(), world.getTime() + 600); // no flat ground loaded yet: try again later
+            return;
+        }
+        VillagerEntityMCA elder = Plan.elder(world, v);
+        if (elder != null && v.hallPos != null) {
+            elder.setElder(true);
+            net.minecraft.util.math.BlockPos spot = v.hallPos.south();
+            for (net.minecraft.util.math.BlockPos q : net.minecraft.util.math.BlockPos.iterate(v.hallPos.add(-2, 0, -2), v.hallPos.add(2, 1, 2))) {
+                if (world.getBlockState(q).isAir() && world.getBlockState(q.up()).isAir() && world.getBlockState(q.down()).isSolidBlock(world, q.down())) {
+                    spot = q.toImmutable();
+                    break;
+                }
+            }
+            elder.refreshPositionAndAngles(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, elder.getYaw(), 0);
         }
     }
 

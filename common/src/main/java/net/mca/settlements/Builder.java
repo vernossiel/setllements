@@ -81,7 +81,11 @@ public final class Builder {
 
     // ---------- treasury ----------
 
+    /** While the founders raise the town hall, materials come with the founding and are not taken from the stores. */
+    private static boolean FREE = false;
+
     private static int count(Village v, Predicate<ItemStack> p) {
+        if (FREE) return 9999;
         int n = 0;
         for (ItemStack s : v.storageBuffer) if (p.test(s)) n += s.getCount();
         return n;
@@ -103,6 +107,7 @@ public final class Builder {
     }
 
     private static boolean take(Village v, Predicate<ItemStack> p, int amount) {
+        if (FREE) return true;
         if (count(v, p) < amount) return false;
         for (Iterator<ItemStack> it = v.storageBuffer.iterator(); it.hasNext() && amount > 0; ) {
             ItemStack s = it.next();
@@ -118,6 +123,7 @@ public final class Builder {
 
     /** One plank, sawing a log when no plank is left. Null if the treasury has neither. */
     private static Item takePlank(Village v) {
+        if (FREE) return Items.OAK_PLANKS;
         for (Iterator<ItemStack> it = v.storageBuffer.iterator(); it.hasNext(); ) {
             ItemStack s = it.next();
             if (s.isIn(ItemTags.PLANKS)) {
@@ -453,6 +459,51 @@ public final class Builder {
         };
     }
 
+    /**
+     * Every village starts with its town hall, where the elder keeps office: the founders raise it the moment the
+     * village is first seen. A project already under way is put aside and resumed afterwards.
+     */
+    public static boolean foundHall(ServerWorld world, Village village) {
+        if (village.hall != null) return false;
+        String t = village.buildType;
+        BlockPos o = village.buildOrigin;
+        int st = village.buildStep, w = village.buildW, d = village.buildD, f = village.buildF, r = village.buildRot;
+        boolean started = startRing(village, world, "townhall", 0, 0, 0, 0, 3);
+        if (!started) {
+            Layout.Slot hs = Layout.center(world, village, "townhall");
+            started = hs != null && startAt(village, "townhall", 0, 0, 0, hs);
+        }
+        if (!started) started = start(village, world, "townhall", Blueprints.HALL_W, Blueprints.HALL_D, 0);
+        if (!started) return false;
+        announceProject = null;
+        List<Step> steps = plan(village);
+        int[] fp = Blueprints.footprint("townhall", 0, 0);
+        BlockPos origin = village.buildOrigin;
+        int rot = village.buildRot;
+        FREE = true;
+        try {
+            for (Step step : steps) {
+                int[] rp = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], rot);
+                execute(world, village, step, origin.add(rp[0], step.dy(), rp[1]), rot);
+            }
+        } finally {
+            FREE = false;
+        }
+        village.buildStep = steps.size();
+        finish(village);
+        if (o != null && t != null && !t.equals("townhall")) {
+            village.buildType = t;
+            village.buildOrigin = o;
+            village.buildStep = st;
+            village.buildW = w;
+            village.buildD = d;
+            village.buildF = f;
+            village.buildRot = r;
+        }
+        village.markDirty();
+        return true;
+    }
+
     /** Places a whole plan at once, paying from the treasury. Used for the settlers' starter house. */
     public static boolean buildInstantly(ServerWorld world, Village payer, BlockPos origin, List<Step> steps) {
         if (planks(payer) < 120 || count(payer, WOOL) < 3) return false;
@@ -618,6 +669,19 @@ public final class Builder {
                 world.spawnEntity(stand);
             }
             return Result.PLACED;
+        }
+        if (step.kind() == Kind.TORCH) {
+            // on a wall where there is one, like a player would hang it
+            BlockState wall = null;
+            for (Direction dir : Direction.Type.HORIZONTAL) {
+                BlockPos n = target.offset(dir);
+                if (world.getBlockState(n).isSideSolidFullSquare(world, n, dir.getOpposite())) {
+                    wall = Blocks.WALL_TORCH.getDefaultState().with(WallTorchBlock.FACING, dir.getOpposite());
+                    break;
+                }
+            }
+            if (wall != null) state = wall;
+            else if (!world.getBlockState(target.down()).isSideSolidFullSquare(world, target.down(), Direction.UP)) return Result.SKIPPED;
         }
         world.setBlockState(target, state);
         if (step.kind() == Kind.CHEST) village.lootChests.add(target.toImmutable());

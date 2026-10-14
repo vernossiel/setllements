@@ -28,9 +28,9 @@ public final class Scavenge {
     private static final int RADIUS = 18;
     private static final Set<Item> FILLER = Set.of(Items.COBBLESTONE, Items.STONE, Items.ANDESITE, Items.DIORITE, Items.GRANITE,
             Items.COBBLED_DEEPSLATE, Items.SANDSTONE, Items.SAND, Items.DIRT, Items.COARSE_DIRT);
-    private static final Set<Block> SOURCES = Set.of(Blocks.STONE, Blocks.COBBLESTONE, Blocks.ANDESITE, Blocks.DIORITE, Blocks.GRANITE,
+    private static final Set<Block> SOURCES = Set.of(Blocks.STONE, Blocks.ANDESITE, Blocks.DIORITE, Blocks.GRANITE,
             Blocks.SANDSTONE, Blocks.SAND, Blocks.DIRT, Blocks.GRASS_BLOCK, Blocks.COARSE_DIRT, Blocks.PODZOL);
-    private static final Set<Block> STONES = Set.of(Blocks.STONE, Blocks.COBBLESTONE, Blocks.ANDESITE, Blocks.DIORITE, Blocks.GRANITE);
+    private static final Set<Block> STONES = Set.of(Blocks.STONE, Blocks.ANDESITE, Blocks.DIORITE, Blocks.GRANITE);
 
     private Scavenge() {
     }
@@ -117,6 +117,11 @@ public final class Scavenge {
         return source(world.getBlockState(p), need, anyBlock) && !inPlot(village, p);
     }
 
+    private static boolean nearWater(ServerWorld world, BlockPos p) {
+        for (var dir : net.minecraft.util.math.Direction.values()) if (!world.getFluidState(p.offset(dir)).isEmpty()) return true;
+        return false;
+    }
+
     private static boolean inPlot(Village village, BlockPos p) {
         for (int[] plot : village.plots) {
             if (p.getX() >= plot[0] - 2 && p.getX() <= plot[0] + plot[2] + 2 && p.getZ() >= plot[1] - 2 && p.getZ() <= plot[1] + plot[3] + 2) return true;
@@ -135,7 +140,7 @@ public final class Scavenge {
                 BlockPos p = new BlockPos(x, y, z);
                 if (world.getBlockState(p).isOf(Blocks.SNOW)) p = p.down();
                 if (!source(world.getBlockState(p), need, anyBlock) || inPlot(village, p)) continue;
-                if (!world.getFluidState(p.up()).isEmpty()) continue;
+                if (nearWater(world, p) || Protection.insideStructure(village, p) || Protection.insideStructure(village, p.up())) continue;
                 found.add(p);
             }
         }
