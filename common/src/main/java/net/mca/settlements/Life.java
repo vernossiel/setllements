@@ -152,7 +152,7 @@ public final class Life {
             if (hall.squaredDistanceTo(from.getPos()) > hall.squaredDistanceTo(v.getPos()) + 16 && hall.squaredDistanceTo(v.getPos()) < 64 * 64) away = hall;
         }
         if (away == null) away = NoPenaltyTargeting.findFrom(v, 14, 5, from.getPos());
-        if (away != null) v.getNavigation().startMovingTo(away.x, away.y, away.z, 0.9);
+        if (away != null) v.getNavigation().startMovingTo(away.x, away.y, away.z, 0.7); // running, but not like a madman
         v.settlementsFleeUntil = world.getTime() + 160;
     }
 
@@ -171,7 +171,7 @@ public final class Life {
             if (n++ >= (attack ? 3 : 1)) break;
             if (attack) charge(g, p);
             else {
-                g.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET, new net.minecraft.entity.ai.brain.WalkTarget(p, 0.7f, 3));
+                g.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET, new net.minecraft.entity.ai.brain.WalkTarget(p, 0.5f, 3));
                 g.settlementsWatch = p.getUuid();
             }
         }
@@ -416,15 +416,15 @@ public final class Life {
         List<VillagerEntityMCA> kids = world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(16), o -> o != v && o.isBaby() && o.isAlive());
         if (!kids.isEmpty() && world.random.nextInt(3) > 0) {
             VillagerEntityMCA friend = kids.get(world.random.nextInt(kids.size()));
-            v.getNavigation().startMovingTo(friend, 0.8);
+            v.getNavigation().startMovingTo(friend, 0.6);
             if (v.squaredDistanceTo(friend) < 3) {
                 Speech.say(v, "settlements.kid.tag." + world.random.nextInt(3));
                 Vec3d run = NoPenaltyTargeting.findFrom(friend, 10, 3, v.getPos());
-                if (run != null) friend.getNavigation().startMovingTo(run.x, run.y, run.z, 0.85);
+                if (run != null) friend.getNavigation().startMovingTo(run.x, run.y, run.z, 0.65);
             }
         } else {
             Vec3d go = FuzzyTargeting.find(v, 10, 3);
-            if (go != null) v.getNavigation().startMovingTo(go.x, go.y, go.z, 0.7);
+            if (go != null) v.getNavigation().startMovingTo(go.x, go.y, go.z, 0.5);
         }
     }
 

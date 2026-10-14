@@ -56,7 +56,7 @@ public final class GuardAI {
         // never chase far from home
         if (g.squaredDistanceTo(center.getX(), g.getY(), center.getZ()) > LEASH * LEASH) {
             brain.forget(MemoryModuleType.ATTACK_TARGET);
-            brain.remember(MemoryModuleType.WALK_TARGET, new WalkTarget(center, 0.7f, 6));
+            brain.remember(MemoryModuleType.WALK_TARGET, new WalkTarget(center, 0.6f, 6));
             return;
         }
 
@@ -70,7 +70,7 @@ public final class GuardAI {
         // a player the villagers do not trust: walk up, keep close, warn him once in a while
         PlayerEntity watched = g.settlementsWatch == null ? null : world.getPlayerByUuid(g.settlementsWatch);
         if (watched != null && watched.squaredDistanceTo(g) < 40 * 40 && Reputation.tier(village.getReputation(watched)) <= 2) {
-            if (g.squaredDistanceTo(watched) > 16) brain.remember(MemoryModuleType.WALK_TARGET, new WalkTarget(watched, 0.7f, 3));
+            if (g.squaredDistanceTo(watched) > 16) brain.remember(MemoryModuleType.WALK_TARGET, new WalkTarget(watched, 0.6f, 3));
             else {
                 g.getLookControl().lookAt(watched, 30f, 30f);
                 if (world.getTime() - g.settlementsWarned > 1200) {
@@ -130,7 +130,7 @@ public final class GuardAI {
                 g.getBrain().forget(MemoryModuleType.ATTACK_TARGET);
                 Speech.say(g, "settlements.say.guard.creeper");
                 Vec3d away = g.getPos().subtract(creeper.getPos()).normalize().multiply(9).add(g.getPos());
-                g.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(away, 0.8f, 1));
+                g.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(away, 0.6f, 1));
                 return;
             }
         }

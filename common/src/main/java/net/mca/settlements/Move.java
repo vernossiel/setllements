@@ -29,12 +29,17 @@ public final class Move {
     private Move() {
     }
 
+    /** An ordinary walking pace for every errand: nobody races about the village. */
+    private static final double PACE = 0.5;
+
     public static boolean to(VillagerEntityMCA v, double x, double y, double z, double speed) {
+        speed = Math.min(speed, PACE);
         remember(v, BlockPos.ofFloored(x, y, z));
         return v.getNavigation().startMovingTo(x, y, z, speed);
     }
 
     public static boolean to(VillagerEntityMCA v, Entity e, double speed) {
+        speed = Math.min(speed, PACE);
         remember(v, e.getBlockPos());
         return v.getNavigation().startMovingTo(e, speed);
     }
@@ -296,6 +301,6 @@ public final class Move {
 
     private static void step(VillagerEntityMCA v, BlockPos cell) {
         if (cell.getY() > v.getBlockPos().getY()) v.getJumpControl().setActive();
-        v.getMoveControl().moveTo(cell.getX() + 0.5, cell.getY(), cell.getZ() + 0.5, 0.6);
+        v.getMoveControl().moveTo(cell.getX() + 0.5, cell.getY(), cell.getZ() + 0.5, PACE);
     }
 }

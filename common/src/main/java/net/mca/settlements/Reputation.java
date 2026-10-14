@@ -236,7 +236,7 @@ public final class Reputation {
             }
             VillagerEntityMCA nearest = guards.stream().min(java.util.Comparator.comparingDouble(g -> g.squaredDistanceTo(player))).orElse(null);
             if (nearest == null) continue;
-            nearest.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(player, 0.7f, 2));
+            nearest.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(player, 0.6f, 2));
             if (world.getTime() - debt.lastShout > 300 && nearest.squaredDistanceTo(player) < 100) {
                 debt.lastShout = world.getTime();
                 nearest.sendChatMessage(player, "settlements.theft.demand");

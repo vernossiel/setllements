@@ -65,10 +65,10 @@ public final class GuardIntel {
         if (subject instanceof Monster) {
             // told about it, the guard goes to have a look; he fights once he sees it himself (or it is known to attack)
             if (guard.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) return;
-            guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(subject.getBlockPos(), 0.7f, 3));
+            guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(subject.getBlockPos(), 0.6f, 3));
             Speech.say(guard, "settlements.say.guard.scout");
         } else {
-            guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(subject, 0.7f, 2));
+            guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(subject, 0.6f, 2));
         }
         if (!(subject instanceof Monster)) Speech.say(guard, "settlements.say.guard.reported");
     }

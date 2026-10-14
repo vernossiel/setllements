@@ -127,7 +127,7 @@ public final class Protection {
             VillagerEntityMCA guard = world.getEntitiesByClass(VillagerEntityMCA.class, player.getBoundingBox().expand(40), VillagerEntityMCA::isGuard)
                     .stream().min(Comparator.comparingDouble(g -> g.squaredDistanceTo(player))).orElse(null);
             if (guard != null) {
-                guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(player, 0.7f, 2));
+                guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(player, 0.6f, 2));
                 guard.sendChatMessage(player, "settlements.break.warn");
             } else if (!villagers.isEmpty()) {
                 villagers.get(0).sendChatMessage(player, "settlements.break.warn");
