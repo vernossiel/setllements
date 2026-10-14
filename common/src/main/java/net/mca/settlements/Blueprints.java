@@ -8,10 +8,17 @@ import java.util.List;
  * corner, y = 0 is the ground floor plane. Everything faces south (door on the +z side).
  */
 public final class Blueprints {
-    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE, SMOKER, BARREL, CRAFT, PLATE, SEAT_W, SEAT_E, LECTERN, HALL_CHEST, BOOKSHELF, CARPET, SIGN }
+    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE, SMOKER, BARREL, CRAFT, PLATE, SEAT_W, SEAT_E, LECTERN, HALL_CHEST, BOOKSHELF, CARPET, SIGN,
+        BEAM_X, BEAM_Z, SHUTTER, POT, HEDGE, PATH, CHIMNEY, SMOKE, ACCENT, BELL, STEP, LANTERN }
 
-    public record Step(int dx, int dy, int dz, Kind kind) {
+    /** {@code face}: a horizontal direction index (0 south, 1 west, 2 north, 3 east) for blocks that face somewhere, -1 otherwise. */
+    public record Step(int dx, int dy, int dz, Kind kind, int face) {
+        public Step(int dx, int dy, int dz, Kind kind) {
+            this(dx, dy, dz, kind, -1);
+        }
     }
+
+    public static final int S = 0, W = 1, N = 2, E = 3;
 
     public static final int LEVEL_HEIGHT = 4;
 
@@ -22,33 +29,58 @@ public final class Blueprints {
 
     /** A new house with the given number of floors. */
     public static List<Step> house(int w, int d, int floors) {
+        return house(w, d, floors, false);
+    }
+
+    /**
+     * A timber-framed house on a stone footing: log posts at the corners and beams under every ceiling, windows with
+     * shutters, an overhanging pitched roof in a darker wood, a chimney with smoke, a step and a path at the door,
+     * a hedge along the front and a furnished room on every floor. {@code grand} is the town hall's version, with
+     * stone corners.
+     */
+    static List<Step> house(int w, int d, int floors, boolean grand) {
         List<Step> l = new ArrayList<>();
-        plane(l, w, d, 0, Kind.FLOOR, -1);
-        for (int level = 0; level < floors; level++) {
-            level(l, w, d, level, level > 0);
+        // footing: stone under the walls, planks inside
+        for (int x = 0; x < w; x++) {
+            for (int z = 0; z < d; z++) {
+                boolean edge = x == 0 || z == 0 || x == w - 1 || z == d - 1;
+                l.add(new Step(x, 0, z, edge ? (grand ? Kind.ACCENT : Kind.STONE) : Kind.FLOOR));
+            }
         }
-        plane(l, w, d, floors * LEVEL_HEIGHT, Kind.ROOF, -1);
-        gable(l, w, d, floors * LEVEL_HEIGHT, false);
+        for (int level = 0; level < floors; level++) level(l, w, d, level, level > 0, grand);
+        int top = floors * LEVEL_HEIGHT;
+        plane(l, w, d, top, Kind.ROOF, -1);
+        gable(l, w, d, top, false);
+        outside(l, w, d, top, grand);
         return l;
     }
 
     /** One more floor on top of an existing house of {@code floors} floors. */
     public static List<Step> addFloor(int w, int d, int floors) {
+        return addFloor(w, d, floors, false);
+    }
+
+    static List<Step> addFloor(int w, int d, int floors, boolean grand) {
         List<Step> l = new ArrayList<>();
         gable(l, w, d, floors * LEVEL_HEIGHT, true); // take the old pitched roof off first
-        level(l, w, d, floors, true);
-        plane(l, w, d, (floors + 1) * LEVEL_HEIGHT, Kind.ROOF, -1);
-        gable(l, w, d, (floors + 1) * LEVEL_HEIGHT, false);
+        int oldTop = floors * LEVEL_HEIGHT, chimneyTop = oldTop + 2 + w / 2;
+        for (int y = oldTop + 1; y <= chimneyTop + 1; y++) l.add(new Step(w, y, d / 2, Kind.CLEAR)); // and the old chimney top
+        level(l, w, d, floors, true, grand);
+        int top = (floors + 1) * LEVEL_HEIGHT;
+        plane(l, w, d, top, Kind.ROOF, -1);
+        gable(l, w, d, top, false);
+        for (int y = 1; y <= top + 2 + w / 2; y++) l.add(new Step(w, y, d / 2, Kind.CHIMNEY));
+        l.add(new Step(w, top + 3 + w / 2, d / 2, Kind.SMOKE));
         return l;
     }
 
-    /** A pitched roof along the depth axis with closed gable ends; {@code clear} produces the steps that remove it. */
+    /** A pitched roof along the depth axis, overhanging one block front and back; {@code clear} removes it. */
     private static void gable(List<Step> l, int w, int d, int yBase, boolean clear) {
         for (int i = 0; ; i++) {
             int left = -1 + i, right = w - i;
             if (left > right) break;
             int y = yBase + 1 + i;
-            for (int z = 0; z < d; z++) {
+            for (int z = -1; z <= d; z++) {
                 if (left < right) {
                     l.add(new Step(left, y, z, clear ? Kind.CLEAR : Kind.STAIRS_E));
                     l.add(new Step(right, y, z, clear ? Kind.CLEAR : Kind.STAIRS_W));
@@ -67,35 +99,85 @@ public final class Blueprints {
         for (int x = 0; x < w; x++) for (int z = 0; z < d; z++) l.add(new Step(x, y, z, kind));
     }
 
-    /** Walls, windows, pillars, bed and (for upper levels) the stairs coming up from below. */
-    private static void level(List<Step> l, int w, int d, int level, boolean stairsFromBelow) {
+    private static boolean window(int x, int z, int w, int d) {
+        int door = w / 2;
+        if (z == d - 1) return x == 1 || x == w - 2 || (w >= 9 && (x == door - 2 || x == door + 2));
+        if (z == 0) return x == w / 2 || (w >= 8 && (x == 2 || x == w - 3));
+        if (x == 0 || x == w - 1) return z == d / 2 || (d >= 8 && (z == 2 || z == d - 3));
+        return false;
+    }
+
+    /** Walls with windows and shutters, posts, a beam under the ceiling, furniture, stairs from the floor below. */
+    private static void level(List<Step> l, int w, int d, int level, boolean stairsFromBelow, boolean grand) {
         int base = level * LEVEL_HEIGHT;
         if (stairsFromBelow) {
             int prev = base - LEVEL_HEIGHT;
-            // staircase from the floor below: four steps along the west wall, hole in the ceiling above them
             for (int i = 0; i < 3; i++) l.add(new Step(1, base, 1 + i, Kind.CLEAR));
             l.add(new Step(1, base, 4, Kind.CLEAR));
             for (int i = 0; i < 4; i++) l.add(new Step(1, prev + 1 + i, 1 + i, Kind.STAIRS_S));
         }
+        int door = w / 2;
         for (int y = 1; y <= 3; y++) {
             for (int x = 0; x < w; x++) {
                 for (int z = 0; z < d; z++) {
                     boolean edge = x == 0 || z == 0 || x == w - 1 || z == d - 1;
                     if (!edge) continue;
                     boolean corner = (x == 0 || x == w - 1) && (z == 0 || z == d - 1);
-                    boolean door = level == 0 && x == w / 2 && z == d - 1 && y <= 2;
-                    if (door) continue;
-                    if (corner) l.add(new Step(x, base + y, z, Kind.PILLAR));
-                    else if (y == 2 && ((x + z) % 2 == 0)) l.add(new Step(x, base + y, z, Kind.GLASS));
+                    if (level == 0 && x == door && z == d - 1 && y <= 2) continue;
+                    if (corner) l.add(new Step(x, base + y, z, grand ? Kind.ACCENT : Kind.PILLAR));
+                    else if (y == 3) l.add(new Step(x, base + y, z, (z == 0 || z == d - 1) ? Kind.BEAM_X : Kind.BEAM_Z));
+                    else if (y == 2 && window(x, z, w, d)) l.add(new Step(x, base + y, z, Kind.GLASS));
                     else l.add(new Step(x, base + y, z, Kind.WALL));
                 }
             }
         }
-        if (level == 0) l.add(new Step(w / 2, 1, d - 1, Kind.DOOR));
+        // shutters beside every window, outside
+        for (int x = 0; x < w; x++) {
+            for (int z = 0; z < d; z++) {
+                if (!window(x, z, w, d)) continue;
+                if (z == d - 1 || z == 0) {
+                    int oz = z == 0 ? -1 : d, face = z == 0 ? N : S;
+                    for (int sx : new int[]{x - 1, x + 1}) if (sx > 0 && sx < w - 1 && !window(sx, z, w, d) && !(level == 0 && sx == door && z == d - 1)) l.add(new Step(sx, base + 2, oz, Kind.SHUTTER, face));
+                } else {
+                    int ox = x == 0 ? -1 : w, face = x == 0 ? W : E;
+                    for (int sz : new int[]{z - 1, z + 1}) if (sz > 0 && sz < d - 1 && !window(x, sz, w, d)) l.add(new Step(ox, base + 2, sz, Kind.SHUTTER, face));
+                }
+            }
+        }
+        if (level == 0) l.add(new Step(door, 1, d - 1, Kind.DOOR));
+        // furniture: a bed, a chest, a workbench, a barrel with a flower pot, a rug, a light
         int bx = w - 2;
         l.add(new Step(bx, base + 1, 1, Kind.BED_FOOT));
         l.add(new Step(bx, base + 1, 2, Kind.BED_HEAD));
-        l.add(new Step(bx, base + 1, d - 2, Kind.TORCH));
+        if (d >= 7) l.add(new Step(bx, base + 1, 3, Kind.CHEST));
+        if (!grand) {
+            l.add(new Step(bx, base + 1, d - 2, Kind.CRAFT));
+            if (w >= 7 && !stairsFromBelow) {
+                l.add(new Step(2, base + 1, 1, Kind.BARREL));
+                l.add(new Step(2, base + 2, 1, Kind.POT));
+            }
+        }
+        l.add(new Step(door, base + 1, d / 2, Kind.CARPET));
+        l.add(new Step(bx, base + 2, d - 2, Kind.TORCH));
+        if (level > 0) l.add(new Step(w / 2, base + 3, d / 2, Kind.LANTERN));
+    }
+
+    /** The outside: chimney with smoke, door step and path, lights by the door, a hedge and flowers along the front. */
+    private static void outside(List<Step> l, int w, int d, int top, boolean grand) {
+        int door = w / 2;
+        int chimneyTop = top + 2 + w / 2;
+        for (int y = 0; y <= chimneyTop; y++) l.add(new Step(w, y, d / 2, Kind.CHIMNEY));
+        l.add(new Step(w, chimneyTop + 1, d / 2, Kind.SMOKE));
+        l.add(new Step(door, 0, d, Kind.STEP, N));
+        for (int z = d + 1; z <= d + 3; z++) l.add(new Step(door, -1, z, Kind.PATH));
+        l.add(new Step(door - 1, 2, d, Kind.TORCH));
+        l.add(new Step(door + 1, 2, d, Kind.TORCH));
+        for (int x = 0; x < w; x++) {
+            if (Math.abs(x - door) <= 1) continue;
+            boolean flower = x == 0 || x == w - 1 || x == door - 2 || x == door + 2;
+            l.add(new Step(x, 0, d, flower ? Kind.POT : Kind.HEDGE));
+        }
+        if (grand) l.add(new Step(door + 2, 0, d + 1, Kind.BELL));
     }
 
     // ---------- halls: storage, smithy, armory ----------
@@ -138,25 +220,33 @@ public final class Blueprints {
 
     public static final int HALL_W = 9, HALL_D = 7;
 
-    /** The first town hall: a small house with a bed for the elder, two chests with the village stores and a lectern. */
+    /**
+     * The town hall: a grand house with stone corners, the village bell at the door, the stores (two hall chests),
+     * the elder's lectern, a meeting table with seats, bookshelves and a rug.
+     */
     public static List<Step> townhall() {
-        List<Step> l = house(HALL_W, HALL_D, 1);
+        List<Step> l = house(HALL_W, HALL_D, 1, true);
         l.add(new Step(2, 1, 1, Kind.HALL_CHEST));
         l.add(new Step(3, 1, 1, Kind.HALL_CHEST));
+        l.add(new Step(4, 1, 1, Kind.BOOKSHELF));
+        l.add(new Step(5, 1, 1, Kind.BOOKSHELF));
         l.add(new Step(4, 1, 3, Kind.LECTERN));
-        l.add(new Step(6, 1, 4, Kind.FENCE));
-        l.add(new Step(6, 2, 4, Kind.PLATE));
+        l.add(new Step(2, 1, 4, Kind.FENCE));
+        l.add(new Step(2, 2, 4, Kind.PLATE));
+        l.add(new Step(1, 1, 4, Kind.SEAT_W));
+        l.add(new Step(3, 1, 4, Kind.SEAT_E));
+        for (int x = 4; x <= 6; x++) l.add(new Step(x, 1, 4, Kind.CARPET));
+        l.add(new Step(1, 3, 3, Kind.LANTERN));
         return l;
     }
 
     /** One more floor for the hall, furnished: chests, bookshelves and carpets, as grand as the village can afford. */
     public static List<Step> hallUpgrade(int w, int d, int floors) {
-        List<Step> l = addFloor(w, d, floors);
+        List<Step> l = addFloor(w, d, floors, true);
         int base = floors * LEVEL_HEIGHT;
         for (int x = 2; x <= 4; x++) l.add(new Step(x, base + 1, 1, Kind.HALL_CHEST));
         for (int x = 2; x <= w - 3; x++) l.add(new Step(x, base + 1, d - 2, Kind.BOOKSHELF));
         for (int x = 3; x <= w - 4; x++) for (int z = 3; z <= 4; z++) l.add(new Step(x, base + 1, z, Kind.CARPET));
-        l.add(new Step(w - 2, base + 1, d - 2, Kind.TORCH));
         return l;
     }
 

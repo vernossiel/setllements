@@ -74,6 +74,108 @@ public final class Life {
         }
     }
 
+    // ---------- fear ----------
+
+    private static final Map<String, Long> FEAR = new HashMap<>();
+    private static final Map<String, Long> CALLED = new HashMap<>();
+    private static final long FEAR_TICKS = 24000L * 3;
+
+    private static String key(Village village, PlayerEntity p) {
+        return village.getId() + ":" + p.getUuid();
+    }
+
+    /** A player who attacked the village is feared for three days. */
+    public static boolean feared(Village village, PlayerEntity p) {
+        if (village == null) return false;
+        Long until = FEAR.get(key(village, p));
+        return until != null && village.getWorld() != null && until > village.getWorld().getTime();
+    }
+
+    /** Players the guards go for on sight: those who attacked the village, and outlaws with a bad name here. */
+    public static boolean hostile(Village village, PlayerEntity p) {
+        if (village == null || p.isCreative() || p.isSpectator()) return false;
+        return feared(village, p) || Reputation.tier(village.getReputation(p)) <= 1;
+    }
+
+    public static PlayerEntity hostilePlayer(ServerWorld world, Village village, VillagerEntityMCA watcher, double range) {
+        PlayerEntity best = null;
+        double bd = range * range;
+        for (PlayerEntity p : world.getPlayers()) {
+            double d = p.squaredDistanceTo(watcher);
+            if (d < bd && hostile(village, p) && watcher.canSee(p)) {
+                bd = d;
+                best = p;
+            }
+        }
+        return best;
+    }
+
+    /** Somebody hit a villager: screams, everybody who saw it runs, the guards come running. */
+    public static void onAttacked(VillagerEntityMCA victim, PlayerEntity attacker) {
+        if (!(victim.getWorld() instanceof ServerWorld world) || attacker.isCreative()) return;
+        Village village = Village.findNearest(victim).orElse(null);
+        if (village == null) return;
+        long now = world.getTime();
+        String k = key(village, attacker);
+        boolean fresh = !feared(village, attacker);
+        FEAR.put(k, now + FEAR_TICKS);
+        if (fresh) {
+            news(village, "attacked", attacker.getName().getString(), victim.getName().getString());
+            village.pushHearts(attacker, -15);
+        }
+        Speech.sayNow(victim, "settlements.react.help");
+        for (VillagerEntityMCA o : world.getEntitiesByClass(VillagerEntityMCA.class, victim.getBoundingBox().expand(32),
+                o -> o.isAlive() && !o.isSleeping() && (o.canSee(attacker) || o.canSee(victim) || o.squaredDistanceTo(victim) < 64))) {
+            if (o.isGuard()) {
+                charge(o, attacker);
+            } else if (o != victim) {
+                flee(o, attacker, village, world);
+                if (world.random.nextInt(3) == 0) Speech.say(o, "settlements.react.attack");
+            }
+        }
+        if (!victim.isGuard()) flee(victim, attacker, village, world);
+        callGuards(world, village, victim, attacker, true);
+    }
+
+    private static void charge(VillagerEntityMCA guard, PlayerEntity target) {
+        guard.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET, target, 400);
+        Speech.say(guard, "settlements.say.guard.charge", target.getName());
+    }
+
+    /** Runs from the danger: towards the town hall if it lies away from the threat, otherwise simply away. */
+    static void flee(VillagerEntityMCA v, PlayerEntity from, Village village, ServerWorld world) {
+        Vec3d away = null;
+        if (village != null && village.hallPos != null) {
+            Vec3d hall = Vec3d.ofBottomCenter(village.hallPos);
+            if (hall.squaredDistanceTo(from.getPos()) > hall.squaredDistanceTo(v.getPos()) + 16 && hall.squaredDistanceTo(v.getPos()) < 64 * 64) away = hall;
+        }
+        if (away == null) away = NoPenaltyTargeting.findFrom(v, 14, 5, from.getPos());
+        if (away != null) v.getNavigation().startMovingTo(away.x, away.y, away.z, 0.9);
+        v.settlementsFleeUntil = world.getTime() + 160;
+    }
+
+    /** Calls the guards on a player, at most every twenty seconds per player. */
+    static void callGuards(ServerWorld world, Village village, VillagerEntityMCA caller, PlayerEntity p, boolean attack) {
+        String k = key(village, p);
+        long now = world.getTime();
+        if (now < CALLED.getOrDefault(k, 0L)) return;
+        CALLED.put(k, now + 400);
+        GuardIntel.reportThreat(world, p);
+        List<VillagerEntityMCA> guards = world.getEntitiesByClass(VillagerEntityMCA.class, caller.getBoundingBox().expand(48),
+                g -> g.isGuard() && g.isAlive() && !g.isSleeping());
+        guards.sort(java.util.Comparator.comparingDouble(g -> g.squaredDistanceTo(p)));
+        int n = 0;
+        for (VillagerEntityMCA g : guards) {
+            if (n++ >= (attack ? 3 : 1)) break;
+            if (attack) charge(g, p);
+            else {
+                g.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET, new net.minecraft.entity.ai.brain.WalkTarget(p, 0.7f, 3));
+                g.settlementsWatch = p.getUuid();
+            }
+        }
+        if (!guards.isEmpty()) Speech.say(caller, attack ? "settlements.react.call_guards" : "settlements.react.call_guard");
+    }
+
     // ---------- every second ----------
 
     /** True when the villager is busy with life itself (sheltering, bringing food) and should not work this second. */
@@ -83,9 +185,14 @@ public final class Life {
             Speech.sayNow(v, v.settlementsReplyKey, v.settlementsReplyArgs);
             v.settlementsReplyKey = null;
         }
+        if (!v.settlementsQueue.isEmpty() && now >= v.settlementsQueueAt) {
+            Speech.sayText(v, v.settlementsQueue.poll());
+            v.settlementsQueueAt = now + 40;
+        }
         if (v.isSleeping()) return false;
 
-        notice(v, village, world, time);
+        if (notice(v, village, world, time)) return true;
+        if (now < v.settlementsFleeUntil && !v.isGuard()) return true; // still running and shaking
 
         if (!v.isGuard() && shelter(v, village, world, time)) return true;
         if (share(v, village, world)) return true;
@@ -93,40 +200,53 @@ public final class Life {
         return false;
     }
 
-    private static void notice(VillagerEntityMCA v, Village village, ServerWorld world, long time) {
-        PlayerEntity p = world.getClosestPlayer(v, 7);
-        if (p == null || p.isSpectator() || !v.canSee(p)) return;
+    /** True when the villager is running from the player this second. */
+    private static boolean notice(VillagerEntityMCA v, Village village, ServerWorld world, long time) {
+        // somebody who attacked the village, or an outlaw: seen from afar, the alarm is raised and everybody runs
+        if (!v.isGuard() && village != null) {
+            PlayerEntity enemy = hostilePlayer(world, village, v, 20);
+            if (enemy != null) {
+                flee(v, enemy, village, world);
+                Speech.say(v, feared(village, enemy) ? "settlements.react.attacker_seen" : "settlements.react.fear");
+                callGuards(world, village, v, enemy, true);
+                return true;
+            }
+        }
+        PlayerEntity p = world.getClosestPlayer(v, 12);
+        if (p == null || p.isSpectator() || p.isCreative() && p.isInvisible() || !v.canSee(p)) return false;
         int rep = village == null ? 0 : village.getReputation(p);
         int tier = Reputation.tier(rep);
         double d = v.squaredDistanceTo(p);
         if (v.getNavigation().isIdle() && d < 25) v.getLookControl().lookAt(p, 30f, 30f);
 
-        if (!v.isGuard() && tier <= 1 && d < 25) {
-            // a known thief or an enemy: keep away from him
-            Vec3d away = NoPenaltyTargeting.findFrom(v, 8, 4, p.getPos());
-            if (away != null) v.getNavigation().startMovingTo(away.x, away.y, away.z, 0.7);
-            Speech.say(v, "settlements.react.fear");
-            return;
-        }
+        // a bad name: nobody runs yet, but the guard is fetched to keep an eye on him
+        if (tier == 2 && !v.isGuard() && village != null) callGuards(world, village, v, p, false);
+
         ItemStack held = p.getMainHandStack();
         boolean armed = held.getItem() instanceof SwordItem || held.getItem() instanceof AxeItem || held.getItem() instanceof BowItem
                 || held.getItem() instanceof CrossbowItem || held.getItem() instanceof TridentItem;
         if (armed && !v.isGuard() && tier <= 3 && d < 16) {
             Speech.say(v, "settlements.react.weapon");
-            return;
+            if (d < 9) { // too close for comfort: step back
+                Vec3d back = NoPenaltyTargeting.findFrom(v, 6, 3, p.getPos());
+                if (back != null) v.getNavigation().startMovingTo(back.x, back.y, back.z, 0.6);
+            }
+            return false;
         }
+        if (d > 49) return false;
         long day = time / 24000L;
         if (v.settlementsGreetDay != day && d < 36) {
             v.settlementsGreetDay = day;
             if (v.isElder() && tier >= 2 && village != null) {
                 Speech.say(v, "settlements.greet.elder", p.getName(), village.getName());
-                return;
+                return false;
             }
             long t = time % 24000L;
             if (tier >= 3 && t < 2000) Speech.say(v, "settlements.greet.morning", p.getName());
             else if (tier >= 3 && t > 11500) Speech.say(v, "settlements.greet.evening", p.getName());
             else Speech.say(v, "settlements.greet." + tier + "." + world.random.nextInt(3), p.getName());
         }
+        return false;
     }
 
     private static boolean shelter(VillagerEntityMCA v, Village village, ServerWorld world, long time) {

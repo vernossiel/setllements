@@ -52,7 +52,8 @@ public final class GuardIntel {
                 .stream().min(Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
         if (seen == null) return;
         reportThreat(world, seen);
-        Speech.say(v, "settlements.say.report.mob");
+        // a word only when it is really going for someone; otherwise the guard is told quietly
+        if (seen instanceof net.minecraft.entity.mob.MobEntity m && m.getTarget() != null) Speech.say(v, "settlements.say.report.mob");
         alertNearestGuard(world, v, seen);
     }
 
@@ -68,6 +69,6 @@ public final class GuardIntel {
         } else {
             guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(subject, 0.7f, 2));
         }
-        Speech.say(guard, "settlements.say.guard.reported");
+        if (!(subject instanceof Monster)) Speech.say(guard, "settlements.say.guard.reported");
     }
 }

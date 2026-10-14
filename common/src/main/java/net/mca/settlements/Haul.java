@@ -1,0 +1,101 @@
+package net.mca.settlements;
+
+import net.mca.entity.VillagerEntityMCA;
+import net.mca.server.world.data.Village;
+import net.minecraft.item.ArmorItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.ToolItem;
+import net.minecraft.util.math.BlockPos;
+
+/**
+ * Goods travel by hand. The lumberjack and the miner fill their pockets and carry the load to the town hall's store
+ * chests; the builder walks there to pick up a load of materials before he starts laying blocks.
+ */
+public final class Haul {
+    private static final int FULL_LOAD = 48;
+
+    private Haul() {
+    }
+
+    /** Where the stores are: the first hall chest, or the hall itself. */
+    public static BlockPos store(Village village) {
+        if (!village.hallChests.isEmpty()) return village.hallChests.get(0);
+        return village.hallPos;
+    }
+
+    /** Walks to the stores. True once he stands at the chest. */
+    public static boolean reach(VillagerEntityMCA v, Village village) {
+        BlockPos s = store(village);
+        if (s == null) return true; // no hall yet: the stores are wherever he is
+        if (v.squaredDistanceTo(s.getX() + 0.5, s.getY(), s.getZ() + 0.5) > 9) {
+            Move.to(v, s.getX() + 0.5, s.getY(), s.getZ() + 0.5, 0.6);
+            return false;
+        }
+        v.getNavigation().stop();
+        v.getLookControl().lookAt(s.getX() + 0.5, s.getY() + 0.5, s.getZ() + 0.5);
+        return true;
+    }
+
+    static int load(VillagerEntityMCA v) {
+        int n = 0;
+        var inv = v.getInventory();
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack s = inv.getStack(i);
+            if (s.isEmpty() || s.getItem() instanceof ToolItem || s.getItem() instanceof ArmorItem || s.isFood()) continue;
+            n += s.getCount();
+        }
+        return n;
+    }
+
+    static boolean pocketsFull(VillagerEntityMCA v) {
+        var inv = v.getInventory();
+        for (int i = 0; i < inv.size(); i++) if (inv.getStack(i).isEmpty()) return false;
+        return true;
+    }
+
+    /**
+     * The gatherer's trip to the stores. Called before his work each second: true while he is carrying a load home.
+     * {@code done} says he has nothing more to gather right now, so whatever he carries goes home.
+     */
+    public static boolean carry(VillagerEntityMCA v, Village village, boolean done) {
+        int load = load(v);
+        if (!v.settlementsHauling) {
+            if (load >= FULL_LOAD || pocketsFull(v) || done && load > 0) {
+                v.settlementsHauling = true;
+                Speech.say(v, "settlements.say.haul");
+            } else {
+                return false;
+            }
+        }
+        if (!reach(v, village)) return true;
+        var inv = v.getInventory();
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack s = inv.getStack(i);
+            if (s.isEmpty() || s.getItem() instanceof ToolItem || s.getItem() instanceof ArmorItem || s.isFood()) continue;
+            Workforce.addToTreasury(village, s.copy());
+            inv.setStack(i, ItemStack.EMPTY);
+        }
+        v.swingHand(v.getDominantHand());
+        village.markDirty();
+        v.settlementsHauling = false;
+        Speech.say(v, "settlements.say.haul.done");
+        return true;
+    }
+
+    /** The builder picks up a load before building; true while he is on his way to the stores. */
+    public static boolean fetch(VillagerEntityMCA v, Village village) {
+        if (v.settlementsCarry > 0 || store(village) == null) return false;
+        BlockPos s = store(village);
+        if (!s.isWithinDistance(v.getBlockPos(), 160)) {
+            v.settlementsCarry = FULL_LOAD; // too far to walk back for every load
+            return false;
+        }
+        if (!reach(v, village)) {
+            Speech.say(v, "settlements.say.build.fetch");
+            return true;
+        }
+        v.settlementsCarry = FULL_LOAD;
+        v.swingHand(v.getDominantHand());
+        return false;
+    }
+}

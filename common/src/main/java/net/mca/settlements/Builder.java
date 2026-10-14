@@ -392,9 +392,12 @@ public final class Builder {
         }
 
         BlockPos origin = village.buildOrigin;
+        if (Haul.fetch(v, village)) return true;
         boolean worked = false;
         int ops = 0, skips = 0;
-        while (ops < opsPerSecond && skips < MAX_TRIVIAL_SKIPS && village.buildOrigin != null && village.buildStep < steps.size()) {
+        int budget = Prosperity.ops(v, village, opsPerSecond); // tired builders and struggling villages build slower
+        if (budget == 0) return true; // working, just slowly
+        while (ops < budget && skips < MAX_TRIVIAL_SKIPS && village.buildOrigin != null && village.buildStep < steps.size()) {
             Step step = steps.get(village.buildStep);
             int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
             int[] rp = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], village.buildRot);
@@ -438,6 +441,7 @@ public final class Builder {
             village.buildStep++;
             if (r == Result.PLACED) {
                 SHORT.remove(village.getId());
+                v.settlementsCarry--;
                 ops++;
                 worked = true;
                 v.swingHand(v.getDominantHand());
@@ -474,6 +478,7 @@ public final class Builder {
             started = hs != null && startAt(village, "townhall", 0, 0, 0, hs);
         }
         if (!started) started = start(village, world, "townhall", Blueprints.HALL_W, Blueprints.HALL_D, 0);
+        if (!started) started = roughSite(village, world); // hills and forest: the founders level a site
         if (!started) return false;
         announceProject = null;
         List<Step> steps = plan(village);
@@ -491,6 +496,14 @@ public final class Builder {
         }
         village.buildStep = steps.size();
         finish(village);
+        // tell everyone around where the hall stands
+        BlockPos hp = village.hallPos != null ? village.hallPos : origin;
+        for (var pl : world.getPlayers()) {
+            if (pl.squaredDistanceTo(hp.getX(), hp.getY(), hp.getZ()) < 256 * 256) {
+                pl.sendMessage(Text.translatable("settlements.hall.founded", village.getName(), hp.getX(), hp.getY(), hp.getZ())
+                        .formatted(net.minecraft.util.Formatting.GOLD), false);
+            }
+        }
         if (o != null && t != null && !t.equals("townhall")) {
             village.buildType = t;
             village.buildOrigin = o;
@@ -502,6 +515,74 @@ public final class Builder {
         }
         village.markDirty();
         return true;
+    }
+
+    /**
+     * The nearest spot to the village center where the ground is no more than four blocks uneven and dry: the hall's
+     * footprint is filled up with earth and cleared above, so the hall stands level.
+     */
+    private static boolean roughSite(Village village, ServerWorld world) {
+        int[] fp = Blueprints.footprint("townhall", 0, 0);
+        BlockPos c = new BlockPos(village.getCenter());
+        for (int r = 0; r <= 40; r += 4) {
+            for (int a = 0; a < Math.max(1, r * 2); a++) {
+                double ang = a * Math.PI * 2 / Math.max(1, r * 2);
+                int x = c.getX() + (int) (Math.cos(ang) * r) - fp[0] / 2, z = c.getZ() + (int) (Math.sin(ang) * r) - fp[1] / 2;
+                int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
+                boolean ok = true;
+                List<Integer> heights = new java.util.ArrayList<>();
+                for (int dx = -1; dx <= fp[0] && ok; dx++) {
+                    for (int dz = -1; dz <= fp[1]; dz++) {
+                        if (!world.isChunkLoaded((x + dx) >> 4, (z + dz) >> 4)) {
+                            ok = false;
+                            break;
+                        }
+                        int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x + dx, z + dz);
+                        BlockPos g = new BlockPos(x + dx, y - 1, z + dz);
+                        if (!world.getFluidState(g).isEmpty()) {
+                            ok = false;
+                            break;
+                        }
+                        min = Math.min(min, y);
+                        max = Math.max(max, y);
+                        heights.add(y);
+                    }
+                }
+                if (!ok || max - min > 4) continue;
+                java.util.Collections.sort(heights);
+                int oy = heights.get(heights.size() / 2);
+                boolean taken = false;
+                for (House h : village.houses) {
+                    if (Math.abs(h.origin().getX() - x) < h.w() + fp[0] + 2 && Math.abs(h.origin().getZ() - z) < h.d() + fp[1] + 2) taken = true;
+                }
+                if (taken) continue;
+                // level it: earth up to the floor, nothing natural above it
+                for (int dx = -1; dx <= fp[0]; dx++) {
+                    for (int dz = -1; dz <= fp[1]; dz++) {
+                        for (int y = min - 1; y < oy; y++) {
+                            BlockPos q = new BlockPos(x + dx, y, z + dz);
+                            if (world.getBlockState(q).isReplaceable() || world.getBlockState(q).isAir())
+                                world.setBlockState(q, y == oy - 1 ? Blocks.GRASS_BLOCK.getDefaultState() : Blocks.DIRT.getDefaultState());
+                        }
+                        for (int y = oy; y <= oy + 10; y++) {
+                            BlockPos q = new BlockPos(x + dx, y, z + dz);
+                            BlockState s = world.getBlockState(q);
+                            if (!s.isAir() && s.getHardness(world, q) >= 0 && !(s.getBlock() instanceof BlockWithEntity)) world.setBlockState(q, Blocks.AIR.getDefaultState());
+                        }
+                    }
+                }
+                village.buildType = "townhall";
+                village.buildOrigin = new BlockPos(x, oy, z);
+                village.buildRot = 0;
+                village.buildW = 0;
+                village.buildD = 0;
+                village.buildF = 0;
+                village.buildStep = 0;
+                village.plots.add(new int[]{x, z, fp[0], fp[1]});
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Places a whole plan at once, paying from the treasury. Used for the settlers' starter house. */
@@ -524,6 +605,9 @@ public final class Builder {
     }
 
     enum Result { PLACED, SKIPPED, WAIT, ABORT }
+
+    /** The villager whose pockets catch the drops while he digs (the miner); null puts them in the stores. */
+    static VillagerEntityMCA COLLECTOR = null;
 
     /** What the builders of a village are short of right now, so idle hands can go and gather it. */
     public record Shortage(Needs.Need need, boolean any, long since) {
@@ -650,17 +734,41 @@ public final class Builder {
                 }
                 if (old.getBlock() instanceof BlockWithEntity) return Result.SKIPPED;
                 for (ItemStack drop : Block.getDroppedStacks(old, world, target, world.getBlockEntity(target))) {
-                    Workforce.addToTreasury(village, drop);
+                    if (COLLECTOR != null) {
+                        ItemStack rest = COLLECTOR.getInventory().addStack(drop);
+                        if (!rest.isEmpty()) Workforce.addToTreasury(village, rest);
+                    } else {
+                        Workforce.addToTreasury(village, drop);
+                    }
                 }
             }
             world.setBlockState(target, Blocks.AIR.getDefaultState());
             return Result.PLACED;
         }
 
-        BlockState state = stateFor(village, step.kind(), rot);
+        boolean decoration = switch (step.kind()) {
+            case SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY -> true;
+            default -> false;
+        };
+        if (decoration) {
+            // decorations never push anything aside: a tree, a neighbour's wall or a chest stays where it is
+            boolean free = old.isAir() || old.isReplaceable();
+            if (step.kind() == Kind.CHIMNEY) free = free || old.getBlock() instanceof StairsBlock; // through the eaves
+            if (step.kind() == Kind.PATH) free = (old.isOf(Blocks.GRASS_BLOCK) || old.isOf(Blocks.DIRT) || old.isOf(Blocks.COARSE_DIRT) || old.isOf(Blocks.PODZOL))
+                    && world.getBlockState(target.up()).isReplaceable();
+            if (!free) return Result.SKIPPED;
+        }
+        BlockState state = stateFor(village, step, rot);
         if (state == null) {
-            // glass is optional: no glass in stock means an open window
-            return step.kind() == Kind.GLASS || step.kind() == Kind.TORCH || step.kind() == Kind.CROP || step.kind() == Kind.CARPET ? Result.SKIPPED : Result.WAIT;
+            // glass, light and decoration are optional: without them the house is plainer, not unfinished
+            return switch (step.kind()) {
+                case GLASS, TORCH, CROP, CARPET, SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY -> Result.SKIPPED;
+                default -> Result.WAIT;
+            };
+        }
+        if (step.kind() == Kind.LANTERN) {
+            if (world.getBlockState(target.up()).isSideSolidFullSquare(world, target.up(), Direction.DOWN)) state = state.with(LanternBlock.HANGING, true);
+            else if (!world.getBlockState(target.down()).isSideSolidFullSquare(world, target.down(), Direction.UP)) return Result.SKIPPED;
         }
         if (step.kind() == Kind.ARMOR_STAND) {
             var stand = net.minecraft.entity.EntityType.ARMOR_STAND.create(world);
@@ -699,17 +807,66 @@ public final class Builder {
     }
 
     /** Pays for the block and returns what to place, or null if the treasury cannot pay. */
-    private static BlockState stateFor(Village village, Kind kind, int rot) {
+    private static Direction face(Step step, int rot) {
+        return turn(Direction.fromHorizontal(Math.max(0, step.face())), rot);
+    }
+
+    private static BlockState stateFor(Village village, Step step, int rot) {
+        Kind kind = step.kind();
+        Palette pal = Palette.of(village);
         switch (kind) {
-            case FLOOR, ROOF:
-                return plank(village);
-            case WALL: {
-                if (take(village, COBBLE, 1)) return Blocks.COBBLESTONE.getDefaultState();
-                return plank(village);
-            }
+            case FLOOR:
+                return plank(village, pal.planks());
+            case ROOF:
+                return plank(village, pal.roofPlanks());
+            case WALL:
+                return plank(village, pal.planks());
             case PILLAR: {
-                if (take(village, LOG, 1)) return Blocks.OAK_LOG.getDefaultState();
-                return plank(village);
+                if (take(village, LOG, 1)) return pal.log().getDefaultState();
+                return plank(village, pal.planks());
+            }
+            case BEAM_X, BEAM_Z: {
+                Direction.Axis axis = (kind == Kind.BEAM_X) == ((rot & 1) == 0) ? Direction.Axis.X : Direction.Axis.Z;
+                if (take(village, LOG, 1)) return pal.strippedLog().getDefaultState().with(PillarBlock.AXIS, axis);
+                return plank(village, pal.planks());
+            }
+            case ACCENT: {
+                if (take(village, COBBLE, 1)) return pal.accent().getDefaultState();
+                return plank(village, pal.log());
+            }
+            case CHIMNEY: {
+                if (take(village, COBBLE, 1)) return pal.stone().getDefaultState();
+                for (ItemStack fs : village.storageBuffer) {
+                    if (Scavenge.isFiller(fs)) {
+                        fs.decrement(1);
+                        village.storageBuffer.removeIf(ItemStack::isEmpty);
+                        return pal.stone().getDefaultState();
+                    }
+                }
+                return null;
+            }
+            case SMOKE:
+                return Blocks.CAMPFIRE.getDefaultState().with(CampfireBlock.SIGNAL_FIRE, false);
+            case STEP: {
+                if (!take(village, COBBLE, 1) && !takePlanks(village, 1)) return null;
+                return pal.stoneStairs().getDefaultState().with(StairsBlock.FACING, face(step, rot));
+            }
+            case SHUTTER: {
+                if (!takePlanks(village, 1)) return null;
+                return pal.trapdoor().getDefaultState().with(TrapdoorBlock.FACING, face(step, rot)).with(TrapdoorBlock.OPEN, true);
+            }
+            case POT:
+                return pal.flower().getDefaultState();
+            case HEDGE:
+                return pal.leaves().getDefaultState().with(LeavesBlock.PERSISTENT, true);
+            case PATH:
+                return Blocks.DIRT_PATH.getDefaultState();
+            case BELL:
+                if (!FREE && !take(village, s -> s.isOf(Items.GOLD_INGOT), 1)) return null;
+                return Blocks.BELL.getDefaultState().with(BellBlock.FACING, turn(Direction.SOUTH, rot));
+            case LANTERN: {
+                if (!take(village, s -> s.isOf(Items.TORCH), 1)) return null;
+                return Blocks.LANTERN.getDefaultState();
             }
             case GLASS: {
                 if (!take(village, GLASS, 1)) return null;
@@ -717,7 +874,7 @@ public final class Builder {
             }
             case DOOR:
                 if (!takePlanks(village, 6)) return null;
-                return Blocks.OAK_DOOR.getDefaultState().with(DoorBlock.FACING, turn(Direction.SOUTH, rot)).with(DoorBlock.HALF, DoubleBlockHalf.LOWER);
+                return pal.door().getDefaultState().with(DoorBlock.FACING, turn(Direction.SOUTH, rot)).with(DoorBlock.HALF, DoubleBlockHalf.LOWER);
             case CHEST:
                 if (!takePlanks(village, 8)) return null;
                 return Blocks.CHEST.getDefaultState().with(ChestBlock.FACING, turn(Direction.SOUTH, rot));
@@ -772,9 +929,16 @@ public final class Builder {
                     default -> Direction.WEST;
                 };
                 Direction facing = turn(base, rot);
-                if (take(village, COBBLE, 1)) return Blocks.COBBLESTONE_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
-                if (!takePlanks(village, 1)) return null;
-                return Blocks.OAK_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
+                if (kind == Kind.STAIRS_N) { // the mine: stone steps
+                    if (take(village, COBBLE, 1)) return pal.stoneStairs().getDefaultState().with(StairsBlock.FACING, facing);
+                    if (!takePlanks(village, 1)) return null;
+                    return pal.stairs().getDefaultState().with(StairsBlock.FACING, facing);
+                }
+                // roofs and indoor stairs: wood, the roof in its darker wood
+                Block wood = kind == Kind.STAIRS_S ? pal.stairs() : pal.roofStairs();
+                if (takePlanks(village, 1)) return wood.getDefaultState().with(StairsBlock.FACING, facing);
+                if (!take(village, COBBLE, 1)) return null;
+                return pal.stoneStairs().getDefaultState().with(StairsBlock.FACING, facing);
             }
             case BOOKSHELF:
                 if (!takePlanks(village, 6)) return null;
@@ -805,24 +969,23 @@ public final class Builder {
             }
             case PLATE: {
                 if (!takePlanks(village, 2)) return null;
-                return Blocks.OAK_PRESSURE_PLATE.getDefaultState();
+                return pal.plate().getDefaultState();
             }
             case SEAT_W, SEAT_E: {
                 Direction facing = turn(kind == Kind.SEAT_W ? Direction.WEST : Direction.EAST, rot);
-                if (take(village, COBBLE, 1)) return Blocks.COBBLESTONE_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
                 if (!takePlanks(village, 1)) return null;
-                return Blocks.OAK_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
+                return pal.stairs().getDefaultState().with(StairsBlock.FACING, facing);
             }
             case STONE: {
-                if (!take(village, COBBLE, 1)) return null;
-                return Blocks.COBBLESTONE.getDefaultState();
+                if (take(village, COBBLE, 1)) return pal.stone().getDefaultState();
+                return plank(village, pal.planks()); // stone or earth from around, or wood
             }
             case SIGN:
                 if (!takePlanks(village, 2)) return null;
                 return Blocks.OAK_WALL_SIGN.getDefaultState().with(WallSignBlock.FACING, turn(Direction.SOUTH, rot));
             case FENCE:
                 if (!takePlanks(village, 1)) return null;
-                return Blocks.OAK_FENCE.getDefaultState();
+                return pal.fence().getDefaultState();
             case LADDER:
                 if (!takePlanks(village, 1)) return null;
                 return Blocks.LADDER.getDefaultState().with(LadderBlock.FACING, turn(Direction.SOUTH, rot));
@@ -836,6 +999,13 @@ public final class Builder {
             default:
                 return null;
         }
+    }
+
+    /** One plank's worth of building block: placed in the village's own wood, or stone and earth when wood is out. */
+    private static BlockState plank(Village village, Block preferred) {
+        Item p = takePlank(village);
+        if (p != null) return preferred.getDefaultState();
+        return plank(village);
     }
 
     private static BlockState plank(Village village) {

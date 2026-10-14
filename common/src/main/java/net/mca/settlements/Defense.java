@@ -55,12 +55,12 @@ public final class Defense {
                 LivingEntity nearest = threats.stream().min(Comparator.comparingDouble(g::squaredDistanceTo)).orElse(null);
                 if (nearest != null) g.getBrain().remember(MemoryModuleType.ATTACK_TARGET, nearest, 400);
             }
-            if (total >= MAJOR && world.getTime() % 200 < 100) {
+            // monsters are the guards' business: only a village without guards runs for cover, and nobody makes a fuss
+            if (total >= MAJOR && guards.isEmpty() && world.getTime() % 200 < 100) {
                 for (VillagerEntityMCA r : residents) {
                     if (r.isGuard() || r.getProfession() == VillagerProfession.NONE && r.isBaby()) continue;
                     r.getBrain().doExclusively(net.minecraft.entity.ai.brain.Activity.PANIC);
                 }
-                Diplomacy.announceNear(world, v, Text.translatable("settlements.defense.major", v.getName(), threats.get(0).getName()));
             }
         }
     }

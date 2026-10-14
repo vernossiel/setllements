@@ -60,6 +60,29 @@ public final class GuardAI {
             return;
         }
 
+        // a player who attacked the village, or an outlaw: on sight
+        PlayerEntity outlaw = Life.hostilePlayer(world, village, g, SIGHT);
+        if (outlaw != null) {
+            brain.remember(MemoryModuleType.ATTACK_TARGET, outlaw, 200);
+            Speech.say(g, "settlements.say.guard.charge", outlaw.getName());
+            return;
+        }
+        // a player the villagers do not trust: walk up, keep close, warn him once in a while
+        PlayerEntity watched = g.settlementsWatch == null ? null : world.getPlayerByUuid(g.settlementsWatch);
+        if (watched != null && watched.squaredDistanceTo(g) < 40 * 40 && Reputation.tier(village.getReputation(watched)) <= 2) {
+            if (g.squaredDistanceTo(watched) > 16) brain.remember(MemoryModuleType.WALK_TARGET, new WalkTarget(watched, 0.7f, 3));
+            else {
+                g.getLookControl().lookAt(watched, 30f, 30f);
+                if (world.getTime() - g.settlementsWarned > 1200) {
+                    g.settlementsWarned = world.getTime();
+                    g.sendChatMessage(net.minecraft.text.Text.translatable("settlements.say.guard.warn", watched.getName()), watched);
+                }
+            }
+            return;
+        } else {
+            g.settlementsWatch = null;
+        }
+
         List<LivingEntity> hostiles = world.getEntitiesByClass(LivingEntity.class, g.getBoundingBox().expand(SIGHT, 8, SIGHT),
                 e -> e instanceof Monster && e.isAlive() && !(e instanceof VillagerEntityMCA) && GuardIntel.isKnown(world, g, e));
         if (!hostiles.isEmpty()) {

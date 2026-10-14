@@ -4,16 +4,23 @@ import net.mca.entity.VillagerEntityMCA;
 import net.mca.server.world.data.Village;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.tag.ItemTags;
+import net.minecraft.block.StairsBlock;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.world.Heightmap;
 
 import java.util.Iterator;
+import java.util.List;
 
-/** Break spots: villagers walk to the nearest campfire near their workplace to rest, and light one if there is none. */
+/**
+ * The village hearth: a campfire with four benches in front of the town hall. Villagers gather there in the morning,
+ * take their breaks and lunch there and spend the evening around it. Everyone takes his own place around the fire
+ * instead of crowding into one block.
+ */
 public final class Camp {
-    private static final int SEARCH_RADIUS_SQ = 40 * 40;
+    private static final int SEARCH_RADIUS_SQ = 64 * 64;
+    private static final int[][] SLOTS = {{2, 2}, {-2, 2}, {2, -2}, {-2, -2}, {3, 1}, {-3, -1}, {1, -3}, {-1, 3}, {3, -1}, {-3, 1}, {-1, -3}, {1, 3}};
 
     private Camp() {
     }
@@ -23,6 +30,7 @@ public final class Camp {
         double bestD = SEARCH_RADIUS_SQ;
         for (Iterator<BlockPos> it = village.campfires.iterator(); it.hasNext(); ) {
             BlockPos p = it.next();
+            if (!world.isChunkLoaded(p.getX() >> 4, p.getZ() >> 4)) continue;
             if (!world.getBlockState(p).isOf(Blocks.CAMPFIRE)) {
                 it.remove();
                 village.markDirty();
@@ -37,41 +45,98 @@ public final class Camp {
         return best;
     }
 
-    private static BlockPos buildNear(Village village, ServerWorld world, VillagerEntityMCA v) {
-        if (village.storageBuffer.stream().filter(s -> s.isIn(ItemTags.LOGS)).mapToInt(ItemStack::getCount).sum() < 3) return null;
-        BlockPos base = v.getBlockPos();
-        for (int[] o : new int[][]{{2, 0}, {-2, 0}, {0, 2}, {0, -2}, {2, 2}, {-2, -2}}) {
-            BlockPos p = base.add(o[0], 0, o[1]);
-            BlockState below = world.getBlockState(p.down());
-            if (world.getBlockState(p).isAir() && below.isSolidBlock(world, p.down()) && below.getFluidState().isEmpty()) {
-                int need = 3;
-                for (Iterator<ItemStack> it = village.storageBuffer.iterator(); it.hasNext() && need > 0; ) {
-                    ItemStack s = it.next();
-                    if (!s.isIn(ItemTags.LOGS)) continue;
-                    int d = Math.min(need, s.getCount());
-                    s.decrement(d);
-                    need -= d;
-                    if (s.isEmpty()) it.remove();
+    /** The hearth by the town hall: built by the founders together with the hall. */
+    public static BlockPos hearth(Village village, ServerWorld world) {
+        if (village.hallPos == null) return null;
+        for (BlockPos p : village.campfires) if (p.isWithinDistance(village.hallPos, 20) && world.getBlockState(p).isOf(Blocks.CAMPFIRE)) return p;
+        return null;
+    }
+
+    public static BlockPos ensureHearth(Village village, ServerWorld world) {
+        BlockPos h = hearth(village, world);
+        if (h != null || village.hallPos == null) return h;
+        BlockPos c = village.hallPos;
+        for (int r = 7; r <= 14; r++) {
+            for (int a = 0; a < 16; a++) {
+                double ang = a * Math.PI / 8;
+                int x = c.getX() + (int) Math.round(Math.cos(ang) * r), z = c.getZ() + (int) Math.round(Math.sin(ang) * r);
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+                int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+                BlockPos p = new BlockPos(x, y, z);
+                if (fits(world, village, p)) {
+                    build(world, p);
+                    village.campfires.add(p);
+                    village.markDirty();
+                    return p;
                 }
-                world.setBlockState(p, Blocks.CAMPFIRE.getDefaultState());
-                village.campfires.add(p);
-                village.markDirty();
-                return p;
             }
         }
         return null;
     }
 
-    /**
-     * Walks to the campfire (lighting one if needed). Returns true while the villager sits by the fire.
-     */
+    private static boolean fits(ServerWorld world, Village village, BlockPos p) {
+        for (int dx = -3; dx <= 3; dx++) {
+            for (int dz = -3; dz <= 3; dz++) {
+                BlockPos q = p.add(dx, 0, dz);
+                BlockState ground = world.getBlockState(q.down());
+                if (!ground.isSolidBlock(world, q.down()) || !ground.getFluidState().isEmpty()) return false;
+                if (!world.getBlockState(q).isReplaceable() || !world.getBlockState(q.up()).isReplaceable()) return false;
+                if (Protection.insideStructure(village, q)) return false;
+            }
+        }
+        for (int[] plot : village.plots) {
+            if (p.getX() + 4 > plot[0] && p.getX() - 4 < plot[0] + plot[2] && p.getZ() + 4 > plot[1] && p.getZ() - 4 < plot[1] + plot[3]) return false;
+        }
+        return true;
+    }
+
+    /** Campfire, a ring of gravel-free trodden ground and four benches facing the fire. */
+    private static void build(ServerWorld world, BlockPos p) {
+        for (int dx = -3; dx <= 3; dx++) {
+            for (int dz = -3; dz <= 3; dz++) {
+                BlockPos q = p.add(dx, 0, dz);
+                if (!world.getBlockState(q).isAir()) world.setBlockState(q, Blocks.AIR.getDefaultState());
+                if (Math.abs(dx) + Math.abs(dz) <= 3 && world.getBlockState(q.down()).isOf(Blocks.GRASS_BLOCK)) world.setBlockState(q.down(), Blocks.DIRT_PATH.getDefaultState());
+            }
+        }
+        world.setBlockState(p, Blocks.CAMPFIRE.getDefaultState());
+        for (Direction d : Direction.Type.HORIZONTAL) {
+            BlockPos seat = p.offset(d, 3);
+            for (BlockPos s : List.of(seat, seat.offset(d.rotateYClockwise()), seat.offset(d.rotateYCounterclockwise()))) {
+                if (s == seat || world.random.nextInt(3) > 0) {
+                    world.setBlockState(s, Blocks.SPRUCE_STAIRS.getDefaultState().with(StairsBlock.FACING, d));
+                }
+            }
+        }
+        world.setBlockState(p.add(2, 0, 3).add(1, 0, 0), Blocks.LANTERN.getDefaultState());
+    }
+
+    /** This villager's own place by the fire: a fixed slot, or the next free one. */
+    private static BlockPos slot(VillagerEntityMCA v, ServerWorld world, BlockPos fire) {
+        int start = Math.floorMod(v.getUuid().hashCode(), SLOTS.length);
+        for (int i = 0; i < SLOTS.length; i++) {
+            int[] s = SLOTS[(start + i) % SLOTS.length];
+            BlockPos p = fire.add(s[0], 0, s[1]);
+            if (!Move.passable(world, p) || !Move.passable(world, p.up())) continue;
+            boolean taken = !world.getEntitiesByClass(VillagerEntityMCA.class, new net.minecraft.util.math.Box(p).expand(0.2), o -> o != v).isEmpty();
+            if (!taken) return p;
+        }
+        return fire.add(SLOTS[start][0], 0, SLOTS[start][1]);
+    }
+
+    /** Walks to his place at the fire. Returns true while the villager is there. */
     public static boolean goAndSit(VillagerEntityMCA v, Village village) {
         if (village == null || !(v.getWorld() instanceof ServerWorld world)) return false;
-        BlockPos fire = nearest(village, world, v);
-        if (fire == null) fire = buildNear(village, world, v);
+        BlockPos fire = hearth(village, world);
+        if (fire == null || !fire.isWithinDistance(v.getBlockPos(), 64)) {
+            BlockPos near = nearest(village, world, v);
+            if (near != null) fire = near;
+        }
+        if (fire == null) fire = ensureHearth(village, world);
         if (fire == null) return false;
-        if (v.squaredDistanceTo(fire.getX() + 0.5, fire.getY(), fire.getZ() + 0.5) > 9) {
-            Move.to(v, fire.getX() + 0.5, fire.getY(), fire.getZ() + 0.5, 0.6);
+        BlockPos place = slot(v, world, fire);
+        if (v.squaredDistanceTo(place.getX() + 0.5, place.getY(), place.getZ() + 0.5) > 2.5) {
+            Move.to(v, place.getX() + 0.5, place.getY(), place.getZ() + 0.5, 0.55);
             return false;
         }
         v.getNavigation().stop();

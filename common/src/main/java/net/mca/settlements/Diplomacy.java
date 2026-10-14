@@ -211,6 +211,7 @@ public final class Diplomacy {
             rewardPlayers(world, attacker, defender, won);
             Life.news(attacker, won ? "raid_won" : "raid_lost", defender.getName());
             Life.news(defender, won ? "raided" : "raid_repelled", attacker.getName());
+            Prosperity.danger(defender, won ? 8 : 3);
         }
     }
 

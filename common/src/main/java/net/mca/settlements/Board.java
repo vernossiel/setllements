@@ -52,7 +52,7 @@ public final class Board {
         List<Text[]> signs = new ArrayList<>();
         signs.add(new Text[]{Text.literal(village.getName()).formatted(Formatting.BOLD),
                 Text.translatable("settlements.level." + Plan.level(village).name().toLowerCase()),
-                Text.translatable("settlements.board.residents", village.getPopulation(), village.getMaxPopulation()), Text.empty()});
+                Text.translatable("settlements.board.residents", village.getPopulation(), village.getMaxPopulation()), Prosperity.describe(village)});
         signs.add(project(village));
         signs.add(needs(village));
         List<Life.News> news = Life.news(village);

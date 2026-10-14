@@ -97,6 +97,7 @@ public final class Plan {
         elder.getLookControl().lookAt(player, 30f, 30f);
         elder.sendChatMessage(Text.translatable("settlements.elder.intro", village.getName(),
                 Text.translatable("settlements.level." + level(village).name().toLowerCase()), village.getPopulation()), player);
+        elder.sendChatMessage(Text.translatable("settlements.elder.pace", Prosperity.describe(village), reason(village)), player);
         if (village.buildOrigin != null && village.buildType != null) {
             int total = Builder.stepsOf(village);
             int pct = total > 0 ? Math.min(100, village.buildStep * 100 / total) : 0;
@@ -115,6 +116,16 @@ public final class Plan {
         if (next != null) elder.sendChatMessage(Text.translatable("settlements.elder.next", Text.translatable("settlements.goal." + next.goal().id())), player);
         Needs.Need need = firstBlocker(village);
         elder.sendChatMessage(Text.translatable(need == Needs.Need.NONE ? "settlements.elder.fine" : "settlements.elder.help." + need.name().toLowerCase()), player);
+    }
+
+    /** The main thing holding the village back, in the elder's words. */
+    private static Text reason(Village village) {
+        if (Prosperity.danger(village) >= 4) return Text.translatable("settlements.elder.reason.danger");
+        int food = 0;
+        for (net.minecraft.item.ItemStack s : village.storageBuffer) if (s.isFood()) food += s.getCount();
+        if (food < Math.max(1, village.getPopulation()) * 3) return Text.translatable("settlements.elder.reason.food");
+        if (Prosperity.factor(village) < 0.85) return Text.translatable("settlements.elder.reason.land");
+        return Text.translatable("settlements.elder.reason.none");
     }
 
     public static void talk(VillagerEntityMCA speaker, PlayerEntity player) {

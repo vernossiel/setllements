@@ -30,6 +30,11 @@ public final class Staffing {
                 || p == VillagerProfession.LEATHERWORKER || p == VillagerProfession.CLERIC;
     }
 
+    private static boolean isCore(VillagerProfession p) {
+        return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH
+                || p == VillagerProfession.MASON || p == VillagerProfession.FARMER;
+    }
+
     /** True for jobs nobody depends on, so the person can be reassigned. */
     private static boolean isFree(VillagerProfession p) {
         if (p == VillagerProfession.NONE || p == VillagerProfession.NITWIT) return true;
@@ -67,18 +72,21 @@ public final class Staffing {
         VillagerEntityMCA elder = Plan.elder(world, v);
         for (VillagerEntityMCA r : adults) r.setElder(r == elder);
 
-        int wool = Builder.stockWool(v);
+        // for now the village runs on its core trades: builders, lumberjacks, miners, and a farmer so that it eats
         List<Role> roles = new ArrayList<>();
-        roles.add(new Role(VillagerProfession.CARTOGRAPHER, Math.max(1, p / 6)));
-        roles.add(new Role(VillagerProfession.FARMER, Math.max(1, p / 4)));
-        roles.add(new Role(VillagerProfession.FLETCHER, Math.max(1, p / 5)));
-        if (p >= 3) roles.add(new Role(VillagerProfession.MASON, Math.max(1, p / 6)));
-        if (v.tavern != null) roles.add(new Role(VillagerProfession.BUTCHER, 1));
-        if (p >= 4) roles.add(new Role(VillagerProfession.SHEPHERD, 1)); // the village has to eat
-        if (v.smithyBuilt) roles.add(new Role(VillagerProfession.ARMORER, 1));
-        if (p >= 8) roles.add(new Role(VillagerProfession.FISHERMAN, 1));
-        if (p >= 10) roles.add(new Role(VillagerProfession.LEATHERWORKER, 1));
-        if (p >= 10) roles.add(new Role(VillagerProfession.CLERIC, 1));
+        roles.add(new Role(VillagerProfession.CARTOGRAPHER, Math.max(1, p / 5)));
+        roles.add(new Role(VillagerProfession.FLETCHER, Math.max(1, p / 4)));
+        if (p >= 3) roles.add(new Role(VillagerProfession.MASON, Math.max(1, p / 5)));
+        if (p >= 4) roles.add(new Role(VillagerProfession.FARMER, Math.max(1, p / 6)));
+
+        // trades that are switched off for now go back to the pool
+        for (VillagerEntityMCA r : adults) {
+            VillagerProfession rp = r.getProfession();
+            if (isOurRole(rp) && !isCore(rp)) {
+                r.setProfession(VillagerProfession.NONE);
+                r.reinitializeBrain(world);
+            }
+        }
 
         List<VillagerEntityMCA> pool = new ArrayList<>();
         for (VillagerEntityMCA r : adults) {
@@ -114,6 +122,7 @@ public final class Staffing {
             HALL_RETRY.put(v.getId(), world.getTime() + 600); // no flat ground loaded yet: try again later
             return;
         }
+        Camp.ensureHearth(v, world);
         VillagerEntityMCA elder = Plan.elder(world, v);
         if (elder != null && v.hallPos != null) {
             elder.setElder(true);

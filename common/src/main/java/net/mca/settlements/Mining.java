@@ -75,11 +75,19 @@ public final class Mining {
 
         boolean worked = false;
         int ops = 0, skips = 0;
-        while (ops < Builder.opsPerSecond && skips < 60 && village.mineStep < steps.size()) {
+        int budget = Prosperity.ops(v, village, Builder.opsPerSecond);
+        if (budget == 0) return true;
+        while (ops < budget && skips < 60 && village.mineStep < steps.size()) {
             Step step = steps.get(village.mineStep);
             BlockPos target = o.add(step.dx(), step.dy(), step.dz());
             if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 49) break;
-            Builder.Result r = Builder.execute(world, village, step, target, 0);
+            Builder.COLLECTOR = v;
+            Builder.Result r;
+            try {
+                r = Builder.execute(world, village, step, target, 0);
+            } finally {
+                Builder.COLLECTOR = null;
+            }
             if (r == Builder.Result.ABORT) { // water or lava ahead: this level is done
                 village.mineLevel++;
                 village.mineStep = 0;

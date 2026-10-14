@@ -11,8 +11,9 @@ import net.minecraft.village.VillagerProfession;
  */
 public final class Workforce {
     public static final int MAX = 1000;
-    private static final int WORK_DRAIN = 4;        // energy per second of work (~4 min of work per full bar)
-    private static final int REST_GAIN = 12;        // energy per second of rest
+    private static final int WORK_DRAIN = 4;        // energy per second of work (~3.5 min of work per full bar)
+    private static final int REST_GAIN = 3;         // energy per second of rest
+    private static final int RESUME_AFTER_EXHAUST = 700;
     private static final int HUNGER_RISE = 2;       // per second of work
     private static final int HUNGER_EAT_AT = 600;   // try to eat above this
     private static final int HUNGER_STOP_AT = 900;  // refuses to work above this
@@ -45,10 +46,14 @@ public final class Workforce {
     }
 
     private static final int EXHAUST_AT = 150;       // below this the villager takes a long break
-    private static final int MICRO_BREAK_AFTER = 150; // seconds of continuous work before a short break
-    private static final int MICRO_BREAK_SECONDS = 15;
-    private static final int FIRE_REST_GAIN = 28;     // energy per second sitting at a campfire
+    private static final int MICRO_BREAK_AFTER = 180; // seconds at work before a break at the hearth
+    private static final int MICRO_BREAK_SECONDS = 40; // counted once seated at the fire
+    private static final int FIRE_REST_GAIN = 7;      // energy per second sitting at a campfire
     private static final int TORCH_STOCK = 48;
+
+    static boolean isGatherer(VillagerProfession p) {
+        return p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH || p == VillagerProfession.MASON;
+    }
 
     private static boolean isCustomWorker(VillagerProfession p) {
         return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER
@@ -92,7 +97,7 @@ public final class Workforce {
 
         // the elder keeps office by the town hall's lectern
         if (v.isElder() && village != null && village.hallPos != null && isWorkTime(time) && v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET).isEmpty()
-                && v.squaredDistanceTo(village.hallPos.getX() + 0.5, village.hallPos.getY(), village.hallPos.getZ() + 0.5) > 64) {
+                && v.squaredDistanceTo(village.hallPos.getX() + 0.5, village.hallPos.getY(), village.hallPos.getZ() + 0.5) > 256) {
             v.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET, new net.minecraft.entity.ai.brain.WalkTarget(village.hallPos, 0.5f, 3));
         }
 
@@ -119,10 +124,14 @@ public final class Workforce {
 
         Needs.update(v, village);
 
+        // the day's rhythm: morning gathering with the elder, lunch at the hearth
+        if (isWorkTime(time) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld rw && Routine.tick(v, village, rw, time)) return;
+
         // breaks: a long one when exhausted, a short one now and then
         if (!v.settlementsBreak && autonomousWorking(v, job)) {
             if (v.settlementsEnergy <= EXHAUST_AT) {
                 startBreak(v, 0);
+                v.settlementsBreakLong = true; // worn out: back to work only when properly rested
                 Speech.say(v, "settlements.say.tired");
             } else if (v.settlementsWorkSeconds >= MICRO_BREAK_AFTER) {
                 startBreak(v, MICRO_BREAK_SECONDS);
@@ -136,9 +145,11 @@ public final class Workforce {
         if (v.settlementsBreak) {
             boolean seated = Camp.goAndSit(v, village);
             v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + (seated ? FIRE_REST_GAIN : REST_GAIN));
-            if (v.settlementsBreakLeft > 0) v.settlementsBreakLeft--;
-            if (v.settlementsBreakLeft <= 0 && v.settlementsEnergy >= START_WORK_ENERGY || !isWorkTime(time)) {
+            // the break only counts once he sits at the fire (or after a long walk that got him nowhere)
+            if (v.settlementsBreakLeft > 0 && (seated || v.settlementsBreakWalk++ > 60)) v.settlementsBreakLeft--;
+            if (v.settlementsBreakLeft <= 0 && v.settlementsEnergy >= (v.settlementsBreakLong ? RESUME_AFTER_EXHAUST : START_WORK_ENERGY) || !isWorkTime(time)) {
                 v.settlementsBreak = false;
+                v.settlementsBreakLong = false;
                 v.settlementsWorkSeconds = 0;
             }
             return;
@@ -158,7 +169,7 @@ public final class Workforce {
 
         v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + REST_GAIN);
         if (village != null) {
-            deposit(v, village);
+            if (!isGatherer(v.getProfession())) deposit(v, village); // gatherers carry their load to the hall by hand
             if (v.age % 200 == 0) {
                 craftTorches(village);
                 craftArrows(village);
@@ -186,6 +197,8 @@ public final class Workforce {
             if (helping) {
                 v.settlementsIdleWork++;
                 worked = true;
+            } else if (village != null && isGatherer(prof) && Haul.carry(v, village, v.settlementsIdleWork >= 20)) {
+                worked = true; // carrying the load to the hall is work too
             } else if (prof == VillagerProfession.CARTOGRAPHER) worked = Builder.work(v, village);
             else if (prof == VillagerProfession.BUTCHER) worked = Cooking.work(v, village);
             else if (prof == VillagerProfession.MASON) {
@@ -200,12 +213,20 @@ public final class Workforce {
             }
             else worked = Husbandry.work(v, village);
             if (!helping) v.settlementsIdleWork = worked || Move.goal(v) != null ? 0 : v.settlementsIdleWork + 1; // walking to work is not idling
+            if (!worked) v.settlementsWorkSeconds++; // time on the job counts, walking included, for the next break
             if (worked) {
                 if (v.settlementsWorkSeconds == 0) Speech.sayWork(v);
                 v.settlementsEnergy -= WORK_DRAIN + REST_GAIN; // cancels the rest gain above
                 v.settlementsHunger += HUNGER_RISE;
                 v.settlementsWorkSeconds++;
             }
+            return;
+        }
+        // no trade of his own: he lends the builders a hand
+        if ((prof == VillagerProfession.NONE || prof == VillagerProfession.NITWIT) && village != null && !v.isElder()
+                && v.getWorld() instanceof net.minecraft.server.world.ServerWorld lw && Life.helpBuilders(v, village, lw)) {
+            v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
+            v.settlementsHunger += HUNGER_RISE;
             return;
         }
         Chore wanted = choreFor(prof);
@@ -224,6 +245,7 @@ public final class Workforce {
 
     private static void startBreak(VillagerEntityMCA v, int seconds) {
         v.settlementsBreak = true;
+        v.settlementsBreakWalk = 0;
         v.settlementsBreakLeft = seconds;
     }
 
@@ -328,6 +350,11 @@ public final class Workforce {
     private static final int EAT_SECONDS = 3;
 
     /** Starts a meal: the food goes into the hand and the villager stands still for a few seconds. */
+    /** Lunch at the hearth: something from the pocket or the stores, however hungry he is. */
+    static boolean lunch(VillagerEntityMCA v, net.mca.server.world.data.Village village) {
+        return hasMeal(v, village) && startEating(v, village, 0);
+    }
+
     private static boolean startEating(VillagerEntityMCA v, net.mca.server.world.data.Village village) {
         return startEating(v, village, HUNGER_EAT_AT);
     }

@@ -29,6 +29,20 @@ public final class SettlementsCommand {
         d.register(CommandManager.literal("settle")
                 .then(CommandManager.literal("return").executes(c -> Reputation.returnGoods(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("rep").executes(c -> Reputation.showStanding(c.getSource().getPlayerOrThrow())))
+                .then(CommandManager.literal("hall").executes(c -> {
+                    var player = c.getSource().getPlayerOrThrow();
+                    var vil = net.mca.server.world.data.Village.findNearest(player).orElse(null);
+                    if (vil == null || vil.hallPos == null) {
+                        c.getSource().sendError(net.minecraft.text.Text.translatable("settlements.hall.none"));
+                        return 0;
+                    }
+                    var h = vil.hallPos;
+                    double dx = h.getX() + 0.5 - player.getX(), dz = h.getZ() + 0.5 - player.getZ();
+                    String dir = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? "east" : "west") : (dz > 0 ? "south" : "north");
+                    c.getSource().sendFeedback(() -> net.minecraft.text.Text.translatable("settlements.hall.where", vil.getName(), h.getX(), h.getY(), h.getZ(),
+                            (int) Math.sqrt(dx * dx + dz * dz), net.minecraft.text.Text.translatable("settlements.dir." + dir)), false);
+                    return 1;
+                }))
                 .then(CommandManager.literal("plans").executes(c -> {
                     var player = c.getSource().getPlayerOrThrow();
                     var near = player.getWorld().getEntitiesByClass(net.mca.entity.VillagerEntityMCA.class, player.getBoundingBox().expand(64), x -> x.isAlive() && !x.isBaby());

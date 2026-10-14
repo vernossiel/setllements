@@ -41,6 +41,14 @@ public final class Speech {
         v.sendChatMessage(Text.translatable(key, args == null ? new Object[0] : args).formatted(Formatting.WHITE), p);
     }
 
+    public static void sayText(VillagerEntityMCA v, Text text) {
+        if (v.getWorld().isClient) return;
+        PlayerEntity p = v.getWorld().getClosestPlayer(v, HEARING + 6);
+        if (p == null) return;
+        v.settlementsLastSay = v.getWorld().getTime();
+        v.sendChatMessage(text.copy().formatted(Formatting.WHITE), p);
+    }
+
     /** "I am a lumberjack now" style line keyed by profession. */
     public static void sayWork(VillagerEntityMCA v) {
         VillagerProfession p = v.getProfession();

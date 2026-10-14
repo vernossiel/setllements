@@ -121,6 +121,17 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public String settlementsReplyKey;
     public Object[] settlementsReplyArgs;
     public int settlementsIdleWork;
+    public long settlementsFleeUntil;
+    public java.util.UUID settlementsWatch;
+    public long settlementsWarned;
+    public long settlementsLunchDay = -1;
+    public int settlementsLunchSec, settlementsBreakWalk;
+    public final java.util.ArrayDeque<net.minecraft.text.Text> settlementsQueue = new java.util.ArrayDeque<>();
+    public long settlementsQueueAt;
+    public boolean settlementsHauling;
+    public int settlementsCarry;
+    public double settlementsPace;
+    public boolean settlementsBreakLong;
     public net.minecraft.util.math.BlockPos penTarget;
     public net.minecraft.util.math.BlockPos settlementsKillPos;
     public long settlementsKillUntil = 0;
@@ -410,6 +421,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         //base damage
         double baseDamage = getAttributeValue(EntityAttributes.GENERIC_ATTACK_DAMAGE);
         float damage = (float) (baseDamage * (getProfession() == ProfessionsMCA.GUARD.get() ? 3.0f : 1.0f));
+        // a trained guard makes short work of zombies and skeletons: two blows at most
+        if (getProfession() == ProfessionsMCA.GUARD.get() && target instanceof net.minecraft.entity.mob.Monster) damage = Math.max(damage, 11.0f);
         float knockback = (float) getAttributeValue(EntityAttributes.GENERIC_ATTACK_KNOCKBACK);
 
         //traits
@@ -651,10 +664,14 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
                     }
                 }
 
+                net.mca.settlements.Life.onAttacked(this, player);
+
                 //loose hearts, the weaker the villager, the more it is scared. The first hit might be an accident.
                 int trustIssues = (int) ((1.0 - getHealth() / getMaxHealth() * 0.75) * (3.0 + 2.0 * damageAmount));
                 getVillagerBrain().getMemoriesForPlayer(player).modHearts(-trustIssues);
             }
+
+            if (source.getAttacker() instanceof net.minecraft.entity.mob.Monster) net.mca.settlements.Prosperity.danger(this, 1);
 
             //infect the villager
             if (source.getSource() instanceof ZombieEntity

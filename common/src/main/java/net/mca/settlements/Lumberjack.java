@@ -84,9 +84,10 @@ public final class Lumberjack {
                 break;
             }
         }
-        int cut = 0;
+        int cut = 0, budget = Prosperity.ops(v, village, LOGS_PER_SECOND);
+        if (budget == 0) return true; // a tired man swings slowly
         for (BlockPos p : trunk) {
-            if (cut >= LOGS_PER_SECOND) break;
+            if (cut >= budget) break;
             BlockState s = world.getBlockState(p);
             for (ItemStack drop : Block.getDroppedStacks(s, world, p, null)) v.getInventory().addStack(drop);
             world.setBlockState(p, Blocks.AIR.getDefaultState());
