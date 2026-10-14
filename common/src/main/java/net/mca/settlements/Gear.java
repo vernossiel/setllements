@@ -156,4 +156,46 @@ public final class Gear {
         EquipmentSlot[] slots = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
         for (int i = 0; i < 4; i++) v.equipStack(slots[i], new ItemStack(set[i]));
     }
+
+    /** Sword, armor in the pack (the guard AI wears the best of it), bow and arrows for archers. */
+    public static void equipGuardKit(VillagerEntityMCA v, Village village) {
+        equipTool(v, village, Chore.HUNT);
+        if (village != null) {
+            int tier = -1;
+            ArmorMaterial target = null;
+            if (village.smithyBuilt && count(village, DIAMOND) >= 24) { tier = 3; target = ArmorMaterials.DIAMOND; }
+            else if (village.smithyBuilt && count(village, IRON) >= 24) { tier = 2; target = ArmorMaterials.IRON; }
+            else if (count(village, LEATHER) >= 24) { tier = 0; target = ArmorMaterials.LEATHER; }
+            if (target != null) {
+                int best = -1;
+                var inv = v.getInventory();
+                for (int i = 0; i < inv.size(); i++) {
+                    if (inv.getStack(i).getItem() instanceof ArmorItem a && a.getType() == ArmorItem.Type.CHESTPLATE) {
+                        best = Math.max(best, a.getMaterial().getProtection(ArmorItem.Type.CHESTPLATE));
+                    }
+                }
+                if (best < target.getProtection(ArmorItem.Type.CHESTPLATE)) {
+                    take(village, tier == 3 ? DIAMOND : tier == 2 ? IRON : LEATHER, 24);
+                    Item[] set = switch (tier) {
+                        case 3 -> new Item[]{Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE, Items.DIAMOND_LEGGINGS, Items.DIAMOND_BOOTS};
+                        case 2 -> new Item[]{Items.IRON_HELMET, Items.IRON_CHESTPLATE, Items.IRON_LEGGINGS, Items.IRON_BOOTS};
+                        default -> new Item[]{Items.LEATHER_HELMET, Items.LEATHER_CHESTPLATE, Items.LEATHER_LEGGINGS, Items.LEATHER_BOOTS};
+                    };
+                    for (Item piece : set) inv.addStack(new ItemStack(piece));
+                }
+            }
+        }
+        if (v.getProfession() == net.mca.ProfessionsMCA.ARCHER.get()) {
+            var inv = v.getInventory();
+            boolean bow = false;
+            int arrows = 0;
+            for (int i = 0; i < inv.size(); i++) {
+                ItemStack s = inv.getStack(i);
+                if (s.isOf(Items.BOW)) bow = true;
+                if (s.isOf(Items.ARROW)) arrows += s.getCount();
+            }
+            if (!bow) inv.addStack(new ItemStack(Items.BOW));
+            if (arrows < 16) inv.addStack(new ItemStack(Items.ARROW, 32)); // the quartermaster's issue, not paid from the treasury
+        }
+    }
 }

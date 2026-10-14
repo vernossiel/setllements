@@ -71,6 +71,12 @@ public final class Workforce {
         boolean autonomous = job != Chore.NONE && v.getVillagerBrain().getJobAssigner().isEmpty();
         if (job != Chore.NONE && !autonomous) return; // player-assigned chores ignore this system
 
+        // guards: tactics, gear and shifts
+        if (v.isGuard() && village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) {
+            GuardAI.tick(v, village, sw, time);
+            if (v.age % 1200 == 0) Gear.equipGuardKit(v, village);
+        }
+
         if (v.age % 60 == 0) v.settlementsHunger = Math.min(MAX, v.settlementsHunger + 1); // slow idle hunger
 
         // hungry villagers eat in the tavern when there is one with food on the shelf
@@ -134,7 +140,7 @@ public final class Workforce {
         if (!isWorkTime(time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
             // supper and chat: eat a little earlier in the evening
-            if (Leisure.isLeisureTime(time)) {
+            if (Leisure.isLeisureTime(time) && !(v.isGuard() && GuardAI.onDuty(v, time))) {
                 if (v.settlementsHunger >= 250 && hasMeal(v, village) && startEating(v, village, 250)) return;
                 Leisure.tick(v, village, time);
             }
