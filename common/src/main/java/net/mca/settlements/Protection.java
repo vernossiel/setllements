@@ -87,15 +87,21 @@ public final class Protection {
         List<VillagerEntityMCA> villagers = world.getEntitiesByClass(VillagerEntityMCA.class, player.getBoundingBox().expand(WITNESS_RANGE),
                 v -> !v.isBaby() && v.isAlive() && !v.isSleeping());
         boolean seen = false;
+        VillagerEntityMCA reporter = null;
         for (VillagerEntityMCA v : villagers) {
             double d = v.squaredDistanceTo(player);
             if (v.canSee(player) || (v.isGuard() && d < GUARD_HEARING * GUARD_HEARING)) {
                 seen = true;
+                reporter = v;
                 break;
             }
         }
         if (!seen) return;
 
+        if (reporter != null && !reporter.isGuard()) {
+            Speech.say(reporter, "settlements.say.report.player");
+            GuardIntel.alertNearestGuard(world, reporter, player);
+        }
         Offense o = OFFENSES.computeIfAbsent(player.getUuid(), k -> new Offense());
         decay(o, world.getTime());
         o.score += sev;

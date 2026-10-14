@@ -202,6 +202,10 @@ public final class Reputation {
             }
         }
         if (witness == null) return; // nobody saw it
+        if (!witness.isGuard() && player.getWorld() instanceof ServerWorld sw) {
+            Speech.say(witness, "settlements.say.report.thief");
+            GuardIntel.alertNearestGuard(sw, witness, player);
+        }
         village.pushHearts(player, -(int) Math.ceil(value * 1.5));
         Debt debt = DEBTS.computeIfAbsent(player.getUuid(), k -> new Debt());
         debt.value += value;
