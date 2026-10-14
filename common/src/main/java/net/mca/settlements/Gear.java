@@ -194,8 +194,21 @@ public final class Gear {
                 if (s.isOf(Items.BOW)) bow = true;
                 if (s.isOf(Items.ARROW)) arrows += s.getCount();
             }
-            if (!bow) inv.addStack(new ItemStack(Items.BOW));
-            if (arrows < 16) inv.addStack(new ItemStack(Items.ARROW, 32)); // the quartermaster's issue, not paid from the treasury
+            if (!bow) inv.addStack(new ItemStack(Items.BOW)); // the first bow is improvised, like the first tool
+            if (arrows < 16 && village != null) {
+                // arrows are finite: take what the fletchers have made
+                int want = 32 - arrows;
+                for (java.util.Iterator<ItemStack> it = village.storageBuffer.iterator(); it.hasNext() && want > 0; ) {
+                    ItemStack s = it.next();
+                    if (!s.isOf(Items.ARROW)) continue;
+                    int d = Math.min(want, s.getCount());
+                    inv.addStack(new ItemStack(Items.ARROW, d));
+                    s.decrement(d);
+                    want -= d;
+                    if (s.isEmpty()) it.remove();
+                }
+                village.markDirty();
+            }
         }
     }
 }

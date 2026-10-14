@@ -133,6 +133,7 @@ public final class Workforce {
             deposit(v, village);
             if (v.age % 200 == 0) {
                 craftTorches(village);
+                craftArrows(village);
                 if (!village.smithyBuilt) smelt(village);
                 if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) Reputation.restock(sw, village);
             }
@@ -210,6 +211,21 @@ public final class Workforce {
             addToTreasury(village, new ItemStack(pair[1], 1));
             return;
         }
+    }
+
+    /** Any idle villager can fletch arrows: flint (or gravel sifted for it), a feather and a plank make four. */
+    private static void craftArrows(net.mca.server.world.data.Village village) {
+        int arrows = 0;
+        for (ItemStack s : village.storageBuffer) if (s.isOf(net.minecraft.item.Items.ARROW)) arrows += s.getCount();
+        if (arrows >= 96) return;
+        if (!Builder.takeItem(village, s -> s.isOf(net.minecraft.item.Items.FEATHER), 1)) return;
+        boolean flint = Builder.takeItem(village, s -> s.isOf(net.minecraft.item.Items.FLINT), 1)
+                || Builder.takeItem(village, s -> s.isOf(net.minecraft.item.Items.GRAVEL), 3);
+        if (!flint || !Builder.takeItem(village, s -> s.isIn(net.minecraft.registry.tag.ItemTags.PLANKS), 1)) {
+            addToTreasury(village, new ItemStack(net.minecraft.item.Items.FEATHER, 1)); // nothing to make a head or a shaft of
+            return;
+        }
+        addToTreasury(village, new ItemStack(net.minecraft.item.Items.ARROW, 4));
     }
 
     /** Any idle villager can turn coal and a plank into torches for the builders. */

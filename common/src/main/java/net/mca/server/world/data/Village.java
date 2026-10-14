@@ -44,6 +44,8 @@ public class Village implements Iterable<Building> {
     public BlockPos mineOrigin, smithyFurnace, smithyAnvil;
     public int mineLevel = 1, mineStep;
     public final List<BlockPos> watchPoints = new LinkedList<>();
+    /** Bottom cell of each tower's ladder, same order as {@link #watchPoints}. */
+    public final List<BlockPos> towerLadders = new LinkedList<>();
     public int farms, towers;
     /** Reserved plots as {x, z, width, depth}, so the layout never overlaps its own buildings. */
     public final List<int[]> plots = new LinkedList<>();
@@ -121,6 +123,7 @@ public class Village implements Iterable<Building> {
         mineLevel = v.contains("mineLevel") ? Math.max(1, v.getInt("mineLevel")) : 1;
         mineStep = v.getInt("mineStep");
         for (long l : v.getLongArray("watchPoints")) watchPoints.add(BlockPos.fromLong(l));
+        for (long l : v.getLongArray("towerLadders")) towerLadders.add(BlockPos.fromLong(l));
         if (v.contains("tavern")) tavern = net.mca.settlements.Tavern.load(v.getCompound("tavern"));
         wellBuilt = v.getBoolean("wellBuilt");
         wallBuilt = v.getBoolean("wallBuilt");
@@ -503,6 +506,7 @@ public class Village implements Iterable<Building> {
         v.putInt("mineLevel", mineLevel);
         v.putInt("mineStep", mineStep);
         v.putLongArray("watchPoints", watchPoints.stream().mapToLong(BlockPos::asLong).toArray());
+        v.putLongArray("towerLadders", towerLadders.stream().mapToLong(BlockPos::asLong).toArray());
         v.putBoolean("wellBuilt", wellBuilt);
         v.putBoolean("wallBuilt", wallBuilt);
         v.putInt("farms", farms);

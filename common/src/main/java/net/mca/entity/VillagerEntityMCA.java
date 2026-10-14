@@ -110,6 +110,9 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public String settlementsNeed = "NONE";
     public boolean settlementsCaravan = false;
     public int settlementsStuck = 0;
+    public int climbPhase = 0; // 0 none, 1 walking to the ladder, 2 climbing up, 3 climbing down
+    public BlockPos climbBase, climbTop, climbDeck;
+    public int climbTimer = 0;
     public boolean settlementsBreak = false;
     public int settlementsBreakLeft = 0;
     public int settlementsWorkSeconds = 0;
@@ -758,6 +761,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
             // Brain and pregnancy depend on the above states, so we tick them last
             // Every 1 second
             mcaBrain.think();
+            net.mca.settlements.Climb.tick(this);
             if (age % 20 == 0) net.mca.settlements.Workforce.tick(this);
 
             // pop a item from the desaturation queue

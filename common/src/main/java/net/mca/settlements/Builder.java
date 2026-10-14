@@ -429,6 +429,8 @@ public final class Builder {
                 village.towers++;
                 int[] tr = Blueprints.rotate(2, 2, Blueprints.TOWER, Blueprints.TOWER, rot);
                 village.watchPoints.add(o.add(tr[0], 11, tr[1]));
+                int[] lr = Blueprints.rotate(2, 1, Blueprints.TOWER, Blueprints.TOWER, rot);
+                village.towerLadders.add(o.add(lr[0], 1, lr[1]));
             }
             case "tavern" -> registerTavern(village);
             case "wall" -> village.wallBuilt = true;

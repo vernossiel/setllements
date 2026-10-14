@@ -150,14 +150,24 @@ public final class GuardAI {
         if (g.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) return;
         boolean night = time % 24000L >= 13000L;
 
-        // archers climb the towers for the night watch (taken up the ladder in one go)
-        if (night && isArcher(g) && !village.watchPoints.isEmpty()) {
-            BlockPos post = village.watchPoints.get(Math.floorMod(g.getUuid().hashCode(), village.watchPoints.size()));
-            if (g.squaredDistanceTo(post.getX() + 0.5, post.getY(), post.getZ() + 0.5) > 9) {
-                g.refreshPositionAndAngles(post.getX() + 0.5, post.getY(), post.getZ() + 0.5, g.getYaw(), 0);
+        // archers keep the night watch on the towers, climbing the ladder
+        if (!village.watchPoints.isEmpty() && village.towerLadders.size() == village.watchPoints.size()) {
+            int tower = Math.floorMod(g.getUuid().hashCode(), village.watchPoints.size());
+            BlockPos deck = village.watchPoints.get(tower), ladder = village.towerLadders.get(tower);
+            if (g.climbPhase != 0) return; // busy on the ladder
+            boolean onDeck = g.getY() > ladder.getY() + 5;
+            if (night && isArcher(g)) {
+                if (!onDeck) {
+                    Climb.toDeck(g, ladder, deck);
+                    return;
+                }
+                g.getNavigation().stop();
+                return;
             }
-            g.getNavigation().stop();
-            return;
+            if (onDeck) { // dawn, or not an archer's post: back down
+                Climb.toGround(g, ladder, deck);
+                return;
+            }
         }
         if (g.getBrain().getOptionalMemory(MemoryModuleType.WALK_TARGET).isPresent()) return;
 
