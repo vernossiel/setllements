@@ -554,6 +554,67 @@ public final class Builder {
     }
 
     /**
+     * Raises a whole building at once, as part of a settlement that comes with the world: materials come with it.
+     * A project already under way is put aside and resumed afterwards. False if no site was found.
+     */
+    public static boolean raiseNow(ServerWorld world, Village village, String type, int w, int d, int f, int minRing, int maxRing) {
+        String t = village.buildType;
+        BlockPos o = village.buildOrigin;
+        int st = village.buildStep, ow = village.buildW, od = village.buildD, of = village.buildF, orot = village.buildRot;
+        boolean started;
+        if (type.equals("well")) started = startCenter(village, world);
+        else if (type.equals("hallup")) started = startHallUp(village);
+        else started = startRing(village, world, type, w, d, f, minRing, maxRing);
+        if (!started) return false;
+        announceProject = null;
+        List<Step> steps = plan(village);
+        int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
+        BlockPos origin = village.buildOrigin;
+        int rot = village.buildRot;
+        FREE = true;
+        try {
+            for (Step step : steps) {
+                int[] rp = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], rot);
+                execute(world, village, step, origin.add(rp[0], step.dy(), rp[1]), rot);
+            }
+        } finally {
+            FREE = false;
+        }
+        village.buildStep = steps.size();
+        finish(village);
+        if (o != null && t != null) {
+            village.buildType = t;
+            village.buildOrigin = o;
+            village.buildStep = st;
+            village.buildW = ow;
+            village.buildD = od;
+            village.buildF = of;
+            village.buildRot = orot;
+        }
+        village.markDirty();
+        return true;
+    }
+
+    private static boolean startHallUp(Village village) {
+        House h = village.hall;
+        if (h == null || h.floors() >= 3) return false;
+        village.buildType = "hallup";
+        village.buildOrigin = h.origin();
+        village.buildW = h.w();
+        village.buildD = h.d();
+        village.buildF = h.floors();
+        village.buildRot = h.rot();
+        village.buildStep = 0;
+        return true;
+    }
+
+    private static boolean startCenter(Village village, ServerWorld world) {
+        Layout.Slot slot = Layout.center(world, village, "well");
+        if (slot == null) slot = Layout.find(world, village, "well", 0, 0, 0, 0);
+        return slot != null && startAt(village, "well", 0, 0, 0, slot);
+    }
+
+    /**
      * The nearest spot to the village center where the ground is no more than four blocks uneven and dry: the hall's
      * footprint is filled up with earth and cleared above, so the hall stands level.
      */

@@ -138,7 +138,7 @@ public final class Staffing {
         }
     }
 
-    private static void assign(ServerWorld world, VillagerEntityMCA v, VillagerProfession prof) {
+    static void assign(ServerWorld world, VillagerEntityMCA v, VillagerProfession prof) {
         v.setProfession(prof);
         v.setExperience(1); // keeps the vanilla "lost my job site" logic from taking the job away again
         v.reinitializeBrain(world);

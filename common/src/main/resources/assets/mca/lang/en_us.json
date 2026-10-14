@@ -1561,5 +1561,20 @@
   "settlements.say.build.chapel": "Building a chapel and churchyard.",
   "settlements.say.build.hut": "I'll put up a hut, it's what we can afford.",
   "settlements.say.build.annex": "A house with a garden for a family.",
-  "settlements.say.build.manor": "Building a big house, two storeys."
+  "settlements.say.build.manor": "Building a big house, two storeys.",
+  "settlements.news.founded.lumber": "A lumberjacks' settlement was founded.",
+  "settlements.talk.news.founded.lumber.a": "The forest will feed us.",
+  "settlements.talk.news.founded.lumber.b": "As long as the axes stay sharp.",
+  "settlements.news.founded.mining": "A miners' settlement was founded.",
+  "settlements.talk.news.founded.mining.a": "These hills are full of stone.",
+  "settlements.talk.news.founded.mining.b": "And maybe iron.",
+  "settlements.news.founded.farming": "A farming village was founded.",
+  "settlements.talk.news.founded.farming.a": "The soil here is good.",
+  "settlements.talk.news.founded.farming.b": "The harvest will be fine.",
+  "settlements.news.founded.outpost": "An outpost was founded.",
+  "settlements.talk.news.founded.outpost.a": "We guard this land.",
+  "settlements.talk.news.founded.outpost.b": "We'll sleep easy.",
+  "settlements.news.founded.trading": "A trading village was founded.",
+  "settlements.talk.news.founded.trading.a": "Roads come here from all sides.",
+  "settlements.talk.news.founded.trading.b": "So there'll be trade."
 }

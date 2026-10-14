@@ -1449,5 +1449,20 @@
   "settlements.say.build.chapel": "Строю часовню и кладбище.",
   "settlements.say.build.hut": "Поставлю хижину, пока по средствам.",
   "settlements.say.build.annex": "Дом с огородом для семьи.",
-  "settlements.say.build.manor": "Строю большой дом, в два этажа."
+  "settlements.say.build.manor": "Строю большой дом, в два этажа.",
+  "settlements.news.founded.lumber": "Поселение лесорубов основано.",
+  "settlements.talk.news.founded.lumber.a": "Лес нас прокормит.",
+  "settlements.talk.news.founded.lumber.b": "Лишь бы топоры не тупились.",
+  "settlements.news.founded.mining": "Шахтёрский посёлок основан.",
+  "settlements.talk.news.founded.mining.a": "В этих холмах полно камня.",
+  "settlements.talk.news.founded.mining.b": "И, может, железа.",
+  "settlements.news.founded.farming": "Фермерская деревня основана.",
+  "settlements.talk.news.founded.farming.a": "Земля здесь добрая.",
+  "settlements.talk.news.founded.farming.b": "Урожай будет что надо.",
+  "settlements.news.founded.outpost": "Застава основана.",
+  "settlements.talk.news.founded.outpost.a": "Мы стережём этот край.",
+  "settlements.talk.news.founded.outpost.b": "Спокойно спать будем.",
+  "settlements.news.founded.trading": "Торговое село основано.",
+  "settlements.talk.news.founded.trading.a": "Сюда дороги со всех сторон.",
+  "settlements.talk.news.founded.trading.b": "Значит, и торговля будет."
 }

@@ -63,6 +63,12 @@ public final class SettlementsCommand {
                 .then(CommandManager.literal("give")
                         .then(CommandManager.argument("item", StringArgumentType.string())
                                 .then(CommandManager.argument("count", IntegerArgumentType.integer(1, 4096)).executes(SettlementsCommand::give))))
+                .then(CommandManager.literal("found").then(CommandManager.argument("stage", IntegerArgumentType.integer(0, 3)).executes(c -> {
+                    var player = c.getSource().getPlayerOrThrow();
+                    int stage = IntegerArgumentType.getInteger(c, "stage");
+                    var village = Sites.settle((net.minecraft.server.world.ServerWorld) player.getWorld(), player.getBlockX() + 24, player.getBlockZ(), stage, null, new java.util.Random());
+                    return say(c, village == null ? "No settlement here (water, unsuitable land or MCA refused the bell)." : "Founded " + village.getName() + ", stage " + stage + ".");
+                })))
                 .then(CommandManager.literal("fast").then(CommandManager.argument("ops", IntegerArgumentType.integer(1, 200)).executes(c -> {
                     Builder.opsPerSecond = IntegerArgumentType.getInteger(c, "ops");
                     return say(c, "Builder and miner speed: " + Builder.opsPerSecond + " blocks per second (default 2)");
