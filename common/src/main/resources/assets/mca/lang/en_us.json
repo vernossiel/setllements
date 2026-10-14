@@ -1234,5 +1234,6 @@
   "settlements.say.pen.noanimals": "There are no animals around. Bring me a pair of sheep or cows and I'll build up a herd.",
   "settlements.say.pen.slaughter": "The village has to eat.",
   "settlements.goal.hallup": "enlarge the town hall",
-  "settlements.say.build.hallup": "The town hall deserves another floor."
+  "settlements.say.build.hallup": "The town hall deserves another floor.",
+  "settlements.say.build.scavenge": "Out of materials. I'll gather what I can find around here."
 }

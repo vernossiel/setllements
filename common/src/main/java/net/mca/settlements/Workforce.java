@@ -212,6 +212,22 @@ public final class Workforce {
         v.settlementsBreakLeft = seconds;
     }
 
+    private static boolean burnCharcoal(net.mca.server.world.data.Village village) {
+        int logs = 0;
+        for (ItemStack s : village.storageBuffer) if (s.isIn(net.minecraft.registry.tag.ItemTags.LOGS)) logs += s.getCount();
+        boolean furnace = village.smithyFurnace != null || village.tavern != null;
+        if (logs < (furnace ? 2 : 8)) return false;
+        for (ItemStack s : village.storageBuffer) {
+            if (s.isIn(net.minecraft.registry.tag.ItemTags.LOGS)) {
+                s.decrement(1);
+                break;
+            }
+        }
+        village.storageBuffer.removeIf(ItemStack::isEmpty);
+        addToTreasury(village, new ItemStack(net.minecraft.item.Items.CHARCOAL, 1));
+        return true;
+    }
+
     /** Idle villagers smelt raw ore from the mines into ingots. With Pyrotech the work takes twice the fuel. */
     private static void smelt(net.mca.server.world.data.Village village) {
         net.minecraft.item.Item[][] pairs = {
@@ -258,7 +274,7 @@ public final class Workforce {
     }
 
     /** Any idle villager can turn coal and a plank into torches for the builders. */
-    private static void craftTorches(net.mca.server.world.data.Village village) {
+    static void craftTorches(net.mca.server.world.data.Village village) {
         int torches = 0;
         for (ItemStack s : village.storageBuffer) if (s.isOf(net.minecraft.item.Items.TORCH)) torches += s.getCount();
         if (torches >= TORCH_STOCK) return;
@@ -269,7 +285,17 @@ public final class Workforce {
                 break;
             }
         }
-        if (fuel == null) return;
+        if (fuel == null) {
+            // no coal about: the villagers burn logs to charcoal in a furnace (or a charcoal pit when they have none yet)
+            if (!burnCharcoal(village)) return;
+            for (ItemStack s : village.storageBuffer) {
+                if (s.isOf(net.minecraft.item.Items.CHARCOAL)) {
+                    fuel = s;
+                    break;
+                }
+            }
+            if (fuel == null) return;
+        }
         net.minecraft.item.Item plank = null;
         for (ItemStack s : village.storageBuffer) {
             if (s.isIn(net.minecraft.registry.tag.ItemTags.PLANKS)) {

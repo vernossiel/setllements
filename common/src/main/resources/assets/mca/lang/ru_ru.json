@@ -1122,5 +1122,6 @@
   "settlements.say.pen.noanimals": "Поблизости нет животных. Приведите пару овец или коров, и я разведу стадо.",
   "settlements.say.pen.slaughter": "Деревне надо есть.",
   "settlements.goal.hallup": "расширить ратушу",
-  "settlements.say.build.hallup": "Ратуше нужен ещё этаж."
+  "settlements.say.build.hallup": "Ратуше нужен ещё этаж.",
+  "settlements.say.build.scavenge": "Материалов нет — соберу что найду вокруг."
 }

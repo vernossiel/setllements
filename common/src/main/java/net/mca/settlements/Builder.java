@@ -147,7 +147,7 @@ public final class Builder {
     private static final Predicate<ItemStack> WOOL = s -> s.isIn(ItemTags.WOOL);
 
     public static int stockPlanks(Village v) {
-        return planks(v);
+        return planks(v) + Scavenge.stockFiller(v);
     }
 
     public static int stockCobble(Village v) {
@@ -235,7 +235,10 @@ public final class Builder {
                     if (startRing(village, world, "tower", 0, 0, 0, 4, 5)) return true;
                 }
                 case "townhall" -> {
-                    if (startRing(village, world, "townhall", 0, 0, 0, 0, 1)) return true;
+                    if (startRing(village, world, "townhall", 0, 0, 0, 0, 3)) return true;
+                    Layout.Slot hs = Layout.center(world, village, "townhall");
+                    if (hs != null) return startAt(village, "townhall", 0, 0, 0, hs);
+                    if (start(village, world, "townhall", Blueprints.HALL_W, Blueprints.HALL_D, 0)) return true;
                 }
             case "pen" -> {
                     if (startRing(village, world, "pen", 0, 0, 0, 2, 4)) return true;
@@ -351,6 +354,11 @@ public final class Builder {
         if (!(v.getWorld() instanceof ServerWorld world) || village == null) return false;
         if (village.buildOrigin == null && !plan(village, world)) {
             Needs.Need blocker = Plan.firstBlocker(village);
+            if (blocker != Needs.Need.NONE && Scavenge.work(v, village, world, blocker, blocker == Needs.Need.PLANKS || blocker == Needs.Need.COBBLE)) {
+                if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, Needs.Need.NONE);
+                Speech.say(v, "settlements.say.build.scavenge");
+                return true;
+            }
             if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, blocker);
             return false;
         }
@@ -383,8 +391,18 @@ public final class Builder {
             }
 
             Result r = execute(world, village, step, target, village.buildRot);
-            if (r == Result.WAIT) { // waiting for materials: tell the player what would help
-                Needs.set(v, needFor(step.kind()));
+            if (r == Result.WAIT) { // out of materials: go and get some instead of standing around
+                Needs.Need need = needFor(step.kind());
+                boolean any = switch (step.kind()) {
+                    case FLOOR, ROOF, WALL, PILLAR, STONE, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, SEAT_W, SEAT_E -> true;
+                    default -> false;
+                };
+                if (Scavenge.work(v, village, world, need, any)) {
+                    if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, Needs.Need.NONE);
+                    Speech.say(v, "settlements.say.build.scavenge");
+                    return true;
+                }
+                Needs.set(v, need);
                 return worked;
             }
             if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, Needs.Need.NONE);
@@ -713,7 +731,18 @@ public final class Builder {
 
     private static BlockState plank(Village village) {
         Item p = takePlank(village);
-        if (p == null) return null;
+        if (p == null) {
+            // no wood left: build from whatever stone and earth the villagers have gathered around
+            for (ItemStack s : village.storageBuffer) {
+                if (!Scavenge.isFiller(s)) continue;
+                Block fb = Block.getBlockFromItem(s.getItem());
+                s.decrement(1);
+                village.storageBuffer.removeIf(ItemStack::isEmpty);
+                village.markDirty();
+                return fb.getDefaultState();
+            }
+            return null;
+        }
         Block b = Block.getBlockFromItem(p);
         return b == Blocks.AIR ? Blocks.OAK_PLANKS.getDefaultState() : b.getDefaultState();
     }

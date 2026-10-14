@@ -29,6 +29,17 @@ public final class SettlementsCommand {
         d.register(CommandManager.literal("settle")
                 .then(CommandManager.literal("return").executes(c -> Reputation.returnGoods(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("rep").executes(c -> Reputation.showStanding(c.getSource().getPlayerOrThrow())))
+                .then(CommandManager.literal("plans").executes(c -> {
+                    var player = c.getSource().getPlayerOrThrow();
+                    var near = player.getWorld().getEntitiesByClass(net.mca.entity.VillagerEntityMCA.class, player.getBoundingBox().expand(64), x -> x.isAlive() && !x.isBaby());
+                    if (near.isEmpty()) {
+                        c.getSource().sendError(net.minecraft.text.Text.translatable("settlements.plan.unregistered"));
+                        return 0;
+                    }
+                    near.sort(java.util.Comparator.comparingDouble(x -> x.squaredDistanceTo(player)));
+                    Plan.talk(near.get(0), player);
+                    return 1;
+                }))
                 .then(CommandManager.literal("refuse").executes(c -> Reputation.refuse(c.getSource().getPlayerOrThrow()))));
         d.register(CommandManager.literal("settlements").requires(s -> s.hasPermissionLevel(2))
                 .then(CommandManager.literal("status").executes(SettlementsCommand::status))

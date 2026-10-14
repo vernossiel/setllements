@@ -111,6 +111,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public boolean settlementsCaravan = false;
     public int settlementsStuck = 0;
     public net.minecraft.util.math.BlockPos lumberTarget;
+    public net.minecraft.util.math.BlockPos scavengeTarget;
+    public int scavengeSec;
     public net.minecraft.util.math.BlockPos penTarget;
     public net.minecraft.util.math.BlockPos settlementsKillPos;
     public long settlementsKillUntil = 0;

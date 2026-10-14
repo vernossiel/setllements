@@ -35,19 +35,26 @@ public final class Lumberjack {
     }
 
     public static boolean work(VillagerEntityMCA v, Village village) {
+        return work(v, village, false);
+    }
+
+    /** {@code force}: a builder short of wood fells a tree even when the stores are full or the forest is thin. */
+    public static boolean work(VillagerEntityMCA v, Village village, boolean force) {
         if (!(v.getWorld() instanceof ServerWorld world)) return false;
-        if (village != null && stockLogs(village) >= LOG_QUOTA) return false;
+        if (!force && village != null && stockLogs(village) >= LOG_QUOTA) return false;
 
         if (world.getTime() < v.settlementsNoWorkUntil) return false; // no trees around, look again later
 
         if (v.lumberTarget == null || !world.getBlockState(v.lumberTarget).isIn(BlockTags.LOGS)) {
             v.lumberTarget = null;
             List<BlockPos> trees = trees(world, v.getBlockPos(), village);
-            if (trees.size() <= MIN_TREES_LEFT) {
+            if (trees.size() <= (force ? 1 : MIN_TREES_LEFT)) {
                 // leave the forest alone; with no forest at all the village has to ask for wood
                 v.settlementsNoWorkUntil = world.getTime() + 1200;
-                Speech.say(v, trees.isEmpty() ? "settlements.say.lumber.none" : "settlements.say.lumber.sparse");
-                if (trees.isEmpty()) Needs.set(v, Needs.Need.PLANKS);
+                if (!force) {
+                    Speech.say(v, trees.isEmpty() ? "settlements.say.lumber.none" : "settlements.say.lumber.sparse");
+                    if (trees.isEmpty()) Needs.set(v, Needs.Need.PLANKS);
+                }
                 return false;
             }
             // the nearest tree to him first; once the village has planted a grove, trees close to the village are preferred
@@ -115,7 +122,8 @@ public final class Lumberjack {
                     if (!world.getBlockState(p).isIn(BlockTags.LOGS)) continue;
                     BlockPos below = p.down();
                     BlockState bs = world.getBlockState(below);
-                    if (bs.isIn(BlockTags.LOGS) || !bs.isSolidBlock(world, below)) break;
+                    if (bs.isIn(BlockTags.LOGS)) continue; // still inside the trunk, go down to its base
+                    if (!bs.isSolidBlock(world, below)) break;
                     if (village != null && Protection.severity(world, village, p, world.getBlockState(p)) > 0) break;
                     if (leavesAbove(world, p)) out.add(p);
                     break;

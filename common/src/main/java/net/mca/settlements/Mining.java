@@ -36,6 +36,7 @@ public final class Mining {
             village.markDirty();
             Speech.say(v, "settlements.say.build.mine");
         }
+        Workforce.craftTorches(village); // the mine needs light: torches from charcoal burnt out of logs
         if (village.mineLevel > MAX_LEVEL || Builder.stockCobble(village) >= STONE_QUOTA) return false;
 
         List<Step> steps = LEVELS.computeIfAbsent(village.mineLevel, k -> k == 0 ? Blueprints.mine() : Blueprints.mineExtension(k));
@@ -47,7 +48,12 @@ public final class Mining {
             return false;
         }
         BlockPos o = village.mineOrigin;
-        BlockPos stand = standFor(o, steps, village);
+        BlockPos stand = standFor(world, o, steps, village);
+        if (world.getBlockState(v.getBlockPos()).isSolidBlock(world, v.getBlockPos()) || world.getBlockState(v.getBlockPos().up()).isSolidBlock(world, v.getBlockPos().up())) {
+            // caught inside the rock or a timber frame: out to the working face
+            v.refreshPositionAndAngles(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, v.getYaw(), 0);
+            v.getNavigation().stop();
+        }
         if (v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > 25) {
             // walk down; if the stairs do not work out, go straight to the face
             if (v.settlementsStuck++ > 25 && world.isChunkLoaded(stand.getX() >> 4, stand.getZ() >> 4)) {
@@ -88,8 +94,14 @@ public final class Mining {
     }
 
     /** An already dug cell next to the next block to dig. */
-    private static BlockPos standFor(BlockPos o, List<Step> steps, Village village) {
+    private static BlockPos standFor(ServerWorld world, BlockPos o, List<Step> steps, Village village) {
         if (village.mineStep > 0) {
+            // the last cell behind the face that is open air with a floor, not a support beam or a torch
+            for (int i = Math.min(village.mineStep, steps.size()) - 1; i >= Math.max(0, village.mineStep - 40); i--) {
+                Step prev = steps.get(i);
+                BlockPos p = o.add(prev.dx(), prev.dy(), prev.dz());
+                if (world.getBlockState(p).isAir() && world.getBlockState(p.up()).isAir() && world.getBlockState(p.down()).isSolidBlock(world, p.down())) return p;
+            }
             Step prev = steps.get(Math.min(village.mineStep, steps.size()) - 1);
             return o.add(prev.dx(), prev.dy(), prev.dz());
         }
