@@ -75,9 +75,12 @@ public final class Sites extends PersistentState {
         return new BlockPos(x, 0, z);
     }
 
+    /** Off for now: vanilla villages generate as usual while villager behaviour is being worked out. */
+    public static final boolean ENABLED = false;
+
     /** Every five seconds: found the sites players are coming close to. */
     public static void tick(ServerWorld world) {
-        if (!world.getRegistryKey().equals(World.OVERWORLD)) return;
+        if (!ENABLED || !world.getRegistryKey().equals(World.OVERWORLD)) return;
         Sites sites = get(world);
         for (ServerPlayerEntity p : world.getPlayers()) {
             int prx = Math.floorDiv(p.getBlockX(), REGION), prz = Math.floorDiv(p.getBlockZ(), REGION);
