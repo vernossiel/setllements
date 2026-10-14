@@ -47,6 +47,10 @@ public final class Workforce {
     /** Server side, once per second. */
     public static void tick(VillagerEntityMCA v) {
         if (v.isBaby()) return;
+        if (v.settlementsEatTicks > 0) {
+            eatTick(v);
+            return;
+        }
         long time = v.getWorld().getTimeOfDay();
         Chore job = v.getVillagerBrain().getCurrentJob();
         boolean autonomous = job != Chore.NONE && v.getVillagerBrain().getJobAssigner().isEmpty();
@@ -55,7 +59,7 @@ public final class Workforce {
             v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + REST_GAIN);
             if (v.age % 60 == 0) v.settlementsHunger = Math.min(MAX, v.settlementsHunger + 1); // slow idle hunger
             net.mca.server.world.data.Village treasury = net.mca.server.world.data.Village.findNearest(v).orElse(null);
-            tryEat(v, treasury);
+            if (startEating(v, treasury)) return;
             if (treasury != null) deposit(v, treasury);
             if (v.getProfession() == VillagerProfession.CARTOGRAPHER) {
                 if (isWorkTime(time) && v.settlementsHunger < HUNGER_STOP_AT && !v.getVillagerBrain().isPanicking()) {
@@ -82,7 +86,13 @@ public final class Workforce {
 
         v.settlementsEnergy -= WORK_DRAIN;
         v.settlementsHunger += HUNGER_RISE;
-        if (v.settlementsHunger >= HUNGER_EAT_AT) tryEat(v, net.mca.server.world.data.Village.findNearest(v).orElse(null));
+        if (v.settlementsHunger >= HUNGER_EAT_AT) {
+            net.mca.server.world.data.Village village = net.mca.server.world.data.Village.findNearest(v).orElse(null);
+            if (hasMeal(v, village)) {
+                v.getVillagerBrain().abandonJob(); // stop working, eat, the next job comes after the meal
+                if (startEating(v, village)) return;
+            }
+        }
 
         if (v.settlementsEnergy <= 0 || v.settlementsHunger >= HUNGER_STOP_AT || !isWorkTime(time)) {
             v.settlementsEnergy = Math.max(0, v.settlementsEnergy);
@@ -90,28 +100,57 @@ public final class Workforce {
         }
     }
 
-    private static void tryEat(VillagerEntityMCA v, net.mca.server.world.data.Village village) {
-        if (v.settlementsHunger < HUNGER_EAT_AT) return;
-        for (int i = 0; i < v.getInventory().size(); i++) {
+    private static final int EAT_SECONDS = 3;
+
+    /** Starts a meal: the food goes into the hand and the villager stands still for a few seconds. */
+    private static boolean startEating(VillagerEntityMCA v, net.mca.server.world.data.Village village) {
+        if (v.settlementsHunger < HUNGER_EAT_AT) return false;
+        ItemStack meal = ItemStack.EMPTY;
+        for (int i = 0; i < v.getInventory().size() && meal.isEmpty(); i++) {
             ItemStack s = v.getInventory().getStack(i);
-            if (eatable(s)) {
-                v.settlementsHunger = Math.max(0, v.settlementsHunger - nutrition(s));
-                s.decrement(1);
-                return;
-            }
+            if (eatable(s)) meal = s.split(1);
         }
-        // nothing on them: take a meal from the village stores
-        if (village == null) return;
-        for (java.util.Iterator<ItemStack> it = village.storageBuffer.iterator(); it.hasNext(); ) {
-            ItemStack s = it.next();
-            if (eatable(s)) {
-                v.settlementsHunger = Math.max(0, v.settlementsHunger - nutrition(s));
-                s.decrement(1);
+        if (meal.isEmpty() && village != null) {
+            for (java.util.Iterator<ItemStack> it = village.storageBuffer.iterator(); it.hasNext(); ) {
+                ItemStack s = it.next();
+                if (!eatable(s)) continue;
+                meal = s.split(1);
                 if (s.isEmpty()) it.remove();
                 village.markDirty();
-                return;
+                break;
             }
         }
+        if (meal.isEmpty()) return false;
+        ItemStack held = v.getStackInHand(v.getDominantHand());
+        if (!held.isEmpty()) v.getInventory().addStack(held);
+        v.setStackInHand(v.getDominantHand(), meal);
+        v.getNavigation().stop();
+        v.settlementsEatTicks = EAT_SECONDS;
+        return true;
+    }
+
+    /** One second of an ongoing meal. */
+    private static void eatTick(VillagerEntityMCA v) {
+        v.getNavigation().stop();
+        ItemStack meal = v.getStackInHand(v.getDominantHand());
+        if (meal.isEmpty() || !meal.isFood()) {
+            v.settlementsEatTicks = 0;
+            return;
+        }
+        v.getWorld().playSound(null, v.getBlockPos(), net.minecraft.sound.SoundEvents.ENTITY_GENERIC_EAT, net.minecraft.sound.SoundCategory.NEUTRAL, 0.8f, 1.0f);
+        v.getWorld().sendEntityStatus(v, (byte) 45); // eating particles for the held item
+        v.swingHand(v.getDominantHand());
+        if (--v.settlementsEatTicks <= 0) {
+            v.settlementsHunger = Math.max(0, v.settlementsHunger - nutrition(meal));
+            v.eatFood(v.getWorld(), meal); // applies the food effects and consumes the item
+            v.setStackInHand(v.getDominantHand(), ItemStack.EMPTY);
+        }
+    }
+
+    private static boolean hasMeal(VillagerEntityMCA v, net.mca.server.world.data.Village village) {
+        for (int i = 0; i < v.getInventory().size(); i++) if (eatable(v.getInventory().getStack(i))) return true;
+        if (village != null) for (ItemStack s : village.storageBuffer) if (eatable(s)) return true;
+        return false;
     }
 
     private static boolean eatable(ItemStack s) {

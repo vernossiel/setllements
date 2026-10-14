@@ -105,6 +105,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public int settlementsEnergy = 1000;
     public int settlementsHunger = 0;
     public boolean settlementsResting = false;
+    public int settlementsEatTicks = 0;
 
     final UUID EXTRA_HEALTH_EFFECT_ID = UUID.fromString("87f56a96-686f-4796-b035-22e16ee9e038");
 
