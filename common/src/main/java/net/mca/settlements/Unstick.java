@@ -28,6 +28,12 @@ public final class Unstick {
         BlockState state = world.getBlockState(pos);
         if (state.isAir() || !state.getFluidState().isEmpty()) return false;
         if (state.getHardness(world, pos) < 0) return false;
+        // only natural terrain and plants, never anything someone built
+        boolean natural = state.isIn(net.minecraft.registry.tag.BlockTags.DIRT) || state.isIn(net.minecraft.registry.tag.BlockTags.SAND)
+                || state.isIn(net.minecraft.registry.tag.BlockTags.LEAVES) || state.isIn(net.minecraft.registry.tag.BlockTags.REPLACEABLE)
+                || state.isIn(net.minecraft.registry.tag.BlockTags.SNOW) || state.isIn(net.minecraft.registry.tag.BlockTags.BASE_STONE_OVERWORLD)
+                || state.isOf(net.minecraft.block.Blocks.GRAVEL) || state.isOf(net.minecraft.block.Blocks.CLAY);
+        if (!natural) return false;
         return village == null || Protection.severity(world, village, pos, state) == 0;
     }
 
@@ -56,7 +62,7 @@ public final class Unstick {
 
         Optional<BlockPos> goal = target(v);
         Vec3d pos = v.getPos();
-        boolean wants = goal.isPresent() && goal.get().getSquaredDistance(v.getBlockPos()) > 6;
+        boolean wants = goal.isPresent() && goal.get().getSquaredDistance(v.getBlockPos()) > 6 && v.getNavigation().isFollowingPath();
         if (!wants) {
             v.settlementsStuckSec = 0;
             v.settlementsLastPos = pos;

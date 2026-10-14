@@ -26,7 +26,7 @@ import java.util.Set;
  * remain around, or when the stores already hold plenty of logs.
  */
 public final class Lumberjack {
-    private static final int RADIUS = 48;
+    private static final int RADIUS = 72;
     private static final int MIN_TREES_LEFT = 6;
     private static final int LOG_QUOTA = 256;
     private static final int LOGS_PER_SECOND = 2;
@@ -38,20 +38,18 @@ public final class Lumberjack {
         if (!(v.getWorld() instanceof ServerWorld world)) return false;
         if (village != null && stockLogs(village) >= LOG_QUOTA) return false;
 
-        // keep a tool in hand, it shows what he is doing
-        if (!(v.getMainHandStack().getItem() instanceof net.minecraft.item.AxeItem)) {
-            for (int i = 0; i < v.getInventory().size(); i++) {
-                if (v.getInventory().getStack(i).getItem() instanceof net.minecraft.item.AxeItem) {
-                    v.setStackInHand(v.getDominantHand(), v.getInventory().getStack(i));
-                    break;
-                }
-            }
-        }
+        if (world.getTime() < v.settlementsNoWorkUntil) return false; // no trees around, look again later
 
         if (v.lumberTarget == null || !world.getBlockState(v.lumberTarget).isIn(BlockTags.LOGS)) {
             v.lumberTarget = null;
             List<BlockPos> trees = trees(world, v.getBlockPos(), village);
-            if (trees.size() <= MIN_TREES_LEFT) return false; // leave the forest alone
+            if (trees.size() <= MIN_TREES_LEFT) {
+                // leave the forest alone; with no forest at all the village has to ask for wood
+                v.settlementsNoWorkUntil = world.getTime() + 1200;
+                Speech.say(v, trees.isEmpty() ? "settlements.say.lumber.none" : "settlements.say.lumber.sparse");
+                if (trees.isEmpty()) Needs.set(v, Needs.Need.PLANKS);
+                return false;
+            }
             trees.sort((a, b) -> Double.compare(a.getSquaredDistance(v.getBlockPos()), b.getSquaredDistance(v.getBlockPos())));
             v.lumberTarget = trees.get(0);
         }
@@ -68,6 +66,12 @@ public final class Lumberjack {
             return false;
         }
         v.getLookControl().lookAt(base.getX() + 0.5, base.getY() + 1.5, base.getZ() + 0.5);
+        for (int i = 0; i < v.getInventory().size(); i++) {
+            if (v.getInventory().getStack(i).getItem() instanceof net.minecraft.item.AxeItem) {
+                v.setStackInHand(v.getDominantHand(), v.getInventory().getStack(i).copy()); // shown in hand only while chopping
+                break;
+            }
+        }
         int cut = 0;
         for (BlockPos p : trunk) {
             if (cut >= LOGS_PER_SECOND) break;
@@ -81,6 +85,7 @@ public final class Lumberjack {
         if (cut >= trunk.size()) {
             plant(v, world, base);
             v.lumberTarget = null;
+            v.setStackInHand(v.getDominantHand(), ItemStack.EMPTY);
         }
         return true;
     }

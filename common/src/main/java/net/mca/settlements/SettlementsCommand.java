@@ -40,6 +40,10 @@ public final class SettlementsCommand {
                     Builder.opsPerSecond = IntegerArgumentType.getInteger(c, "ops");
                     return say(c, "Builder and miner speed: " + Builder.opsPerSecond + " blocks per second (default 2)");
                 })))
+                .then(CommandManager.literal("scan").executes(c -> {
+                    int n = Registration.reportAround(c.getSource().getWorld(), c.getSource().getPlayerOrThrow().getBlockPos(), 64);
+                    return say(c, "Handed " + n + " beds to the village scanner. Wait a few seconds, then try /settlements status.");
+                }))
                 .then(CommandManager.literal("staff").executes(c -> {
                     Staffing.tick(c.getSource().getWorld());
                     return say(c, "Jobs handed out.");

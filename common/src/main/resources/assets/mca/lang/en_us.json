@@ -1227,5 +1227,10 @@
   "settlements.say.report.mob": "Guards! There's a monster over there!",
   "settlements.say.report.player": "Guards! Someone is damaging the village!",
   "settlements.say.report.thief": "Guards! Someone is stealing from the stores!",
-  "settlements.seed": "The elder opened the village stores."
+  "settlements.seed": "The elder opened the village stores.",
+  "settlements.plan.unregistered": "This settlement is not registered yet. Give it a moment, the villagers are reporting their homes.",
+  "settlements.say.lumber.none": "There are no trees nearby. We will need wood from somewhere.",
+  "settlements.say.lumber.sparse": "There are too few trees left. We keep the rest standing.",
+  "settlements.say.pen.noanimals": "There are no animals around. Bring me a pair of sheep or cows and I'll build up a herd.",
+  "settlements.say.pen.slaughter": "The village has to eat."
 }

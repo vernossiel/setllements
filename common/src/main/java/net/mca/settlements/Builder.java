@@ -196,7 +196,7 @@ public final class Builder {
                     }
                     if (planks >= 320 && startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 3, 0, 3)) return true;
                     if (planks >= 200 && startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 2, 0, 3)) return true;
-                    if (startRing(village, world, "house", 5, 5, 1, 0, 3)) return true;
+                    if (startRing(village, world, "house", 6, 7, 1, 0, 3)) return true;
                 }
                 case "farm" -> {
                     if (startRing(village, world, "farm", 0, 0, 0, 2, 5)) return true;

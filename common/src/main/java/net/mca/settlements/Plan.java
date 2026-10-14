@@ -92,14 +92,14 @@ public final class Plan {
 
     public static void talk(VillagerEntityMCA speaker, PlayerEntity player) {
         Village village = Village.findNearest(speaker).orElse(null);
-        if (village == null || !(speaker.getWorld() instanceof ServerWorld world) || !(player instanceof net.minecraft.server.network.ServerPlayerEntity sp)) return;
-        VillagerEntityMCA elder = elder(world, village);
-        if (elder != speaker) {
-            if (elder != null) {
-                player.sendMessage(Text.translatable("settlements.plan.notme", elder.getName()), false);
-            }
+        if (village == null) {
+            player.sendMessage(Text.translatable("settlements.plan.unregistered"), false);
+            if (speaker.getWorld() instanceof ServerWorld w0) Registration.report(w0, speaker);
             return;
         }
+        if (!(speaker.getWorld() instanceof ServerWorld world) || !(player instanceof net.minecraft.server.network.ServerPlayerEntity sp)) return;
+        VillagerEntityMCA elder = elder(world, village);
+        if (elder == null) elder = speaker; // the plans are not a secret: any villager can read them out
         List<Text> pages = new ArrayList<>();
         Level level = level(village);
         // page 1: where the village stands

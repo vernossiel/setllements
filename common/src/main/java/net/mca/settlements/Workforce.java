@@ -71,6 +71,17 @@ public final class Workforce {
         boolean autonomous = job != Chore.NONE && v.getVillagerBrain().getJobAssigner().isEmpty();
         if (job != Chore.NONE && !autonomous) return; // player-assigned chores ignore this system
 
+        // chores that older versions assigned (and the world still remembers) are done with MCA tasks that no longer apply
+        if (autonomous && (job == Chore.CHOP || job == Chore.PROSPECT)) {
+            v.getVillagerBrain().abandonJob();
+            job = Chore.NONE;
+        }
+
+        // a settlement MCA has not registered yet does nothing: help it along by reporting the beds around
+        if (village == null && v.age % 100 == 0 && v.getWorld() instanceof net.minecraft.server.world.ServerWorld regWorld) {
+            Registration.report(regWorld, v);
+        }
+
         Unstick.tick(v, village);
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld watchWorld) GuardIntel.civilianWatch(v, watchWorld);
 

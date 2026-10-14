@@ -112,6 +112,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public int settlementsStuck = 0;
     public net.minecraft.util.math.BlockPos lumberTarget;
     public net.minecraft.util.math.BlockPos penTarget;
+    public net.minecraft.util.math.BlockPos settlementsKillPos;
+    public long settlementsKillUntil = 0;
 
     public boolean isElder() {
         return getTrackedValue(ELDER);
