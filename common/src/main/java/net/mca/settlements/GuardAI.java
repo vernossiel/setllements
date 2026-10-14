@@ -52,6 +52,15 @@ public final class GuardAI {
         BlockPos center = new BlockPos(village.getCenter());
         var brain = g.getBrain();
         LivingEntity current = brain.getOptionalMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+        if (current instanceof PlayerEntity p) {
+            // no grudge against a player in creative, or one just beaten and let go
+            if (p.isCreative() || p.isSpectator() || Justice.spared(p)) {
+                brain.forget(MemoryModuleType.ATTACK_TARGET);
+                current = null;
+            } else if (p.getHealth() <= 6f && g.squaredDistanceTo(p) < 20 * 20 && g.canSee(p) && Justice.subdue(g, p)) {
+                return; // an archer does not shoot a man already down
+            }
+        }
 
         // never chase far from home
         if (g.squaredDistanceTo(center.getX(), g.getY(), center.getZ()) > LEASH * LEASH) {

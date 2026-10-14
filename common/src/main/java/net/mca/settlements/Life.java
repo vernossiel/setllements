@@ -97,7 +97,7 @@ public final class Life {
 
     /** Players the guards go for on sight: those who attacked the village, and outlaws with a bad name here. */
     public static boolean hostile(Village village, PlayerEntity p) {
-        if (village == null || p.isCreative() || p.isSpectator()) return false;
+        if (village == null || p.isCreative() || p.isSpectator() || Justice.spared(p)) return false;
         // the guards go for those resisting arrest, the exiled, and the village's sworn enemies; a bad name alone
         // gets a guard watching you, not a sword
         return Justice.hunted(village, p) || Reputation.tier(village.getReputation(p)) == 0;

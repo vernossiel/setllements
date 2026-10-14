@@ -44,6 +44,7 @@ public final class Buildings {
             case "tallhouse" -> tallhouse();
             case "twin" -> twin();
             case "farmhouse" -> farmhouse();
+            case "mansion" -> mansion();
             default -> Variants.plan(type);
         };
     }
@@ -568,6 +569,54 @@ public final class Buildings {
         at(l, 12, 0, 7, Kind.FENCE);
         at(l, 9, 0, 8, Kind.GATE, S);
         at(l, 8, 0, 7, Kind.PUMPKIN, S);
+        return l;
+    }
+
+    /**
+     * A wealthy family's mansion: two storeys on a stone ground floor, a pillared porch carrying a balcony with a door
+     * out onto it, a library and dining room, and a walled flower garden with benches and a lamp at the side.
+     */
+    static List<Step> mansion() {
+        int w = 11, d = 9;
+        List<Step> l = new ArrayList<>(Blueprints.shell(w, d, 2, false, true, true, true));
+        // porch and balcony
+        for (int x = 3; x <= 7; x++) for (int z = d; z <= d + 1; z++) {
+            at(l, x, 0, z, Kind.FLOOR);
+            at(l, x, 4, z, Kind.FLOOR);
+        }
+        for (int y = 1; y <= 3; y++) {
+            at(l, 3, y, d + 1, Kind.PILLAR);
+            at(l, 7, y, d + 1, Kind.PILLAR);
+        }
+        for (int x = 3; x <= 7; x++) at(l, x, 5, d + 1, Kind.FENCE);
+        at(l, 3, 5, d, Kind.FENCE);
+        at(l, 7, 5, d, Kind.FENCE);
+        at(l, 5, 5, d - 1, Kind.DOOR);
+        at(l, 5, 6, d - 1, Kind.CLEAR);
+        at(l, 5, 3, d + 1, Kind.LANTERN);
+        at(l, 5, 0, d + 2, Kind.STEP, N);
+        // inside: library, dining, more light
+        for (int z = 4; z <= 6; z++) at(l, 1, 1, z, Kind.BOOKSHELF);
+        at(l, 4, 1, 3, Kind.FENCE);
+        at(l, 4, 2, 3, Kind.PLATE);
+        at(l, 3, 1, 3, Kind.SEAT_W);
+        at(l, 5, 1, 3, Kind.SEAT_E);
+        at(l, 4, 3, 5, Kind.LANTERN);
+        for (int x = 3; x <= 7; x++) at(l, x, 5, 1, Kind.BOOKSHELF);
+        for (int x = 4; x <= 6; x++) for (int z = 4; z <= 6; z++) at(l, x, 5, z, Kind.CARPET, 0);
+        at(l, 8, 5, 6, Kind.CHEST);
+        at(l, 8, 5, 5, Kind.CHEST);
+        // the garden at the side
+        for (int x = 12; x <= 15; x++) {
+            for (int z = 0; z <= 8; z++) {
+                boolean edge = x == 15 || z == 0 || z == 8;
+                if (edge) at(l, x, 0, z, Kind.HEDGE);
+                else if ((x + z) % 2 == 0) at(l, x, 0, z, Kind.FLOWER);
+            }
+        }
+        lamp(l, 13, 4);
+        at(l, 14, 0, 2, Kind.PEW, W);
+        at(l, 14, 0, 6, Kind.PEW, W);
         return l;
     }
 }

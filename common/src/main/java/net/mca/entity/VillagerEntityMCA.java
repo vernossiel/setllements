@@ -454,6 +454,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
             target.setOnFireFor(i * 4);
         }
 
+        // the guards beat a player, they do not kill him
+        if (isGuard() && target instanceof PlayerEntity p) damage = net.mca.settlements.Justice.blow(p, damage);
         boolean damageDealt = target.damage(getWorld().getDamageSources().mobAttack(this), damage);
 
         //knockback and post damage stuff

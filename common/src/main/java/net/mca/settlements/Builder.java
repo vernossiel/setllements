@@ -227,13 +227,18 @@ public final class Builder {
                     // two-storey houses for a prosperous town
                     Plan.Level lv = Plan.level(village);
                     double roll = rand.nextDouble();
-                    String[] kinds = switch (lv) {
-                        case HAMLET -> new String[]{"hut", "hut", "house", "longhouse", "twin"};
-                        case VILLAGE -> new String[]{"house", "porch", "longhouse", "annex", "farmhouse", "twin"};
-                        default -> new String[]{"manor", "tallhouse", "porch", "annex", "farmhouse", "house"};
+                    // homes after the village's means: huts and longhouses when poor, family houses when it gets by,
+                    // mansions and town houses when it is wealthy
+                    int wealth = Prosperity.wealth(village);
+                    String[] kinds = switch (wealth) {
+                        case 0 -> new String[]{"hut", "hut", "longhouse", "twin"};
+                        case 1 -> lv == Plan.Level.HAMLET ? new String[]{"house", "longhouse", "twin", "porch"}
+                                : new String[]{"house", "porch", "annex", "farmhouse", "longhouse"};
+                        default -> new String[]{"mansion", "manor", "tallhouse", "porch", "house"};
                     };
                     String kind = kinds[rand.nextInt(kinds.length)];
                     int need = switch (kind) {
+                        case "mansion" -> 340;
                         case "manor", "farmhouse" -> 260;
                         case "annex", "tallhouse", "twin" -> 180;
                         case "hut" -> 0;
@@ -241,6 +246,9 @@ public final class Builder {
                     };
                     if (planks >= need && roll < 0.8) {
                         int[] dm = SHOWCASE.get(kind);
+                        if (kind.equals("house")) { // an ordinary house comes in sizes, larger the better off the village
+                            dm = new int[]{7 + rand.nextInt(2) + wealth, 7 + rand.nextInt(2) + wealth / 2, wealth >= 2 || rand.nextInt(3) == 0 ? 2 : 1};
+                        }
                         if (startRing(village, world, kind, dm[0], dm[1], dm[2], 0, 4)) return true;
                     }
                     if (planks >= 320 && startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 3, 0, 3)) return true;
@@ -625,15 +633,16 @@ public final class Builder {
     public static final java.util.LinkedHashMap<String, int[]> SHOWCASE = new java.util.LinkedHashMap<>();
 
     static {
-        String[] types = {"townhall", "hut", "house", "longhouse", "porch", "twin", "farmhouse", "tallhouse", "annex", "manor", "storage", "granary", "sawmill", "charcoal", "mason", "mill",
+        String[] types = {"townhall", "hut", "house", "longhouse", "porch", "twin", "farmhouse", "tallhouse", "annex", "manor", "mansion", "storage", "granary", "sawmill", "charcoal", "mason", "mill",
                 "smithy", "armory", "tavern", "barracks", "jail", "market", "chapel", "well", "board", "farm", "pen", "tower"};
         java.util.List<String> all = new java.util.ArrayList<>(java.util.List.of(types));
         for (String[] d : Buildings.designs()) for (int i = 1; i < d.length; i++) all.add(d[i]);
         for (String t : all) {
             SHOWCASE.put(t, switch (t) {
                 case "hut" -> new int[]{5, 5, 1};
-                case "house" -> new int[]{7, 7, 1};
+                case "house" -> new int[]{8, 8, 1};
                 case "annex" -> new int[]{7, 7, 1};
+                case "mansion" -> new int[]{11, 9, 2};
                 case "manor" -> new int[]{9, 8, 2};
                 case "tallhouse" -> new int[]{5, 6, 3};
                 default -> new int[]{0, 0, 1};
@@ -840,6 +849,7 @@ public final class Builder {
         switch (Buildings.base(type)) {
             case "house" -> village.houses.add(new House(o, village.buildW, village.buildD, village.buildF, rot));
             case "manor" -> village.houses.add(new House(o, 9, 8, 2, rot));
+            case "mansion" -> village.houses.add(new House(o, 11, 9, 2, rot));
             case "upgrade" -> {
                 for (int i = 0; i < village.houses.size(); i++) {
                     House h = village.houses.get(i);
@@ -1019,7 +1029,14 @@ public final class Builder {
             if (wall != null) state = wall;
             else if (!world.getBlockState(target.down()).isSideSolidFullSquare(world, target.down(), Direction.UP)) return Result.SKIPPED;
         }
+        // panes, fences, bars and stairs join up with what is around them, like when a player places them
+        switch (step.kind()) {
+            case GLASS, FENCE, BARS, GATE, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, PEW, SEAT_W, SEAT_E, STEP, CHAIN, LOG_X, LOG_Z -> state = Block.postProcessState(state, world, target);
+            default -> {
+            }
+        }
         world.setBlockState(target, state);
+        if (step.kind() == Kind.CHEST || step.kind() == Kind.HALL_CHEST) pairChest(world, target, state);
         // the floor rests on the ground: under it a stone footing goes down to solid earth
         if (step.dy() == 0 && needsFooting(step.kind())) foundation(world, village, target.down());
         if (step.kind() == Kind.CHEST) village.lootChests.add(target.toImmutable());
@@ -1042,6 +1059,24 @@ public final class Builder {
             case CARPET, TORCH, CROP, FARMLAND, WATER, PLATE, SIGN, LANTERN, SMOKE, POT, FLOWER, HEDGE, PATH, DIG, CLEAR -> false;
             default -> true;
         };
+    }
+
+    /** Two chests side by side, facing the same way, make one double chest. */
+    private static void pairChest(ServerWorld world, BlockPos p, BlockState state) {
+        if (!(state.getBlock() instanceof ChestBlock)) return;
+        Direction f = state.get(ChestBlock.FACING);
+        for (int side = 0; side < 2; side++) {
+            Direction toOther = side == 0 ? f.rotateYClockwise() : f.rotateYCounterclockwise();
+            BlockPos q = p.offset(toOther);
+            BlockState o = world.getBlockState(q);
+            if (!o.isOf(state.getBlock()) || o.get(ChestBlock.FACING) != f || o.get(ChestBlock.CHEST_TYPE) != net.minecraft.block.enums.ChestType.SINGLE) continue;
+            // the half whose partner lies clockwise of its facing is the left one
+            net.minecraft.block.enums.ChestType mine = side == 0 ? net.minecraft.block.enums.ChestType.LEFT : net.minecraft.block.enums.ChestType.RIGHT;
+            net.minecraft.block.enums.ChestType theirs = side == 0 ? net.minecraft.block.enums.ChestType.RIGHT : net.minecraft.block.enums.ChestType.LEFT;
+            world.setBlockState(p, state.with(ChestBlock.CHEST_TYPE, mine), Block.NOTIFY_LISTENERS);
+            world.setBlockState(q, o.with(ChestBlock.CHEST_TYPE, theirs), Block.NOTIFY_LISTENERS);
+            return;
+        }
     }
 
     /** Fills the gap under a floor block down to the ground (at most six blocks) with the village's stone. */
@@ -1077,6 +1112,27 @@ public final class Builder {
     private static BlockState stateFor(Village village, Step step, int rot) {
         Kind kind = step.kind();
         Palette pal = Palette.of(village);
+        int wealth = Prosperity.wealth(village);
+        if (wealth == 0) {
+            // a poor village does without: no glass, no shutters, flowers or rugs, timber instead of dressed stone
+            switch (kind) {
+                case SHUTTER, POT, HEDGE, FLOWER, CARPET, BELL -> {
+                    return null;
+                }
+                case GLASS -> {
+                    if (!takePlanks(village, 1)) return null;
+                    return pal.fence().getDefaultState();
+                }
+                case ACCENT -> {
+                    if (take(village, LOG, 1)) return pal.log().getDefaultState();
+                    return plank(village, pal.planks());
+                }
+                default -> {
+                }
+            }
+        } else if (wealth == 2 && (kind == Kind.STONE || kind == Kind.CHIMNEY) && take(village, COBBLE, 1)) {
+            return pal.accent().getDefaultState(); // a wealthy village builds in dressed stone
+        }
         switch (kind) {
             case FLOOR:
                 return plank(village, pal.planks());

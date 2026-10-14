@@ -75,6 +75,24 @@ public final class Prosperity {
         return f;
     }
 
+    private static final Map<Integer, double[]> WEALTH = new HashMap<>();
+
+    /** 0 a poor village, 1 an ordinary one, 2 a wealthy one: by its stores per head, its level and how it is doing. */
+    public static int wealth(Village village) {
+        if (village.getId() < 0) return 1; // a building placed just for a look
+        ServerWorld w = village.getWorld();
+        long now = w == null ? 0 : w.getTime();
+        double[] c = WEALTH.get(village.getId());
+        if (c != null && now - c[1] < 400) return (int) c[0];
+        double worth = 0;
+        for (ItemStack s : village.storageBuffer) worth += Reputation.value(s);
+        double per = worth / Math.max(1, village.getPopulation());
+        double score = per / 25 + Plan.level(village).ordinal() * 0.7 + (factor(village) - 0.8) * 2;
+        int tier = score < 0.8 ? 0 : score < 2.2 ? 1 : 2;
+        WEALTH.put(village.getId(), new double[]{tier, now});
+        return tier;
+    }
+
     public static Text describe(Village village) {
         double f = factor(village);
         if (f >= 1.0) return Text.translatable("settlements.prosperity.good").formatted(Formatting.DARK_GREEN);

@@ -204,7 +204,8 @@ public final class Workforce {
                 worked = true;
             } else if (village != null && isGatherer(prof) && Haul.carry(v, village, v.settlementsIdleWork >= 20)) {
                 worked = true; // carrying the load to the hall is work too
-            } else if (prof == VillagerProfession.CARTOGRAPHER) worked = Builder.work(v, village);
+            } else if (village == null) worked = false; // no village (yet): no village work
+            else if (prof == VillagerProfession.CARTOGRAPHER) worked = Builder.work(v, village);
             else if (prof == VillagerProfession.BUTCHER) worked = Cooking.work(v, village);
             else if (prof == VillagerProfession.MASON) {
                 if (v.age % 400 == 0 || !Mining.hasPick(v)) Gear.equipTool(v, village, Chore.PROSPECT);

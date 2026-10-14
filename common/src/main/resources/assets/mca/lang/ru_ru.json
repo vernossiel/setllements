@@ -1600,5 +1600,9 @@
   "settlements.talk.news.crime.unsolved.theft.b": "Надо запирать сундуки.",
   "settlements.news.crime.unsolved.vandalism": "Кто-то ломает наши дома.",
   "settlements.talk.news.crime.unsolved.vandalism.a": "Кто-то нам дом сломал.",
-  "settlements.talk.news.crime.unsolved.vandalism.b": "Стража должна смотреть лучше."
+  "settlements.talk.news.crime.unsolved.vandalism.b": "Стража должна смотреть лучше.",
+  "settlements.building.mansion": "особняк",
+  "settlements.say.build.mansion": "Строю особняк. Деревня-то богатеет!",
+  "settlements.building.demolish:mansion": "снос старого здания",
+  "settlements.justice.beaten": "Хватит с тебя, %s. Проваливай и не возвращайся."
 }

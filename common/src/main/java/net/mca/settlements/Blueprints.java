@@ -121,6 +121,16 @@ public final class Blueprints {
     static void level(List<Step> l, int w, int d, int level, boolean stairsFromBelow, boolean grand, boolean furnished, boolean stoneGround) {
         int base = level * LEVEL_HEIGHT;
         boolean stone = stoneGround && level == 0;
+        if (level > 0) {
+            // the floor between storeys: a timber band outside, planks inside (the stair hole is cut below)
+            for (int x = 0; x < w; x++) {
+                for (int z = 0; z < d; z++) {
+                    boolean corner = (x == 0 || x == w - 1) && (z == 0 || z == d - 1);
+                    boolean edge = x == 0 || z == 0 || x == w - 1 || z == d - 1;
+                    l.add(new Step(x, base, z, corner ? Kind.PILLAR : edge ? ((z == 0 || z == d - 1) ? Kind.BEAM_X : Kind.BEAM_Z) : Kind.FLOOR));
+                }
+            }
+        }
         if (stairsFromBelow) {
             int prev = base - LEVEL_HEIGHT;
             for (int i = 0; i < 3; i++) l.add(new Step(1, base, 1 + i, Kind.CLEAR));
@@ -219,6 +229,12 @@ public final class Blueprints {
             l.add(new Step(w, chimneyTop + 1, d / 2, Kind.SMOKE));
         }
         l.add(new Step(door, 0, d, Kind.STEP, N));
+        // a little roof over the door, and round windows in the gables
+        for (int x = door - 1; x <= door + 1; x++) l.add(new Step(x, 3, d, Kind.SLAB));
+        if (w >= 6) {
+            l.add(new Step(w / 2, top + 2, d - 1, Kind.GLASS));
+            l.add(new Step(w / 2, top + 2, 0, Kind.GLASS));
+        }
         for (int z = d + 1; z <= d + 3; z++) l.add(new Step(door, -1, z, Kind.PATH));
         l.add(new Step(door - 1, 2, d, Kind.TORCH));
         l.add(new Step(door + 1, 2, d, Kind.TORCH));
@@ -529,6 +545,7 @@ public final class Blueprints {
             case "tallhouse" -> new int[]{5, 6};
             case "twin" -> new int[]{9, 6};
             case "farmhouse" -> new int[]{13, 9};
+            case "mansion" -> new int[]{16, 13};
             default -> new int[]{w, d};
         };
     }

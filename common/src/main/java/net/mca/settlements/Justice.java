@@ -59,6 +59,7 @@ public final class Justice {
     private static final Map<UUID, Case> CASES = new HashMap<>();
     private static final Map<UUID, int[]> STRIKES = new HashMap<>(); // {strikes, last tick / 20}
     private static final Map<UUID, Integer> RECORD = new HashMap<>(); // arrests so far
+    private static final Map<UUID, Long> SPARED = new HashMap<>(); // beaten and let go, until (world time)
 
     private Justice() {
     }
@@ -421,11 +422,38 @@ public final class Justice {
 
     /** A guard about to land a blow on a resisting player: when he is down to his last strength, he is arrested instead. */
     public static boolean subdue(VillagerEntityMCA guard, PlayerEntity p) {
+        if (p.getHealth() > 6f || !(p instanceof ServerPlayerEntity sp)) return false;
+        ServerWorld world = sp.getServerWorld();
         Case c = CASES.get(p.getUuid());
-        if (c == null || c.stage != Stage.RESISTING || p.getHealth() > 6f || !(p instanceof ServerPlayerEntity sp)) return false;
-        guard.sendChatMessage(Text.translatable("settlements.justice.subdued", p.getName()), p);
-        sentence(sp.getServerWorld(), sp, c);
+        if (c != null && c.stage != Stage.SERVING && c.stage != Stage.EXILED) {
+            guard.sendChatMessage(Text.translatable("settlements.justice.subdued", p.getName()), p);
+            sentence(world, sp, c);
+            return true;
+        }
+        // nothing to arrest him for (a sworn enemy, an exile come back): beaten, thrown out, left alone a while
+        SPARED.put(p.getUuid(), world.getTime() + 1200);
+        for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(64), VillagerEntityMCA::isGuard)) {
+            if (g.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).orElse(null) == p) g.getBrain().forget(MemoryModuleType.ATTACK_TARGET);
+        }
+        double dx = p.getX() - guard.getX(), dz = p.getZ() - guard.getZ(), len = Math.max(0.1, Math.sqrt(dx * dx + dz * dz));
+        p.takeKnockback(1.2, -dx / len, -dz / len);
+        sp.velocityModified = true;
+        guard.sendChatMessage(Text.translatable("settlements.justice.beaten", p.getName()), p);
         return true;
+    }
+
+    /** Beaten down and thrown out a moment ago: the guards let him crawl away. */
+    public static boolean spared(PlayerEntity p) {
+        Long until = SPARED.get(p.getUuid());
+        if (until == null) return false;
+        if (p.getWorld().getTime() < until) return true;
+        SPARED.remove(p.getUuid());
+        return false;
+    }
+
+    /** A guard's blow on a player hurts, but never kills: a few hearts at most. */
+    public static float blow(PlayerEntity p, float damage) {
+        return Math.min(damage, Math.max(1f, Math.min(5f, p.getHealth() - 4f)));
     }
 
     // ---------- punishment ----------

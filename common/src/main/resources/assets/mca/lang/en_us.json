@@ -1712,5 +1712,9 @@
   "settlements.talk.news.crime.unsolved.theft.b": "We should lock the chests.",
   "settlements.news.crime.unsolved.vandalism": "Someone is breaking our houses.",
   "settlements.talk.news.crime.unsolved.vandalism.a": "Someone broke one of our houses.",
-  "settlements.talk.news.crime.unsolved.vandalism.b": "The guards should keep a better watch."
+  "settlements.talk.news.crime.unsolved.vandalism.b": "The guards should keep a better watch.",
+  "settlements.building.mansion": "mansion",
+  "settlements.say.build.mansion": "Building a mansion. The village is getting rich!",
+  "settlements.building.demolish:mansion": "demolishing an old building",
+  "settlements.justice.beaten": "That's enough for you, %s. Get lost and don't come back."
 }
