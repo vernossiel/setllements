@@ -87,7 +87,8 @@ public class ChoppingTask extends AbstractChoreTask {
             nearbyLogs.stream()
                     .filter(log -> isTreeStartLog(world, log))
                     .forEach(nearbyTrees::add);
-            targetTree = TaskUtils.getNearestPoint(villager.getBlockPos(), nearbyTrees);
+            // never clear-cut: leave a minimum stand of trees around
+            targetTree = nearbyTrees.size() < net.mca.settlements.Workforce.MIN_TREES_LEFT ? null : TaskUtils.getNearestPoint(villager.getBlockPos(), nearbyTrees);
 
             if (targetTree != null) {
                 ItemStack stack = villager.getStackInHand(villager.getDominantHand());

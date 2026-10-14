@@ -83,6 +83,11 @@ public class Village implements Iterable<Building> {
         residentNames = NbtHelper.toMap(v.getCompound("residentNames"), UUID::fromString, NbtElement::asString);
         residentHomes = NbtHelper.toMap(v.getCompound("residentHomes"), UUID::fromString, i -> ((NbtLong) i).longValue());
         unspentMood = v.getInt("unspentMood");
+        NbtList treasury = v.getList("treasury", NbtElement.COMPOUND_TYPE);
+        for (int i = 0; i < treasury.size(); i++) {
+            net.minecraft.item.ItemStack st = net.minecraft.item.ItemStack.fromNbt(treasury.getCompound(i));
+            if (!st.isEmpty()) storageBuffer.add(st);
+        }
 
         if (v.contains("populationThresholdFloat")) {
             populationThreshold = v.getFloat("populationThresholdFloat");
@@ -422,6 +427,11 @@ public class Village implements Iterable<Building> {
         v.putString("name", name);
         v.putFloat("taxesFloat", taxes);
         v.putInt("beds", beds);
+        NbtList treasury = new NbtList();
+        for (net.minecraft.item.ItemStack st : storageBuffer) {
+            if (!st.isEmpty()) treasury.add(st.writeNbt(new NbtCompound()));
+        }
+        v.put("treasury", treasury);
         v.put("unspentHearts", NbtHelper.fromMap(new NbtCompound(), unspentHearts, UUID::toString, NbtInt::of));
         v.put("reputation", NbtHelper.fromMap(new NbtCompound(), reputation, UUID::toString, i ->
                 NbtHelper.fromMap(new NbtCompound(), i, UUID::toString, NbtInt::of)

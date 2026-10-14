@@ -20,6 +20,11 @@ public final class Workforce {
     private static final int REST_DAY_EVERY = 4;    // every 4th day is a rest day
     private static final long WORK_START = 1000, WORK_END = 11500;
 
+    public static final int MIN_TREES_LEFT = 6;      // lumberjacks stop when fewer trees stand nearby
+    private static final int LOG_QUOTA = 256;         // stop chopping once the treasury holds this many logs
+    private static final int STONE_QUOTA = 512;
+    private static final int KEEP_FOOD = 4;
+
     private Workforce() {
     }
 
@@ -49,12 +54,13 @@ public final class Workforce {
         if (job == Chore.NONE) {
             v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + REST_GAIN);
             tryEat(v);
+            net.mca.server.world.data.Village treasury = net.mca.server.world.data.Village.findNearest(v).orElse(null);
+            if (treasury != null) deposit(v, treasury);
             Chore wanted = choreFor(v.getProfession());
             if (wanted != Chore.NONE && isWorkTime(time) && v.settlementsEnergy >= START_WORK_ENERGY
-                    && v.settlementsHunger < HUNGER_STOP_AT && !v.getVillagerBrain().isPanicking()) {
-                net.mca.server.world.data.Village village = net.mca.server.world.data.Village.findNearest(v).orElse(null);
-                Gear.equipTool(v, village, wanted);
-                Gear.equipArmor(v, village);
+                    && v.settlementsHunger < HUNGER_STOP_AT && quotaAllows(treasury, wanted) && !v.getVillagerBrain().isPanicking()) {
+                Gear.equipTool(v, treasury, wanted);
+                Gear.equipArmor(v, treasury);
                 v.getVillagerBrain().assignAutonomous(wanted);
             }
             return;
@@ -83,5 +89,53 @@ public final class Workforce {
                 return;
             }
         }
+    }
+
+    private static boolean quotaAllows(net.mca.server.world.data.Village village, Chore chore) {
+        if (village == null) return true;
+        int logs = 0, stone = 0;
+        for (ItemStack s : village.storageBuffer) {
+            if (s.isIn(net.minecraft.registry.tag.ItemTags.LOGS)) logs += s.getCount();
+            else if (s.isOf(net.minecraft.item.Items.COBBLESTONE)) stone += s.getCount();
+        }
+        return switch (chore) {
+            case CHOP -> logs < LOG_QUOTA;
+            case PROSPECT -> stone < STONE_QUOTA;
+            default -> true;
+        };
+    }
+
+    /** Hand gathered goods over to the village treasury; keep tools, armor and a little food. */
+    private static void deposit(VillagerEntityMCA v, net.mca.server.world.data.Village village) {
+        int food = 0;
+        for (int i = 0; i < v.getInventory().size(); i++) {
+            ItemStack s = v.getInventory().getStack(i);
+            if (s.isEmpty() || s.getItem() instanceof net.minecraft.item.ToolItem || s.getItem() instanceof net.minecraft.item.ArmorItem) continue;
+            if (s.isFood()) {
+                int keep = Math.max(0, KEEP_FOOD - food);
+                food += Math.min(keep, s.getCount());
+                if (s.getCount() <= keep) continue;
+                s = s.split(s.getCount() - keep);
+            } else {
+                s = s.copy();
+                v.getInventory().setStack(i, ItemStack.EMPTY);
+            }
+            addToTreasury(village, s);
+        }
+    }
+
+    private static void addToTreasury(net.mca.server.world.data.Village village, ItemStack stack) {
+        for (ItemStack s : village.storageBuffer) {
+            if (ItemStack.canCombine(s, stack)) {
+                int move = Math.min(stack.getCount(), s.getMaxCount() - s.getCount());
+                s.increment(move);
+                stack.decrement(move);
+            }
+        }
+        while (!stack.isEmpty()) {
+            ItemStack part = stack.split(Math.min(stack.getCount(), stack.getMaxCount()));
+            village.storageBuffer.add(part);
+        }
+        village.markDirty();
     }
 }
