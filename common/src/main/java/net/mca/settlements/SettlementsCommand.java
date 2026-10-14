@@ -63,6 +63,42 @@ public final class SettlementsCommand {
                 .then(CommandManager.literal("give")
                         .then(CommandManager.argument("item", StringArgumentType.string())
                                 .then(CommandManager.argument("count", IntegerArgumentType.integer(1, 4096)).executes(SettlementsCommand::give))))
+                .then(CommandManager.literal("place").then(CommandManager.argument("type", StringArgumentType.word())
+                        .suggests((c, b) -> net.minecraft.command.CommandSource.suggestMatching(Builder.SHOWCASE.keySet(), b))
+                        .executes(c -> {
+                            var player = c.getSource().getPlayerOrThrow();
+                            String type = StringArgumentType.getString(c, "type");
+                            if (!Builder.SHOWCASE.containsKey(type)) return say(c, "Unknown building. Try: " + String.join(", ", Builder.SHOWCASE.keySet()));
+                            // in front of the player, door towards him
+                            var facing = player.getHorizontalFacing();
+                            int rot = switch (facing) {
+                                case NORTH -> 0;
+                                case SOUTH -> 2;
+                                case EAST -> 1;
+                                default -> 3;
+                            };
+                            int[] f = Builder.footprintOf(type, rot);
+                            int px = player.getBlockX(), pz = player.getBlockZ(), y = player.getBlockY();
+                            int x0, z0;
+                            switch (facing) {
+                                case NORTH -> { x0 = px - f[0] / 2; z0 = pz - 4 - f[1]; }
+                                case SOUTH -> { x0 = px - f[0] / 2; z0 = pz + 5; }
+                                case EAST -> { x0 = px + 5; z0 = pz - f[1] / 2; }
+                                default -> { x0 = px - 4 - f[0]; z0 = pz - f[1] / 2; }
+                            }
+                            Builder.placeForLook((ServerWorld) player.getWorld(), type, new net.minecraft.util.math.BlockPos(x0, y, z0), rot);
+                            return say(c, "Placed " + type + ".");
+                        })))
+                .then(CommandManager.literal("showcase").executes(c -> {
+                    var player = c.getSource().getPlayerOrThrow();
+                    int x = player.getBlockX() + 4, y = player.getBlockY(), z = player.getBlockZ() + 6;
+                    for (String type : Builder.SHOWCASE.keySet()) {
+                        int[] f = Builder.footprintOf(type, 0);
+                        Builder.placeForLook((ServerWorld) player.getWorld(), type, new net.minecraft.util.math.BlockPos(x, y, z), 0);
+                        x += f[0] + 6;
+                    }
+                    return say(c, "All buildings placed in a row going east, a few blocks south of you; their doors face south.");
+                }))
                 .then(CommandManager.literal("found").then(CommandManager.argument("stage", IntegerArgumentType.integer(0, 3)).executes(c -> {
                     var player = c.getSource().getPlayerOrThrow();
                     int stage = IntegerArgumentType.getInteger(c, "stage");

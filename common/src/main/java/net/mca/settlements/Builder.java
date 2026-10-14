@@ -599,6 +599,65 @@ public final class Builder {
         return true;
     }
 
+    /** All building types that can be placed for a look, with their default plan parameters {w, d, floors}. */
+    public static final java.util.LinkedHashMap<String, int[]> SHOWCASE = new java.util.LinkedHashMap<>();
+
+    static {
+        String[] types = {"townhall", "hut", "house", "annex", "manor", "storage", "granary", "sawmill", "charcoal", "mason", "mill",
+                "smithy", "armory", "tavern", "barracks", "jail", "market", "chapel", "well", "board", "farm", "pen", "tower"};
+        for (String t : types) {
+            SHOWCASE.put(t, switch (t) {
+                case "hut" -> new int[]{5, 5, 1};
+                case "house" -> new int[]{7, 7, 1};
+                case "annex" -> new int[]{7, 7, 1};
+                case "manor" -> new int[]{9, 8, 2};
+                default -> new int[]{0, 0, 1};
+            });
+        }
+    }
+
+    /**
+     * Places a building at once for a look (operators' test command): free materials, the land's palette, nothing
+     * entered in any village's books. The site is cleared above the floor and filled below it.
+     */
+    public static void placeForLook(ServerWorld world, String type, BlockPos origin, int rot) {
+        int[] dm = SHOWCASE.getOrDefault(type, new int[]{0, 0, 1});
+        List<Step> steps = stepsFor(type, dm[0], dm[1], dm[2]);
+        int[] fp = Blueprints.footprint(type, dm[0], dm[1]);
+        int fw = (rot & 1) == 0 ? fp[0] : fp[1], fd = (rot & 1) == 0 ? fp[1] : fp[0];
+        for (int x = origin.getX() - 2; x <= origin.getX() + fw + 1; x++) {
+            for (int z = origin.getZ() - 2; z <= origin.getZ() + fd + 1; z++) {
+                for (int y = origin.getY(); y <= origin.getY() + 16; y++) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    if (!world.getBlockState(p).isAir() && world.getBlockState(p).getHardness(world, p) >= 0) world.setBlockState(p, Blocks.AIR.getDefaultState());
+                }
+                for (int y = origin.getY() - 3; y < origin.getY(); y++) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    if (world.getBlockState(p).isReplaceable()) world.setBlockState(p, y == origin.getY() - 1 ? Blocks.GRASS_BLOCK.getDefaultState() : Blocks.DIRT.getDefaultState());
+                }
+            }
+        }
+        Village scratch = new Village(-1, world); // a throwaway village: bookkeeping goes nowhere
+        String biome = world.getBiome(origin).getKey().map(k -> k.getValue().getPath()).orElse("plains");
+        Palette.OVERRIDE = Palette.forBiome(biome);
+        FREE = true;
+        try {
+            for (Step step : steps) {
+                int[] rp = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], rot);
+                execute(world, scratch, step, origin.add(rp[0], step.dy(), rp[1]), rot);
+            }
+        } finally {
+            FREE = false;
+            Palette.OVERRIDE = null;
+        }
+    }
+
+    public static int[] footprintOf(String type, int rot) {
+        int[] dm = SHOWCASE.getOrDefault(type, new int[]{0, 0, 1});
+        int[] fp = Blueprints.footprint(type, dm[0], dm[1]);
+        return (rot & 1) == 0 ? fp : new int[]{fp[1], fp[0]};
+    }
+
     private static boolean startHallUp(Village village) {
         House h = village.hall;
         if (h == null || h.floors() >= 3) return false;

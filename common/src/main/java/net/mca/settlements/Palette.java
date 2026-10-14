@@ -19,7 +19,11 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
     private static final Map<Integer, Palette> CACHE = new HashMap<>();
     private static final Palette OAK = new Palette("oak", "spruce", Blocks.COBBLESTONE, Blocks.COBBLESTONE_STAIRS, Blocks.STONE_BRICKS, Blocks.POTTED_POPPY);
 
+    /** Set while a test building is placed outside any village: the materials of the land it stands in. */
+    static Palette OVERRIDE = null;
+
     public static Palette of(Village village) {
+        if (OVERRIDE != null) return OVERRIDE;
         Palette p = CACHE.get(village.getId());
         if (p != null) return p;
         ServerWorld world = village.getWorld();
