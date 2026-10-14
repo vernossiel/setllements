@@ -8,7 +8,7 @@ import java.util.List;
  * corner, y = 0 is the ground floor plane. Everything faces south (door on the +z side).
  */
 public final class Blueprints {
-    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND }
+    public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER }
 
     public record Step(int dx, int dy, int dz, Kind kind) {
     }
@@ -28,15 +28,39 @@ public final class Blueprints {
             level(l, w, d, level, level > 0);
         }
         plane(l, w, d, floors * LEVEL_HEIGHT, Kind.ROOF, -1);
+        gable(l, w, d, floors * LEVEL_HEIGHT, false);
         return l;
     }
 
     /** One more floor on top of an existing house of {@code floors} floors. */
     public static List<Step> addFloor(int w, int d, int floors) {
         List<Step> l = new ArrayList<>();
+        gable(l, w, d, floors * LEVEL_HEIGHT, true); // take the old pitched roof off first
         level(l, w, d, floors, true);
         plane(l, w, d, (floors + 1) * LEVEL_HEIGHT, Kind.ROOF, -1);
+        gable(l, w, d, (floors + 1) * LEVEL_HEIGHT, false);
         return l;
+    }
+
+    /** A pitched roof along the depth axis with closed gable ends; {@code clear} produces the steps that remove it. */
+    private static void gable(List<Step> l, int w, int d, int yBase, boolean clear) {
+        for (int i = 0; ; i++) {
+            int left = -1 + i, right = w - i;
+            if (left > right) break;
+            int y = yBase + 1 + i;
+            for (int z = 0; z < d; z++) {
+                if (left < right) {
+                    l.add(new Step(left, y, z, clear ? Kind.CLEAR : Kind.STAIRS_E));
+                    l.add(new Step(right, y, z, clear ? Kind.CLEAR : Kind.STAIRS_W));
+                } else {
+                    l.add(new Step(left, y, z, clear ? Kind.CLEAR : Kind.ROOF));
+                }
+            }
+            for (int x = left + 1; x <= right - 1; x++) {
+                l.add(new Step(x, y, 0, clear ? Kind.CLEAR : Kind.WALL));
+                l.add(new Step(x, y, d - 1, clear ? Kind.CLEAR : Kind.WALL));
+            }
+        }
     }
 
     private static void plane(List<Step> l, int w, int d, int y, Kind kind, int skipX) {
@@ -128,6 +152,109 @@ public final class Blueprints {
         for (int x = 2; x <= 7; x += 1) in.add(new Step(x, 1, 1, Kind.CHEST));
         for (int x = 2; x <= 6; x += 2) in.add(new Step(x, 1, 3, Kind.ARMOR_STAND));
         return hall(10, 7, in);
+    }
+
+    // ---------- well, farm, tower ----------
+
+    public static final int WELL = 5, FARM = 9, TOWER = 5;
+
+    /** A village well with a cobblestone rim, four posts and a small roof. */
+    public static List<Step> well() {
+        List<Step> l = new ArrayList<>();
+        for (int x = 1; x <= 3; x++) {
+            for (int z = 1; z <= 3; z++) {
+                if (x == 2 && z == 2) l.add(new Step(x, -1, z, Kind.WATER));
+                else l.add(new Step(x, 0, z, Kind.WALL));
+            }
+        }
+        for (int y = 1; y <= 3; y++) {
+            for (int[] c : new int[][]{{1, 1}, {3, 1}, {1, 3}, {3, 3}}) l.add(new Step(c[0], y, c[1], Kind.FENCE));
+        }
+        for (int x = 1; x <= 3; x++) for (int z = 1; z <= 3; z++) l.add(new Step(x, 4, z, Kind.ROOF));
+        return l;
+    }
+
+    /** A fenced wheat field with a water source in the middle. */
+    public static List<Step> farm() {
+        List<Step> l = new ArrayList<>();
+        int n = FARM;
+        for (int x = 0; x < n; x++) {
+            for (int z = 0; z < n; z++) {
+                boolean border = x == 0 || z == 0 || x == n - 1 || z == n - 1;
+                boolean gate = x == n / 2 && z == n - 1;
+                if (border) {
+                    if (!gate) l.add(new Step(x, 0, z, Kind.FENCE));
+                } else if (x == n / 2 && z == n / 2) {
+                    l.add(new Step(x, -1, z, Kind.WATER));
+                } else {
+                    l.add(new Step(x, -1, z, Kind.FARMLAND));
+                    l.add(new Step(x, 0, z, Kind.CROP));
+                }
+            }
+        }
+        return l;
+    }
+
+    /** A cobblestone watchtower with a ladder inside and a parapet on top. */
+    public static List<Step> tower() {
+        List<Step> l = new ArrayList<>();
+        int n = TOWER, h = 10;
+        plane(l, n, n, 0, Kind.FLOOR, -1);
+        for (int y = 1; y <= h; y++) {
+            for (int x = 0; x < n; x++) {
+                for (int z = 0; z < n; z++) {
+                    boolean edge = x == 0 || z == 0 || x == n - 1 || z == n - 1;
+                    if (!edge) continue;
+                    boolean door = x == n / 2 && z == n - 1 && y <= 2;
+                    if (door) continue;
+                    boolean slit = y % 4 == 2 && (x == n / 2 || z == n / 2);
+                    l.add(new Step(x, y, z, slit ? Kind.GLASS : Kind.WALL));
+                }
+            }
+        }
+        l.add(new Step(n / 2, 1, n - 1, Kind.DOOR));
+        for (int y = 1; y <= h; y++) l.add(new Step(2, y, 1, Kind.LADDER));
+        // top deck with a hatch over the ladder, and a parapet
+        for (int x = 0; x < n; x++) {
+            for (int z = 0; z < n; z++) {
+                if (x == 2 && z == 1) continue;
+                l.add(new Step(x, h, z, Kind.FLOOR));
+            }
+        }
+        for (int x = 0; x < n; x++) {
+            for (int z = 0; z < n; z++) {
+                boolean edge = x == 0 || z == 0 || x == n - 1 || z == n - 1;
+                if (edge) l.add(new Step(x, h + 1, z, (x + z) % 2 == 0 ? Kind.WALL : Kind.FENCE));
+            }
+        }
+        l.add(new Step(1, h + 1, n - 2, Kind.TORCH));
+        return l;
+    }
+
+    // ---------- footprints and rotation ----------
+
+    /** Footprint {w, d} of a project type before rotation. */
+    public static int[] footprint(String type, int w, int d) {
+        return switch (type) {
+            case "storage" -> new int[]{11, 7};
+            case "smithy" -> new int[]{10, 6};
+            case "armory" -> new int[]{10, 7};
+            case "well" -> new int[]{WELL, WELL};
+            case "farm" -> new int[]{FARM, FARM};
+            case "tower" -> new int[]{TOWER, TOWER};
+            case "mine" -> new int[]{4, 4};
+            default -> new int[]{w, d};
+        };
+    }
+
+    /** Rotates a plan coordinate clockwise by {@code rot} quarter turns inside a w x d footprint. */
+    public static int[] rotate(int dx, int dz, int w, int d, int rot) {
+        return switch (rot & 3) {
+            case 1 -> new int[]{d - 1 - dz, dx};
+            case 2 -> new int[]{w - 1 - dx, d - 1 - dz};
+            case 3 -> new int[]{dz, w - 1 - dx};
+            default -> new int[]{dx, dz};
+        };
     }
 
     // ---------- mine ----------

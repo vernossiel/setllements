@@ -132,52 +132,92 @@ public final class Builder {
 
     private static boolean plan(Village village, ServerWorld world) {
         int planks = planks(village);
+        int cobble = count(village, COBBLE);
         boolean full = village.getPopulation() >= village.getMaxPopulation();
         var rand = world.random;
 
-        if (!village.storageBuilt && village.getPopulation() >= 3 && planks >= 150) {
-            return start(village, world, "storage", 11, 7, 0);
+        // 1. the well makes the heart of the village
+        if (!village.wellBuilt && planks >= 30) {
+            Layout.Slot slot = Layout.center(world, village, "well");
+            village.wellBuilt = true; // a blocked center is simply skipped
+            if (slot != null) return startAt(village, "well", 0, 0, 0, slot);
         }
+        // 2. storage
+        if (!village.storageBuilt && village.getPopulation() >= 3 && planks >= 150) {
+            return startRing(village, world, "storage", 0, 0, 0, 0, 3);
+        }
+        // 3. housing: add floors first, then new houses
         if (full) {
             for (House h : village.houses) {
-                if (h.floors() < 3 && h.d() >= 7 && planks >= 90) {
+                if (h.floors() < 3 && h.d() >= 7 && planks >= 130) {
                     village.buildType = "upgrade";
                     village.buildOrigin = h.origin();
                     village.buildW = h.w();
                     village.buildD = h.d();
                     village.buildF = h.floors();
+                    village.buildRot = h.rot();
                     village.buildStep = 0;
                     village.markDirty();
                     return true;
                 }
             }
-            if (planks >= 300) return start(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 3);
-            if (planks >= 160) return start(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 2);
-            if (planks >= 70) return start(village, world, "house", 5, 5, 1);
+            if (planks >= 320) return startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 3, 0, 3);
+            if (planks >= 200) return startRing(village, world, "house", 6 + rand.nextInt(3), 7 + rand.nextInt(2), 2, 0, 3);
+            if (planks >= 100) return startRing(village, world, "house", 5, 5, 1, 0, 3);
         }
-        if (!village.mineBuilt && planks >= 40 && count(village, COBBLE) < 128) {
+        // 4. food
+        if (village.farms < Math.max(1, village.getPopulation() / 4) && planks >= 30) {
+            return startRing(village, world, "farm", 0, 0, 0, 2, 5);
+        }
+        // 5. resources
+        if (!village.mineBuilt && planks >= 40 && cobble < 128) {
             return start(village, world, "mine", 4, 4, 0);
         }
+        // 6. craft and defense
         int iron = count(village, s -> s.isOf(Items.IRON_INGOT) || s.isOf(Items.RAW_IRON));
-        if (!village.smithyBuilt && village.storageBuilt && iron >= 40 && count(village, COBBLE) >= 12 && planks >= 100) {
-            return start(village, world, "smithy", 10, 6, 0);
+        if (!village.smithyBuilt && village.storageBuilt && iron >= 40 && cobble >= 12 && planks >= 100) {
+            return startRing(village, world, "smithy", 0, 0, 0, 0, 3);
         }
         if (!village.armoryBuilt && village.smithyBuilt && village.getPopulation() >= 6 && planks >= 150) {
-            return start(village, world, "armory", 10, 7, 0);
+            return startRing(village, world, "armory", 0, 0, 0, 0, 3);
+        }
+        if (village.towers < 2 && village.getPopulation() >= 8 && planks >= 150 && cobble >= 60) {
+            return startRing(village, world, "tower", 0, 0, 0, 4, 5);
         }
         return false;
     }
 
-    private static boolean start(Village village, ServerWorld world, String type, int w, int d, int floors) {
-        int fw = w, fd = d;
-        BlockPos site = findSite(world, village, fw, fd);
-        if (site == null) return false;
+    private static boolean startRing(Village village, ServerWorld world, String type, int w, int d, int floors, int minRing, int maxRing) {
+        Layout.Slot slot = Layout.find(world, village, type, w, d, minRing, maxRing);
+        if (slot == null) return false;
+        return startAt(village, type, w, d, floors, slot);
+    }
+
+    private static boolean startAt(Village village, String type, int w, int d, int floors, Layout.Slot slot) {
         village.buildType = type;
-        village.buildOrigin = site;
+        village.buildOrigin = slot.origin();
+        village.buildRot = slot.rot();
         village.buildW = w;
         village.buildD = d;
         village.buildF = floors;
         village.buildStep = 0;
+        village.plots.add(new int[]{slot.origin().getX(), slot.origin().getZ(), slot.fw(), slot.fd()});
+        village.markDirty();
+        return true;
+    }
+
+    /** Free-standing projects without a ring slot, like the mine at the edge of the village. */
+    private static boolean start(Village village, ServerWorld world, String type, int w, int d, int floors) {
+        BlockPos site = findSite(world, village, w, d);
+        if (site == null) return false;
+        village.buildType = type;
+        village.buildOrigin = site;
+        village.buildRot = 0;
+        village.buildW = w;
+        village.buildD = d;
+        village.buildF = floors;
+        village.buildStep = 0;
+        village.plots.add(new int[]{site.getX(), site.getZ(), w, d});
         village.markDirty();
         return true;
     }
@@ -243,7 +283,9 @@ public final class Builder {
         int ops = 0, skips = 0;
         while (ops < OPS_PER_SECOND && skips < MAX_TRIVIAL_SKIPS && village.buildOrigin != null && village.buildStep < steps.size()) {
             Step step = steps.get(village.buildStep);
-            BlockPos target = origin.add(step.dx(), step.dy(), step.dz());
+            int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
+            int[] rp = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], village.buildRot);
+            BlockPos target = origin.add(rp[0], step.dy(), rp[1]);
 
             // the mine is dug from its entrance, everything else is built standing next to the block
             double limit = village.buildType.equals("mine") ? 12 * 12 : 6 * 6;
@@ -253,7 +295,7 @@ public final class Builder {
                 return worked;
             }
 
-            Result r = execute(world, village, step, target);
+            Result r = execute(world, village, step, target, village.buildRot);
             if (r == Result.WAIT) { // waiting for materials: tell the player what would help
                 Needs.set(v, needFor(step.kind()));
                 return worked;
@@ -291,10 +333,19 @@ public final class Builder {
     public static boolean buildInstantly(ServerWorld world, Village payer, BlockPos origin, List<Step> steps) {
         if (planks(payer) < 120 || count(payer, WOOL) < 3) return false;
         for (Step step : steps) {
-            Result r = execute(world, payer, step, origin.add(step.dx(), step.dy(), step.dz()));
+            Result r = execute(world, payer, step, origin.add(step.dx(), step.dy(), step.dz()), 0);
             if (r == Result.ABORT) return false;
         }
         return true;
+    }
+
+    private static Direction turn(Direction base, int rot) {
+        return Direction.fromHorizontal(base.getHorizontal() + rot);
+    }
+
+    /** Takes items from the treasury for other systems (lamp posts on the roads). */
+    public static boolean takeItem(Village v, Predicate<ItemStack> p, int amount) {
+        return take(v, p, amount);
     }
 
     private enum Result { PLACED, SKIPPED, WAIT, ABORT }
@@ -302,19 +353,33 @@ public final class Builder {
     private static void finish(Village village) {
         BlockPos o = village.buildOrigin;
         if (o == null) return;
-        switch (village.buildType) {
-            case "house" -> village.houses.add(new House(o, village.buildW, village.buildD, village.buildF));
+        String type = village.buildType;
+        int rot = village.buildRot;
+        switch (type) {
+            case "house" -> village.houses.add(new House(o, village.buildW, village.buildD, village.buildF, rot));
             case "upgrade" -> {
                 for (int i = 0; i < village.houses.size(); i++) {
                     House h = village.houses.get(i);
-                    if (h.origin().equals(o)) village.houses.set(i, new House(o, h.w(), h.d(), h.floors() + 1));
+                    if (h.origin().equals(o)) village.houses.set(i, h.withFloors(h.floors() + 1));
                 }
             }
             case "storage" -> village.storageBuilt = true;
             case "smithy" -> village.smithyBuilt = true;
             case "armory" -> village.armoryBuilt = true;
             case "mine" -> village.mineBuilt = true;
+            case "farm" -> village.farms++;
+            case "tower" -> village.towers++;
             default -> {
+            }
+        }
+        if (village.getWorld() instanceof ServerWorld world && !type.equals("upgrade") && !type.equals("mine")) {
+            if (type.equals("well")) {
+                Roads.plaza(world, village);
+            } else {
+                int[] fp = Blueprints.footprint(type, village.buildW, village.buildD);
+                int[] front = Blueprints.rotate(fp[0] / 2, fp[1], fp[0], fp[1], rot);
+                BlockPos fr = o.add(front[0], 0, front[1]);
+                Roads.connect(world, village, fr);
             }
         }
         village.buildOrigin = null;
@@ -322,7 +387,7 @@ public final class Builder {
         village.markDirty();
     }
 
-    private static Result execute(ServerWorld world, Village village, Step step, BlockPos target) {
+    private static Result execute(ServerWorld world, Village village, Step step, BlockPos target, int rot) {
         BlockState old = world.getBlockState(target);
         if (!old.isAir() && old.getHardness(world, target) < 0) return Result.SKIPPED; // bedrock and friends
 
@@ -341,10 +406,10 @@ public final class Builder {
             return Result.PLACED;
         }
 
-        BlockState state = stateFor(village, step.kind());
+        BlockState state = stateFor(village, step.kind(), rot);
         if (state == null) {
             // glass is optional: no glass in stock means an open window
-            return step.kind() == Kind.GLASS || step.kind() == Kind.TORCH ? Result.SKIPPED : Result.WAIT;
+            return step.kind() == Kind.GLASS || step.kind() == Kind.TORCH || step.kind() == Kind.CROP ? Result.SKIPPED : Result.WAIT;
         }
         if (step.kind() == Kind.ARMOR_STAND) {
             var stand = net.minecraft.entity.EntityType.ARMOR_STAND.create(world);
@@ -364,7 +429,7 @@ public final class Builder {
     }
 
     /** Pays for the block and returns what to place, or null if the treasury cannot pay. */
-    private static BlockState stateFor(Village village, Kind kind) {
+    private static BlockState stateFor(Village village, Kind kind, int rot) {
         switch (kind) {
             case FLOOR, ROOF:
                 return plank(village);
@@ -382,18 +447,18 @@ public final class Builder {
             }
             case DOOR:
                 if (!takePlanks(village, 6)) return null;
-                return Blocks.OAK_DOOR.getDefaultState().with(DoorBlock.FACING, Direction.SOUTH).with(DoorBlock.HALF, DoubleBlockHalf.LOWER);
+                return Blocks.OAK_DOOR.getDefaultState().with(DoorBlock.FACING, turn(Direction.SOUTH, rot)).with(DoorBlock.HALF, DoubleBlockHalf.LOWER);
             case CHEST:
                 if (!takePlanks(village, 8)) return null;
-                return Blocks.CHEST.getDefaultState().with(ChestBlock.FACING, Direction.SOUTH);
+                return Blocks.CHEST.getDefaultState().with(ChestBlock.FACING, turn(Direction.SOUTH, rot));
             case BED_FOOT: {
                 if (planks(village) < 3 || count(village, WOOL) < 3) return null;
                 take(village, WOOL, 3);
                 takePlanks(village, 3);
-                return Blocks.RED_BED.getDefaultState().with(BedBlock.FACING, Direction.SOUTH).with(BedBlock.PART, BedPart.FOOT);
+                return Blocks.RED_BED.getDefaultState().with(BedBlock.FACING, turn(Direction.SOUTH, rot)).with(BedBlock.PART, BedPart.FOOT);
             }
             case BED_HEAD:
-                return Blocks.RED_BED.getDefaultState().with(BedBlock.FACING, Direction.SOUTH).with(BedBlock.PART, BedPart.HEAD);
+                return Blocks.RED_BED.getDefaultState().with(BedBlock.FACING, turn(Direction.SOUTH, rot)).with(BedBlock.PART, BedPart.HEAD);
             case TORCH: {
                 if (!take(village, s -> s.isOf(Items.TORCH), 1)) return null;
                 return Blocks.TORCH.getDefaultState();
@@ -411,7 +476,7 @@ public final class Builder {
                 if (!take(village, COBBLE, 8)) return null;
                 Block pyroForge = Compat.block("pyrotech", "bloomery");
                 if (pyroForge != null) return pyroForge.getDefaultState();
-                return Blocks.FURNACE.getDefaultState().with(AbstractFurnaceBlock.FACING, Direction.SOUTH);
+                return Blocks.FURNACE.getDefaultState().with(AbstractFurnaceBlock.FACING, turn(Direction.SOUTH, rot));
             }
             case GRINDSTONE: {
                 if (count(village, COBBLE) < 3 || planks(village) < 2) return null;
@@ -429,12 +494,31 @@ public final class Builder {
                 if (!takePlanks(village, 4)) return null;
                 return Blocks.AIR.getDefaultState(); // marker, the stand itself is spawned in execute()
             }
-            case STAIRS_N, STAIRS_S: {
-                Direction facing = kind == Kind.STAIRS_N ? Direction.NORTH : Direction.SOUTH;
+            case STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W: {
+                Direction base = switch (kind) {
+                    case STAIRS_N -> Direction.NORTH;
+                    case STAIRS_S -> Direction.SOUTH;
+                    case STAIRS_E -> Direction.EAST;
+                    default -> Direction.WEST;
+                };
+                Direction facing = turn(base, rot);
                 if (take(village, COBBLE, 1)) return Blocks.COBBLESTONE_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
                 if (!takePlanks(village, 1)) return null;
                 return Blocks.OAK_STAIRS.getDefaultState().with(StairsBlock.FACING, facing);
             }
+            case FENCE:
+                if (!takePlanks(village, 1)) return null;
+                return Blocks.OAK_FENCE.getDefaultState();
+            case LADDER:
+                if (!takePlanks(village, 1)) return null;
+                return Blocks.LADDER.getDefaultState().with(LadderBlock.FACING, turn(Direction.SOUTH, rot));
+            case FARMLAND:
+                return Blocks.FARMLAND.getDefaultState();
+            case WATER:
+                return Blocks.WATER.getDefaultState();
+            case CROP:
+                if (!take(village, x -> x.isOf(Items.WHEAT_SEEDS), 1)) return null;
+                return Blocks.WHEAT.getDefaultState();
             default:
                 return null;
         }

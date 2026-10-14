@@ -66,8 +66,8 @@ public final class Protection {
         }
         for (House h : village.houses) {
             BlockPos o = h.origin();
-            if (pos.getX() >= o.getX() - 1 && pos.getX() <= o.getX() + h.w()
-                    && pos.getZ() >= o.getZ() - 1 && pos.getZ() <= o.getZ() + h.d()
+            if (pos.getX() >= o.getX() - 1 && pos.getX() <= o.getX() + h.fw()
+                    && pos.getZ() >= o.getZ() - 1 && pos.getZ() <= o.getZ() + h.fd()
                     && pos.getY() >= o.getY() && pos.getY() <= o.getY() + h.floors() * Blueprints.LEVEL_HEIGHT + 1) {
                 return true;
             }

@@ -22,27 +22,16 @@
     "constraints": ""
   },
   {
-    "identifier": "gui.button.pick_up",
+    "identifier": "gui.button.follow",
     "x": -90,
     "y": 10,
-    "row": 1,
+    "row": 3,
     "width": 80,
     "height": 20,
     "notifyServer": true,
     "targetServer": false,
-    "constraints": "!adult,!teen",
-    "isInteraction": true
-  },
-  {
-    "identifier": "gui.button.locations",
-    "x": -90,
-    "y": 10,
-    "row": 2,
-    "width": 80,
-    "height": 20,
-    "notifyServer": false,
-    "targetServer": false,
-    "constraints": ""
+    "constraints": "!following,guard",
+    "hideOnFail": true
   },
   {
     "identifier": "gui.button.follow",
@@ -53,19 +42,7 @@
     "height": 20,
     "notifyServer": true,
     "targetServer": false,
-    "constraints": "!following",
-    "hideOnFail": true
-  },
-  {
-    "identifier": "gui.button.stay",
-    "x": -90,
-    "y": 10,
-    "row": 4,
-    "width": 80,
-    "height": 20,
-    "notifyServer": true,
-    "targetServer": false,
-    "constraints": "!staying",
+    "constraints": "!following,mercenary",
     "hideOnFail": true
   },
   {
@@ -79,41 +56,6 @@
     "targetServer": false,
     "constraints": "following",
     "hideOnFail": true
-  },
-  {
-    "identifier": "gui.button.move",
-    "x": -90,
-    "y": 10,
-    "row": 4,
-    "width": 80,
-    "height": 20,
-    "notifyServer": true,
-    "targetServer": false,
-    "constraints": "staying",
-    "hideOnFail": true
-  },
-  {
-    "identifier": "gui.button.ridehorse",
-    "x": -90,
-    "y": 10,
-    "row": 5,
-    "width": 80,
-    "height": 20,
-    "notifyServer": true,
-    "targetServer": false,
-    "constraints": ""
-  },
-  {
-    "identifier": "gui.button.armor",
-    "x": -90,
-    "y": 10,
-    "row": 6,
-    "width": 80,
-    "height": 20,
-    "notifyServer": true,
-    "targetServer": false,
-    "constraints": "",
-    "hideOnFail": false
   },
   {
     "identifier": "gui.button.execute",

@@ -38,7 +38,11 @@ public class Village implements Iterable<Building> {
     public BlockPos buildOrigin;
     public int buildStep;
     public String buildType = "";
-    public int buildW, buildD, buildF;
+    public int buildW, buildD, buildF, buildRot;
+    public boolean wellBuilt;
+    public int farms, towers;
+    /** Reserved plots as {x, z, width, depth}, so the layout never overlaps its own buildings. */
+    public final List<int[]> plots = new LinkedList<>();
     public boolean storageBuilt, mineBuilt, smithyBuilt, armoryBuilt;
     public final List<BlockPos> campfires = new LinkedList<>();
     public final Map<Integer, Integer> relations = new HashMap<>();
@@ -74,6 +78,10 @@ public class Village implements Iterable<Building> {
     private final VillageProcreationManager villageProcreationManager = new VillageProcreationManager(this);
     private final VillageTaxesManager villageTaxesManager = new VillageTaxesManager(this);
 
+    public ServerWorld getWorld() {
+        return world;
+    }
+
     public Village(int id, ServerWorld world) {
         this.id = id;
 
@@ -99,9 +107,15 @@ public class Village implements Iterable<Building> {
             buildW = v.getInt("buildW");
             buildD = v.getInt("buildD");
             buildF = v.getInt("buildF");
+            buildRot = v.getInt("buildRot");
         }
         storageBuilt = v.getBoolean("storageBuilt");
         mineBuilt = v.getBoolean("mineBuilt");
+        wellBuilt = v.getBoolean("wellBuilt");
+        farms = v.getInt("farms");
+        towers = v.getInt("towers");
+        int[] flatPlots = v.getIntArray("plots");
+        for (int i = 0; i + 3 < flatPlots.length; i += 4) plots.add(new int[]{flatPlots[i], flatPlots[i + 1], flatPlots[i + 2], flatPlots[i + 3]});
         smithyBuilt = v.getBoolean("smithyBuilt");
         armoryBuilt = v.getBoolean("armoryBuilt");
         for (long l : v.getLongArray("campfires")) campfires.add(BlockPos.fromLong(l));
@@ -466,9 +480,16 @@ public class Village implements Iterable<Building> {
             v.putInt("buildW", buildW);
             v.putInt("buildD", buildD);
             v.putInt("buildF", buildF);
+            v.putInt("buildRot", buildRot);
         }
         v.putBoolean("storageBuilt", storageBuilt);
         v.putBoolean("mineBuilt", mineBuilt);
+        v.putBoolean("wellBuilt", wellBuilt);
+        v.putInt("farms", farms);
+        v.putInt("towers", towers);
+        int[] flat = new int[plots.size() * 4];
+        for (int i = 0; i < plots.size(); i++) System.arraycopy(plots.get(i), 0, flat, i * 4, 4);
+        v.putIntArray("plots", flat);
         v.putBoolean("smithyBuilt", smithyBuilt);
         v.putBoolean("armoryBuilt", armoryBuilt);
         NbtCompound rel = new NbtCompound();

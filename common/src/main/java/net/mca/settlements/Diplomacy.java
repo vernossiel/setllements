@@ -256,7 +256,7 @@ public final class Diplomacy {
     private static void burnHouse(ServerWorld world, Village loser) {
         if (loser.houses.isEmpty()) return;
         var h = loser.houses.get(world.random.nextInt(loser.houses.size()));
-        BlockPos roof = h.origin().add(h.w() / 2, h.floors() * Blueprints.LEVEL_HEIGHT + 1, h.d() / 2);
+        BlockPos roof = h.origin().add(h.fw() / 2, h.floors() * Blueprints.LEVEL_HEIGHT + 2, h.fd() / 2);
         if (world.isChunkLoaded(roof) && world.getBlockState(roof).isAir()) world.setBlockState(roof, Blocks.FIRE.getDefaultState());
     }
 
