@@ -200,6 +200,7 @@ public final class SettlementsCommand {
                 + " mine=" + v.mineBuilt + "(level " + v.mineLevel + ") smithy=" + v.smithyBuilt + " armory=" + v.armoryBuilt
                 + " tavern=" + (v.tavern != null) + " towers=" + v.towers + " wall=" + v.wallBuilt);
         say(c, "Project: " + (v.buildOrigin == null ? "none" : v.buildType + " at " + v.buildOrigin.toShortString() + ", step " + v.buildStep));
+        say(c, "Mine: " + (v.mineOrigin == null ? "none" : v.mineOrigin.toShortString() + " level " + v.mineLevel + " step " + v.mineStep));
         say(c, "Treasury: planks+logs*4=" + Builder.stockPlanks(v) + " cobble=" + Builder.stockCobble(v) + " iron=" + Builder.stockIron(v)
                 + " wool=" + Builder.stockWool(v) + " stacks=" + v.storageBuffer.size());
         for (Plan.Status s : Plan.pending(v)) {
@@ -226,6 +227,7 @@ public final class SettlementsCommand {
                     + " load=" + Haul.load(v) + (v.settlementsHauling ? "(hauling)" : "") + " store=" + (vil == null || Haul.store(v, vil) == null ? "-" : Haul.store(v, vil).toShortString())
                     + " hand=" + Registries.ITEM.getId(v.getMainHandStack().getItem()).getPath() + " goal=" + (Move.goal(v) == null ? "-" : Move.goal(v).toShortString())
                     + v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).map(t -> " TARGET=" + t.getName().getString() + " d=" + (int) t.distanceTo(v)).orElse("")
+                    + (v.settlementsDigPos != null ? " dig=" + v.settlementsDigPos.toShortString() : "") + (v.getNavigation().isFollowingPath() ? " nav" : "")
                     + " stage=" + Workforce.STAGE.getOrDefault(v.getUuid(), "-")
                     + " :: " + Doing.describe(v).getString());
         }

@@ -64,13 +64,22 @@ public final class Mining {
             v.getNavigation().stop();
         }
         if (v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > 25
-                && stand.getY() < o.getY() - 2 && v.getY() > stand.getY() + 2 && shaftWalk(v, o, false)) {
-            return false; // down the stairs of the shaft, step by step
+                && stand.getY() < o.getY() - 2 && v.getY() > stand.getY() + 2) {
+            // down the stairs of the shaft, step by step; a mouth he cannot get into (the shed in the way, a hole
+            // beside it) does not keep him there all day: after a minute he is set down at the working face
+            if (v.settlementsStuck++ > 60 && world.isChunkLoaded(stand.getX() >> 4, stand.getZ() >> 4)) {
+                if (!Move.putSafely(v, stand)) lostWay(village);
+                v.settlementsStuck = 0;
+                return false;
+            }
+            if (shaftWalk(v, o, false)) return false;
         }
         if (v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > 25) {
             // walk down; if the stairs do not work out, go straight to the face
             if (v.settlementsStuck++ > 45 && world.isChunkLoaded(stand.getX() >> 4, stand.getZ() >> 4)) {
-                Move.putSafely(v, stand); // set down on the floor of the drift, never in the air or the rock
+                // set down on the floor of the drift, never in the air or the rock; no floor down there to stand on
+                // (the way down was never finished): the mine is gone over again from the top, the gaps dug out
+                if (!Move.putSafely(v, stand)) lostWay(village);
                 v.settlementsStuck = 0;
             } else {
                 Move.to(v, stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, 0.6);
@@ -105,7 +114,13 @@ public final class Mining {
             if (step.kind() == Blueprints.Kind.DIG && !world.getBlockState(target).isAir()) {
                 boolean wet = false;
                 for (net.minecraft.util.math.Direction dir : net.minecraft.util.math.Direction.values()) if (!world.getFluidState(target.offset(dir)).isEmpty()) wet = true;
-                if (wet) { // water or lava ahead: this level is done
+                if (wet && village.mineLevel == 0) { // water in the very shaft: no going on down there, a new site
+                    village.mineOrigin = null;
+                    village.mineStep = 0;
+                    Speech.sayNow(v, "settlements.say.mine.flooded");
+                    break;
+                }
+                if (wet) { // water or lava ahead in a gallery: this level is done
                     village.mineLevel++;
                     village.mineStep = 0;
                     break;
@@ -258,6 +273,13 @@ public final class Mining {
      * The way down (or up) the mine is known, so he walks it: to the mouth of the shaft under its shed, then from step
      * to step, as anyone would on a stair. True while on the way.
      */
+    /** The workings cannot be got to: back to the top of the plan, where what is dug already is passed over quickly. */
+    private static void lostWay(Village village) {
+        village.mineLevel = 0;
+        village.mineStep = 0;
+        village.markDirty();
+    }
+
     static boolean shaftWalk(VillagerEntityMCA v, BlockPos o, boolean up) {
         int depth = Blueprints.MINE_DEPTH;
         if (!inShaft(v, o)) {
