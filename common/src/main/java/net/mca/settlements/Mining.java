@@ -81,6 +81,12 @@ public final class Mining {
             Step step = steps.get(village.mineStep);
             BlockPos target = o.add(step.dx(), step.dy(), step.dz());
             if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 49) break;
+            var here = world.getBlockState(target);
+            if (step.kind() == Blueprints.Kind.DIG && (here.isIn(net.minecraft.registry.tag.BlockTags.IRON_ORES) || here.isIn(net.minecraft.registry.tag.BlockTags.COAL_ORES)
+                    || here.isIn(net.minecraft.registry.tag.BlockTags.GOLD_ORES) || here.isIn(net.minecraft.registry.tag.BlockTags.DIAMOND_ORES)
+                    || here.isIn(net.minecraft.registry.tag.BlockTags.COPPER_ORES))) {
+                Speech.sayAny(v, "settlements.say.mine.ore", 3); // a find
+            }
             if (step.kind() == Blueprints.Kind.DIG && !world.getBlockState(target).isAir()) {
                 if (!Gear.wear(v, net.minecraft.item.PickaxeItem.class)) break; // the pick broke: a new one first
                 Gear.face(v, target);

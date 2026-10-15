@@ -155,6 +155,7 @@ public final class Lumberjack {
         Speech.say(v, "settlements.say.lumber.fell");
         if (cut == 0) return false; // nothing came down: not work
         if (cut >= trunk.size()) {
+            Speech.sayAny(v, "settlements.say.lumber.timber", 3); // down she comes
             plant(v, world, base);
             if (village != null) plantGrove(v, village, world);
             v.lumberTarget = null;

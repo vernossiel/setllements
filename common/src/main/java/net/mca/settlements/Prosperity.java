@@ -118,7 +118,7 @@ public final class Prosperity {
 
     /** How many blocks this worker gets done this second out of {@code base}, carrying fractions over. */
     public static int ops(VillagerEntityMCA v, Village village, double base) {
-        double f = base * fatigue(v) * (village == null ? 1 : factor(village));
+        double f = base * fatigue(v) * Trade.pace(v) * (village == null ? 1 : factor(village));
         v.settlementsPace += f;
         int n = (int) v.settlementsPace;
         v.settlementsPace -= n;

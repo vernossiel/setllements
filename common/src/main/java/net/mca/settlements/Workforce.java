@@ -162,6 +162,7 @@ public final class Workforce {
         if (job != Chore.NONE) {
             // an autonomous chore is running
             Worksite.check(v, job);
+            Trade.practise(v);
             v.settlementsEnergy -= WORK_DRAIN;
             v.settlementsHunger += HUNGER_RISE;
             v.settlementsWorkSeconds++;
@@ -195,6 +196,8 @@ public final class Workforce {
         if (v.settlementsEnergy < START_WORK_ENERGY) return;
         // a word with a neighbour met on the way, now and then (more often for the sociable and the idle)
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw && Persona.chatting(v, village, cw)) return;
+        // and a moment's pause now and then: nobody works like a machine
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld pw && Trade.pausing(v, village, pw)) return;
 
         VillagerProfession prof = v.getProfession();
         if (Seat.seated(v)) Rest.end(v); // up, back to work
@@ -225,6 +228,7 @@ public final class Workforce {
             if (!helping) v.settlementsIdleWork = worked || Move.goal(v) != null ? 0 : v.settlementsIdleWork + 1; // walking to work is not idling
             if (!worked) v.settlementsWorkSeconds++; // time on the job counts, walking included, for the next break
             if (worked) {
+                Trade.practise(v);
                 if (v.settlementsWorkSeconds == 0) Speech.sayWork(v);
                 // digging and felling wear a man out faster than laying blocks
                 int drain = prof == VillagerProfession.MASON || prof == VillagerProfession.FLETCHER || prof == VillagerProfession.TOOLSMITH ? 3 : 2;

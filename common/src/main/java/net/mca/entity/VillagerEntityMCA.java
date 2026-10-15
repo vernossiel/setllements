@@ -147,6 +147,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public long settlementsPastimeUntil;
     public java.util.UUID settlementsPastimeWith;
     public long settlementsChatUntil;
+    // the craft (see settlements.Trade): experience in his trade, seconds of work until he pauses, the pause left
+    public int settlementsSkill, settlementsStretch = -1, settlementsPauseLeft;
     public java.util.UUID settlementsChatWith;
 
     public boolean isElder() {
@@ -1461,6 +1463,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         settlementsEnergy = nbt.contains("SettlementsEnergy") ? nbt.getInt("SettlementsEnergy") : 1000;
         settlementsHunger = nbt.getInt("SettlementsHunger");
         settlementsHireUntil = nbt.getLong("SettlementsHireUntil");
+        settlementsSkill = nbt.getInt("SettlementsSkill");
         getTypeDataManager().load(this, nbt);
         relations.readFromNbt(nbt);
         longTermMemory.readFromNbt(nbt);
@@ -1495,6 +1498,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         nbt.putInt("SettlementsEnergy", settlementsEnergy);
         nbt.putInt("SettlementsHunger", settlementsHunger);
         nbt.putLong("SettlementsHireUntil", settlementsHireUntil);
+        nbt.putInt("SettlementsSkill", settlementsSkill);
         getTypeDataManager().save(this, nbt);
         relations.writeToNbt(nbt);
         longTermMemory.writeToNbt(nbt);
