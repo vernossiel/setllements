@@ -90,6 +90,27 @@ public final class Routine {
         }
         Builder.Shortage s = Builder.shortage(village);
         if (s != null) elder.settlementsQueue.add(Text.translatable("settlements.assembly.short." + s.need().name().toLowerCase()));
+        // the open orders, each to the one best placed to see to it
+        for (Orders.Order o : Orders.open(village)) {
+            if (o.taker() != null) continue;
+            VillagerEntityMCA best = null;
+            for (VillagerEntityMCA r : people) {
+                if (r == elder || Orders.held(r, village) != null) continue;
+                VillagerProfession p = r.getProfession();
+                boolean fits = switch (o.what()) {
+                    case PLANKS -> p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH;
+                    case COBBLE -> p == VillagerProfession.MASON;
+                    case FOOD, MEAT -> p == VillagerProfession.FARMER || p == VillagerProfession.BUTCHER || p == VillagerProfession.FISHERMAN;
+                    default -> false;
+                };
+                if (fits || best == null && (p == VillagerProfession.NONE || p == VillagerProfession.NITWIT)) best = r;
+                if (fits) break;
+            }
+            if (best == null) continue;
+            Orders.assign(best, village, o.what());
+            elder.settlementsQueue.add(Text.translatable("settlements.assembly.order", best.getName(),
+                    Text.translatable("settlements.need.name." + o.what().name().toLowerCase()), o.amount(), o.forWhom()));
+        }
         elder.settlementsQueue.add(Text.translatable("settlements.assembly.go"));
     }
 

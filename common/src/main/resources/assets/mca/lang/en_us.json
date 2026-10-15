@@ -1981,5 +1981,10 @@
   "settlements.say.forge.thanks": "Thanks, %s! Fine work.",
   "settlements.say.tool.improvise": "Fine, I'll knock something together myself.",
   "settlements.doing.forge.wait": "waiting at the smithy: ordered a %s",
-  "settlements.doing.forge.make": "forging a %s for %s"
+  "settlements.doing.forge.make": "forging a %s for %s",
+  "settlements.assembly.order": "%s, you see to the %s: %s of it for %s.",
+  "settlements.say.lumber.join": "%s, hold on, I'll help you with that giant!",
+  "settlements.doing.lumber.join": "felling a big tree together with %s",
+  "settlements.say.escort.go": "I'll go with %s, you never know out there.",
+  "settlements.doing.escort": "escorting %s outside the village"
 }

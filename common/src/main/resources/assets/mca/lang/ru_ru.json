@@ -1869,5 +1869,10 @@
   "settlements.say.forge.thanks": "Спасибо, %s! Отличная работа.",
   "settlements.say.tool.improvise": "Ладно, сам что-нибудь смастерю.",
   "settlements.doing.forge.wait": "ждёт у кузницы: заказал %s",
-  "settlements.doing.forge.make": "куёт %s для %s"
+  "settlements.doing.forge.make": "куёт %s для %s",
+  "settlements.assembly.order": "%s, на тебе %s: %s штук для %s.",
+  "settlements.say.lumber.join": "%s, держись, помогу тебе с этим великаном!",
+  "settlements.doing.lumber.join": "валит большое дерево вместе с %s",
+  "settlements.say.escort.go": "Пойду с %s, мало ли что в лесу.",
+  "settlements.doing.escort": "сопровождает %s за пределами деревни"
 }

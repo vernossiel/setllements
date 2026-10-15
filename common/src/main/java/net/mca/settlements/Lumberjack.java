@@ -56,6 +56,11 @@ public final class Lumberjack {
         return work(v, village, false);
     }
 
+    /** Another man is already swinging at this log. */
+    private static boolean mateAt(ServerWorld world, VillagerEntityMCA v, BlockPos p) {
+        return !world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(8), o -> o != v && p.equals(o.settlementsDigPos)).isEmpty();
+    }
+
     /** {@code force}: a builder short of wood fells a tree even when the stores are full or the forest is thin. */
     public static boolean work(VillagerEntityMCA v, Village village, boolean force) {
         if (!(v.getWorld() instanceof ServerWorld world)) return false;
@@ -105,6 +110,19 @@ public final class Lumberjack {
         }
         if (felling == null && (v.lumberTarget == null || !world.getBlockState(v.lumberTarget).isIn(BlockTags.LOGS))) {
             v.lumberTarget = null;
+            // a big tree a mate is at: he goes and helps with it
+            for (VillagerEntityMCA o : world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(24, 8, 24),
+                    o -> o != v && o.isAlive() && o.lumberTarget != null && FELLING.containsKey(o.getUuid()) && FELLING.get(o.getUuid()).size() >= 14)) {
+                long mates = world.getEntitiesByClass(VillagerEntityMCA.class, o.getBoundingBox().expand(24, 8, 24), m -> m != o && o.lumberTarget.equals(m.lumberTarget)).size();
+                if (mates >= 1) continue;
+                v.lumberTarget = o.lumberTarget;
+                Speech.sayNow(v, "settlements.say.lumber.join", o.getName());
+                Doing.set(v, "settlements.doing.lumber.join", o.getName());
+                break;
+            }
+        }
+        if (felling == null && (v.lumberTarget == null || !world.getBlockState(v.lumberTarget).isIn(BlockTags.LOGS))) {
+            v.lumberTarget = null;
             List<BlockPos> trees = trees(world, v.getBlockPos(), village);
             // the stand of trees round the village is spared, unless the builders are short of wood
             Builder.Shortage sh = village == null ? null : Builder.shortage(village);
@@ -121,6 +139,7 @@ public final class Lumberjack {
                     v.settlementsExploreTries++;
                     Speech.say(v, "settlements.say.lumber.explore");
                     Doing.set(v, "settlements.doing.lumber.explore");
+                    if (village != null) Escort.ask(v, village, 20 * 150); // far from the village: a guard comes along
                     return false;
                 }
             }
@@ -183,7 +202,7 @@ public final class Lumberjack {
         BlockPos next = null;
         for (BlockPos p : trunk) {
             double lx = p.getX() + 0.5 - v.getX(), lz = p.getZ() + 0.5 - v.getZ(), ly = p.getY() - v.getY();
-            if (lx * lx + lz * lz <= 20 && ly >= -2 && ly <= 4 && Dig.sees(v, p)) {
+            if (lx * lx + lz * lz <= 20 && ly >= -2 && ly <= 4 && Dig.sees(v, p) && !mateAt(world, v, p)) {
                 next = p;
                 break;
             }

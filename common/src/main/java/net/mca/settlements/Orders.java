@@ -108,6 +108,12 @@ public final class Orders {
         return o;
     }
 
+    /** The elder gives the order to {@code v} (said at the morning gathering). */
+    public static void assign(VillagerEntityMCA v, Village village, Needs.Need what) {
+        Order o = book(village).get(what);
+        if (o != null) book(village).put(what, o.taken(v, v.getWorld().getTime()));
+    }
+
     /** The order he holds, if any. */
     public static Order held(VillagerEntityMCA v, Village village) {
         if (village == null) return null;

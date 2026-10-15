@@ -99,6 +99,7 @@ public final class Workforce {
         Move.tick(v, village);
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld lifeWorld && Life.tick(v, village, lifeWorld, time)) return;
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld watchWorld) GuardIntel.civilianWatch(v, watchWorld);
+        if (v.isGuard() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld ew && Escort.guard(v, village, ew)) return; // seeing a worker safe out and back
         // a conversation: carried on, or started when he has a moment (on the guards' watch, nobody stands chatting)
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld tw && !(v.isGuard() && GuardAI.onDuty(v, time))) {
             boolean moment = !Persona.working(v, time) || v.settlementsBreak || v.settlementsIdleWork >= 10 || Morning.active(v, time)
