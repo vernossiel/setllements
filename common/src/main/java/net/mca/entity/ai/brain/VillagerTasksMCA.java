@@ -193,7 +193,7 @@ public class VillagerTasksMCA {
     public static ImmutableList<Pair<Integer, ? extends Task<? super VillagerEntityMCA>>> getImportantCorePackage(float speedModifier) {
         return ImmutableList.of(
                 Pair.of(0, new StayAboveWaterTask(0.8F)),
-                Config.getInstance().useSmarterDoorAI ? Pair.of(0, new SmarterOpenDoorsTask()) : Pair.of(0, OpenDoorsTask.create()),
+                Pair.of(0, new SmarterOpenDoorsTask()), // doors and gates, opened and shut behind
                 Pair.of(0, new LookAroundTask(45, 90)),
                 Pair.of(0, WakeUpTask.create()),
                 Pair.of(0, new DeliverMessageTask()),

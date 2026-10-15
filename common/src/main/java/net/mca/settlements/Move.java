@@ -244,6 +244,11 @@ public final class Move {
         BlockPos ahead = feet.offset(dir);
         boolean feetFree = passable(world, ahead), headFree = passable(world, ahead.up());
 
+        if (!feetFree && opens(world, ahead)) { // a gate or a door: open it, go through, shut it behind (see shutBehind)
+            open(v, world, ahead);
+            step(v, ahead);
+            return true;
+        }
         if (!feetFree || !headFree) {
             // a one block step up: hop on it
             if (!feetFree && headFree && passable(world, ahead.up(2)) && passable(world, feet.up(2))) {
@@ -382,5 +387,48 @@ public final class Move {
         v.setVelocity(Vec3d.ZERO);
         v.getNavigation().stop();
         return true;
+    }
+
+    private static final java.util.Map<java.util.UUID, BlockPos> OPENED = new java.util.HashMap<>();
+
+    /** A wooden door or a fence gate, shut: a man opens it with his hand. */
+    static boolean opens(ServerWorld world, BlockPos p) {
+        BlockState s = world.getBlockState(p);
+        if (s.getBlock() instanceof net.minecraft.block.FenceGateBlock) return !s.get(net.minecraft.block.FenceGateBlock.OPEN);
+        return s.getBlock() instanceof net.minecraft.block.DoorBlock door && door.getBlockSetType().canOpenByHand() && !s.get(net.minecraft.block.DoorBlock.OPEN);
+    }
+
+    static void open(VillagerEntityMCA v, ServerWorld world, BlockPos p) {
+        BlockState s = world.getBlockState(p);
+        v.swingHand(v.getDominantHand());
+        if (s.getBlock() instanceof net.minecraft.block.FenceGateBlock) {
+            Direction facing = v.getHorizontalFacing();
+            BlockState o = s.with(net.minecraft.block.FenceGateBlock.OPEN, true);
+            if (s.get(net.minecraft.block.FenceGateBlock.FACING) == facing.getOpposite()) o = o.with(net.minecraft.block.FenceGateBlock.FACING, facing); // swings away from him
+            world.setBlockState(p, o, net.minecraft.block.Block.NOTIFY_LISTENERS | net.minecraft.block.Block.REDRAW_ON_MAIN_THREAD);
+            world.playSound(null, p, net.minecraft.sound.SoundEvents.BLOCK_FENCE_GATE_OPEN, SoundCategory.BLOCKS, 1f, 1f);
+        } else if (s.getBlock() instanceof net.minecraft.block.DoorBlock door) {
+            door.setOpen(v, world, s, p, true);
+        }
+        OPENED.put(v.getUuid(), p.toImmutable());
+    }
+
+    /** Once a second: the gate or door he went through is shut again once he is past it (the animals stay in). */
+    public static void shutBehind(VillagerEntityMCA v) {
+        BlockPos p = OPENED.get(v.getUuid());
+        if (p == null || !(v.getWorld() instanceof ServerWorld world)) return;
+        double d = v.squaredDistanceTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5);
+        if (d < 2.6) return; // still in it
+        OPENED.remove(v.getUuid());
+        if (d > 64) return; // long gone: somebody else may shut it
+        BlockState s = world.getBlockState(p);
+        if (!world.getOtherEntities(null, new net.minecraft.util.math.Box(p), e -> e instanceof net.minecraft.entity.LivingEntity).isEmpty()) return;
+        if (s.getBlock() instanceof net.minecraft.block.FenceGateBlock && s.get(net.minecraft.block.FenceGateBlock.OPEN)) {
+            world.setBlockState(p, s.with(net.minecraft.block.FenceGateBlock.OPEN, false), net.minecraft.block.Block.NOTIFY_LISTENERS | net.minecraft.block.Block.REDRAW_ON_MAIN_THREAD);
+            world.playSound(null, p, net.minecraft.sound.SoundEvents.BLOCK_FENCE_GATE_CLOSE, SoundCategory.BLOCKS, 1f, 1f);
+            v.swingHand(v.getDominantHand());
+        } else if (s.getBlock() instanceof net.minecraft.block.DoorBlock door && s.get(net.minecraft.block.DoorBlock.OPEN)) {
+            door.setOpen(v, world, s, p, false);
+        }
     }
 }
