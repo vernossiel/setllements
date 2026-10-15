@@ -297,7 +297,7 @@ public final class Workforce {
                 Trade.practise(v);
                 if (v.settlementsWorkSeconds == 0) Speech.sayWork(v);
                 // digging and felling wear a man out faster than laying blocks
-                int drain = prof == VillagerProfession.MASON || prof == VillagerProfession.FLETCHER || prof == VillagerProfession.TOOLSMITH ? 3 : 2;
+                int drain = prof == VillagerProfession.MASON ? 3 : 2;
                 v.settlementsEnergy -= drain + REST_GAIN; // cancels the rest gain above
                 v.settlementsHunger += HUNGER_RISE;
                 v.settlementsWorkSeconds++;

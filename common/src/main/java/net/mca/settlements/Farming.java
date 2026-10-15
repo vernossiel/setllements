@@ -174,7 +174,7 @@ public final class Farming {
         if (!(s.isOf(Blocks.DIRT) || s.isOf(Blocks.GRASS_BLOCK))) return false;
         boolean beside = false;
         for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) if (world.getBlockState(p.offset(d)).isOf(Blocks.FARMLAND)) beside = true;
-        return beside && nearWater(world, p);
+        return beside; // sown at once, a bed keeps without water too (the crop only comes on slower)
     }
 
     /** The nearest bed round the village that wants something done: ripe first, then bare; growing ones only with bone meal in the stores. */
