@@ -31,7 +31,6 @@ public final class Plan {
     public static final List<Goal> GOALS = List.of(
             new Goal("townhall", Level.HAMLET, v -> v.hall == null, 55, 0, 0, 0),
             new Goal("hallup", Level.HAMLET, v -> v.hall != null && v.hall.floors() < 3 && v.getPopulation() >= (v.hall.floors() == 1 ? 6 : 12), 150, 0, 0, 0),
-            new Goal("board", Level.HAMLET, v -> v.boardSigns.isEmpty(), 16, 0, 0, 0),
             new Goal("well", Level.HAMLET, v -> !v.wellBuilt, 30, 0, 0, 0),
             new Goal("storage", Level.HAMLET, v -> !v.storageBuilt && v.getPopulation() >= 3, 150, 0, 0, 0),
             new Goal("housing", Level.HAMLET, v -> v.getPopulation() >= v.getMaxPopulation(), 100, 0, 0, 3),
@@ -147,13 +146,19 @@ public final class Plan {
 
     /** The elder is the oldest-registered adult civilian of the village, chosen deterministically so it never changes. */
     public static VillagerEntityMCA elder(ServerWorld world, Village v) {
-        return v.getResidents(world).stream()
+        List<VillagerEntityMCA> folk = v.getResidents(world);
+        for (VillagerEntityMCA r : folk) if (r.isAlive() && r.isElder()) return r;
+        return folk.stream()
                 .filter(r -> !r.isBaby() && !r.isGuard() && r.isAlive())
                 .min(Comparator.comparing(r -> r.getUuid()))
                 .orElse(null);
     }
 
     /** The elder tells the player in a few words where the village stands, what comes next and how he can help. */
+    static void tellPublic(VillagerEntityMCA elder, Village village, ServerWorld world, PlayerEntity player) {
+        tell(elder, village, world, player);
+    }
+
     private static void tell(VillagerEntityMCA elder, Village village, ServerWorld world, PlayerEntity player) {
         elder.getLookControl().lookAt(player, 30f, 30f);
         elder.sendChatMessage(Text.translatable("settlements.elder.intro", village.getName(),

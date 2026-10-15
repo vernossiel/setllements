@@ -89,6 +89,11 @@ public final class Layout {
     public static Slot find(ServerWorld world, Village village, String type, int w, int d, int minRing, int maxRing) {
         String base = Tiers.isHome(type) ? "home" : Buildings.base(type);
         int[] fp = Blueprints.footprint(type, w, d);
+        // a hamlet's fields and pens go on a plot along its streets when there is room, rather than far out on the rings
+        if ((base.equals("farm") || base.equals("pen")) && Prosperity.tier(village) <= Tiers.ORDINARY) {
+            Slot s = grid(world, village, type, fp, base, reach(village));
+            if (s != null) return s;
+        }
         if (type.equals("mine") || OUTSKIRTS.contains(base) || minRing >= 2) return ring(world, village, type, fp, minRing, Math.max(maxRing, reach(village) + 3)); // the rings start past the streets already
         int maxExtra = Math.max(0, (village.getId() >= 0 ? Prosperity.tier(village) : 0) + 1 - reach(village)); // no further than its grade allows
         for (int extra = 0; extra <= maxExtra; extra++) {

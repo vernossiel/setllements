@@ -144,7 +144,7 @@ public class VillagerCommandHandler extends EntityCommandHandler<VillagerEntityM
                 return true;
             }
             case "plans" -> {
-                net.mca.settlements.Plan.talk(entity, player);
+                net.mca.settlements.Elder.open(entity, player);
                 return true;
             }
             case "gift" -> {

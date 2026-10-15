@@ -164,6 +164,7 @@ public final class Life {
             village.pushHearts(attacker, -15);
         }
         Speech.sayNow(victim, "settlements.react.help");
+        victim.settlementsFleeUntil = now + 20 * 60; // the one who was struck is a while getting over it
         for (VillagerEntityMCA o : world.getEntitiesByClass(VillagerEntityMCA.class, victim.getBoundingBox().expand(32),
                 o -> o.isAlive() && !o.isSleeping() && (o.canSee(attacker) || o.canSee(victim) || o.squaredDistanceTo(victim) < 64))) {
             if (o.isGuard()) {
@@ -180,6 +181,28 @@ public final class Life {
     private static void charge(VillagerEntityMCA guard, PlayerEntity target) {
         guard.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET, target, 400);
         Speech.say(guard, "settlements.say.guard.charge", target.getName());
+    }
+
+    /**
+     * Getting over a fright: away from the one who did it while he is about, then home (or to the town hall) to sit
+     * it out, with a word now and then; nobody goes straight back to work after being beaten.
+     */
+    private static void shaken(VillagerEntityMCA v, Village village, ServerWorld world) {
+        Doing.set(v, "settlements.doing.shaken");
+        PlayerEntity bad = village == null ? null : scaryPlayer(world, village, v, 24);
+        if (bad != null && v.getNavigation().isIdle()) {
+            flee(v, bad, village, world);
+            v.settlementsFleeUntil = Math.max(v.settlementsFleeUntil, world.getTime() + 20 * 20);
+            return;
+        }
+        if (!v.getNavigation().isIdle()) return;
+        BlockPos safe = v.getResidency().getHome().filter(h -> h.getDimension() == world.getRegistryKey()).map(net.minecraft.util.math.GlobalPos::getPos)
+                .orElse(village != null ? village.hallPos : null);
+        if (safe != null && v.squaredDistanceTo(Vec3d.ofBottomCenter(safe)) > 9) {
+            v.getNavigation().startMovingTo(safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5, 0.6);
+        } else if (world.random.nextInt(25) == 0) {
+            Speech.sayAny(v, "settlements.say.shaken", 4);
+        }
     }
 
     /** Runs from the danger: towards the town hall if it lies away from the threat, otherwise simply away. */
@@ -247,7 +270,10 @@ public final class Life {
         if (v.isSleeping()) return false;
 
         if (notice(v, village, world, time)) return true;
-        if (now < v.settlementsFleeUntil && !v.isGuard()) return true; // still running and shaking
+        if (now < v.settlementsFleeUntil && !v.isGuard()) { // still running and shaking
+            shaken(v, village, world);
+            return true;
+        }
 
         if (!v.isGuard() && shelter(v, village, world, time)) return true;
         if (!Seat.seated(v)) passing(v, world);

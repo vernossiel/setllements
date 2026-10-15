@@ -185,7 +185,7 @@ public final class Farming {
         for (Item i : SOW.keySet()) if (count(village, i) > 0 || v.getInventory().count(i) > 0) seed = true;
         BlockPos best = null, bed = null;
         double bd = Double.MAX_VALUE, bedD = Double.MAX_VALUE;
-        int beds = 0, most = 40 + 24 * Prosperity.tier(village);
+        int beds = 0, most = 72 + 32 * Prosperity.tier(village);
         for (int dx = -FIELD_RADIUS; dx <= FIELD_RADIUS; dx++) {
             for (int dz = -FIELD_RADIUS; dz <= FIELD_RADIUS; dz++) {
                 int x = c.getX() + dx, z = c.getZ() + dz;

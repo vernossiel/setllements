@@ -35,6 +35,8 @@ public final class SettlementsCommand {
                 .then(CommandManager.literal("resist").executes(c -> Justice.resist(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("rep").executes(c -> Reputation.showStanding(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("why").executes(c -> Doing.toggle(c.getSource().getPlayerOrThrow())))
+                .then(CommandManager.literal("elder").then(CommandManager.argument("topic", StringArgumentType.word())
+                        .executes(c -> Elder.ask(c.getSource().getPlayerOrThrow(), StringArgumentType.getString(c, "topic")))))
                 .then(CommandManager.literal("hall").executes(c -> {
                     var player = c.getSource().getPlayerOrThrow();
                     var vil = net.mca.server.world.data.Village.findNearest(player).orElse(null);
@@ -239,7 +241,12 @@ public final class SettlementsCommand {
         ServerWorld w = c.getSource().getWorld();
         if (fake != null) w.removePlayer(fake, net.minecraft.entity.Entity.RemovalReason.DISCARDED);
         var profile = new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes("settlements-tester".getBytes()), "Tester");
-        fake = new ServerPlayerEntity(w.getServer(), w, profile);
+        fake = new ServerPlayerEntity(w.getServer(), w, profile) {
+            @Override
+            public void sendMessage(Text message, boolean overlay) {
+                net.mca.MCA.LOGGER.info("[to Tester] " + message.getString()); // what a player would read, in the server log
+            }
+        };
         var conn = new net.minecraft.network.ClientConnection(net.minecraft.network.NetworkSide.SERVERBOUND);
         new net.minecraft.server.network.ServerPlayNetworkHandler(w.getServer(), conn, fake);
         var at = c.getSource().getPosition();

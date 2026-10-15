@@ -336,6 +336,7 @@ public final class Workforce {
             v.settlementsHunger += HUNGER_RISE;
             return;
         }
+        if (prof == VillagerProfession.FARMER) Doing.set(v, "settlements.doing.farm.waiting"); // the fields tended, the crop growing
         Chore wanted = choreFor(prof);
         if (wanted != Chore.NONE && quotaAllows(village, wanted) && v.getWorld().getTime() >= v.settlementsNoWorkUntil) {
             Gear.equipTool(v, village, wanted);

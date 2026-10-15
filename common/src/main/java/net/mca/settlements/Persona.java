@@ -222,6 +222,14 @@ public final class Persona {
     public static void pastime(VillagerEntityMCA v, Village village, ServerWorld world) {
         long now = world.getTime();
         if (v.settlementsPastime < 0 || now >= v.settlementsPastimeUntil) choose(v, village, world);
+        Entity with = v.settlementsPastimeWith == null ? null : world.getEntity(v.settlementsPastimeWith);
+        switch (v.settlementsPastime) {
+            case FIRE -> Doing.set(v, "settlements.doing.pastime.fire");
+            case VISIT -> Doing.set(v, "settlements.doing.pastime.visit", with == null ? "" : with.getName());
+            case TAVERN -> Doing.set(v, "settlements.doing.pastime.tavern");
+            case HOME -> Doing.set(v, "settlements.doing.pastime.home");
+            default -> Doing.set(v, "settlements.doing.pastime.stroll");
+        }
         switch (v.settlementsPastime) {
             case FIRE -> {
                 if (Camp.goAndSit(v, village)) {
