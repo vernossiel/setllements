@@ -65,6 +65,7 @@ public final class SettlementsCommand {
                 .then(CommandManager.literal("refuse").executes(c -> Reputation.refuse(c.getSource().getPlayerOrThrow()))));
         d.register(CommandManager.literal("settlements").requires(s -> s.hasPermissionLevel(2))
                 .then(CommandManager.literal("status").executes(SettlementsCommand::status))
+                .then(CommandManager.literal("dump").executes(SettlementsCommand::dump))
                 .then(CommandManager.literal("rich").executes(SettlementsCommand::rich))
                 .then(CommandManager.literal("give")
                         .then(CommandManager.argument("item", StringArgumentType.string())
@@ -172,15 +173,11 @@ public final class SettlementsCommand {
     }
 
     private static Optional<Village> village(CommandContext<ServerCommandSource> c) {
-        try {
-            ServerPlayerEntity p = c.getSource().getPlayerOrThrow();
-            Optional<Village> v = VillageManager.get(c.getSource().getWorld()).findNearestVillage(p);
-            if (v.isEmpty()) say(c, "No village nearby. Stand inside a village.");
-            return v;
-        } catch (Exception e) {
-            say(c, "Run this as a player.");
-            return Optional.empty();
-        }
+        // from a player, the village he stands in; from the console (execute positioned ... run), the one at that spot
+        Optional<Village> v = c.getSource().getEntity() != null ? VillageManager.get(c.getSource().getWorld()).findNearestVillage(c.getSource().getEntity())
+                : VillageManager.get(c.getSource().getWorld()).findNearestVillage(net.minecraft.util.math.BlockPos.ofFloored(c.getSource().getPosition()), 64);
+        if (v.isEmpty()) say(c, "No village nearby. Stand inside a village.");
+        return v;
     }
 
     private static int say(CommandContext<ServerCommandSource> c, String s) {
@@ -204,6 +201,25 @@ public final class SettlementsCommand {
                     + ", iron " + s.missIron() + ", wool " + s.missWool()));
         }
         for (var e : v.relations.entrySet()) say(c, " relation with village " + e.getKey() + ": " + e.getValue());
+        return 1;
+    }
+
+    /** Every grown villager about: who, where, what he is doing and why, his strength and hunger (for testing). */
+    private static int dump(CommandContext<ServerCommandSource> c) {
+        ServerWorld w = c.getSource().getWorld();
+        var at = c.getSource().getPosition();
+        var box = new net.minecraft.util.math.Box(at, at).expand(128, 64, 128);
+        long tod = w.getTimeOfDay();
+        say(c, "time " + tod % 24000L + " day " + tod / 24000L + (Workforce.isRestDay(tod) ? " (rest day)" : ""));
+        for (var v : w.getEntitiesByClass(net.mca.entity.VillagerEntityMCA.class, box, x -> x.isAlive())) {
+            String prof = v.isBaby() ? "child" : v.isGuard() ? "guard" : v.isElder() ? "elder" : Registries.VILLAGER_PROFESSION.getId(v.getProfession()).getPath();
+            Village vil = Village.findNearest(v).or(() -> v.getResidency().getHomeVillage()).orElse(null);
+            say(c, v.getName().getString() + " [" + prof + "] @" + v.getBlockPos().toShortString() + " e=" + v.settlementsEnergy + " h=" + v.settlementsHunger
+                    + " idle=" + v.settlementsIdleWork + " job=" + v.getVillagerBrain().getCurrentJob() + " vil=" + (vil == null ? "-" : vil.getId())
+                    + " load=" + Haul.load(v) + (v.settlementsHauling ? "(hauling)" : "") + " store=" + (vil == null || Haul.store(v, vil) == null ? "-" : Haul.store(v, vil).toShortString())
+                    + " hand=" + Registries.ITEM.getId(v.getMainHandStack().getItem()).getPath() + " goal=" + (Move.goal(v) == null ? "-" : Move.goal(v).toShortString())
+                    + " :: " + Doing.describe(v).getString());
+        }
         return 1;
     }
 

@@ -135,6 +135,7 @@ public final class Haul {
                 return false;
             }
         }
+        Doing.set(v, "settlements.doing.haul");
         if (!reach(v, village)) return true;
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld world) openChest(world, store(v, village));
         var inv = v.getInventory();

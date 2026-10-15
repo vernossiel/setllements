@@ -89,7 +89,7 @@ public final class Layout {
     public static Slot find(ServerWorld world, Village village, String type, int w, int d, int minRing, int maxRing) {
         String base = Tiers.isHome(type) ? "home" : Buildings.base(type);
         int[] fp = Blueprints.footprint(type, w, d);
-        if (type.equals("mine") || OUTSKIRTS.contains(base) || minRing >= 2) return ring(world, village, type, fp, Math.max(minRing, reach(village) + 2), Math.max(maxRing, reach(village) + 3));
+        if (type.equals("mine") || OUTSKIRTS.contains(base) || minRing >= 2) return ring(world, village, type, fp, minRing, Math.max(maxRing, reach(village) + 3)); // the rings start past the streets already
         int maxExtra = Math.max(0, (village.getId() >= 0 ? Prosperity.tier(village) : 0) + 1 - reach(village)); // no further than its grade allows
         for (int extra = 0; extra <= maxExtra; extra++) {
             Slot s = grid(world, village, type, fp, base, reach(village) + extra);
@@ -160,8 +160,9 @@ public final class Layout {
     private static Slot ring(ServerWorld world, Village village, String type, int[] fp, int minRing, int maxRing) {
         BlockPos c = new BlockPos(village.getCenter());
         var rand = world.random;
-        for (int pass = 0; pass < TOLERANCE.length; pass++)
-        for (int ri = Math.min(minRing, RINGS.length - 1); ri <= Math.min(maxRing, RINGS.length - 1); ri++) {
+        // the nearest ring first, rough ground and all, before a level one far off
+        for (int ri = Math.min(minRing, RINGS.length - 1); ri <= Math.min(maxRing, RINGS.length - 1); ri++)
+        for (int pass = 0; pass < TOLERANCE.length; pass++) {
             int radius = RINGS[ri] + (reach(village) + 1) * GRID - 14; // beyond the ends of the streets
             int n = Math.max(4, (int) (2 * Math.PI * radius / (Math.max(fp[0], fp[1]) + MARGIN + 2)));
             double offset = rand.nextDouble() * Math.PI * 2;

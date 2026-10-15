@@ -61,6 +61,8 @@ public final class Morning {
     private static BlockPos wellOrFire(Village village, ServerWorld world) {
         for (Built b : village.built) if (Buildings.base(b.type()).equals("well")) return b.point(2, 0, 5); // in front of it
         BlockPos fire = Camp.hearth(village, world);
-        return fire != null ? fire : new BlockPos(village.getCenter());
+        if (fire != null) return fire;
+        // the middle of the village on the ground (the village's centre can be up in a tree or deep in a hill)
+        return world.getTopPosition(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, new BlockPos(village.getCenter()));
     }
 }

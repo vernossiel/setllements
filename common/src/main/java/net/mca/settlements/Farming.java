@@ -88,6 +88,109 @@ public final class Farming {
         }
     }
 
+    private static final Map<java.util.UUID, BlockPos> TARGET = new java.util.HashMap<>();
+    private static final Map<java.util.UUID, Long> LOOKED = new java.util.HashMap<>();
+    private static final int FIELD_RADIUS = 48;
+
+    /**
+     * A farmer's day on the village's fields, whoever laid them out (the old fields of the village too, not only the
+     * farms our builders make): the ripe crop is reaped and the bed sown again at once, a bare bed sown, the growing
+     * crop fed now and then. He goes to the nearest bed that wants something done; true while there is any.
+     */
+    public static boolean fields(VillagerEntityMCA v, Village village, ServerWorld world) {
+        if (village == null || Dig.busy(v)) return false;
+        java.util.UUID id = v.getUuid();
+        BlockPos t = TARGET.get(id);
+        if (t != null && want(world, t) == 0) t = null;
+        if (t == null) {
+            if (world.getTime() < LOOKED.getOrDefault(id, 0L)) return false; // looked a moment ago: nothing to do
+            t = look(v, village, world);
+            LOOKED.put(id, world.getTime() + (t == null ? 400 : 0));
+            if (t == null) {
+                TARGET.remove(id);
+                return false;
+            }
+            TARGET.put(id, t);
+        }
+        int what = want(world, t);
+        if (v.squaredDistanceTo(t.getX() + 0.5, t.getY(), t.getZ() + 0.5) > 6.25) {
+            Move.to(v, t.getX() + 0.5, t.getY(), t.getZ() + 0.5, 0.55);
+            Doing.set(v, what == 1 ? "settlements.doing.farm.reap" : what == 2 ? "settlements.doing.farm.sow" : "settlements.doing.farm.feed");
+            return true;
+        }
+        v.getNavigation().stop();
+        Gear.face(v, t);
+        BlockState s = world.getBlockState(t);
+        if (what == 1 && s.getBlock() instanceof CropBlock crop) {
+            // reaped into his bag (it goes to the stores with the rest), the bed sown again with the seed of it
+            for (ItemStack drop : Block.getDroppedStacks(s, world, t, null, v, v.getMainHandStack())) {
+                ItemStack left = v.getInventory().addStack(drop);
+                if (!left.isEmpty()) Block.dropStack(world, t, left);
+            }
+            world.setBlockState(t, crop.withAge(0));
+            world.playSound(null, t, SoundEvents.BLOCK_CROP_BREAK, SoundCategory.BLOCKS, 1f, 1f);
+            Doing.set(v, "settlements.doing.farm.reap");
+        } else if (what == 2) {
+            Block crop = takeSeed(v, village);
+            if (crop == null) {
+                TARGET.remove(id);
+                LOOKED.put(id, world.getTime() + 600); // nothing to sow with
+                return false;
+            }
+            world.setBlockState(t, crop.getDefaultState());
+            world.playSound(null, t, SoundEvents.ITEM_CROP_PLANT, SoundCategory.BLOCKS, 1f, 1f);
+            Doing.set(v, "settlements.doing.farm.sow");
+        } else if (what == 3 && s.getBlock() instanceof CropBlock crop && (take(village, Items.BONE_MEAL, 1) || compost(village))) {
+            crop.applyGrowth(world, t, s);
+            world.syncWorldEvent(1505, t, 15);
+            Doing.set(v, "settlements.doing.farm.feed");
+        } else {
+            TARGET.remove(id);
+            return true;
+        }
+        v.swingHand(v.getDominantHand());
+        TARGET.remove(id); // the next bed
+        return true;
+    }
+
+    /** 1 a ripe crop, 2 a bare bed, 3 a growing crop (fed only when there is bone meal to spare), 0 nothing. */
+    private static int want(ServerWorld world, BlockPos crop) {
+        BlockState s = world.getBlockState(crop), under = world.getBlockState(crop.down());
+        if (!under.isOf(Blocks.FARMLAND)) return 0;
+        if (s.getBlock() instanceof CropBlock c) return c.isMature(s) ? 1 : 3;
+        return s.isAir() ? 2 : 0;
+    }
+
+    /** The nearest bed round the village that wants something done: ripe first, then bare; growing ones only with bone meal in the stores. */
+    private static BlockPos look(VillagerEntityMCA v, Village village, ServerWorld world) {
+        BlockPos c = new BlockPos(village.getCenter());
+        boolean meal = count(village, Items.BONE_MEAL) > 0 || count(village, Items.WHEAT_SEEDS) >= 24;
+        boolean seed = false;
+        for (Item i : SOW.keySet()) if (count(village, i) > 0 || v.getInventory().count(i) > 0) seed = true;
+        BlockPos best = null;
+        double bd = Double.MAX_VALUE;
+        for (int dx = -FIELD_RADIUS; dx <= FIELD_RADIUS; dx++) {
+            for (int dz = -FIELD_RADIUS; dz <= FIELD_RADIUS; dz++) {
+                int x = c.getX() + dx, z = c.getZ() + dz;
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+                int y = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+                // the crop stands on the farmland: the top is the farmland itself (a bare bed or a young crop) or one above
+                for (int yy = y; yy >= y - 1; yy--) {
+                    BlockPos p = new BlockPos(x, yy, z);
+                    int w = want(world, p);
+                    if (w == 0 || w == 2 && !seed || w == 3 && !meal) continue;
+                    double d = v.squaredDistanceTo(x + 0.5, yy, z + 0.5) + (w == 1 ? 0 : w == 2 ? 200 : 900);
+                    if (d < bd) {
+                        bd = d;
+                        best = p;
+                    }
+                    break;
+                }
+            }
+        }
+        return best;
+    }
+
     /** Within the fence, not on it or outside it. */
     private static boolean inside(Built farm, BlockPos p) {
         BlockPos o = farm.origin();

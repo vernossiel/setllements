@@ -20,7 +20,7 @@ import net.minecraft.world.Heightmap;
 public final class Worksite {
     private static final int IDLE_LIMIT = 30;
     private static final int RADIUS = 44;
-    private static final long NO_WORK_PAUSE = 6000;
+    private static final long NO_WORK_PAUSE = 1200; // a minute, then he looks again
 
     private Worksite() {
     }

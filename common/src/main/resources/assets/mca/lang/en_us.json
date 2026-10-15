@@ -1901,6 +1901,8 @@
   "settlements.doing.apprentice": "apprenticed to %s: learning, fetching, picking up",
   "settlements.doing.mine.remembered": "going for ore he spotted earlier",
   "settlements.doing.farm.till": "hoeing a bed",
+  "settlements.doing.farm.reap": "reaping the ripe crop and sowing the bed again",
+  "settlements.doing.guard.off": "off watch: resting before his shift",
   "settlements.doing.farm.sow": "sowing a bare bed",
   "settlements.doing.farm.feed": "feeding the crop with bone meal",
   "settlements.say.farm.feed": "A bit of feed and it'll come on quicker.",
@@ -1962,5 +1964,6 @@
   "settlements.doing.tired": "getting his strength back before work",
   "settlements.doing.build.wait": "building held up: short of %s",
   "settlements.doing.build.nosite": "no place found for the %s: looking for level ground",
-  "settlements.doing.build.nothing": "thinking what to build next"
+  "settlements.doing.build.nothing": "thinking what to build next",
+  "settlements.doing.road": "laying the village road"
 }

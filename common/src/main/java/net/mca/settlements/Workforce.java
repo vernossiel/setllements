@@ -122,7 +122,7 @@ public final class Workforce {
         // guards: tactics, gear and shifts
         if (v.isGuard() && village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) {
             GuardAI.tick(v, village, sw, time);
-            if (GuardAI.onDuty(v, time)) Doing.set(v, "settlements.doing.guard");
+            Doing.set(v, GuardAI.onDuty(v, time) ? "settlements.doing.guard" : "settlements.doing.guard.off");
             if (v.age % 1200 == 0) Gear.equipGuardKit(v, village);
         }
 
@@ -305,6 +305,22 @@ public final class Workforce {
         // nothing for him to do: he goes along with a master at work and learns the trade by watching and fetching
         if ((prof == VillagerProfession.NONE || prof == VillagerProfession.NITWIT) && village != null && !v.isElder()
                 && v.getWorld() instanceof net.minecraft.server.world.ServerWorld aw && apprentice(v, village, aw)) return;
+        // the farmer works the village's fields, ours and the old ones alike: reaps, sows, feeds the crop
+        if (prof == VillagerProfession.FARMER && village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld fw2
+                && Farming.fields(v, village, fw2)) {
+            if (v.age % 400 == 0) Gear.equipTool(v, village, Chore.HARVEST);
+            v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
+            v.settlementsHunger += HUNGER_RISE;
+            v.settlementsWorkSeconds++;
+            return;
+        }
+        // the crop growing and nothing to do in the fields: he lends the builders a hand
+        if (prof == VillagerProfession.FARMER && village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld hw2
+                && v.getWorld().getTime() >= v.settlementsNoWorkUntil && (Life.helpBuilders(v, village, hw2) || Planner.idle(v, village, hw2))) {
+            v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
+            v.settlementsHunger += HUNGER_RISE;
+            return;
+        }
         Chore wanted = choreFor(prof);
         if (wanted != Chore.NONE && quotaAllows(village, wanted) && v.getWorld().getTime() >= v.settlementsNoWorkUntil) {
             Gear.equipTool(v, village, wanted);

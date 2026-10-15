@@ -30,12 +30,17 @@ public final class Move {
     }
 
     /** An ordinary walking pace for every errand: nobody races about the village. */
-    private static final double PACE = 0.5;
+    private static final double PACE = 0.6;
 
     public static boolean to(VillagerEntityMCA v, double x, double y, double z, double speed) {
         speed = Math.min(speed, PACE);
-        remember(v, BlockPos.ofFloored(x, y, z));
-        return v.getNavigation().startMovingTo(x, y, z, speed);
+        BlockPos goal = BlockPos.ofFloored(x, y, z);
+        remember(v, goal);
+        // already on his way there: he keeps walking the path he has, not stopping each second to work out a new one
+        var nav = v.getNavigation();
+        var path = nav.getCurrentPath();
+        if (path != null && !path.isFinished() && nav.isFollowingPath() && path.getTarget().isWithinDistance(goal, 1.5)) return true;
+        return nav.startMovingTo(x, y, z, speed);
     }
 
     public static boolean to(VillagerEntityMCA v, Entity e, double speed) {

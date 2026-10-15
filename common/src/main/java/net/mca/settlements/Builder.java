@@ -341,7 +341,7 @@ public final class Builder {
                     if (startRing(village, world, "house", 6, 7, 1, 0, 3)) return true;
                 }
                 case "farm" -> {
-                    if (startRing(village, world, "farm", 0, 0, 0, 2, 5)) return true;
+                    if (startRing(village, world, "farm", 0, 0, 0, 0, 5)) return true; // just past the streets, not far off in the wilds
                 }
                 case "hallup" -> {
                     House h = village.hall;
@@ -568,12 +568,16 @@ public final class Builder {
         if (!(v.getWorld() instanceof ServerWorld world) || village == null) return false;
         // upkeep first: a damaged building, then the roads
         if (village.buildOrigin == null && Repair.start(village)) Speech.say(v, "settlements.say.build.repair");
-        if (village.buildOrigin == null && Repair.roadWork(v, village, world)) return true;
         // looking over the land for a site is heavy work: when nothing was found, again in half a minute
         boolean look = village.buildOrigin == null && world.getTime() >= NEXT_LOOK.getOrDefault(village.getId(), 0L);
         if (look) lastNoSite = null;
         if (village.buildOrigin == null && (!look || !plan(village, world))) {
             if (look && lastNoSite != null) NEXT_LOOK.put(village.getId(), world.getTime() + 600);
+            // nothing to start on now (no site, short of material): the roads meanwhile - buildings come first
+            if (Repair.roadWork(v, village, world)) {
+                Doing.set(v, "settlements.doing.road");
+                return true;
+            }
             Needs.Need blocker = Plan.firstBlocker(village);
             markShort(village, blocker, blocker == Needs.Need.PLANKS || blocker == Needs.Need.COBBLE);
             Life.askForHelp(v, village, world, blocker);
