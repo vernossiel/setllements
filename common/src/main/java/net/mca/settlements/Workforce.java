@@ -74,7 +74,9 @@ public final class Workforce {
             return;
         }
         long time = v.getWorld().getTimeOfDay();
-        net.mca.server.world.data.Village village = net.mca.server.world.data.Village.findNearest(v).orElse(null);
+        // deep in the mine or far out in the woods a worker is still of his own village
+        net.mca.server.world.data.Village village = net.mca.server.world.data.Village.findNearest(v)
+                .or(() -> v.getResidency().getHomeVillage()).orElse(null);
         Chore job = v.getVillagerBrain().getCurrentJob();
         boolean autonomous = job != Chore.NONE && v.getVillagerBrain().getJobAssigner().isEmpty();
         if (job != Chore.NONE && !autonomous) return; // player-assigned chores ignore this system

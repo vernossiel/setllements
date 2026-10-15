@@ -56,8 +56,9 @@ public class ExtendedMeleeAttackTask extends MultiTickTask<MobEntity> {
 
     private boolean withinRange(LivingEntity attacker, LivingEntity target) {
         double d = attacker.squaredDistanceTo(target.getX(), target.getY(), target.getZ());
-        double r = attacker.getWidth() + target.getWidth() + range;
-        return d <= r;
+        // reach: from body to body plus the arm and the weapon (the squared distance against the squared reach)
+        double r = (attacker.getWidth() + target.getWidth()) * 0.5 + range;
+        return d <= r * r;
     }
 
     private LivingEntity getTarget(MobEntity mobEntity) {

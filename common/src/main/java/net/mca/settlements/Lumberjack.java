@@ -30,6 +30,20 @@ public final class Lumberjack {
     private static final int MIN_TREES_LEFT = 6;
     private static final int LOG_QUOTA = 256;
     private static final int LOGS_PER_SECOND = 2;
+    /** Trees nobody could get to lately, by position, until (world time): passed over for a while. */
+    private static final java.util.Map<Long, Long> UNREACHABLE = new java.util.HashMap<>();
+    /** Per lumberjack: what he is heading for (a tree or a wood) and since when. */
+    private static final java.util.Map<java.util.UUID, long[]> HEADING = new java.util.HashMap<>();
+
+    /** Ticks spent on the way to the same tree or wood; restarts when the goal changes. */
+    private static long heading(VillagerEntityMCA v, BlockPos goal, long now) {
+        long[] h = HEADING.get(v.getUuid());
+        if (h == null || h[0] != goal.asLong()) {
+            HEADING.put(v.getUuid(), new long[]{goal.asLong(), now});
+            return 0;
+        }
+        return now - h[1];
+    }
 
     private Lumberjack() {
     }
@@ -48,9 +62,9 @@ public final class Lumberjack {
         // out looking for a wood further away
         if (v.settlementsExplore != null && v.lumberTarget == null) {
             BlockPos e = v.settlementsExplore;
-            if (v.squaredDistanceTo(e.getX() + 0.5, v.getY(), e.getZ() + 0.5) > 64) {
-                Move.to(v, e.getX() + 0.5, e.getY(), e.getZ() + 0.5, 0.6);
-                return false;
+            // a wood he cannot get to in a minute and a half is given up: he looks around where he is
+            if (v.squaredDistanceTo(e.getX() + 0.5, v.getY(), e.getZ() + 0.5) > 64 && heading(v, e, world.getTime()) < 1800) {
+                if (Move.to(v, e.getX() + 0.5, e.getY(), e.getZ() + 0.5, 0.6)) return false;
             }
             v.settlementsExplore = null; // arrived: look around here
         }
@@ -91,8 +105,14 @@ public final class Lumberjack {
             v.settlementsExploreTries = 0;
         }
         BlockPos base = v.lumberTarget;
-        if (v.squaredDistanceTo(base.getX() + 0.5, base.getY(), base.getZ() + 0.5) > 12) {
-            Move.to(v, base.getX() + 0.5, base.getY(), base.getZ() + 0.5, 0.6);
+        double hx = base.getX() + 0.5 - v.getX(), hz = base.getZ() + 0.5 - v.getZ();
+        if (hx * hx + hz * hz > 12 || Math.abs(base.getY() - v.getY()) > 3) {
+            // a tree he cannot reach (on a cliff, in a thicket, across water) is left for another, not stared at
+            boolean moving = Move.to(v, base.getX() + 0.5, base.getY(), base.getZ() + 0.5, 0.6);
+            if (!moving || heading(v, base, world.getTime()) > 900) {
+                UNREACHABLE.put(base.asLong(), world.getTime() + 12000);
+                v.lumberTarget = null;
+            }
             return false;
         }
 
@@ -157,13 +177,24 @@ public final class Lumberjack {
                     BlockState bs = world.getBlockState(below);
                     if (bs.isIn(BlockTags.LOGS)) continue; // still inside the trunk, go down to its base
                     if (!bs.isSolidBlock(world, below)) break;
-                    if (village != null && Protection.severity(world, village, p, world.getBlockState(p)) > 0) break;
+                    if (village != null && planted(village, p)) break; // the village's own timber, not a tree
+                    Long bad = UNREACHABLE.get(p.asLong());
+                    if (bad != null && bad > world.getTime()) break;
                     if (leavesAbove(world, p)) out.add(p);
                     break;
                 }
             }
         }
         return out;
+    }
+
+    private static boolean planted(Village village, BlockPos p) {
+        for (Built b : village.built) if (b.contains(p)) return true;
+        for (House h : village.houses) {
+            BlockPos o = h.origin();
+            if (p.getX() >= o.getX() - 1 && p.getX() <= o.getX() + h.fw() && p.getZ() >= o.getZ() - 1 && p.getZ() <= o.getZ() + h.fd()) return true;
+        }
+        return false;
     }
 
     private static boolean leavesAbove(ServerWorld world, BlockPos base) {
