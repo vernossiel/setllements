@@ -427,6 +427,11 @@ public final class Builder {
         return false;
     }
 
+    private static final java.util.Map<Integer, Long> NEXT_LOOK = new java.util.HashMap<>();
+
+    /** The last building no site was found for (said in /settle why). */
+    private static String lastNoSite;
+
     private static boolean startRing(Village village, ServerWorld world, String type, int w, int d, int floors, int minRing, int maxRing) {
         if (!Templates.placeholder(type)) type = Tiers.design(type, Prosperity.tier(village), world.random, village); // the design that suits the village's station
         if (Templates.placeholder(type)) {
@@ -440,7 +445,11 @@ public final class Builder {
             floors = 1;
         }
         Layout.Slot slot = Layout.find(world, village, type, w, d, minRing, maxRing);
-        if (slot == null) return false;
+        if (slot == null) {
+            lastNoSite = type;
+            return false;
+        }
+        lastNoSite = null;
         return startAt(village, type, w, d, floors, slot);
     }
 
@@ -451,10 +460,13 @@ public final class Builder {
     static void levelSite(ServerWorld world, BlockPos o, int fw, int fd) {
         for (int x = o.getX() - 1; x <= o.getX() + fw; x++) {
             for (int z = o.getZ() - 1; z <= o.getZ() + fd; z++) {
-                // branches and leaves hanging over the site are cut back
-                for (int y = o.getY() + 14; y > o.getY() + 2; y--) {
+                // trees standing on the site are felled (the logs fall for whoever picks them up), branches and
+                // leaves hanging over it cut back
+                for (int y = o.getY() + 20; y >= o.getY() - 2; y--) {
                     BlockPos p = new BlockPos(x, y, z);
-                    if (world.getBlockState(p).isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) world.breakBlock(p, true);
+                    BlockState s = world.getBlockState(p);
+                    if (s.isIn(net.minecraft.registry.tag.BlockTags.LOGS)) world.breakBlock(p, true);
+                    else if (y > o.getY() + 2 && s.isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) world.breakBlock(p, true);
                 }
                 for (int y = o.getY() + 2; y >= o.getY(); y--) {
                     BlockPos p = new BlockPos(x, y, z);
@@ -557,7 +569,11 @@ public final class Builder {
         // upkeep first: a damaged building, then the roads
         if (village.buildOrigin == null && Repair.start(village)) Speech.say(v, "settlements.say.build.repair");
         if (village.buildOrigin == null && Repair.roadWork(v, village, world)) return true;
-        if (village.buildOrigin == null && !plan(village, world)) {
+        // looking over the land for a site is heavy work: when nothing was found, again in half a minute
+        boolean look = village.buildOrigin == null && world.getTime() >= NEXT_LOOK.getOrDefault(village.getId(), 0L);
+        if (look) lastNoSite = null;
+        if (village.buildOrigin == null && (!look || !plan(village, world))) {
+            if (look && lastNoSite != null) NEXT_LOOK.put(village.getId(), world.getTime() + 600);
             Needs.Need blocker = Plan.firstBlocker(village);
             markShort(village, blocker, blocker == Needs.Need.PLANKS || blocker == Needs.Need.COBBLE);
             Life.askForHelp(v, village, world, blocker);
@@ -567,6 +583,10 @@ public final class Builder {
                 return true;
             }
             if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, blocker);
+            // says why nothing is going up: short of something, or no place found for what is wanted next
+            if (blocker != Needs.Need.NONE) Doing.set(v, "settlements.doing.build.wait", Text.translatable("settlements.need.name." + blocker.name().toLowerCase(java.util.Locale.ROOT)));
+            else if (lastNoSite != null) Doing.set(v, "settlements.doing.build.nosite", Text.translatable("settlements.building." + Buildings.base(lastNoSite)));
+            else Doing.set(v, "settlements.doing.build.nothing");
             return false;
         }
 

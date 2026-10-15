@@ -33,8 +33,7 @@ public final class Doing {
 
     /** He is now doing this ({@code settlements.doing.*}). */
     public static void set(VillagerEntityMCA v, String key, Object... args) {
-        Note n = NOTES.get(v.getUuid());
-        if (n != null && n.key().equals(key) && java.util.Arrays.equals(n.args(), args)) return;
+        // written afresh every time, the same as before or not: an hour at the same tree is still at it, not idle
         NOTES.put(v.getUuid(), new Note(key, args, v.getWorld().getTime()));
     }
 

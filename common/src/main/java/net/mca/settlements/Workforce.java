@@ -77,6 +77,8 @@ public final class Workforce {
         // deep in the mine or far out in the woods a worker is still of his own village
         net.mca.server.world.data.Village village = net.mca.server.world.data.Village.findNearest(v)
                 .or(() -> v.getResidency().getHomeVillage()).orElse(null);
+        // what he is about, written down first; whatever he takes up below writes over it
+        Doing.set(v, village == null ? "settlements.doing.novillage" : "settlements.doing.idle");
         Chore job = v.getVillagerBrain().getCurrentJob();
         boolean autonomous = job != Chore.NONE && v.getVillagerBrain().getJobAssigner().isEmpty();
         if (job != Chore.NONE && !autonomous) return; // player-assigned chores ignore this system
@@ -111,6 +113,7 @@ public final class Workforce {
         }
 
         // the elder keeps office by the town hall's lectern
+        if (v.isElder() && Persona.working(v, time)) Doing.set(v, "settlements.doing.elder");
         if (v.isElder() && village != null && village.hallPos != null && Persona.working(v, time) && v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET).isEmpty()
                 && v.squaredDistanceTo(village.hallPos.getX() + 0.5, village.hallPos.getY(), village.hallPos.getZ() + 0.5) > 256) {
             v.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET, new net.minecraft.entity.ai.brain.WalkTarget(village.hallPos, 0.5f, 3));
@@ -119,6 +122,7 @@ public final class Workforce {
         // guards: tactics, gear and shifts
         if (v.isGuard() && village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) {
             GuardAI.tick(v, village, sw, time);
+            if (GuardAI.onDuty(v, time)) Doing.set(v, "settlements.doing.guard");
             if (v.age % 1200 == 0) Gear.equipGuardKit(v, village);
         }
 
@@ -128,7 +132,10 @@ public final class Workforce {
         if (village != null && village.tavern != null && v.settlementsHunger >= 250 && (v.settlementsHunger >= HUNGER_STOP_AT || Mind.before(v, village, time, Mind.Drive.EAT))
                 && v.getProfession() != VillagerProfession.BUTCHER) {
             if (job != Chore.NONE) v.getVillagerBrain().abandonJob();
-            if (Tavern.visit(v, village)) return;
+            if (Tavern.visit(v, village)) {
+                Doing.set(v, "settlements.doing.tavern");
+                return;
+            }
         }
 
         // a meal comes first, stopping work if needed
@@ -145,7 +152,10 @@ public final class Workforce {
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld mw && Morning.tick(v, village, mw, time)) return;
 
         // the day's rhythm: morning gathering with the elder, lunch at the hearth
-        if (Persona.working(v, time) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld rw && Routine.tick(v, village, rw, time)) return;
+        if (Persona.working(v, time) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld rw && Routine.tick(v, village, rw, time)) {
+            Doing.set(v, "settlements.doing.routine");
+            return;
+        }
 
         // breaks come with tiredness, not by the clock: a long one when worn out, a short one when the strength
         // runs low (each at a moment of his own, so they do not all stop together)
@@ -185,6 +195,7 @@ public final class Workforce {
         if (job != Chore.NONE) {
             // an autonomous chore is running
             Worksite.check(v, job);
+            Doing.set(v, "settlements.doing." + net.minecraft.registry.Registries.VILLAGER_PROFESSION.getId(v.getProfession()).getPath());
             if (v.getProfession() == VillagerProfession.FARMER && v.getWorld() instanceof net.minecraft.server.world.ServerWorld fw)
                 Farming.tend(v, village, fw); // hoeing, sowing, feeding the crop between the harvests
             Trade.practise(v);
@@ -220,7 +231,10 @@ public final class Workforce {
             }
             return;
         }
-        if (v.settlementsEnergy < START_WORK_ENERGY) return;
+        if (v.settlementsEnergy < START_WORK_ENERGY) {
+            Doing.set(v, "settlements.doing.tired");
+            return;
+        }
         if (!Persona.working(v, time)) Doing.set(v, "settlements.doing.overtime"); // stayed on: the work cannot wait
         // and a moment's pause now and then: nobody works like a machine
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld pw && Trade.pausing(v, village, pw)) return;

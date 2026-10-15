@@ -140,13 +140,18 @@ public final class Layout {
             }
         }
         lots.sort(Comparator.comparingDouble(Lot::score));
-        int tries = 0;
+        List<Lot> open = new ArrayList<>();
         for (Lot lot : lots) {
-            if (++tries > 400) break;
             int fw = (lot.rot() & 1) == 0 ? fp[0] : fp[1], fd = (lot.rot() & 1) == 0 ? fp[1] : fp[0];
-            if (!free(village, r, lot.x(), lot.z(), fw, fd)) continue;
-            BlockPos origin = flat(world, lot.x(), lot.z(), fw, fd);
-            if (origin != null) return new Slot(origin, lot.rot(), fw, fd);
+            if (free(village, r, lot.x(), lot.z(), fw, fd)) open.add(lot);
+            if (open.size() >= 300) break;
+        }
+        for (int pass = 0; pass < TOLERANCE.length; pass++) {
+            for (Lot lot : open) {
+                int fw = (lot.rot() & 1) == 0 ? fp[0] : fp[1], fd = (lot.rot() & 1) == 0 ? fp[1] : fp[0];
+                BlockPos origin = flat(world, lot.x(), lot.z(), fw, fd, pass);
+                if (origin != null) return new Slot(origin, lot.rot(), fw, fd);
+            }
         }
         return null;
     }
@@ -155,6 +160,7 @@ public final class Layout {
     private static Slot ring(ServerWorld world, Village village, String type, int[] fp, int minRing, int maxRing) {
         BlockPos c = new BlockPos(village.getCenter());
         var rand = world.random;
+        for (int pass = 0; pass < TOLERANCE.length; pass++)
         for (int ri = Math.min(minRing, RINGS.length - 1); ri <= Math.min(maxRing, RINGS.length - 1); ri++) {
             int radius = RINGS[ri] + (reach(village) + 1) * GRID - 14; // beyond the ends of the streets
             int n = Math.max(4, (int) (2 * Math.PI * radius / (Math.max(fp[0], fp[1]) + MARGIN + 2)));
@@ -167,7 +173,7 @@ public final class Layout {
                 int fw = (rot & 1) == 0 ? fp[0] : fp[1], fd = (rot & 1) == 0 ? fp[1] : fp[0];
                 int x = c.getX() + (int) dx - fw / 2, z = c.getZ() + (int) dz - fd / 2;
                 if (!free(village, x, z, fw, fd)) continue;
-                BlockPos origin = flat(world, x, z, fw, fd);
+                BlockPos origin = flat(world, x, z, fw, fd, pass);
                 if (origin != null) return new Slot(origin, rot, fw, fd);
             }
         }
@@ -180,28 +186,46 @@ public final class Layout {
         BlockPos c = new BlockPos(village.getCenter());
         int x = c.getX() - fp[0] / 2, z = c.getZ() - fp[1] / 2;
         BlockPos origin = flat(world, x, z, fp[0], fp[1]);
+        if (origin == null) origin = flat(world, x, z, fp[0], fp[1], 1);
         if (origin == null || !freeOfBuildings(village, origin.getX(), origin.getZ(), fp[0], fp[1])) return null;
         return new Slot(origin, 0, fp[0], fp[1]);
     }
 
+    /** Strict: level ground, no tree on it. Then, failing that anywhere, rougher ground the builders level and trees they fell. */
+    private static final int[] TOLERANCE = {2, 5};
+
     private static BlockPos flat(ServerWorld world, int x, int z, int w, int d) {
+        return flat(world, x, z, w, d, 0);
+    }
+
+    private static BlockPos flat(ServerWorld world, int x, int z, int w, int d, int pass) {
         int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
+        boolean rough = pass > 0;
         for (int dx = -2; dx <= w + 1; dx++) {
             for (int dz = -2; dz <= d + 1; dz++) {
                 if (!world.isChunkLoaded((x + dx) >> 4, (z + dz) >> 4)) return null;
                 int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x + dx, z + dz);
+                if (rough) { // the ground under the trees, not the tops of their trunks
+                    while (y > world.getBottomY() + 1) {
+                        BlockState below = world.getBlockState(new BlockPos(x + dx, y - 1, z + dz));
+                        if (!below.isIn(net.minecraft.registry.tag.BlockTags.LOGS) && !below.isIn(net.minecraft.registry.tag.BlockTags.LEAVES) && !below.isReplaceable()) break;
+                        y--;
+                    }
+                }
                 BlockPos g = new BlockPos(x + dx, y - 1, z + dz);
                 BlockState ground = world.getBlockState(g);
                 if (!ground.isSolidBlock(world, g) || !ground.getFluidState().isEmpty()) return null;
-                // not under a tree: no trunk standing on the site or right beside it
-                for (int up = 0; up <= 8; up++) {
-                    if (world.getBlockState(new BlockPos(x + dx, y + up, z + dz)).isIn(net.minecraft.registry.tag.BlockTags.LOGS)) return null;
+                // not under a tree: no trunk standing on the site or right beside it (the second time round, they are felled)
+                if (!rough) {
+                    for (int up = 0; up <= 8; up++) {
+                        if (world.getBlockState(new BlockPos(x + dx, y + up, z + dz)).isIn(net.minecraft.registry.tag.BlockTags.LOGS)) return null;
+                    }
                 }
                 minY = Math.min(minY, y);
                 maxY = Math.max(maxY, y);
             }
         }
-        return maxY - minY <= 2 ? new BlockPos(x, maxY, z) : null; // the builders level a step or two
+        return maxY - minY <= TOLERANCE[Math.min(pass, TOLERANCE.length - 1)] ? new BlockPos(x, maxY, z) : null; // the builders level the rest
     }
 
     /** The plot is clear: off the streets, off other plots and off what is built already (with room between). */

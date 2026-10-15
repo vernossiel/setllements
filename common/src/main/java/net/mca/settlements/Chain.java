@@ -37,6 +37,9 @@ public final class Chain {
     }
 
     private static final Map<String, Long> AVOID = new HashMap<>();
+    private static final Map<UUID, Integer> FAILS = new HashMap<>();
+    /** Seconds a link may come to nothing (no walking, nothing done) before it is set aside. */
+    private static final int GIVE_UP = 20;
     private static final Map<UUID, List<Act>> SHOWN = new HashMap<>();
 
     private Chain() {
@@ -82,18 +85,27 @@ public final class Chain {
     }
 
     /** Works out the chain and does its first link. True while he is at it. */
-    static boolean follow(VillagerEntityMCA v, Village village, ServerWorld world, Set<Fact> now, Set<Fact> goal, List<Act> acts) {
+    static boolean follow(VillagerEntityMCA v, Village village, ServerWorld world, Set<Fact> now, Set<Fact> goal, List<Act> acts, Exec fallback) {
         long time = world.getTime();
         List<Act> chain = plan(now, goal, acts, v, time);
         if (chain == null || chain.isEmpty()) {
             SHOWN.remove(v.getUuid());
-            return false;
+            // no chain to be had: he goes about his trade the plain way, as he always did
+            return fallback != null && fallback.run(v, village, world);
         }
         Act first = chain.get(0);
         if (!chain.equals(SHOWN.get(v.getUuid()))) SHOWN.put(v.getUuid(), chain);
         Doing.plan(v, describe(chain));
-        if (first.exec().run(v, village, world)) return true;
-        AVOID.put(v.getUuid() + first.key(), time + 20 * 60); // did not work out: a chain without it, for a minute
+        // a link "fails" in a second when the trade did nothing that second - but walking to the tree, down the
+        // stairs of the shaft or to the stores is being at it, not failing
+        if (first.exec().run(v, village, world) || Move.goal(v) != null || v.getNavigation().isFollowingPath() || Dig.busy(v)) {
+            FAILS.remove(v.getUuid());
+            return true;
+        }
+        int f = FAILS.merge(v.getUuid(), 1, Integer::sum);
+        if (f < GIVE_UP) return true; // a moment's trouble: he keeps at it
+        FAILS.remove(v.getUuid());
+        AVOID.put(v.getUuid() + first.key(), time + 20 * 60); // it did not work out: a chain without it, for a minute
         return false;
     }
 
@@ -130,7 +142,7 @@ public final class Chain {
         if (!Grove.grown(world, village).isEmpty()) now.add(Fact.GROVE_GROWN);
         // what he is after: a load at the stores (when wood is wanted, or there is a load to bring in)
         if (!now.contains(Fact.WOOD_WANTED) && !now.contains(Fact.BAG_HAS)) return false;
-        return follow(v, village, world, now, EnumSet.of(Fact.DELIVERED), LUMBER);
+        return follow(v, village, world, now, EnumSet.of(Fact.DELIVERED), LUMBER, (a, b, c) -> Lumberjack.work(a, b));
     }
 
     // ---------- the miner ----------
@@ -152,7 +164,7 @@ public final class Chain {
         sense(v, timeOfDay, now);
         if (Orders.take(v, village, Needs.Need.COBBLE) != null || Builder.stockCobble(village) < Mining.QUOTA) now.add(Fact.STONE_WANTED);
         if (!now.contains(Fact.STONE_WANTED) && !now.contains(Fact.BAG_HAS)) return false;
-        return follow(v, village, world, now, EnumSet.of(Fact.DELIVERED), MINE);
+        return follow(v, village, world, now, EnumSet.of(Fact.DELIVERED), MINE, (a, b, c) -> Mining.work(a, b));
     }
 
     private static void sense(VillagerEntityMCA v, long timeOfDay, Set<Fact> now) {
