@@ -105,10 +105,15 @@ public final class Lumberjack {
             v.settlementsExploreTries = 0;
         }
         BlockPos base = v.lumberTarget;
-        double hx = base.getX() + 0.5 - v.getX(), hz = base.getZ() + 0.5 - v.getZ();
-        if (hx * hx + hz * hz > 12 || Math.abs(base.getY() - v.getY()) > 3) {
-            // a tree he cannot reach (on a cliff, in a thicket, across water) is left for another, not stared at
-            boolean moving = Move.to(v, base.getX() + 0.5, base.getY(), base.getZ() + 0.5, 0.6);
+        double hx = base.getX() + 0.5 - v.getX(), hz = base.getZ() + 0.5 - v.getZ(), h2 = hx * hx + hz * hz;
+        double dy = v.getY() - base.getY();
+        // close enough to swing at the trunk: at its foot, or (having wandered up into it) right by the trunk
+        boolean reach = h2 <= 16 && dy >= -2 && dy <= 4 || h2 <= 6 && dy > 4 && dy <= 10;
+        if (!reach) {
+            // walk to open ground beside the trunk, not to the log itself (that path ends up in the crown);
+            // a tree he cannot get to (on a cliff, in a thicket, across water) is left for another
+            BlockPos foot = footOf(world, base);
+            boolean moving = foot != null && Move.to(v, foot.getX() + 0.5, foot.getY(), foot.getZ() + 0.5, 0.6);
             if (!moving || heading(v, base, world.getTime()) > 900) {
                 UNREACHABLE.put(base.asLong(), world.getTime() + 12000);
                 v.lumberTarget = null;
@@ -129,6 +134,11 @@ public final class Lumberjack {
                 break;
             }
         }
+        if (!Gear.has(v, net.minecraft.item.AxeItem.class)) {
+            // no axe (lost, broken, or no room for one among the logs): make one before swinging at nothing
+            Gear.equipTool(v, village, net.mca.entity.ai.Chore.CHOP);
+            if (!Gear.has(v, net.minecraft.item.AxeItem.class)) return false;
+        }
         int cut = 0, budget = Prosperity.ops(v, village, LOGS_PER_SECOND);
         if (budget == 0) return true; // a tired man swings slowly
         Gear.face(v, base);
@@ -143,6 +153,7 @@ public final class Lumberjack {
         }
         v.swingHand(v.getDominantHand());
         Speech.say(v, "settlements.say.lumber.fell");
+        if (cut == 0) return false; // nothing came down: not work
         if (cut >= trunk.size()) {
             plant(v, world, base);
             if (village != null) plantGrove(v, village, world);
@@ -186,6 +197,26 @@ public final class Lumberjack {
             }
         }
         return out;
+    }
+
+    /** Open ground beside a trunk where a man can stand and swing: air for his body, something solid underfoot. */
+    private static BlockPos footOf(ServerWorld world, BlockPos base) {
+        BlockPos best = null;
+        for (int r = 1; r <= 2 && best == null; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != r) continue;
+                    for (int dy = -1; dy <= 1; dy++) {
+                        BlockPos p = base.add(dx, dy, dz);
+                        if (Move.passable(world, p) && Move.passable(world, p.up()) && world.getBlockState(p.down()).isSolidBlock(world, p.down())
+                                && world.getFluidState(p).isEmpty()) {
+                            if (best == null || Math.abs(dy) < Math.abs(best.getY() - base.getY())) best = p;
+                        }
+                    }
+                }
+            }
+        }
+        return best;
     }
 
     private static boolean planted(Village village, BlockPos p) {
