@@ -225,7 +225,14 @@ public final class Mining {
         int depth = Blueprints.MINE_DEPTH;
         if (!inShaft(v, o)) {
             if (up) return false;
-            Move.to(v, o.getX() + 1.0, o.getY(), o.getZ() - 0.5, 0.55); // the mouth, in front of the shed
+            double mx = o.getX() + 1.0 - v.getX(), mz = o.getZ() - 1.0 - v.getZ();
+            if (mx * mx + mz * mz < 2.5 && Math.abs(v.getY() - o.getY()) < 1.5) {
+                // at the mouth: onto the top stair, in under the shed roof
+                v.getNavigation().stop();
+                v.getMoveControl().moveTo(o.getX() + (v.getX() - o.getX() < 1 ? 0.5 : 1.5), o.getY(), o.getZ() + 0.5, 0.55);
+                return true;
+            }
+            Move.to(v, o.getX() + 1.0, o.getY(), o.getZ() - 1.0, 0.55); // the mouth, in front of the shed
             return true;
         }
         double rz = v.getZ() - o.getZ();
