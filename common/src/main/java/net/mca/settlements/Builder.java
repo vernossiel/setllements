@@ -21,6 +21,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.Heightmap;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -58,7 +59,66 @@ public final class Builder {
     /** The plan of a building type with its parameters (cached). */
     public static List<Step> stepsFor(String type, int w, int d, int f) {
         String key = type + "|" + w + "|" + d + "|" + f;
-        return CACHE.computeIfAbsent(key, k -> switch (type) {
+        return CACHE.computeIfAbsent(key, k -> ordered(type.equals("mine") ? null : type, rawSteps(type, w, d, f)));
+    }
+
+    /** Fittings go in once the shell stands: furniture, light, decoration. */
+    private static boolean fitting(Kind k) {
+        return switch (k) {
+            case BED_FOOT, BED_HEAD, CHEST, HALL_CHEST, CRAFT, CARPET, TORCH, LANTERN, BARREL, BOOKSHELF, LECTERN, SMOKER, FURNACE, ANVIL,
+                 GRINDSTONE, SMITHING, STONECUTTER, CAULDRON, COMPOSTER, ARMOR_STAND, PLATE, SEAT_W, SEAT_E, PEW, POT, FLOWER, HEDGE,
+                 HAY, PUMPKIN, TARGET, CHAIN, BELL, SIGN, SMOKE, CLOCK, SHUTTER, WOOL, LADDER -> true;
+            default -> false;
+        };
+    }
+
+    /**
+     * The order a man builds in: the ground first, then layer by layer upwards, each block next to the one before,
+     * walking round the walls; the fittings last. What stands at a spot in the end is the last step for it.
+     */
+    static List<Step> ordered(String type, List<Step> raw) {
+        if (type == null) return raw;
+        java.util.LinkedHashMap<Long, Step> last = new java.util.LinkedHashMap<>();
+        for (Step st : raw) {
+            long key = BlockPos.asLong(st.dx(), st.dy(), st.dz());
+            last.remove(key);
+            last.put(key, st);
+        }
+        java.util.TreeMap<Integer, List<Step>> clears = new java.util.TreeMap<>(), shell = new java.util.TreeMap<>(), fit = new java.util.TreeMap<>();
+        for (Step st : last.values()) {
+            var map = st.kind() == Kind.CLEAR || st.kind() == Kind.DIG ? clears : fitting(st.kind()) ? fit : shell;
+            map.computeIfAbsent(st.dy(), y -> new ArrayList<>()).add(st);
+        }
+        List<Step> out = new ArrayList<>(raw.size());
+        for (List<Step> layer : clears.values()) out.addAll(layer);
+        int[] at = {0, 0};
+        for (var group : List.of(shell, fit)) {
+            for (List<Step> layer : group.values()) {
+                // nearest next: a wall goes up round the house, not in jumps from one side to the other
+                List<Step> left = new ArrayList<>(layer);
+                while (!left.isEmpty()) {
+                    int bi = 0;
+                    long bd = Long.MAX_VALUE;
+                    for (int i = 0; i < left.size(); i++) {
+                        Step c = left.get(i);
+                        long dd = (long) (c.dx() - at[0]) * (c.dx() - at[0]) + (long) (c.dz() - at[1]) * (c.dz() - at[1]);
+                        if (dd < bd) {
+                            bd = dd;
+                            bi = i;
+                        }
+                    }
+                    Step next = left.remove(bi);
+                    out.add(next);
+                    at[0] = next.dx();
+                    at[1] = next.dz();
+                }
+            }
+        }
+        return out;
+    }
+
+    private static List<Step> rawSteps(String type, int w, int d, int f) {
+        return switch (type) {
             case "house" -> Blueprints.house(w, d, f);
             case "upgrade" -> Blueprints.addFloor(w, d, f);
             case "storage" -> Blueprints.storage();
@@ -74,7 +134,7 @@ public final class Builder {
             case "farm" -> Blueprints.farm();
             case "tower" -> Blueprints.tower();
             default -> Buildings.plan(type, w, d, f);
-        });
+        };
     }
 
     private static List<Step> wallPlan(Village v) {
@@ -350,7 +410,38 @@ public final class Builder {
         return startAt(village, type, w, d, floors, slot);
     }
 
+    /**
+     * The site made ready: the ground under the building and a step round it filled up to the floor's level (earth,
+     * grass on top), and the odd bump above it cut away, so nothing stands in the air on a slope.
+     */
+    static void levelSite(ServerWorld world, BlockPos o, int fw, int fd) {
+        for (int x = o.getX() - 1; x <= o.getX() + fw; x++) {
+            for (int z = o.getZ() - 1; z <= o.getZ() + fd; z++) {
+                // branches and leaves hanging over the site are cut back
+                for (int y = o.getY() + 14; y > o.getY() + 2; y--) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    if (world.getBlockState(p).isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) world.breakBlock(p, true);
+                }
+                for (int y = o.getY() + 2; y >= o.getY(); y--) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    BlockState s = world.getBlockState(p);
+                    boolean natural = s.isIn(net.minecraft.registry.tag.BlockTags.DIRT) || s.isIn(net.minecraft.registry.tag.BlockTags.REPLACEABLE)
+                            || s.isIn(net.minecraft.registry.tag.BlockTags.BASE_STONE_OVERWORLD) || s.isIn(net.minecraft.registry.tag.BlockTags.SAND)
+                            || s.isIn(net.minecraft.registry.tag.BlockTags.FLOWERS) || s.isOf(Blocks.GRAVEL) || s.isIn(net.minecraft.registry.tag.BlockTags.LEAVES);
+                    if (!s.isAir() && natural) world.breakBlock(p, false);
+                }
+                for (int y = o.getY() - 1; y >= o.getY() - 5; y--) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    BlockState s = world.getBlockState(p);
+                    if (!s.isAir() && !s.isReplaceable() && s.getFluidState().isEmpty()) break;
+                    world.setBlockState(p, (y == o.getY() - 1 ? Blocks.GRASS_BLOCK : Blocks.DIRT).getDefaultState());
+                }
+            }
+        }
+    }
+
     private static boolean startAt(Village village, String type, int w, int d, int floors, Layout.Slot slot) {
+        if (village.getWorld() != null) levelSite(village.getWorld(), slot.origin(), slot.fw(), slot.fd());
         village.buildType = type;
         village.buildOrigin = slot.origin();
         village.buildRot = slot.rot();
@@ -474,17 +565,25 @@ public final class Builder {
                 continue;
             }
 
-            // the mine is dug from its entrance, everything else is built standing next to the block
-            double limit = village.buildType.equals("mine") ? 12 * 12 : 6 * 6;
-            BlockPos stand = village.buildType.equals("mine") ? origin : target;
-            // builders reach up to the roof from the ground (ladders and scaffolding), so only the horizontal distance counts
-            double bx = stand.getX() + 0.5 - v.getX(), bz = stand.getZ() + 0.5 - v.getZ();
-            boolean far = village.buildType.equals("mine")
-                    ? v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > limit
-                    : bx * bx + bz * bz > limit || Math.abs(stand.getY() - v.getY()) > 12;
+            // nothing to do at a spot that is already clear: no walk for it
+            if ((step.kind() == Kind.CLEAR || step.kind() == Kind.DIG) && world.getBlockState(target).isAir()) {
+                village.buildStep++;
+                skips++;
+                continue;
+            }
+            // the mine is dug from its entrance; everything else is built from within a man's reach of the block,
+            // from scaffolding for the high parts
+            boolean mine = village.buildType.equals("mine");
+            boolean border = village.buildType.equals("palisade") || village.buildType.equals("wall");
+            double bx = target.getX() + 0.5 - v.getX(), bz = target.getZ() + 0.5 - v.getZ();
+            boolean far = mine ? v.squaredDistanceTo(origin.getX() + 0.5, origin.getY(), origin.getZ() + 0.5) > 144 : !Scaffold.inReach(v, target);
+            if (far && !mine && !border && target.getY() - origin.getY() >= 3) {
+                Built site = new Built(village.buildType, origin, village.buildW, village.buildD, Math.max(1, village.buildF), village.buildRot);
+                if (Scaffold.approach(v, village, world, target, site)) return worked;
+                far = bx * bx + bz * bz > Scaffold.REACH * Scaffold.REACH; // no way up: he does what he can from below
+            }
             if (far) {
-                boolean border = village.buildType.equals("palisade") || village.buildType.equals("wall");
-                Move.to(v, stand.getX() + 0.5, village.buildType.equals("mine") || border ? stand.getY() : origin.getY(), stand.getZ() + 0.5, 0.6);
+                Move.to(v, (mine ? origin : target).getX() + 0.5, mine || border ? target.getY() : origin.getY(), (mine ? origin : target).getZ() + 0.5, 0.6);
                 return worked;
             }
 
@@ -522,6 +621,8 @@ public final class Builder {
                 Item held = world.getBlockState(target).getBlock().asItem();
                 if (held != Items.AIR) v.setStackInHand(v.getDominantHand(), new ItemStack(held));
                 v.swingHand(v.getDominantHand());
+                BlockState placed = world.getBlockState(target);
+                world.playSound(null, target, placed.getSoundGroup().getPlaceSound(), net.minecraft.sound.SoundCategory.BLOCKS, 0.8f, 0.9f);
             } else {
                 skips++;
             }
@@ -834,6 +935,7 @@ public final class Builder {
     private static void finish(Village village) {
         BlockPos o = village.buildOrigin;
         if (o == null) return;
+        if (village.getWorld() != null) Scaffold.takeDown(village, village.getWorld()); // the building stands: down with the scaffolding
         String type = village.buildType;
         int rot = village.buildRot;
         if (village.buildRepair) { // a repair changes nothing in the books
@@ -1044,7 +1146,12 @@ public final class Builder {
         if (step.kind() == Kind.TORCH) {
             // on a wall where there is one, like a player would hang it
             BlockState wall = null;
-            for (Direction dir : Direction.Type.HORIZONTAL) {
+            // the wall the plan means it for first (in a mine, the timber post or the side wall, not the rock ahead
+            // that is about to be dug away), then any other
+            List<Direction> sides = new ArrayList<>();
+            if (step.face() >= 0) sides.add(face(step, rot));
+            for (Direction dir : Direction.Type.HORIZONTAL) if (!sides.contains(dir)) sides.add(dir);
+            for (Direction dir : sides) {
                 BlockPos n = target.offset(dir);
                 if (world.getBlockState(n).isSideSolidFullSquare(world, n, dir.getOpposite())) {
                     wall = Blocks.WALL_TORCH.getDefaultState().with(WallTorchBlock.FACING, dir.getOpposite());

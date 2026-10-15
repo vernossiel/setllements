@@ -71,6 +71,11 @@ public final class Staffing {
         // the elder: the first civilian by id, always the same one, and he keeps no other job
         VillagerEntityMCA elder = Plan.elder(world, v);
         for (VillagerEntityMCA r : adults) r.setElder(r == elder);
+        // the elder governs; he does not go down the mine or into the woods
+        if (elder != null && isOurRole(elder.getProfession())) {
+            elder.setProfession(VillagerProfession.NONE);
+            elder.reinitializeBrain(world);
+        }
 
         // the elder decides who does what, after what the village needs right now
         Builder.Shortage short_ = Builder.shortage(v);
@@ -124,7 +129,7 @@ public final class Staffing {
                     // nobody free: someone from a trade that has more hands than it needs right now
                     for (Role other : roles) {
                         if (other == role) continue;
-                        List<VillagerEntityMCA> in = adults.stream().filter(r -> r.getProfession() == other.profession()).toList();
+                        List<VillagerEntityMCA> in = adults.stream().filter(r -> r.getProfession() == other.profession() && !r.isElder() && !r.isGuard()).toList();
                         if (in.size() > other.target() && (firsts || roles.indexOf(other) > roles.indexOf(role))) {
                             who = in.get(in.size() - 1);
                             break;

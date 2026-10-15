@@ -37,6 +37,8 @@ public final class Mining {
             Speech.say(v, "settlements.say.build.mine");
         }
         Workforce.craftTorches(village); // the mine needs light: torches from charcoal burnt out of logs
+        if (Dig.busy(v)) return true; // still at the rock
+        Dig.gather(v, 3); // what he broke goes into his pockets, then to the stores
         if (village.mineLevel > MAX_LEVEL || Builder.stockCobble(village) >= STONE_QUOTA) return false;
 
         List<Step> steps = LEVELS.computeIfAbsent(village.mineLevel, k -> k == 0 ? Blueprints.mine() : Blueprints.mineExtension(k));
@@ -80,7 +82,7 @@ public final class Mining {
         while (ops < budget && skips < 60 && village.mineStep < steps.size()) {
             Step step = steps.get(village.mineStep);
             BlockPos target = o.add(step.dx(), step.dy(), step.dz());
-            if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 49) break;
+            if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 20) break; // within arm's reach
             var here = world.getBlockState(target);
             if (step.kind() == Blueprints.Kind.DIG && (here.isIn(net.minecraft.registry.tag.BlockTags.IRON_ORES) || here.isIn(net.minecraft.registry.tag.BlockTags.COAL_ORES)
                     || here.isIn(net.minecraft.registry.tag.BlockTags.GOLD_ORES) || here.isIn(net.minecraft.registry.tag.BlockTags.DIAMOND_ORES)
@@ -88,8 +90,23 @@ public final class Mining {
                 Speech.sayAny(v, "settlements.say.mine.ore", 3); // a find
             }
             if (step.kind() == Blueprints.Kind.DIG && !world.getBlockState(target).isAir()) {
+                boolean wet = false;
+                for (net.minecraft.util.math.Direction dir : net.minecraft.util.math.Direction.values()) if (!world.getFluidState(target.offset(dir)).isEmpty()) wet = true;
+                if (wet) { // water or lava ahead: this level is done
+                    village.mineLevel++;
+                    village.mineStep = 0;
+                    break;
+                }
+                if (world.getBlockState(target).getBlock() instanceof net.minecraft.block.BlockWithEntity) {
+                    village.mineStep++;
+                    continue;
+                }
                 if (!Gear.wear(v, net.minecraft.item.PickaxeItem.class)) break; // the pick broke: a new one first
                 Gear.face(v, target);
+                Move.clearFalling(world, target, drop -> v.getInventory().addStack(drop));
+                Dig.start(v, target); // block by block, with the pick, as anyone would
+                worked = true;
+                break;
             }
             Builder.COLLECTOR = v;
             Builder.Result r;

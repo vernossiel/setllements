@@ -68,6 +68,10 @@ public final class Layout {
                 BlockPos g = new BlockPos(x + dx, y - 1, z + dz);
                 BlockState ground = world.getBlockState(g);
                 if (!ground.isSolidBlock(world, g) || !ground.getFluidState().isEmpty()) return null;
+                // not under a tree: no trunk standing on the site or right beside it
+                for (int up = 0; up <= 8; up++) {
+                    if (world.getBlockState(new BlockPos(x + dx, y + up, z + dz)).isIn(net.minecraft.registry.tag.BlockTags.LOGS)) return null;
+                }
                 minY = Math.min(minY, y);
                 maxY = Math.max(maxY, y);
             }

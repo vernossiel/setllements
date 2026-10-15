@@ -82,17 +82,22 @@ public final class Reputation {
     private record Opened(Inventory inv, BlockPos pos) {
     }
 
-    private static Opened villageChest(ScreenHandler menu, Village village) {
+    private static Opened villageChest(ScreenHandler menu, Village village, BlockPos near) {
         if (!(menu instanceof GenericContainerScreenHandler g)) return null;
         Inventory inv = g.getInventory();
         if (inv instanceof ChestBlockEntity chest) {
-            if (village.lootChests.contains(chest.getPos()) || village.hallChests.contains(chest.getPos())) return new Opened(inv, chest.getPos());
+            if (village.lootChests.contains(chest.getPos()) || Haul.storeChest(village, chest.getPos())) return new Opened(inv, chest.getPos());
             return null;
         }
         if (inv instanceof net.minecraft.inventory.DoubleInventory dbl) {
             ServerWorld world = village.getWorld();
             if (world == null) return null;
             for (BlockPos p : village.hallChests) if (world.getBlockEntity(p) instanceof ChestBlockEntity c && dbl.isPart(c)) return new Opened(inv, p);
+            if (near != null) {
+                for (BlockPos p : BlockPos.iterate(near.add(-6, -3, -6), near.add(6, 3, 6))) {
+                    if (world.getBlockEntity(p) instanceof ChestBlockEntity c && dbl.isPart(c) && Haul.storeChest(village, p)) return new Opened(inv, p.toImmutable());
+                }
+            }
             for (BlockPos p : village.lootChests) if (world.getBlockEntity(p) instanceof ChestBlockEntity c && dbl.isPart(c)) return new Opened(inv, p);
         }
         return null;
@@ -111,11 +116,11 @@ public final class Reputation {
     public static void onOpen(ServerPlayerEntity player, ScreenHandler menu) {
         Village village = Village.findNearest(player).orElse(null);
         if (village == null) return;
-        Opened opened = villageChest(menu, village);
+        Opened opened = villageChest(menu, village, player.getBlockPos());
         if (opened == null) return;
         Inventory chest = opened.inv();
-        if (village.hallChests.contains(opened.pos())) {
-            // the town hall chests are a window into the stores: what is in the treasury is what you see
+        if (Haul.storeChest(village, opened.pos())) {
+            // the store chests are windows into the stores: what is in the treasury is what you see
             sweepIntoTreasury(village, chest);
             int slot = 0;
             for (java.util.Iterator<ItemStack> it = village.storageBuffer.iterator(); it.hasNext() && slot < chest.size(); ) {
@@ -131,7 +136,7 @@ public final class Reputation {
         Session session = SESSIONS.remove(player.getUuid());
         if (session == null) return;
         Village village = session.village();
-        Opened opened = villageChest(menu, village);
+        Opened opened = villageChest(menu, village, player.getBlockPos());
         if (opened == null) return;
         Inventory chest = opened.inv();
         Map<Item, Integer> after = counts(chest);
@@ -149,7 +154,7 @@ public final class Reputation {
             int diff = e.getValue() - before.getOrDefault(e.getKey(), 0);
             if (diff > 0) returned += value(new ItemStack(e.getKey(), diff));
         }
-        if (village.hallChests.contains(opened.pos())) {
+        if (Haul.storeChest(village, opened.pos())) {
             sweepIntoTreasury(village, chest); // whatever is left goes back into the stores
             village.markDirty();
         }

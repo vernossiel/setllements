@@ -36,6 +36,8 @@ public final class Lumberjack {
     private static final java.util.Map<java.util.UUID, long[]> HEADING = new java.util.HashMap<>();
     /** The logs still standing of the tree a lumberjack has started on: once cut at the foot, it comes down whole. */
     private static final java.util.Map<java.util.UUID, List<BlockPos>> FELLING = new java.util.HashMap<>();
+    /** Until when the lumberjack is picking up the logs of the tree he felled. */
+    private static final java.util.Map<java.util.UUID, Long> GATHER = new java.util.HashMap<>();
 
     /** Ticks spent on the way to the same tree or wood; restarts when the goal changes. */
     private static long heading(VillagerEntityMCA v, BlockPos goal, long now) {
@@ -59,6 +61,14 @@ public final class Lumberjack {
         if (!(v.getWorld() instanceof ServerWorld world)) return false;
         if (!force && village != null && stockLogs(village) >= LOG_QUOTA) return false;
 
+        if (Dig.busy(v)) return true; // still swinging at a log
+        Dig.gather(v, 2.5);
+        Long gathering = GATHER.get(v.getUuid());
+        if (gathering != null) {
+            if (world.getTime() < gathering && Dig.collect(v, 12)) return true;
+            GATHER.remove(v.getUuid());
+            v.setStackInHand(v.getDominantHand(), ItemStack.EMPTY);
+        }
         if (world.getTime() < v.settlementsNoWorkUntil) return false; // no trees around, look again later
 
         // out looking for a wood further away
@@ -73,6 +83,16 @@ public final class Lumberjack {
         List<BlockPos> felling = FELLING.get(v.getUuid());
         if (felling != null) {
             felling.removeIf(p -> !world.getBlockState(p).isIn(BlockTags.LOGS));
+            if (felling.isEmpty() && v.lumberTarget != null) {
+                // the last log is down: a sapling in its place, then pick up the logs
+                Speech.sayAny(v, "settlements.say.lumber.timber", 3);
+                plant(v, world, v.lumberTarget);
+                if (village != null) plantGrove(v, village, world);
+                v.lumberTarget = null;
+                FELLING.remove(v.getUuid());
+                GATHER.put(v.getUuid(), world.getTime() + 600);
+                return true;
+            }
             if (felling.isEmpty() || v.lumberTarget == null) {
                 FELLING.remove(v.getUuid());
                 felling = null;
@@ -81,7 +101,10 @@ public final class Lumberjack {
         if (felling == null && (v.lumberTarget == null || !world.getBlockState(v.lumberTarget).isIn(BlockTags.LOGS))) {
             v.lumberTarget = null;
             List<BlockPos> trees = trees(world, v.getBlockPos(), village);
-            if (trees.size() <= (force ? 1 : MIN_TREES_LEFT) && !force && v.settlementsExploreTries < 6) {
+            // the stand of trees round the village is spared, unless the builders are short of wood
+            Builder.Shortage sh = village == null ? null : Builder.shortage(village);
+            if (sh != null && sh.need() == Needs.Need.PLANKS || village != null && stockLogs(village) < 16) force = true;
+            if (trees.size() <= (force ? 0 : MIN_TREES_LEFT) && v.settlementsExploreTries < 6) {
                 // no wood worth cutting around here: go further and look again
                 BlockPos from = village != null ? new BlockPos(village.getCenter()) : v.getBlockPos();
                 for (int attempt = 0; attempt < 8; attempt++) {
@@ -95,7 +118,7 @@ public final class Lumberjack {
                     return false;
                 }
             }
-            if (trees.size() <= (force ? 1 : MIN_TREES_LEFT)) {
+            if (trees.size() <= (force ? 0 : MIN_TREES_LEFT)) {
                 v.settlementsExploreTries = 0;
                 // leave the forest alone; with no forest at all the village has to ask for wood
                 v.settlementsNoWorkUntil = world.getTime() + 1200;
@@ -149,30 +172,37 @@ public final class Lumberjack {
             Gear.equipTool(v, village, net.mca.entity.ai.Chore.CHOP);
             if (!Gear.has(v, net.minecraft.item.AxeItem.class)) return false;
         }
-        int cut = 0, budget = Prosperity.ops(v, village, LOGS_PER_SECOND) * (felling != null ? 3 : 1); // the cut tree comes down fast
-        if (budget == 0) return true; // a tired man swings slowly
         Gear.face(v, base);
+        // log by log, like a man with an axe: the lowest log he can reach from where he stands
+        BlockPos next = null;
         for (BlockPos p : trunk) {
-            if (cut >= budget) break;
-            if (!Gear.wear(v, net.minecraft.item.AxeItem.class)) break; // the axe broke: a new one first
-            BlockState s = world.getBlockState(p);
-            for (ItemStack drop : Block.getDroppedStacks(s, world, p, null)) v.getInventory().addStack(drop);
-            Move.clearFalling(world, p, d -> v.getInventory().addStack(d));
-            world.setBlockState(p, Blocks.AIR.getDefaultState());
-            cut++;
+            double dx = p.getX() + 0.5 - v.getX(), dz = p.getZ() + 0.5 - v.getZ(), dy = p.getY() - v.getY();
+            if (dx * dx + dz * dz <= 20 && dy >= -2 && dy <= 4) {
+                next = p;
+                break;
+            }
         }
-        v.swingHand(v.getDominantHand());
-        Speech.say(v, "settlements.say.lumber.fell");
-        if (cut == 0) return false; // nothing came down: not work
-        if (cut < trunk.size()) FELLING.put(v.getUuid(), new ArrayList<>(trunk.subList(cut, trunk.size())));
-        else FELLING.remove(v.getUuid());
-        if (cut >= trunk.size()) {
-            Speech.sayAny(v, "settlements.say.lumber.timber", 3); // down she comes
-            plant(v, world, base);
-            if (village != null) plantGrove(v, village, world);
-            v.lumberTarget = null;
-            v.setStackInHand(v.getDominantHand(), ItemStack.EMPTY);
+        if (next != null) {
+            if (!Gear.wear(v, net.minecraft.item.AxeItem.class)) return false; // the axe broke: a new one first
+            Dig.start(v, next);
+            FELLING.put(v.getUuid(), new ArrayList<>(trunk));
+            Speech.say(v, "settlements.say.lumber.fell");
+            return true;
         }
+        if (felling == null) {
+            // nothing of it within reach from here: closer
+            BlockPos foot = footOf(world, trunk.get(0));
+            if (foot != null) Move.to(v, foot.getX() + 0.5, foot.getY(), foot.getZ() + 0.5, 0.6);
+            return true;
+        }
+        // cut through at the foot: what is left up there comes down
+        Speech.sayAny(v, "settlements.say.lumber.timber", 3);
+        for (BlockPos p : trunk) world.breakBlock(p, true, v);
+        FELLING.remove(v.getUuid());
+        plant(v, world, base);
+        if (village != null) plantGrove(v, village, world);
+        v.lumberTarget = null;
+        GATHER.put(v.getUuid(), world.getTime() + 600); // and now the logs lying about
         return true;
     }
 
@@ -241,13 +271,19 @@ public final class Lumberjack {
         return false;
     }
 
+    /** A crown on this trunk: leaves next to any of its logs, up the bends and branches (acacia, dark oak) too. */
     private static boolean leavesAbove(ServerWorld world, BlockPos base) {
-        BlockPos p = base;
-        for (int i = 0; i < 28; i++) {
-            p = p.up();
-            BlockState s = world.getBlockState(p);
-            if (s.isIn(BlockTags.LEAVES)) return true;
-            if (!s.isIn(BlockTags.LOGS)) return false;
+        if (!world.getBlockState(base.up()).isIn(BlockTags.LOGS) && !world.getBlockState(base.up()).isIn(BlockTags.LEAVES)) {
+            boolean bend = false; // an acacia leans off its stump at once
+            for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (world.getBlockState(base.add(dx, 1, dz)).isIn(BlockTags.LOGS)) bend = true;
+            if (!bend) return false;
+        }
+        List<BlockPos> logs = trunk(world, base);
+        if (logs.size() < 3) return false;
+        for (BlockPos p : logs) {
+            for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.values()) {
+                if (world.getBlockState(p.offset(d)).isIn(BlockTags.LEAVES)) return true;
+            }
         }
         return false;
     }

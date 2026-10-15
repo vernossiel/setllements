@@ -503,7 +503,7 @@ public final class Blueprints {
             l.add(new Step(2, bottom + h, z0, Kind.PILLAR));
         }
         for (int x = -1; x <= 2; x++) l.add(new Step(x, bottom + 3, z0, Kind.FLOOR));
-        l.add(new Step(0, bottom + 1, z0 + 2, Kind.TORCH));
+        l.add(new Step(0, bottom + 1, z0 + 2, Kind.TORCH, W));
         int bz = z0 + 4;
         for (int i = 1; i <= 10; i++) {
             for (int h = 0; h < 2; h++) {
@@ -511,10 +511,10 @@ public final class Blueprints {
                 l.add(new Step(1 + i, bottom + h, bz, Kind.DIG));
             }
         }
-        l.add(new Step(-9, bottom + 1, bz, Kind.TORCH));
-        l.add(new Step(10, bottom + 1, bz, Kind.TORCH));
-        l.add(new Step(-4, bottom + 1, bz, Kind.TORCH));
-        l.add(new Step(5, bottom + 1, bz, Kind.TORCH));
+        l.add(new Step(-9, bottom + 1, bz, Kind.TORCH, N));
+        l.add(new Step(10, bottom + 1, bz, Kind.TORCH, N));
+        l.add(new Step(-4, bottom + 1, bz, Kind.TORCH, N));
+        l.add(new Step(5, bottom + 1, bz, Kind.TORCH, N));
         return l;
     }
 
@@ -589,6 +589,17 @@ public final class Blueprints {
     public static List<Step> mine() {
         List<Step> l = new ArrayList<>();
         int depth = MINE_DEPTH;
+        // the head of the shaft first: a timber shed over the stairs where they go into the ground, a lantern inside
+        for (int z : new int[]{0, 3}) for (int x : new int[]{-1, 2}) for (int y = 0; y <= 2; y++) l.add(new Step(x, y, z, Kind.PILLAR));
+        for (int z = 1; z <= 2; z++) {
+            for (int y = 0; y <= 2; y++) {
+                l.add(new Step(-1, y, z, Kind.WALL));
+                l.add(new Step(2, y, z, Kind.WALL));
+            }
+        }
+        for (int x = 0; x <= 1; x++) for (int y = 0; y <= 2; y++) l.add(new Step(x, y, 3, Kind.WALL));
+        for (int x = -1; x <= 2; x++) for (int z = 0; z <= 3; z++) l.add(new Step(x, 3, z, Kind.ROOF));
+        l.add(new Step(0, 2, 1, Kind.LANTERN));
         for (int i = 0; i < depth; i++) {
             for (int x = 0; x < 2; x++) {
                 for (int h = 0; h <= 2; h++) l.add(new Step(x, -i + h, i, Kind.DIG));
@@ -610,8 +621,8 @@ public final class Blueprints {
         for (int x = -1; x <= 3; x++) l.add(new Step(x, bottom + 3, depth + 2, Kind.BEAM_X));
         l.add(new Step(3, bottom, depth + 1, Kind.CHEST));
         l.add(new Step(3, bottom, depth + 2, Kind.BARREL));
-        l.add(new Step(-1, bottom + 1, depth + 2, Kind.TORCH));
-        l.add(new Step(3, bottom + 1, depth + 3, Kind.TORCH));
+        l.add(new Step(-1, bottom + 1, depth + 2, Kind.TORCH, W));
+        l.add(new Step(3, bottom + 1, depth + 3, Kind.TORCH, E));
         return l;
     }
 
@@ -631,6 +642,6 @@ public final class Blueprints {
             l.add(new Step(2, -i + h, i, Kind.PILLAR));
         }
         for (int x = -1; x <= 2; x++) l.add(new Step(x, -i + 3, i, Kind.FLOOR));
-        l.add(new Step(0, -i + 1, i, Kind.TORCH)); // on the post, lighting the stairs
+        l.add(new Step(0, -i + 1, i, Kind.TORCH, W)); // on the post, lighting the stairs
     }
 }

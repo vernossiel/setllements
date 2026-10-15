@@ -149,6 +149,9 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public long settlementsChatUntil;
     // the craft (see settlements.Trade): experience in his trade, seconds of work until he pauses, the pause left
     public int settlementsSkill, settlementsStretch = -1, settlementsPauseLeft;
+    // the block he is breaking, like a player, a crack at a time (see settlements.Dig)
+    public BlockPos settlementsDigPos;
+    public float settlementsDigProgress;
     public java.util.UUID settlementsChatWith;
 
     public boolean isElder() {
@@ -849,6 +852,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
             // Every 1 second
             mcaBrain.think();
             net.mca.settlements.Climb.tick(this);
+            net.mca.settlements.Dig.tick(this);
             if (age % 20 == 0) net.mca.settlements.Workforce.tick(this);
 
             // pop a item from the desaturation queue

@@ -51,6 +51,41 @@ public final class Haul {
         return best;
     }
 
+    /** Lifts the lid of the chest at {@code p} for a moment, with its sound, as anybody using it would. */
+    static void openChest(net.minecraft.server.world.ServerWorld world, BlockPos p) {
+        if (p == null || !(world.getBlockState(p).getBlock() instanceof net.minecraft.block.ChestBlock chest)) return;
+        world.addSyncedBlockEvent(p, chest, 1, 1);
+        world.playSound(null, p, net.minecraft.sound.SoundEvents.BLOCK_CHEST_OPEN, net.minecraft.sound.SoundCategory.BLOCKS, 0.5f, 1f);
+        OPEN.put(p.toImmutable(), world.getTime() + 25);
+    }
+
+    private static final java.util.Map<BlockPos, Long> OPEN = new java.util.HashMap<>();
+
+    /** Every second: closes the lids lifted a moment ago. */
+    public static void closeChests(net.minecraft.server.world.ServerWorld world) {
+        for (var it = OPEN.entrySet().iterator(); it.hasNext(); ) {
+            var e = it.next();
+            if (world.getTime() < e.getValue()) continue;
+            if (world.getBlockState(e.getKey()).getBlock() instanceof net.minecraft.block.ChestBlock chest) {
+                world.addSyncedBlockEvent(e.getKey(), chest, 1, 0);
+                world.playSound(null, e.getKey(), net.minecraft.sound.SoundEvents.BLOCK_CHEST_CLOSE, net.minecraft.sound.SoundCategory.BLOCKS, 0.5f, 1f);
+            }
+            it.remove();
+        }
+    }
+
+    /** The chests of the village's stores (storehouse, granary, sawmill, mason's) and the hall's: what a player sees in them is the stock. */
+    public static boolean storeChest(Village village, BlockPos pos) {
+        if (village.hallChests.contains(pos)) return true;
+        for (Built b : village.built) {
+            String t = Buildings.base(b.type());
+            if (!(t.equals("storage") || t.equals("granary") || t.equals("sawmill") || t.equals("mason"))) continue;
+            if (!b.contains(pos)) continue;
+            for (Blueprints.Step s : b.steps()) if (s.kind() == Blueprints.Kind.CHEST && b.point(s.dx(), s.dy(), s.dz()).equals(pos)) return true;
+        }
+        return false;
+    }
+
     /** Walks to the stores. True once he stands at the chest. */
     public static boolean reach(VillagerEntityMCA v, Village village) {
         BlockPos s = store(v, village);
@@ -97,6 +132,7 @@ public final class Haul {
             }
         }
         if (!reach(v, village)) return true;
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld world) openChest(world, store(v, village));
         var inv = v.getInventory();
         for (int i = 0; i < inv.size(); i++) {
             ItemStack s = inv.getStack(i);
@@ -125,6 +161,7 @@ public final class Haul {
         }
         v.settlementsCarry = FULL_LOAD;
         v.swingHand(v.getDominantHand());
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld world) openChest(world, s);
         return false;
     }
 }

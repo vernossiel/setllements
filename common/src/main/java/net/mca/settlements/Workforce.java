@@ -92,10 +92,17 @@ public final class Workforce {
             Registration.report(regWorld, v);
         }
 
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw0) Haul.closeChests(cw0);
         Unstick.tick(v, village);
         Move.tick(v, village);
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld lifeWorld && Life.tick(v, village, lifeWorld, time)) return;
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld watchWorld) GuardIntel.civilianWatch(v, watchWorld);
+        // a conversation: carried on, or started when he has a moment (on the guards' watch, nobody stands chatting)
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld tw && !(v.isGuard() && GuardAI.onDuty(v, time))) {
+            boolean moment = !Persona.working(v, time) || v.settlementsBreak || v.settlementsIdleWork >= 10
+                    || Persona.of(v).sociability() > 0.6 && v.getRandom().nextInt(8) == 0;
+            if (Talk.tick(v, village, tw, moment && !Dig.busy(v) && !v.settlementsHauling)) return;
+        }
 
         // the elder keeps office by the town hall's lectern
         if (v.isElder() && village != null && village.hallPos != null && Persona.working(v, time) && v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET).isEmpty()
@@ -194,8 +201,6 @@ public final class Workforce {
             return;
         }
         if (v.settlementsEnergy < START_WORK_ENERGY) return;
-        // a word with a neighbour met on the way, now and then (more often for the sociable and the idle)
-        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw && Persona.chatting(v, village, cw)) return;
         // and a moment's pause now and then: nobody works like a machine
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld pw && Trade.pausing(v, village, pw)) return;
 
