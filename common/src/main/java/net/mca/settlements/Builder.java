@@ -254,7 +254,27 @@ public final class Builder {
 
     /** A place for the mine's entrance: used by the miner, who opens the mine himself. */
     public static BlockPos chooseMineSite(ServerWorld world, Village village) {
-        return findSite(world, village, 4, 4);
+        // not where the shaft would run into water or lava (a lake, a lava pool on the surface, an aquifer)
+        for (int attempt = 0; attempt < 12; attempt++) {
+            BlockPos o = findSite(world, village, 4, 4);
+            if (o == null) return null;
+            if (dryUnder(world, o)) return o;
+        }
+        return null;
+    }
+
+    private static boolean dryUnder(ServerWorld world, BlockPos o) {
+        int depth = Blueprints.MINE_DEPTH;
+        for (int x = -3; x <= 5; x++) {
+            for (int z = -3; z <= depth + 7; z++) {
+                for (int y = 2; y >= -depth - 2; y -= 1) {
+                    BlockPos p = o.add(x, y, z);
+                    if (!world.isChunkLoaded(p.getX() >> 4, p.getZ() >> 4)) return false;
+                    if (!world.getFluidState(p).isEmpty()) return false;
+                }
+            }
+        }
+        return true;
     }
 
     // ---------- planner ----------

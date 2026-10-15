@@ -2012,5 +2012,8 @@
   "settlements.doing.farm.till": "hoeing a bed",
   "settlements.doing.farm.sow": "sowing a bare bed",
   "settlements.doing.farm.feed": "feeding the crop with bone meal",
-  "settlements.say.farm.feed": "A bit of feed and it'll come on quicker."
+  "settlements.say.farm.feed": "A bit of feed and it'll come on quicker.",
+  "settlements.say.mine.flooded": "Water or lava down there. No mine here - I'll find another spot.",
+  "settlements.say.mine.noplanks": "No planks for the props. Fine, I'll dig on, we'll fit them later.",
+  "settlements.doing.mine.noplanks": "digging without props: no planks"
 }

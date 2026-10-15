@@ -1900,5 +1900,8 @@
   "settlements.doing.farm.till": "вскапывает грядку мотыгой",
   "settlements.doing.farm.sow": "сеет на пустой грядке",
   "settlements.doing.farm.feed": "подкармливает всходы костной мукой",
-  "settlements.say.farm.feed": "Подкормим — быстрее пойдёт."
+  "settlements.say.farm.feed": "Подкормим — быстрее пойдёт.",
+  "settlements.say.mine.flooded": "Тут вода или лава под землёй. Шахту здесь не выкопать — поищу другое место.",
+  "settlements.say.mine.noplanks": "Досок на крепь нет. Ладно, копаю так, потом доделаем.",
+  "settlements.doing.mine.noplanks": "копает без крепи: досок нет"
 }

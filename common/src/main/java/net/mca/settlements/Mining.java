@@ -131,12 +131,26 @@ public final class Mining {
             } finally {
                 Builder.COLLECTOR = null;
             }
+            if (r == Builder.Result.ABORT && village.mineLevel == 0) { // water or lava in the very shaft: a new site
+                village.mineOrigin = null;
+                village.mineStep = 0;
+                Speech.sayNow(v, "settlements.say.mine.flooded");
+                break;
+            }
             if (r == Builder.Result.ABORT) { // water or lava ahead: this level is done
                 village.mineLevel++;
                 village.mineStep = 0;
                 break;
             }
-            if (r == Builder.Result.WAIT) break;
+            if (r == Builder.Result.WAIT) {
+                // no planks for the shed, a post or a beam: the digging goes on without it (the builders can add it later)
+                if (step.kind() == Blueprints.Kind.DIG) break;
+                if (world.random.nextInt(20) == 0) Speech.say(v, "settlements.say.mine.noplanks");
+                Doing.set(v, "settlements.doing.mine.noplanks");
+                village.mineStep++;
+                skips++;
+                continue;
+            }
             village.mineStep++;
             if (r == Builder.Result.PLACED) {
                 ops++;

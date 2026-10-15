@@ -33,6 +33,28 @@ public final class Staffing {
     /** The smith's trade is switched off for now (workers make their own tools); true brings it back. */
     static final boolean SMITHS = false;
 
+    private static final java.util.Map<Integer, long[]> FOREST = new java.util.HashMap<>();
+
+    /** Trees round the village (tree tops in a 56 block radius, sampled every 4 blocks), looked at every ten minutes. */
+    static int forest(ServerWorld world, net.mca.server.world.data.Village village) {
+        long[] f = FOREST.get(village.getId());
+        long now = world.getTime();
+        if (f != null && now - f[1] < 12000) return (int) f[0];
+        net.minecraft.util.math.BlockPos c = new net.minecraft.util.math.BlockPos(village.getCenter());
+        int n = 0;
+        for (int dx = -56; dx <= 56; dx += 4) {
+            for (int dz = -56; dz <= 56; dz += 4) {
+                int x = c.getX() + dx, z = c.getZ() + dz;
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+                int y = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING, x, z) - 1;
+                var s = world.getBlockState(new net.minecraft.util.math.BlockPos(x, y, z));
+                if (s.isIn(net.minecraft.registry.tag.BlockTags.LEAVES) || s.isIn(net.minecraft.registry.tag.BlockTags.LOGS)) n++;
+            }
+        }
+        FOREST.put(village.getId(), new long[]{n, now});
+        return n;
+    }
+
     private static boolean isCore(VillagerProfession p) {
         return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH
                 || p == VillagerProfession.MASON || p == VillagerProfession.FARMER;
@@ -88,7 +110,10 @@ public final class Staffing {
         List<Role> roles = new ArrayList<>(); // in order of importance
         roles.add(new Role(VillagerProfession.CARTOGRAPHER, Math.max(1, p / 5)));
         if (p >= 3) roles.add(new Role(VillagerProfession.FARMER, Math.max(1, p / 6) + (hungry ? 1 : 0)));
-        roles.add(new Role(VillagerProfession.FLETCHER, Math.max(1, p / 4) + (short_ != null && short_.need() == Needs.Need.PLANKS ? 1 : 0)));
+        // lumberjacks after the woods there are: a desert or a steppe village keeps one, who goes far for wood
+        int woods = forest(world, v);
+        int lumber = woods >= 40 ? Math.max(1, p / 4) : woods >= 12 ? Math.max(1, p / 8) : 1;
+        roles.add(new Role(VillagerProfession.FLETCHER, lumber + (woods >= 12 && short_ != null && short_.need() == Needs.Need.PLANKS ? 1 : 0)));
         if (p >= 3) roles.add(new Role(VillagerProfession.MASON, Math.max(1, p / 5) + (short_ != null && short_.need() == Needs.Need.COBBLE ? 1 : 0)));
         // a smith only once there is a smithy to work in: tools, ingots
         boolean smithy = SMITHS && v.smithyBuilt && v.smithyFurnace != null;
@@ -98,6 +123,16 @@ public final class Staffing {
         for (VillagerEntityMCA r : adults) {
             VillagerProfession rp = r.getProfession();
             if (isOurRole(rp) && !isCore(rp) && !(rp == VillagerProfession.ARMORER && smithy)) {
+                r.setProfession(VillagerProfession.NONE);
+                r.reinitializeBrain(world);
+            }
+        }
+
+        // too many lumberjacks for the woods there are (a desert village): the extra ones go back to the pool
+        int jacks = 0;
+        for (VillagerEntityMCA r : adults) {
+            if (r.getProfession() != VillagerProfession.FLETCHER && r.getProfession() != VillagerProfession.TOOLSMITH) continue;
+            if (++jacks > lumber) {
                 r.setProfession(VillagerProfession.NONE);
                 r.reinitializeBrain(world);
             }
