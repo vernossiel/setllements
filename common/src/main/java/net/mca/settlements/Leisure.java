@@ -30,26 +30,13 @@ public final class Leisure {
     /** Called once per second for a villager with nothing to work on. */
     public static void tick(VillagerEntityMCA v, Village village, long time) {
         if (v.isSleeping() || v.getVillagerBrain().isPanicking() || v.getVillagerBrain().getMoveState() != MoveState.MOVE) return;
-        if (!isLeisureTime(time)) return;
+        if (!Persona.free(v, time) || !(v.getWorld() instanceof net.minecraft.server.world.ServerWorld world)) return;
 
         // supper at the fire
         boolean hungry = v.settlementsHunger >= 250;
         if (village != null && Chapel.visit(v, village)) return; // remembering the dead at the churchyard
-        boolean seated = Camp.goAndSit(v, village);
-        long phase = (v.age / 20 + v.getUuid().hashCode()) % 60; // each villager has their own rhythm
-        if (seated || (hungry && phase < 40)) {
-            if (seated) {
-                v.settlementsEnergy = Math.min(Workforce.MAX, v.settlementsEnergy + 28);
-                chat(v);
-            }
-            return;
-        }
-        if (phase < 25 || Seat.seated(v)) return; // stand around (or sit) for a while
-        // stroll
-        Vec3d target = FuzzyTargeting.find(v, 12, 4);
-        if (target != null) {
-            v.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(target, 0.45f, 1));
-        }
+        if (hungry && village != null && Camp.goAndSit(v, village)) return; // supper at the fire
+        Persona.pastime(v, village, world); // otherwise as he pleases: friends, the tavern, a stroll, home
     }
 
     private static void chat(VillagerEntityMCA v) {

@@ -98,7 +98,7 @@ public final class Workforce {
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld watchWorld) GuardIntel.civilianWatch(v, watchWorld);
 
         // the elder keeps office by the town hall's lectern
-        if (v.isElder() && village != null && village.hallPos != null && isWorkTime(time) && v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET).isEmpty()
+        if (v.isElder() && village != null && village.hallPos != null && Persona.working(v, time) && v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET).isEmpty()
                 && v.squaredDistanceTo(village.hallPos.getX() + 0.5, village.hallPos.getY(), village.hallPos.getZ() + 0.5) > 256) {
             v.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET, new net.minecraft.entity.ai.brain.WalkTarget(village.hallPos, 0.5f, 3));
         }
@@ -127,7 +127,7 @@ public final class Workforce {
         Needs.update(v, village);
 
         // the day's rhythm: morning gathering with the elder, lunch at the hearth
-        if (isWorkTime(time) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld rw && Routine.tick(v, village, rw, time)) return;
+        if (Persona.working(v, time) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld rw && Routine.tick(v, village, rw, time)) return;
 
         // breaks come with tiredness, not by the clock: a long one when worn out, a short one when the strength
         // runs low (each at a moment of his own, so they do not all stop together)
@@ -136,7 +136,7 @@ public final class Workforce {
                 startBreak(v, 0);
                 v.settlementsBreakLong = true; // worn out: back to work only when properly rested
                 Speech.sayAny(v, "settlements.say.tired", 5);
-            } else if (v.settlementsEnergy <= 450 && v.getRandom().nextInt(45) == 0) {
+            } else if (v.settlementsEnergy <= 450 && v.getRandom().nextDouble() < Persona.breakFactor(v) / 45) {
                 startBreak(v, MICRO_BREAK_SECONDS);
                 Speech.sayAny(v, "settlements.say.break", 5);
             }
@@ -150,7 +150,7 @@ public final class Workforce {
             v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + (seated ? FIRE_REST_GAIN : REST_GAIN));
             // the break only counts once he sits at the fire (or after a long walk that got him nowhere)
             if (v.settlementsBreakLeft > 0 && (seated || v.settlementsBreakWalk++ > 60)) v.settlementsBreakLeft--;
-            if (v.settlementsBreakLeft <= 0 && v.settlementsEnergy >= (v.settlementsBreakLong ? RESUME_AFTER_EXHAUST : START_WORK_ENERGY) || !isWorkTime(time)) {
+            if (v.settlementsBreakLeft <= 0 && v.settlementsEnergy >= (v.settlementsBreakLong ? RESUME_AFTER_EXHAUST : START_WORK_ENERGY) || !Persona.working(v, time)) {
                 v.settlementsBreak = false;
                 Rest.end(v);
                 v.settlementsBreakLong = false;
@@ -165,7 +165,7 @@ public final class Workforce {
             v.settlementsEnergy -= WORK_DRAIN;
             v.settlementsHunger += HUNGER_RISE;
             v.settlementsWorkSeconds++;
-            if (v.settlementsHunger >= HUNGER_STOP_AT || !isWorkTime(time)) {
+            if (v.settlementsHunger >= HUNGER_STOP_AT || !Persona.working(v, time)) {
                 v.getVillagerBrain().abandonJob();
             }
             return;
@@ -182,17 +182,19 @@ public final class Workforce {
                 if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) Reputation.restock(sw, village);
             }
         }
-        if (!isWorkTime(time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
+        if (!Persona.working(v, time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
             // supper and chat: eat a little earlier in the evening
-            if (!Leisure.isLeisureTime(time)) Rest.end(v); // bedtime: up and off home
-            if (Leisure.isLeisureTime(time) && !(v.isGuard() && GuardAI.onDuty(v, time))) {
+            if (!Persona.free(v, time)) Rest.end(v); // bedtime: up and off home
+            if (Persona.free(v, time) && !(v.isGuard() && GuardAI.onDuty(v, time))) {
                 if (v.settlementsHunger >= 250 && hasMeal(v, village) && startEating(v, village, 250)) return;
                 Leisure.tick(v, village, time);
             }
             return;
         }
         if (v.settlementsEnergy < START_WORK_ENERGY) return;
+        // a word with a neighbour met on the way, now and then (more often for the sociable and the idle)
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw && Persona.chatting(v, village, cw)) return;
 
         VillagerProfession prof = v.getProfession();
         if (Seat.seated(v)) Rest.end(v); // up, back to work

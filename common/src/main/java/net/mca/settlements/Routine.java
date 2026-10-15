@@ -30,12 +30,14 @@ public final class Routine {
         if (village == null || v.isGuard() || Workforce.isRestDay(time)) return false;
         long day = time / 24000L, t = time % 24000L;
 
-        if (t >= ASSEMBLY_FROM && t < ASSEMBLY_TO && ASSEMBLED.getOrDefault(village.getId(), -1L) != day) {
+        // not everybody comes to the gathering: the dutiful and the sociable do, the others go straight to work
+        if (t >= ASSEMBLY_FROM && t < ASSEMBLY_TO && ASSEMBLED.getOrDefault(village.getId(), -1L) != day && Persona.attends(v, day)) {
             if (Camp.hearth(village, world) == null && Camp.ensureHearth(village, world) == null) return false;
             boolean there = Camp.goAndSit(v, village);
             if (there && v.isElder()) {
                 BlockPos fire = Camp.hearth(village, world);
-                List<VillagerEntityMCA> people = village.getResidents(world).stream().filter(r -> r.isAlive() && !r.isBaby() && !r.isGuard()).toList();
+                List<VillagerEntityMCA> people = village.getResidents(world).stream()
+                        .filter(r -> r.isAlive() && !r.isBaby() && !r.isGuard() && Persona.attends(r, day) && Persona.working(r, time)).toList();
                 long gathered = fire == null ? 0 : people.stream().filter(r -> r.getBlockPos().isWithinDistance(fire, 8)).count();
                 if (gathered >= Math.max(2, people.size() * 2 / 3) || t >= ASSEMBLY_TO - 200) {
                     announce(v, village, world, people);
@@ -46,8 +48,10 @@ public final class Routine {
             return true;
         }
 
-        if (t >= LUNCH_FROM && t < LUNCH_TO && v.settlementsLunchDay != day) {
-            boolean there = Camp.goAndSit(v, village);
+        long ls = Persona.lunchShift(v); // each at his own hour, more or less
+        if (t >= LUNCH_FROM + ls && t < LUNCH_TO + ls && v.settlementsLunchDay != day) {
+            // the sociable eat together at the fire, the others wherever they happen to be
+            boolean there = Persona.eatsTogether(v) ? Camp.goAndSit(v, village) : stopHere(v);
             if (there) {
                 v.settlementsLunchSec++;
                 v.settlementsEnergy = Math.min(Workforce.MAX, v.settlementsEnergy + 20);
@@ -62,10 +66,15 @@ public final class Routine {
                     v.settlementsWorkSeconds = 0;
                 }
             }
-            if (t >= LUNCH_TO - 100) v.settlementsLunchDay = day;
+            if (t >= LUNCH_TO + ls - 100) v.settlementsLunchDay = day;
             return true;
         }
         return false;
+    }
+
+    private static boolean stopHere(VillagerEntityMCA v) {
+        v.getNavigation().stop();
+        return true;
     }
 
     /** The elder's morning words: a greeting, everybody's job for the day, and off you go. */

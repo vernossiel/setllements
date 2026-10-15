@@ -225,7 +225,7 @@ public final class Life {
         if (!v.isGuard() && shelter(v, village, world, time)) return true;
         if (!Seat.seated(v)) passing(v, world);
         if (share(v, village, world)) return true;
-        if (!Workforce.isWorkTime(time) || v.settlementsBreak) converse(v, village, world);
+        if (!Persona.working(v, time) || v.settlementsBreak) converse(v, village, world);
         return false;
     }
 
@@ -390,7 +390,13 @@ public final class Life {
         List<VillagerEntityMCA> near = world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(4),
                 o -> o != v && o.isAlive() && !o.isBaby() && !o.isSleeping() && o.settlementsReplyKey == null && now >= o.settlementsTalkAfter);
         if (near.isEmpty()) return;
-        VillagerEntityMCA other = near.get(world.random.nextInt(near.size()));
+        exchange(v, near.get(world.random.nextInt(near.size())), village, world);
+    }
+
+    /** A few words between two villagers: one says what is on his mind, the other answers. */
+    static void exchange(VillagerEntityMCA v, VillagerEntityMCA other, Village village, ServerWorld world) {
+        long now = world.getTime();
+        if (now < v.settlementsTalkAfter || other.settlementsReplyKey != null) return;
         String[] topic = topic(v, village, world);
         if (topic == null) return;
         Object[] args = topic.length > 1 ? new Object[]{topic[1]} : new Object[0];

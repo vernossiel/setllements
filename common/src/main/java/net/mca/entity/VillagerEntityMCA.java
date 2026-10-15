@@ -142,6 +142,12 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public net.minecraft.util.math.BlockPos penTarget;
     public net.minecraft.util.math.BlockPos settlementsKillPos;
     public long settlementsKillUntil = 0;
+    // free time and chance meetings (see settlements.Persona)
+    public int settlementsPastime = -1;
+    public long settlementsPastimeUntil;
+    public java.util.UUID settlementsPastimeWith;
+    public long settlementsChatUntil;
+    public java.util.UUID settlementsChatWith;
 
     public boolean isElder() {
         return getTrackedValue(ELDER);
