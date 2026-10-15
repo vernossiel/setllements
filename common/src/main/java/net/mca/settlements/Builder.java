@@ -303,7 +303,7 @@ public final class Builder {
                         case "rowhouse" -> 220;
                         case "cruck" -> 0;
                         case "manor", "farmhouse" -> 260;
-                        case "annex", "tallhouse", "twin" -> 180;
+                        case "annex", "tallhouse", "twin", "cottage" -> 180;
                         case "hut" -> 0;
                         default -> 110;
                     };
@@ -832,7 +832,7 @@ public final class Builder {
     public static final java.util.LinkedHashMap<String, int[]> SHOWCASE = new java.util.LinkedHashMap<>();
 
     static {
-        String[] types = {"townhall", "cruck", "wealden", "rowhouse", "hut", "house", "longhouse", "porch", "twin", "farmhouse", "tallhouse", "annex", "manor", "mansion", "storage", "granary", "sawmill", "charcoal", "mason", "mill",
+        String[] types = {"townhall", "cruck", "wealden", "rowhouse", "hut", "house", "longhouse", "porch", "twin", "farmhouse", "cottage", "tallhouse", "annex", "manor", "mansion", "storage", "granary", "sawmill", "charcoal", "mason", "mill",
                 "smithy", "armory", "tavern", "barracks", "jail", "market", "chapel", "well", "board", "farm", "pen", "tower", "shop"};
         java.util.List<String> all = new java.util.ArrayList<>(java.util.List.of(types));
         for (String[] d : Buildings.designs()) for (String t : d) if (!all.contains(t)) all.add(t);

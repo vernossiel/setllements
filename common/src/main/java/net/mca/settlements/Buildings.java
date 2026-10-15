@@ -44,6 +44,7 @@ public final class Buildings {
             case "tallhouse" -> tallhouse();
             case "twin" -> twin();
             case "farmhouse" -> farmhouse();
+            case "cottage" -> cottage();
             case "mansion" -> mansion();
             default -> Variants.plan(type);
         };
@@ -550,6 +551,85 @@ public final class Buildings {
         for (int y = 0; y <= 8; y++) at(l, -1, y, 0, Kind.CHIMNEY); // the left home's chimney on its own side
         at(l, -1, 9, 0, Kind.SMOKE);
         shift(Blueprints.house(5, 6, 1), 4, 0, l);
+        return l;
+    }
+
+    /**
+     * A two-storey cottage: a course of stone at the foot of the walls, a timber frame with the posts showing, the
+     * upper floor on beams; hedges under the front windows, a light either side of the door, a bench by it, and a
+     * woodshed built on at the side with the firewood stacked under it. Kitchen and table below, the beds upstairs
+     * up a ladder.
+     */
+    static List<Step> cottage() {
+        List<Step> l = new ArrayList<>();
+        int w = 7, d = 7;
+        for (int x = 0; x < w; x++) for (int z = 0; z < d; z++) at(l, x, 0, z, Kind.FLOOR);
+        for (int y = 1; y <= 6; y++) {
+            for (int x = 0; x < w; x++) {
+                for (int z = 0; z < d; z++) {
+                    boolean edge = x == 0 || z == 0 || x == w - 1 || z == d - 1;
+                    if (!edge) continue;
+                    boolean corner = (x == 0 || x == w - 1) && (z == 0 || z == d - 1);
+                    boolean frontBack = z == 0 || z == d - 1;
+                    if (corner) at(l, x, y, z, Kind.PILLAR);
+                    else if (y == 4) at(l, x, y, z, frontBack ? Kind.BEAM_X : Kind.BEAM_Z); // the upper floor rests on beams
+                    else if (y == 1) at(l, x, y, z, Kind.STONE); // the stone course
+                    else if (y == 2 && (frontBack && (x == 1 || x == w - 2) || !frontBack && (z == 2 || z == d - 3))) at(l, x, y, z, Kind.GLASS);
+                    else if (y == 5 && (frontBack && x == w / 2 || !frontBack && z == d / 2)) at(l, x, y, z, Kind.GLASS);
+                    else at(l, x, y, z, Kind.WALL);
+                }
+            }
+        }
+        // the door, in the middle of the front
+        at(l, w / 2, 1, d - 1, Kind.DOOR);
+        at(l, w / 2, 2, d - 1, Kind.CLEAR);
+        // the upper floor, with the ladder's hole
+        for (int x = 1; x < w - 1; x++) for (int z = 1; z < d - 1; z++) if (!(x == w - 2 && z == 1)) at(l, x, 4, z, Kind.FLOOR);
+        for (int y = 1; y <= 5; y++) at(l, w - 2, y, 1, Kind.LADDER);
+        Blueprints.gable(l, w, d, 6, false);
+        // the chimney on the left, from the ground through the roof
+        for (int y = 0; y <= 11; y++) at(l, -1, y, d / 2, Kind.CHIMNEY);
+        at(l, -1, 12, d / 2, Kind.SMOKE);
+        // below: the kitchen at the back, the table in the middle
+        at(l, 1, 1, 3, Kind.FURNACE, E);
+        at(l, 1, 1, 1, Kind.CRAFT);
+        at(l, 2, 1, 1, Kind.BARREL);
+        at(l, 3, 1, 1, Kind.CHEST);
+        at(l, 3, 1, 3, Kind.FENCE);
+        at(l, 3, 2, 3, Kind.PLATE);
+        at(l, 2, 1, 3, Kind.SEAT_W);
+        at(l, 4, 1, 3, Kind.SEAT_E);
+        at(l, 3, 3, 3, Kind.LANTERN);
+        // upstairs: two beds, a chest, a rug
+        at(l, 1, 5, 1, Kind.BED_FOOT);
+        at(l, 1, 5, 2, Kind.BED_HEAD);
+        at(l, 3, 5, 1, Kind.BED_FOOT);
+        at(l, 3, 5, 2, Kind.BED_HEAD);
+        at(l, 1, 5, 5, Kind.CHEST);
+        at(l, 3, 5, 4, Kind.CARPET, 3);
+        at(l, 4, 6, 3, Kind.LANTERN);
+        // the front: a step, two lights, hedges under the windows, a bench, the path
+        at(l, w / 2, 0, d, Kind.STEP, N);
+        at(l, w / 2 - 1, 2, d, Kind.TORCH, N);
+        at(l, w / 2 + 1, 2, d, Kind.TORCH, N);
+        at(l, 1, 0, d, Kind.HEDGE);
+        at(l, w - 2, 0, d, Kind.HEDGE);
+        at(l, 0, 0, d, Kind.FLOWER);
+        at(l, w - 1, 0, d, Kind.FLOWER);
+        for (int z = d + 1; z <= d + 2; z++) at(l, w / 2, -1, z, Kind.PATH);
+        at(l, -1, 2, 2, Kind.SHUTTER, W);
+        at(l, -1, 2, d - 3, Kind.SHUTTER, W);
+        // the woodshed on the right: two posts, a slab roof, the logs stacked under it
+        for (int y = 0; y <= 2; y++) {
+            at(l, w + 1, y, 1, Kind.PILLAR);
+            at(l, w + 1, y, d - 2, Kind.PILLAR);
+        }
+        for (int x = w; x <= w + 1; x++) for (int z = 0; z < d; z++) at(l, x, 3, z, Kind.SLAB);
+        for (int z = 2; z <= d - 3; z++) {
+            at(l, w, 0, z, Kind.LOG_Z);
+            if (z != d - 3) at(l, w, 1, z, Kind.LOG_Z);
+        }
+        at(l, w + 1, 0, 3, Kind.BARREL);
         return l;
     }
 

@@ -313,15 +313,38 @@ public final class Blueprints {
 
     /** A sheep pen: a fence ring with a wide gate in the middle of the front side. */
     public static List<Step> pen() {
+        // a paddock: log posts with rails between, a gate in the front, at the back a lean-to shelter with hay under
+        // it, a water trough beside it, a path out of the gate
         List<Step> l = new ArrayList<>();
         int n = PEN;
         for (int x = 0; x < n; x++) {
             for (int z = 0; z < n; z++) {
                 boolean border = x == 0 || z == 0 || x == n - 1 || z == n - 1;
+                if (!border) continue;
+                boolean post = (x == 0 || x == n - 1 || x == n / 2) && (z == 0 || z == n - 1 || z == n / 2) && !(z == n - 1 && x == n / 2);
                 boolean gate = z == n - 1 && x == n / 2;
-                if (border) l.add(new Step(x, 0, z, gate ? Kind.GATE : Kind.FENCE)); // a gate in the front, or the animals walk out
+                l.add(new Step(x, 0, z, gate ? Kind.GATE : post ? Kind.PILLAR : Kind.FENCE, gate ? S : -1));
+                if (post && !(z == 0 && x <= 4)) l.add(new Step(x, 1, z, Kind.TORCH));
             }
         }
+        // the shelter in the back corner
+        for (int y = 0; y <= 2; y++) {
+            l.add(new Step(0, y, 0, Kind.PILLAR));
+            l.add(new Step(4, y, 0, Kind.PILLAR));
+            l.add(new Step(4, y, 3, Kind.PILLAR));
+            l.add(new Step(0, y, 3, Kind.PILLAR));
+        }
+        for (int x = 1; x <= 3; x++) for (int y = 0; y <= 1; y++) l.add(new Step(x, y, 0, Kind.WALL));
+        for (int x = -1; x <= 5; x++) for (int z = -1; z <= 4; z++) l.add(new Step(x, 3, z, Kind.SLAB));
+        l.add(new Step(1, 0, 1, Kind.HAY));
+        l.add(new Step(2, 0, 1, Kind.HAY));
+        l.add(new Step(1, 1, 1, Kind.HAY));
+        l.add(new Step(3, 0, 1, Kind.COMPOSTER));
+        // the trough
+        l.add(new Step(7, -1, 1, Kind.WATER));
+        l.add(new Step(8, -1, 1, Kind.WATER));
+        // out of the gate
+        for (int z = n; z <= n + 1; z++) l.add(new Step(n / 2, -1, z, Kind.PATH));
         return l;
     }
 
@@ -554,6 +577,7 @@ public final class Blueprints {
             case "tallhouse" -> new int[]{5, 6};
             case "twin" -> new int[]{9, 6};
             case "farmhouse" -> new int[]{13, 9};
+            case "cottage" -> new int[]{9, 8};
             case "mansion" -> new int[]{16, 13};
             default -> new int[]{w, d};
         };

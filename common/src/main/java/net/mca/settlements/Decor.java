@@ -109,11 +109,11 @@ public final class Decor {
             if (!prop && !hang) continue;
             if (prop) {
                 int code = switch (flavour) {
-                    case "store" -> new int[]{BARREL, CRATE, HAY, BARREL, CRATE}[pick];
-                    case "tavern" -> new int[]{BARREL, BARREL, CRATE, BARREL, POT}[pick];
-                    case "hall" -> new int[]{BOOKS, BOOKS, BARREL, BOOKS, POT}[pick];
-                    case "shop" -> new int[]{BARREL, CRATE, BOOKS, CRATE, POT}[pick];
-                    default -> new int[]{BARREL, BOOKS, CRATE, POT, BARREL}[pick];
+                    case "store" -> new int[]{BARREL, CRATE, HAY, BARREL, CRATE}[pick % 5];
+                    case "tavern" -> new int[]{BARREL, BARREL, CRATE, BARREL, POT}[pick % 5];
+                    case "hall" -> new int[]{BOOKS, BOOKS, BARREL, BOOKS, POT}[pick % 5];
+                    case "shop" -> new int[]{BARREL, CRATE, BOOKS, CRATE, POT}[pick % 5];
+                    default -> new int[]{BARREL, BOOKS, CRATE, POT, BARREL}[pick % 5];
                 };
                 if (tier == 0 && code == BOOKS) code = CRATE; // no books in a hovel
                 out.add(new Step(x, y, z, Kind.PROP, code));

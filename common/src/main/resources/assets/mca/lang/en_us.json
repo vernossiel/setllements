@@ -1909,5 +1909,8 @@
   "settlements.talk.evening.a": "Well, that's the day done.",
   "settlements.talk.evening.b": "My feet are aching.",
   "settlements.talk.evening.c": "Sit a little longer?",
-  "settlements.talk.evening.d": "Let's. The stars are lovely tonight."
+  "settlements.talk.evening.d": "Let's. The stars are lovely tonight.",
+  "settlements.building.cottage": "cottage",
+  "settlements.say.build.cottage": "A cottage with a woodshed.",
+  "settlements.building.demolish:cottage": "taking down an old building"
 }

@@ -74,7 +74,7 @@ public final class Rebuild {
         int area = Math.max(1, w) * Math.max(1, d);
         int pick = Math.floorMod(b.getId() * 7 + area, 3);
         if ((lv == Plan.Level.TOWN || lv == Plan.Level.FORTRESS) && area >= 40) return new String[]{"manor", "tallhouse", "porch"}[pick];
-        if (lv != Plan.Level.HAMLET && area >= 60) return new String[]{"annex", "farmhouse", "longhouse"}[pick];
+        if (lv != Plan.Level.HAMLET && area >= 60) return new String[]{"annex", "farmhouse", "cottage"}[pick];
         if (area <= 30) return lv == Plan.Level.HAMLET ? new String[]{"hut", "hut", "twin"}[pick] : new String[]{"house", "porch", "twin"}[pick];
         return new String[]{"house", "longhouse", "porch"}[pick];
     }

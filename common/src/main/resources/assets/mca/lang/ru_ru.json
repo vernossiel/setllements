@@ -1797,5 +1797,8 @@
   "settlements.talk.evening.a": "Вот и день прошёл.",
   "settlements.talk.evening.b": "Ноги гудят.",
   "settlements.talk.evening.c": "Посидим ещё немного?",
-  "settlements.talk.evening.d": "Посидим. Звёзды сегодня красивые."
+  "settlements.talk.evening.d": "Посидим. Звёзды сегодня красивые.",
+  "settlements.building.cottage": "двухэтажный дом",
+  "settlements.say.build.cottage": "Двухэтажный дом с дровником.",
+  "settlements.building.demolish:cottage": "снос старого здания"
 }
