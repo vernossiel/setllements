@@ -12,7 +12,7 @@ import net.minecraft.util.math.BlockPos;
  * chests; the builder walks there to pick up a load of materials before he starts laying blocks.
  */
 public final class Haul {
-    private static final int FULL_LOAD = 48;
+    static final int FULL_LOAD = 48;
 
     private Haul() {
     }

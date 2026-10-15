@@ -38,12 +38,26 @@ public final class Doing {
         NOTES.put(v.getUuid(), new Note(key, args, v.getWorld().getTime()));
     }
 
+    private record Plan(Text chain, long at) {
+    }
+
+    private static final Map<UUID, Plan> PLANS = new HashMap<>();
+
+    /** The chain of work he has worked out (see Chain), shown after what he is doing. */
+    public static void plan(VillagerEntityMCA v, Text chain) {
+        PLANS.put(v.getUuid(), new Plan(chain, v.getWorld().getTime()));
+    }
+
     public static Text describe(VillagerEntityMCA v) {
         Note n = NOTES.get(v.getUuid());
         long now = v.getWorld().getTime();
         if (v.isSleeping()) return Text.translatable("settlements.doing.sleep");
         if (n == null || now - n.at() > 200) return Text.translatable("settlements.doing.idle");
-        return Text.translatable(n.key(), n.args());
+        net.minecraft.text.MutableText t = Text.translatable(n.key(), n.args()).copy();
+        Plan p = PLANS.get(v.getUuid());
+        if (p != null && now - p.at() < 60) t.append(Text.literal("  [").formatted(Formatting.GRAY))
+                .append(Text.translatable("settlements.chain.plan", p.chain()).formatted(Formatting.GRAY)).append(Text.literal("]").formatted(Formatting.GRAY));
+        return t;
     }
 
     /** /settle why: on or off for this player. */

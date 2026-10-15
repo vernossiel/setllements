@@ -21,6 +21,7 @@ import java.util.Map;
 public final class Mining {
     private static final int MAX_LEVEL = 8;
     private static final int STONE_QUOTA = 1200;
+    static final int QUOTA = STONE_QUOTA;
     private static final Map<Integer, List<Step>> LEVELS = new HashMap<>();
 
     private Mining() {

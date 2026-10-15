@@ -2056,5 +2056,13 @@
   "settlements.plan.idle.tell": "%s, I've nothing to do. How can I help the village?",
   "settlements.plan.idle.answer.0": "Help the builders, %s, they're always short of something.",
   "settlements.plan.idle.answer.1": "Rest for now, %s. There'll be work tomorrow.",
-  "settlements.plan.idle.answer.2": "Go out to the edge, %s, see if there's wood or stone out there."
+  "settlements.plan.idle.answer.2": "Go out to the edge, %s, see if there's wood or stone out there.",
+  "settlements.chain.plan": "plan: %s",
+  "settlements.chain.axe": "get an axe",
+  "settlements.chain.fell": "fell till the bag is full",
+  "settlements.chain.grove": "fell the grown grove",
+  "settlements.chain.haul": "carry it to the stores",
+  "settlements.chain.haul_end": "end of shift - take in what he has",
+  "settlements.chain.pick": "get a pick and a shovel",
+  "settlements.chain.dig": "dig till the bag is full"
 }

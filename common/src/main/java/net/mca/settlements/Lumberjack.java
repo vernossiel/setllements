@@ -29,6 +29,7 @@ public final class Lumberjack {
     private static final int RADIUS = 72;
     private static final int MIN_TREES_LEFT = 6;
     private static final int LOG_QUOTA = 256;
+    static final int QUOTA = LOG_QUOTA;
     private static final int LOGS_PER_SECOND = 2;
     /** Trees nobody could get to lately, by position, until (world time): passed over for a while. */
     private static final java.util.Map<Long, Long> UNREACHABLE = new java.util.HashMap<>();
@@ -243,7 +244,7 @@ public final class Lumberjack {
         return true;
     }
 
-    private static int stockLogs(Village village) {
+    static int stockLogs(Village village) {
         int n = 0;
         for (ItemStack s : village.storageBuffer) if (s.isIn(net.minecraft.registry.tag.ItemTags.LOGS)) n += s.getCount();
         return n;

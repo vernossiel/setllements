@@ -47,6 +47,7 @@ public class Village implements Iterable<Building> {
     public final Set<BlockPos> grove = new HashSet<>(), knownOres = new HashSet<>();
     public int streets;
     public NbtCompound memories = new NbtCompound();
+    public NbtCompound orderBook = new NbtCompound();
     public net.mca.settlements.House hall;
     public boolean seeded;
     public int groveSaplings;
@@ -152,6 +153,7 @@ public class Village implements Iterable<Building> {
         for (long l : v.getLongArray("knownOres")) knownOres.add(BlockPos.fromLong(l));
         streets = v.getInt("streets");
         memories = v.getCompound("memories");
+        orderBook = v.getCompound("orderBook");
         towers = v.getInt("towers");
         int[] flatPlots = v.getIntArray("plots");
         for (int i = 0; i + 3 < flatPlots.length; i += 4) plots.add(new int[]{flatPlots[i], flatPlots[i + 1], flatPlots[i + 2], flatPlots[i + 3]});
@@ -549,6 +551,7 @@ public class Village implements Iterable<Building> {
         v.putLongArray("knownOres", knownOres.stream().mapToLong(BlockPos::asLong).toArray());
         v.putInt("streets", streets);
         v.put("memories", memories);
+        v.put("orderBook", orderBook);
         v.putInt("towers", towers);
         int[] flat = new int[plots.size() * 4];
         for (int i = 0; i < plots.size(); i++) System.arraycopy(plots.get(i), 0, flat, i * 4, 4);

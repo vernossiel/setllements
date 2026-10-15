@@ -87,6 +87,7 @@ public final class Talk {
                     end(c);
                     Mind.talked(v);
                     Mind.talked(other);
+                    Persona.befriend(v, other); // they get on a little better each time
                     v.settlementsTalkAfter = now + 900 + world.random.nextInt(900);
                     other.settlementsTalkAfter = v.settlementsTalkAfter;
                 }

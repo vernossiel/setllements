@@ -151,6 +151,9 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public long settlementsChatUntil;
     // the craft (see settlements.Trade): experience in his trade, seconds of work until he pauses, the pause left
     public int settlementsSkill, settlementsStretch = -1, settlementsPauseLeft;
+    /** Settlements' long memory: the master he is apprenticed to, and how close he has grown to the others (by talking). */
+    public java.util.UUID settlementsMaster;
+    public net.minecraft.nbt.NbtCompound settlementsBonds = new net.minecraft.nbt.NbtCompound();
     // the block he is breaking, like a player, a crack at a time (see settlements.Dig)
     public BlockPos settlementsDigPos;
     public float settlementsDigProgress;
@@ -1470,6 +1473,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         settlementsHunger = nbt.getInt("SettlementsHunger");
         settlementsHireUntil = nbt.getLong("SettlementsHireUntil");
         settlementsSkill = nbt.getInt("SettlementsSkill");
+        settlementsMaster = nbt.containsUuid("SettlementsMaster") ? nbt.getUuid("SettlementsMaster") : null;
+        settlementsBonds = nbt.getCompound("SettlementsBonds");
         getTypeDataManager().load(this, nbt);
         relations.readFromNbt(nbt);
         longTermMemory.readFromNbt(nbt);
@@ -1505,6 +1510,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         nbt.putInt("SettlementsHunger", settlementsHunger);
         nbt.putLong("SettlementsHireUntil", settlementsHireUntil);
         nbt.putInt("SettlementsSkill", settlementsSkill);
+        if (settlementsMaster != null) nbt.putUuid("SettlementsMaster", settlementsMaster);
+        nbt.put("SettlementsBonds", settlementsBonds);
         getTypeDataManager().save(this, nbt);
         relations.writeToNbt(nbt);
         longTermMemory.writeToNbt(nbt);

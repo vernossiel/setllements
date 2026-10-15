@@ -1944,5 +1944,13 @@
   "settlements.plan.idle.tell": "%s, мне нечем заняться. Чем помочь деревне?",
   "settlements.plan.idle.answer.0": "Помоги строителям, %s, им вечно чего-то не хватает.",
   "settlements.plan.idle.answer.1": "Отдохни пока, %s. Завтра будет работа.",
-  "settlements.plan.idle.answer.2": "Сходи на окраину, %s, глянь, нет ли там леса или камня."
+  "settlements.plan.idle.answer.2": "Сходи на окраину, %s, глянь, нет ли там леса или камня.",
+  "settlements.chain.plan": "план: %s",
+  "settlements.chain.axe": "достать топор",
+  "settlements.chain.fell": "рубить до полной сумки",
+  "settlements.chain.grove": "рубить выросшую рощу",
+  "settlements.chain.haul": "отнести на склад",
+  "settlements.chain.haul_end": "конец смены — отнести, что есть",
+  "settlements.chain.pick": "достать кирку и лопату",
+  "settlements.chain.dig": "копать до полной сумки"
 }

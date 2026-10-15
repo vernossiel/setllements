@@ -151,7 +151,14 @@ public final class Persona {
         x += 0.4 - Math.abs(ta.sociability() - tb.sociability());
         if (a.getProfession() == b.getProfession()) x += 0.2;
         x -= (ta.temper() + tb.temper()) * 0.25;
+        x += Math.min(0.6, a.settlementsBonds.getInt(b.getUuidAsString()) * 0.03); // the talks they have had
         return x;
+    }
+
+    /** One more talk between them: the bond grows on both sides (kept with the villagers). */
+    public static void befriend(VillagerEntityMCA a, VillagerEntityMCA b) {
+        a.settlementsBonds.putInt(b.getUuidAsString(), Math.min(50, a.settlementsBonds.getInt(b.getUuidAsString()) + 1));
+        b.settlementsBonds.putInt(a.getUuidAsString(), Math.min(50, b.settlementsBonds.getInt(a.getUuidAsString()) + 1));
     }
 
     /** His best friend in the village who is up and about, or null. */

@@ -32,7 +32,37 @@ public final class Orders {
     }
 
     private static EnumMap<Needs.Need, Order> book(Village village) {
-        return BOOK.computeIfAbsent(village.getId(), k -> new EnumMap<>(Needs.Need.class));
+        return BOOK.computeIfAbsent(village.getId(), k -> load(village));
+    }
+
+    /** The book as it stood when the world was saved (kept with the village). */
+    private static EnumMap<Needs.Need, Order> load(Village village) {
+        EnumMap<Needs.Need, Order> b = new EnumMap<>(Needs.Need.class);
+        net.minecraft.nbt.NbtCompound nbt = village.orderBook;
+        for (String key : nbt.getKeys()) {
+            try {
+                net.minecraft.nbt.NbtCompound o = nbt.getCompound(key);
+                Needs.Need what = Needs.Need.valueOf(key);
+                b.put(what, new Order(what, o.getInt("amount"), o.getString("for"), o.containsUuid("taker") ? o.getUuid("taker") : null,
+                        o.contains("takerName") ? o.getString("takerName") : null, 0));
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return b;
+    }
+
+    private static void save(Village village) {
+        net.minecraft.nbt.NbtCompound nbt = new net.minecraft.nbt.NbtCompound();
+        for (Order o : book(village).values()) {
+            net.minecraft.nbt.NbtCompound c = new net.minecraft.nbt.NbtCompound();
+            c.putInt("amount", o.amount());
+            c.putString("for", o.forWhom());
+            if (o.taker() != null) c.putUuid("taker", o.taker());
+            if (o.takerName() != null) c.putString("takerName", o.takerName());
+            nbt.put(o.what().name(), c);
+        }
+        village.orderBook = nbt;
+        village.markDirty();
     }
 
     public static List<Order> open(Village village) {
@@ -80,14 +110,19 @@ public final class Orders {
         // struck off: the stores hold enough, or nobody wants it any more
         b.values().removeIf(o -> o.what() == Needs.Need.FOOD ? !Forage.hungry(village)
                 : (s == null || s.need() != o.what()) && stock(village, o.what()) >= o.amount() / 2 || stock(village, o.what()) >= o.amount() + 8);
-        // takers who walked off it
+        // takers who walked off it (a book read back from the save gives its takers a while to turn up)
         for (Map.Entry<Needs.Need, Order> e : b.entrySet()) {
             Order o = e.getValue();
             if (o.taker() == null) continue;
+            if (o.takenAt() == 0) {
+                e.setValue(new Order(o.what(), o.amount(), o.forWhom(), o.taker(), o.takerName(), now));
+                continue;
+            }
             Entity t = world.getEntity(o.taker());
             if (!(t instanceof VillagerEntityMCA tv) || !tv.isAlive() || now - o.takenAt() > STALE)
                 e.setValue(new Order(o.what(), o.amount(), o.forWhom(), null, null, 0));
         }
+        save(village);
     }
 
     /**

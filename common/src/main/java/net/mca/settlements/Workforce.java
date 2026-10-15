@@ -247,16 +247,15 @@ public final class Workforce {
             } else if (village == null) worked = false; // no village (yet): no village work
             else if (prof == VillagerProfession.CARTOGRAPHER) worked = Builder.work(v, village);
             else if (prof == VillagerProfession.BUTCHER) worked = Cooking.work(v, village);
-            else if (prof == VillagerProfession.MASON) {
-                if (v.age % 400 == 0 || !Mining.hasPick(v)) Gear.equipTool(v, village, Chore.PROSPECT);
+            else if (prof == VillagerProfession.MASON && v.getWorld() instanceof net.minecraft.server.world.ServerWorld mw2) {
                 if (v.age % 400 == 0) Gear.equipShovel(v, village); // and a shovel for the earth and gravel
-                worked = Mining.work(v, village);
+                worked = Chain.mine(v, village, mw2, time); // the chain he works out: a pick, the mine, a full bag, the stores
             }
             else if (prof == VillagerProfession.ARMORER) worked = Smithing.work(v, village);
             else if (prof == VillagerProfession.CLERIC) worked = Healing.work(v, village);
-            else if (prof == VillagerProfession.FLETCHER || prof == VillagerProfession.TOOLSMITH) {
-                if (v.age % 400 == 0 || !Gear.has(v, net.minecraft.item.AxeItem.class)) Gear.equipTool(v, village, Chore.CHOP);
-                worked = Lumberjack.work(v, village);
+            else if ((prof == VillagerProfession.FLETCHER || prof == VillagerProfession.TOOLSMITH) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld lw2) {
+                if (v.age % 400 == 0) Gear.equipTool(v, village, Chore.CHOP); // a better axe, when there is one to be had
+                worked = Chain.lumber(v, village, lw2, time); // an axe, a tree (the grove, the woods), a full bag, the stores
             }
             else worked = Husbandry.work(v, village);
             if (!helping && !foraging) v.settlementsIdleWork = worked || Move.goal(v) != null ? 0 : v.settlementsIdleWork + 1; // walking to work is not idling
@@ -307,8 +306,11 @@ public final class Workforce {
     private static boolean apprentice(VillagerEntityMCA v, net.mca.server.world.data.Village village, net.minecraft.server.world.ServerWorld world) {
         if (!Persona.working(v, world.getTimeOfDay())) return false;
         VillagerEntityMCA master = null;
-        java.util.UUID m = MASTER.get(v.getUuid());
-        if (m != null && world.getEntity(m) instanceof VillagerEntityMCA mm && mm.isAlive() && !mm.isSleeping() && Persona.working(mm, world.getTimeOfDay())) master = mm;
+        java.util.UUID m = v.settlementsMaster != null ? v.settlementsMaster : MASTER.get(v.getUuid());
+        if (m != null && world.getEntity(m) instanceof VillagerEntityMCA mm && mm.isAlive() && !mm.isSleeping() && Persona.working(mm, world.getTimeOfDay())) {
+            master = mm;
+            MASTER.put(v.getUuid(), m);
+        }
         if (master == null) {
             double bd = 64 * 64;
             for (VillagerEntityMCA r : village.getResidents(world)) {
@@ -322,6 +324,7 @@ public final class Workforce {
             }
             if (master == null) return false;
             MASTER.put(v.getUuid(), master.getUuid());
+            v.settlementsMaster = master.getUuid(); // remembered: he goes back to the same master
             Speech.sayNow(v, "settlements.say.apprentice.ask", master.getName());
             master.settlementsReplyKey = "settlements.say.apprentice.ok";
             master.settlementsReplyArgs = new Object[]{v.getName()};
