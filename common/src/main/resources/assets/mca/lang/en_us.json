@@ -2007,5 +2007,6 @@
   "settlements.say.apprentice.ask": "%s, will you take me on? I want to learn.",
   "settlements.say.apprentice.ok": "All right, %s, watch and hand me what I ask for.",
   "settlements.say.apprentice.learn": "I think I'm getting how %s does it.",
-  "settlements.doing.apprentice": "apprenticed to %s: learning, fetching, picking up"
+  "settlements.doing.apprentice": "apprenticed to %s: learning, fetching, picking up",
+  "settlements.doing.mine.remembered": "going for ore he spotted earlier"
 }

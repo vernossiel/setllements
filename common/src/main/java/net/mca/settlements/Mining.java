@@ -150,6 +150,9 @@ public final class Mining {
         return worked;
     }
 
+    /** Ores the miners have seen, per village. */
+    private static final Map<Integer, java.util.Set<BlockPos>> ORES = new HashMap<>();
+
     static boolean ore(BlockState s) {
         return s.isIn(BlockTags.COAL_ORES) || s.isIn(BlockTags.IRON_ORES) || s.isIn(BlockTags.COPPER_ORES) || s.isIn(BlockTags.GOLD_ORES)
                 || s.isIn(BlockTags.REDSTONE_ORES) || s.isIn(BlockTags.LAPIS_ORES) || s.isIn(BlockTags.DIAMOND_ORES) || s.isIn(BlockTags.EMERALD_ORES);
@@ -183,6 +186,25 @@ public final class Mining {
             } else if (p.getY() >= feet.getY() && p.getY() <= feet.getY() + 1 && d < hd) {
                 hd = d;
                 hidden = p.toImmutable();
+            }
+        }
+        // what he saw he remembers; with nothing in view he goes back to an ore he noted nearby before
+        if (v.getResidency().getHomeVillage().isPresent()) {
+            int vid = v.getResidency().getHomeVillage().get().getId();
+            java.util.Set<BlockPos> known = ORES.computeIfAbsent(vid, k -> new java.util.HashSet<>());
+            known.removeIf(p -> world.isChunkLoaded(p.getX() >> 4, p.getZ() >> 4) && !ore(world.getBlockState(p)));
+            if (shown != null) known.add(shown);
+            if (hidden != null && known.size() < 128) known.add(hidden);
+            if (shown == null && hidden == null) {
+                double kd = 12 * 12;
+                for (BlockPos p : known) {
+                    double d = p.getSquaredDistance(feet);
+                    if (d < kd && Math.abs(p.getY() - feet.getY()) <= 1) {
+                        kd = d;
+                        hidden = p;
+                    }
+                }
+                if (hidden != null) Doing.set(v, "settlements.doing.mine.remembered");
             }
         }
         BlockPos dig = shown;

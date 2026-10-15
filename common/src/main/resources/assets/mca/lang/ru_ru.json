@@ -1895,5 +1895,6 @@
   "settlements.say.apprentice.ask": "%s, возьмёшь в подмастерья? Хочу научиться.",
   "settlements.say.apprentice.ok": "Ладно, %s, смотри и подавай, что скажу.",
   "settlements.say.apprentice.learn": "Кажется, понемногу понимаю, как %s это делает.",
-  "settlements.doing.apprentice": "подмастерье у %s: учится, подаёт, подбирает"
+  "settlements.doing.apprentice": "подмастерье у %s: учится, подаёт, подбирает",
+  "settlements.doing.mine.remembered": "идёт к руде, которую заприметил раньше"
 }
