@@ -87,11 +87,14 @@ public final class Staffing {
         if (p >= 3) roles.add(new Role(VillagerProfession.FARMER, Math.max(1, p / 6) + (hungry ? 1 : 0)));
         roles.add(new Role(VillagerProfession.FLETCHER, Math.max(1, p / 4) + (short_ != null && short_.need() == Needs.Need.PLANKS ? 1 : 0)));
         if (p >= 3) roles.add(new Role(VillagerProfession.MASON, Math.max(1, p / 5) + (short_ != null && short_.need() == Needs.Need.COBBLE ? 1 : 0)));
+        // a smith only once there is a smithy to work in: tools, ingots
+        boolean smithy = v.smithyBuilt && v.smithyFurnace != null;
+        if (smithy && p >= 4) roles.add(new Role(VillagerProfession.ARMORER, 1));
 
         // trades that are switched off for now go back to the pool
         for (VillagerEntityMCA r : adults) {
             VillagerProfession rp = r.getProfession();
-            if (isOurRole(rp) && !isCore(rp)) {
+            if (isOurRole(rp) && !isCore(rp) && !(rp == VillagerProfession.ARMORER && smithy)) {
                 r.setProfession(VillagerProfession.NONE);
                 r.reinitializeBrain(world);
             }

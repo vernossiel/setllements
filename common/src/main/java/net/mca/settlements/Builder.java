@@ -1199,19 +1199,29 @@ public final class Builder {
 
     private static void registerSmithy(Village village) {
         BlockPos o = village.buildOrigin;
-        int[] fp = Blueprints.footprint(village.buildType, 0, 0);
+        int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
+        Templates.Template t = Templates.of(village.buildType);
+        BlockPos table = null;
         for (Step step : plan(village)) {
             int[] r = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], village.buildRot);
             BlockPos p = o.add(r[0], step.dy(), r[1]);
             if (step.kind() == Kind.FURNACE) village.smithyFurnace = p;
             else if (step.kind() == Kind.ANVIL) village.smithyAnvil = p;
+            else if (t != null && step.kind() == Kind.TPL_FIT) { // a MineColonies smithy: its forge and anvil from the template
+                Block b = t.palette()[step.face()].getBlock();
+                if (b instanceof AbstractFurnaceBlock && village.smithyFurnace == null) village.smithyFurnace = p;
+                else if (b instanceof AnvilBlock) village.smithyAnvil = p;
+                else if (b == Blocks.SMITHING_TABLE) table = p;
+            }
         }
+        if (village.smithyAnvil == null) village.smithyAnvil = table;
+        if (village.smithyFurnace == null) village.smithyFurnace = village.smithyAnvil; // the forge is where he works
     }
 
     /** Reads the finished tavern's working blocks back out of its plan. */
     private static void registerTavern(Village village) {
         BlockPos o = village.buildOrigin;
-        int[] fp = Blueprints.footprint(village.buildType, 0, 0);
+        int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
         BlockPos smoker = null, barrel = null, craft = null;
         List<BlockPos> seats = new java.util.ArrayList<>();
         for (Step step : plan(village)) {
