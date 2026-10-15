@@ -35,7 +35,7 @@ public final class Plan {
             new Goal("well", Level.HAMLET, v -> !v.wellBuilt, 30, 0, 0, 0),
             new Goal("storage", Level.HAMLET, v -> !v.storageBuilt && v.getPopulation() >= 3, 150, 0, 0, 0),
             new Goal("housing", Level.HAMLET, v -> v.getPopulation() >= v.getMaxPopulation(), 100, 0, 0, 3),
-            new Goal("farm", Level.HAMLET, v -> v.farms < Math.max(1, v.getPopulation() / 4), 30, 0, 0, 0),
+            new Goal("farm", Level.HAMLET, v -> v.farms < Math.max(1, v.getPopulation() / (Forage.hungry(v) ? 3 : 4)), 30, 0, 0, 0),
             new Goal("pen", Level.HAMLET, v -> v.penCenter == null && v.getPopulation() >= 4, 50, 0, 0, 0),
             new Goal("rebuild", Level.HAMLET, v -> v.getPopulation() >= 3 && v.hall != null && Rebuild.candidate(v) != null, 120, 0, 0, 0),
             new Goal("sawmill", Level.HAMLET, v -> !Buildings.has(v, "sawmill") && v.getPopulation() >= 3, 40, 8, 0, 0),
@@ -74,6 +74,7 @@ public final class Plan {
         List<Status> list = new ArrayList<>();
         for (Goal g : GOALS) {
             if (g.minLevel().ordinal() > level.ordinal() || !g.active().test(v)) continue;
+            if (urgency(g.id(), v) < 0) continue; // not now
             list.add(new Status(g,
                     Math.max(0, g.planks() - Builder.stockPlanks(v)),
                     Math.max(0, g.cobble() - Builder.stockCobble(v)),
@@ -111,18 +112,21 @@ public final class Plan {
             case "sawmill" -> sh != null && sh.need() == Needs.Need.PLANKS ? 170 : 75;
             case "charcoal" -> 65;
             case "mason" -> sh != null && sh.need() == Needs.Need.COBBLE ? 140 : 55;
-            case "tower" -> danger >= 3 ? 200 : 55;
+            case "tower" -> danger >= 3 ? 200 : hungry ? -1 : 55;
             case "palisade" -> danger >= 3 ? 230 : 85;
             case "wall" -> danger >= 3 ? 190 : 50;
             case "barracks" -> danger >= 3 ? 180 : 45;
-            case "armory" -> danger >= 3 ? 120 : 35;
-            case "smithy" -> 80;
             case "tavern" -> 60;
-            case "market" -> 45;
-            case "chapel" -> recentDeath ? 150 : 35;
             case "jail" -> recentTheft ? 160 : 30;
-            case "hallup" -> 75;
-            case "rebuild" -> 55;
+            // a hungry village builds for food and shelter; fine buildings and pulling down the old ones wait
+            case "rebuild", "renovate", "shop", "market", "chapel", "hallup", "armory", "smithy" -> hungry ? -1 : switch (id) {
+                case "hallup" -> 75;
+                case "armory" -> danger >= 3 ? 120 : 35;
+                case "smithy" -> 80;
+                case "market" -> 45;
+                case "chapel" -> recentDeath ? 150 : 35;
+                default -> 55;
+            };
             default -> 50;
         };
     }

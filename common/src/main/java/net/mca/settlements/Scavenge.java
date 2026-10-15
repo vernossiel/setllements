@@ -114,7 +114,22 @@ public final class Scavenge {
     }
 
     private static boolean valid(ServerWorld world, Village village, BlockPos p, Needs.Need need, boolean anyBlock) {
-        return source(world.getBlockState(p), need, anyBlock) && !inPlot(village, p);
+        return source(world.getBlockState(p), need, anyBlock) && !inPlot(village, p) && bump(world, village, p);
+    }
+
+    /**
+     * A block that sticks up: at least three of its neighbours lie lower, and it is no lower than the village ground.
+     * Taking it levels the land; nobody digs pits, trenches or tunnels for stone (that is what the mine is for).
+     */
+    private static boolean bump(ServerWorld world, Village village, BlockPos p) {
+        int lower = 0;
+        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+            BlockPos n = p.offset(d);
+            if (world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, n.getX(), n.getZ()) - 1 < p.getY()) lower++;
+        }
+        BlockPos c = new BlockPos(village.getCenter());
+        int ground = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, c.getX(), c.getZ()) - 1;
+        return lower >= 3 && p.getY() >= ground;
     }
 
     private static boolean nearWater(ServerWorld world, BlockPos p) {
@@ -139,7 +154,7 @@ public final class Scavenge {
                 int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
                 BlockPos p = new BlockPos(x, y, z);
                 if (world.getBlockState(p).isOf(Blocks.SNOW)) p = p.down();
-                if (!source(world.getBlockState(p), need, anyBlock) || inPlot(village, p)) continue;
+                if (!source(world.getBlockState(p), need, anyBlock) || inPlot(village, p) || !bump(world, village, p)) continue;
                 if (nearWater(world, p) || Protection.insideStructure(village, p) || Protection.insideStructure(village, p.up())) continue;
                 found.add(p);
             }

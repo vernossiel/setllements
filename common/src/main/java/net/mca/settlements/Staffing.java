@@ -106,6 +106,14 @@ public final class Staffing {
             announce(elder, assign(world, pool.remove(world.random.nextInt(pool.size())), ProfessionsMCA.GUARD.get()), ProfessionsMCA.GUARD.get());
             guards++;
         }
+        // first one of every trade (a village with no miner gets no stone, however many farmers it has), then the extra hands
+        List<Role> firsts = new ArrayList<>();
+        for (Role role : roles) firsts.add(new Role(role.profession(), 1));
+        fill(world, elder, adults, pool, firsts, true);
+        fill(world, elder, adults, pool, roles, false);
+    }
+
+    private static void fill(ServerWorld world, VillagerEntityMCA elder, List<VillagerEntityMCA> adults, List<VillagerEntityMCA> pool, List<Role> roles, boolean firsts) {
         for (Role role : roles) {
             int have = (int) adults.stream().filter(r -> r.getProfession() == role.profession()).count();
             while (have < role.target()) {
@@ -117,7 +125,7 @@ public final class Staffing {
                     for (Role other : roles) {
                         if (other == role) continue;
                         List<VillagerEntityMCA> in = adults.stream().filter(r -> r.getProfession() == other.profession()).toList();
-                        if (in.size() > other.target() && roles.indexOf(other) > roles.indexOf(role)) {
+                        if (in.size() > other.target() && (firsts || roles.indexOf(other) > roles.indexOf(role))) {
                             who = in.get(in.size() - 1);
                             break;
                         }

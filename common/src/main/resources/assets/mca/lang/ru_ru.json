@@ -1641,5 +1641,11 @@
   "settlements.building.demolish:wealden": "снос старого здания",
   "settlements.building.rowhouse": "городской дом",
   "settlements.say.build.rowhouse": "Строю городской дом в три этажа, каждый выше над улицей.",
-  "settlements.building.demolish:rowhouse": "снос старого здания"
+  "settlements.building.demolish:rowhouse": "снос старого здания",
+  "settlements.say.forage.berries": "Ягоды поспели, наберу.",
+  "settlements.say.forage.berries.1": "Хоть ягодами перебьёмся.",
+  "settlements.say.forage.berries.2": "Сладкие! Детям понесу.",
+  "settlements.say.forage.hunt": "Ну-ка, иди сюда, ужин.",
+  "settlements.say.forage.hunt.1": "Без мяса не протянем.",
+  "settlements.say.forage.hunt.2": "Тихо... не спугнуть бы."
 }

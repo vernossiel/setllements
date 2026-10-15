@@ -251,6 +251,23 @@ public final class Move {
                 return true;
             }
             boolean dug = false;
+            // only a thin obstacle near the surface is dug through: never a tunnel into a hill
+            int surface = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, ahead.getX(), ahead.getZ());
+            BlockPos beyond = ahead.offset(dir);
+            boolean thin = passable(world, beyond) && passable(world, beyond.up()) || passable(world, beyond.offset(dir)) && passable(world, beyond.offset(dir).up());
+            boolean tunnel = !v.settlementsEscaping && (surface > feet.getY() + 3 || !thin);
+            if (tunnel) {
+                if (v.settlementsHandSec > HAND_AFTER + 30) {
+                    // no way through on foot after half a minute: he finds his own way round (put down by the goal)
+                    int gy = passable(world, goal) && passable(world, goal.up()) ? goal.getY()
+                            : world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, goal.getX(), goal.getZ());
+                    v.refreshPositionAndAngles(goal.getX() + 0.5, gy, goal.getZ() + 0.5, v.getYaw(), 0);
+                    v.settlementsHandSec = 0;
+                    return true;
+                }
+                v.settlementsSidestep = 3;
+                return false;
+            }
             for (BlockPos b : new BlockPos[]{ahead.up(), ahead}) {
                 if (!passable(world, b) && diggable(world, village, b)) {
                     dig(v, world, b);

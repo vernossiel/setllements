@@ -34,6 +34,8 @@ public final class Lumberjack {
     private static final java.util.Map<Long, Long> UNREACHABLE = new java.util.HashMap<>();
     /** Per lumberjack: what he is heading for (a tree or a wood) and since when. */
     private static final java.util.Map<java.util.UUID, long[]> HEADING = new java.util.HashMap<>();
+    /** The logs still standing of the tree a lumberjack has started on: once cut at the foot, it comes down whole. */
+    private static final java.util.Map<java.util.UUID, List<BlockPos>> FELLING = new java.util.HashMap<>();
 
     /** Ticks spent on the way to the same tree or wood; restarts when the goal changes. */
     private static long heading(VillagerEntityMCA v, BlockPos goal, long now) {
@@ -68,7 +70,15 @@ public final class Lumberjack {
             }
             v.settlementsExplore = null; // arrived: look around here
         }
-        if (v.lumberTarget == null || !world.getBlockState(v.lumberTarget).isIn(BlockTags.LOGS)) {
+        List<BlockPos> felling = FELLING.get(v.getUuid());
+        if (felling != null) {
+            felling.removeIf(p -> !world.getBlockState(p).isIn(BlockTags.LOGS));
+            if (felling.isEmpty() || v.lumberTarget == null) {
+                FELLING.remove(v.getUuid());
+                felling = null;
+            }
+        }
+        if (felling == null && (v.lumberTarget == null || !world.getBlockState(v.lumberTarget).isIn(BlockTags.LOGS))) {
             v.lumberTarget = null;
             List<BlockPos> trees = trees(world, v.getBlockPos(), village);
             if (trees.size() <= (force ? 1 : MIN_TREES_LEFT) && !force && v.settlementsExploreTries < 6) {
@@ -121,8 +131,8 @@ public final class Lumberjack {
             return false;
         }
 
-        // fell the trunk: the connected logs, lowest first
-        List<BlockPos> trunk = trunk(world, base);
+        // fell the trunk: the connected logs, lowest first; a tree already cut at the foot is finished off
+        List<BlockPos> trunk = felling != null ? felling : trunk(world, base);
         if (trunk.isEmpty()) {
             v.lumberTarget = null;
             return false;
@@ -139,7 +149,7 @@ public final class Lumberjack {
             Gear.equipTool(v, village, net.mca.entity.ai.Chore.CHOP);
             if (!Gear.has(v, net.minecraft.item.AxeItem.class)) return false;
         }
-        int cut = 0, budget = Prosperity.ops(v, village, LOGS_PER_SECOND);
+        int cut = 0, budget = Prosperity.ops(v, village, LOGS_PER_SECOND) * (felling != null ? 3 : 1); // the cut tree comes down fast
         if (budget == 0) return true; // a tired man swings slowly
         Gear.face(v, base);
         for (BlockPos p : trunk) {
@@ -154,6 +164,8 @@ public final class Lumberjack {
         v.swingHand(v.getDominantHand());
         Speech.say(v, "settlements.say.lumber.fell");
         if (cut == 0) return false; // nothing came down: not work
+        if (cut < trunk.size()) FELLING.put(v.getUuid(), new ArrayList<>(trunk.subList(cut, trunk.size())));
+        else FELLING.remove(v.getUuid());
         if (cut >= trunk.size()) {
             Speech.sayAny(v, "settlements.say.lumber.timber", 3); // down she comes
             plant(v, world, base);
@@ -247,7 +259,7 @@ public final class Lumberjack {
         ArrayDeque<BlockPos> queue = new ArrayDeque<>();
         queue.add(base);
         seen.add(base);
-        while (!queue.isEmpty() && out.size() < 64) {
+        while (!queue.isEmpty() && out.size() < 400) { // a giant spruce is a hundred logs and more
             BlockPos p = queue.poll();
             if (!world.getBlockState(p).isIn(BlockTags.LOGS)) continue;
             out.add(p);

@@ -1753,5 +1753,11 @@
   "settlements.building.demolish:wealden": "demolishing an old building",
   "settlements.building.rowhouse": "town house",
   "settlements.say.build.rowhouse": "Building a town house, three storeys, each jutting over the street.",
-  "settlements.building.demolish:rowhouse": "demolishing an old building"
+  "settlements.building.demolish:rowhouse": "demolishing an old building",
+  "settlements.say.forage.berries": "The berries are ripe, I'll pick some.",
+  "settlements.say.forage.berries.1": "Berries will tide us over.",
+  "settlements.say.forage.berries.2": "Sweet! I'll take some to the kids.",
+  "settlements.say.forage.hunt": "Come here, supper.",
+  "settlements.say.forage.hunt.1": "We won't last without meat.",
+  "settlements.say.forage.hunt.2": "Quiet... don't scare it off."
 }

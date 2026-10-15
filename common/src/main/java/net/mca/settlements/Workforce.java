@@ -206,7 +206,13 @@ public final class Workforce {
             // a worker with nothing to do for a while lends the builders a hand (and looks for his own work now and then)
             boolean helping = prof != VillagerProfession.CARTOGRAPHER && village != null && v.settlementsIdleWork >= 45 && v.settlementsIdleWork % 60 != 0
                     && v.getWorld() instanceof net.minecraft.server.world.ServerWorld hw && Life.helpBuilders(v, village, hw);
-            if (helping) {
+            // a hungry village: whoever has nothing to do goes out for food
+            boolean foraging = !helping && village != null && v.settlementsIdleWork >= 20 && prof != VillagerProfession.CARTOGRAPHER
+                    && Forage.hungry(village) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld fw && Forage.work(v, village, fw);
+            if (foraging) {
+                worked = true;
+                v.settlementsIdleWork = 20; // still idle at his own trade
+            } else if (helping) {
                 v.settlementsIdleWork++;
                 worked = true;
             } else if (village != null && isGatherer(prof) && Haul.carry(v, village, v.settlementsIdleWork >= 20)) {
@@ -225,7 +231,7 @@ public final class Workforce {
                 worked = Lumberjack.work(v, village);
             }
             else worked = Husbandry.work(v, village);
-            if (!helping) v.settlementsIdleWork = worked || Move.goal(v) != null ? 0 : v.settlementsIdleWork + 1; // walking to work is not idling
+            if (!helping && !foraging) v.settlementsIdleWork = worked || Move.goal(v) != null ? 0 : v.settlementsIdleWork + 1; // walking to work is not idling
             if (!worked) v.settlementsWorkSeconds++; // time on the job counts, walking included, for the next break
             if (worked) {
                 Trade.practise(v);
@@ -238,7 +244,13 @@ public final class Workforce {
             }
             return;
         }
-        // no trade of his own: he lends the builders a hand
+        // no trade of his own: food first when the village is hungry, otherwise he lends the builders a hand
+        if ((prof == VillagerProfession.NONE || prof == VillagerProfession.NITWIT) && village != null && !v.isElder() && Forage.hungry(village)
+                && v.getWorld() instanceof net.minecraft.server.world.ServerWorld gw && Forage.work(v, village, gw)) {
+            v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
+            v.settlementsHunger += HUNGER_RISE;
+            return;
+        }
         if ((prof == VillagerProfession.NONE || prof == VillagerProfession.NITWIT) && village != null && !v.isElder()
                 && v.getWorld() instanceof net.minecraft.server.world.ServerWorld lw && Life.helpBuilders(v, village, lw)) {
             v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
