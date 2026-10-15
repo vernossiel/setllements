@@ -216,9 +216,13 @@ public final class Move {
         v.settlementsHandLast = pos;
         if (there || progressing && v.getNavigation().isFollowingPath()) {
             v.settlementsHandSec = 0;
+            if (there) Route.forget(v);
             return false;
         }
         if (++v.settlementsHandSec < HAND_AFTER) return false;
+        // the ordinary path finder got him nowhere: he works out the way himself (see Route); the old straight-line
+        // shoving below is only for climbing out of a pit
+        if (!v.settlementsEscaping && Route.tick(v, village, world, goal)) return true;
 
         v.getNavigation().stop();
         BlockPos feet = v.getBlockPos();

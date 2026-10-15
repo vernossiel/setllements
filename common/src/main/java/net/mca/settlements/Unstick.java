@@ -19,7 +19,6 @@ import java.util.Optional;
 public final class Unstick {
     private static final int CLEAR_AFTER = 4;     // seconds without progress before breaking blocks
     private static final int TELEPORT_AFTER = 14; // seconds before giving up on walking
-    private static final int MAX_TELEPORT = 32;
 
     private Unstick() {
     }
@@ -85,40 +84,17 @@ public final class Unstick {
             BlockPos feet = v.getBlockPos();
             for (int h = 0; h < 3; h++) {
                 BlockPos ahead = feet.add(sx, h, sz);
-                if (breakable(world, village, ahead)) {
-                    world.breakBlock(ahead, false, v);
-                    v.swingHand(v.getDominantHand());
+                if (breakable(world, village, ahead) && !Dig.busy(v)) {
+                    Dig.start(v, ahead); // a crack at a time, not by magic
                     break;
                 }
             }
         }
         if (v.settlementsStuckSec >= TELEPORT_AFTER) {
+            // still nowhere: he stops trusting the ordinary path finder and works out the way himself (Move -> Route),
+            // which only as the very last resort sets him down near the goal
             v.settlementsStuckSec = 0;
-            v.getNavigation().stop();
-            double dist = Math.sqrt(g.getSquaredDistance(v.getBlockPos()));
-            BlockPos dest = dist <= MAX_TELEPORT ? safeSpot(world, g) : null;
-            if (dest != null) {
-                v.refreshPositionAndAngles(dest.getX() + 0.5, dest.getY(), dest.getZ() + 0.5, v.getYaw(), 0);
-            } else {
-                v.getBrain().forget(MemoryModuleType.WALK_TARGET); // give up this errand
-            }
+            Move.to(v, g.getX() + 0.5, g.getY(), g.getZ() + 0.5, 0.5);
         }
-    }
-
-    private static BlockPos safeSpot(ServerWorld world, BlockPos near) {
-        for (int r = 0; r <= 3; r++) {
-            for (int dy = -2; dy <= 3; dy++) {
-                for (int dx = -r; dx <= r; dx++) {
-                    for (int dz = -r; dz <= r; dz++) {
-                        BlockPos p = near.add(dx, dy, dz);
-                        if (world.getBlockState(p).isAir() && world.getBlockState(p.up()).isAir()
-                                && world.getBlockState(p.down()).isSolidBlock(world, p.down())) {
-                            return p;
-                        }
-                    }
-                }
-            }
-        }
-        return null;
     }
 }
