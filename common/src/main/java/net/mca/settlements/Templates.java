@@ -155,7 +155,7 @@ public final class Templates {
         Template t = of(village.buildType);
         if (t == null || step.face() < 0 || step.face() >= t.palette().length) return null;
         BlockState s = reskin(t.palette()[step.face()], Palette.of(village));
-        return s.rotate(BlockRotation.values()[rot & 3]);
+        return s.rotate(net.minecraft.util.BlockRotation.values()[rot & 3]);
     }
 
     /** Northern spruce becomes the village's own wood. */
