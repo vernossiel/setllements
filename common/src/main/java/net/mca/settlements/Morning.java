@@ -60,6 +60,6 @@ public final class Morning {
     private static BlockPos wellOrFire(Village village, ServerWorld world) {
         for (Built b : village.built) if (Buildings.base(b.type()).equals("well")) return b.point(2, 0, 5); // in front of it
         BlockPos fire = Camp.hearth(village, world);
-        return fire != null ? fire : BlockPos.ofFloored(village.getCenter());
+        return fire != null ? fire : new BlockPos(village.getCenter());
     }
 }
