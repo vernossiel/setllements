@@ -148,20 +148,26 @@ public final class Forms {
         thatch(l, 0, 0, w, d, 1, Kind.DAUB);
         at(l, 3, 1, d - 1, Kind.DOOR);
         at(l, 3, 2, d - 1, Kind.CLEAR);
-        // the hearth, and the smoke hole above it
-        at(l, 3, 0, 5, Kind.SMOKE);
-        for (int[] c : new int[][]{{2, 5}, {4, 5}, {3, 4}, {3, 6}}) at(l, c[0], 0, c[1], Kind.STONE);
-        at(l, 3, 6, 5, Kind.CLEAR);
+        // the hearth in the middle of the floor, and the smoke hole above it
+        at(l, 3, 0, 6, Kind.SMOKE);
+        for (int[] c : new int[][]{{2, 6}, {4, 6}, {3, 5}, {3, 7}}) at(l, c[0], 0, c[1], Kind.STONE);
+        at(l, 3, 6, 6, Kind.CLEAR);
+        // the elder's place at the far end: the lectern, a village chest on either side, the way to them clear
+        at(l, 3, 1, 1, Kind.LECTERN);
+        at(l, 2, 1, 1, Kind.HALL_CHEST);
+        at(l, 4, 1, 1, Kind.HALL_CHEST);
         // benches along the walls, facing the fire
-        for (int z : new int[]{2, 3, 7, 8}) {
+        for (int z : new int[]{4, 5, 7, 8}) {
             at(l, 1, 1, z, Kind.PEW, E);
             at(l, 5, 1, z, Kind.PEW, W);
         }
-        at(l, 3, 1, 1, Kind.LECTERN);
-        at(l, 1, 1, 1, Kind.HALL_CHEST);
-        at(l, 5, 1, 1, Kind.HALL_CHEST);
-        at(l, 2, 1, 1, Kind.BARREL);
-        at(l, 4, 1, 1, Kind.HAY);
+        // light: lanterns from the ridge, torches on the posts
+        at(l, 3, 5, 2, Kind.LANTERN);
+        at(l, 3, 5, 9, Kind.LANTERN);
+        for (int z : new int[]{3, 9}) {
+            at(l, 1, 2, z, Kind.TORCH, W);
+            at(l, 5, 2, z, Kind.TORCH, E);
+        }
         // outside: the step, the path, a torch on a pole
         at(l, 3, 0, d, Kind.STEP, N);
         for (int z = d + 1; z <= d + 2; z++) at(l, 3, -1, z, Kind.PATH);

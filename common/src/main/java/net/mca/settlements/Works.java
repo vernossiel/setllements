@@ -142,6 +142,9 @@ public final class Works {
             at(l, w - 1, 2, d / 2 + (d / 2 % 3 == 0 ? 1 : 0), Kind.GLASS);
             at(l, door, 0, d, Kind.STEP, N);
             at(l, door, -1, d + 1, Kind.PATH);
+            // a lantern from the ridge, so the place is not a cave
+            int ridge = 2 + (w + 1) / 2;
+            at(l, w / 2, ridge - 1, 2, Kind.LANTERN);
             return l;
         }
         boolean city = tier >= 3;
