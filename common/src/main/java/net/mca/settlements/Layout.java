@@ -46,9 +46,11 @@ public final class Layout {
     private static final java.util.Map<Integer, Integer> GROWN = new java.util.HashMap<>();
 
     private static int reach(Village village) {
-        int pop = village.getPopulation();
-        int base = pop >= 24 ? 2 : pop >= 10 ? 1 : 0;
-        return Math.max(base, GROWN.getOrDefault(village.getId(), 0));
+        // the village's grade sets its bounds: a poor one lives along the two main streets, an ordinary one adds a
+        // street either side, a wealthy one two, a city three; within that it spreads when it runs out of room
+        int tier = village.getId() >= 0 ? Prosperity.tier(village) : 0;
+        int base = tier;
+        return Math.min(tier + 1, Math.max(base, GROWN.getOrDefault(village.getId(), 0)));
     }
 
     /** Streets laid out further when the village has run out of room (for a big building, or simply many). */
@@ -86,7 +88,8 @@ public final class Layout {
         String base = Tiers.isHome(type) ? "home" : Buildings.base(type);
         int[] fp = Blueprints.footprint(type, w, d);
         if (type.equals("mine") || OUTSKIRTS.contains(base) || minRing >= 2) return ring(world, village, type, fp, Math.max(minRing, reach(village) + 2), Math.max(maxRing, reach(village) + 3));
-        for (int extra = 0; extra <= 2; extra++) {
+        int maxExtra = Math.max(0, (village.getId() >= 0 ? Prosperity.tier(village) : 0) + 1 - reach(village)); // no further than its grade allows
+        for (int extra = 0; extra <= maxExtra; extra++) {
             Slot s = grid(world, village, type, fp, base, reach(village) + extra);
             if (s != null) {
                 if (extra > 0) grow(village, reach(village) + extra); // the village spreads: new streets out there
