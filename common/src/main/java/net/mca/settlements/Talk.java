@@ -95,7 +95,7 @@ public final class Talk {
             return true;
         }
         if (!free || v.isBaby() || now < v.settlementsTalkAfter || v.getVillagerBrain().isPanicking()) return false;
-        if (world.getClosestPlayer(v, 24) == null) return false; // nobody about to hear: they get on with things
+        // they talk whether anyone is listening or not (what is said is heard only by a player near enough)
         double chance = 0.02 + 0.08 * Persona.of(v).sociability();
         if (world.random.nextDouble() > chance) return false;
         VillagerEntityMCA partner = null;

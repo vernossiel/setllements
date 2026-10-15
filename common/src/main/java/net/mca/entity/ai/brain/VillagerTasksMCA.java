@@ -354,7 +354,8 @@ public class VillagerTasksMCA {
         return target.isAlive()
                && !target.isRemoved()
                && target.getWorld() == villager.getWorld()
-               && villager.canTarget(target)
+               // a player in creative cannot be hurt, but a guard still goes for whoever killed his people
+               && (villager.canTarget(target) || target instanceof net.minecraft.entity.player.PlayerEntity p && p.isCreative() && !p.isSpectator())
                && shouldRespondToGuardEnemy(villager, target);
     }
 

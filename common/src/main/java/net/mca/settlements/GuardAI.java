@@ -54,7 +54,7 @@ public final class GuardAI {
         LivingEntity current = brain.getOptionalMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
         if (current instanceof PlayerEntity p) {
             // no grudge against a player in creative, or one just beaten and let go
-            if (p.isCreative() || p.isSpectator() || Justice.spared(p)) {
+            if (p.isSpectator() || Justice.spared(p)) {
                 brain.forget(MemoryModuleType.ATTACK_TARGET);
                 current = null;
             } else if (p.getHealth() <= 6f && g.squaredDistanceTo(p) < 20 * 20 && g.canSee(p) && Justice.subdue(g, p)) {
@@ -93,7 +93,7 @@ public final class GuardAI {
             // a player with a bad name in the village is not left to wander about unwatched: one guard takes him on
             if (g.age % 100 == 0) {
                 for (PlayerEntity p : world.getPlayers()) {
-                    if (p.isCreative() || p.isSpectator() || p.squaredDistanceTo(g) > 28 * 28 || !village.isWithinBorder(p)) continue;
+                    if (p.isSpectator() || p.squaredDistanceTo(g) > 28 * 28 || !village.isWithinBorder(p)) continue;
                     if (Reputation.tier(village.getReputation(p)) > 2 || !g.canSee(p)) continue;
                     boolean taken = !world.getEntitiesByClass(VillagerEntityMCA.class, g.getBoundingBox().expand(64),
                             o -> o != g && o.isGuard() && p.getUuid().equals(o.settlementsWatch)).isEmpty();

@@ -70,6 +70,18 @@ public final class Life {
         if (cause.getAttacker() instanceof PlayerEntity p) {
             news(village, "murder", name, p.getName().getString());
             Justice.report(world, village, p, Justice.Crime.MURDER, 50, null, true);
+            // a killing: everyone who saw it or heard the scream runs, and every guard within earshot comes running
+            if (village != null) {
+                FEAR.put(key(village, p), world.getTime() + FEAR_TICKS);
+                Remember.note(village, p, "struck");
+                village.pushHearts(p, -40);
+                for (VillagerEntityMCA o : world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(64),
+                        o -> o != v && o.isAlive() && !o.isSleeping())) {
+                    if (o.isGuard()) charge(o, p);
+                    else if (o.squaredDistanceTo(v) < 32 * 32 || o.canSee(p)) flee(o, p, village, world);
+                }
+                callGuards(world, village, v, p, true);
+            }
         }
         else news(village, "death", name);
         if (village != null) Chapel.bury(world, village, name);
@@ -97,7 +109,7 @@ public final class Life {
 
     /** Players the guards go for on sight: those who attacked the village, and outlaws with a bad name here. */
     public static boolean hostile(Village village, PlayerEntity p) {
-        if (village == null || p.isCreative() || p.isSpectator() || Justice.spared(p)) return false;
+        if (village == null || p.isSpectator() || Justice.spared(p)) return false; // creative or not: a killer is a killer
         // the guards go for those resisting arrest, the exiled, and the village's sworn enemies; a bad name alone
         // gets a guard watching you, not a sword
         return Justice.hunted(village, p) || Reputation.tier(village.getReputation(p)) == 0;
@@ -114,7 +126,7 @@ public final class Life {
 
     /** Whom the villagers run from: everyone the guards fight, and whoever beat one of them lately. */
     static PlayerEntity scaryPlayer(ServerWorld world, Village village, VillagerEntityMCA watcher, double range) {
-        return nearestPlayer(world, watcher, range, p -> hostile(village, p) || feared(village, p) && !p.isCreative());
+        return nearestPlayer(world, watcher, range, p -> hostile(village, p) || feared(village, p));
     }
 
     private static PlayerEntity nearestPlayer(ServerWorld world, VillagerEntityMCA watcher, double range, java.util.function.Predicate<PlayerEntity> which) {
@@ -132,7 +144,7 @@ public final class Life {
 
     /** Somebody hit a villager: screams, everybody who saw it runs, the guards come running. */
     public static void onAttacked(VillagerEntityMCA victim, PlayerEntity attacker) {
-        if (!(victim.getWorld() instanceof ServerWorld world) || attacker.isCreative()) return;
+        if (!(victim.getWorld() instanceof ServerWorld world) || attacker.isSpectator()) return;
         Village village = Village.findNearest(victim).orElse(null);
         if (village == null) return;
         long now = world.getTime();

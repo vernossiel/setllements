@@ -83,7 +83,7 @@ public final class Justice {
 
     /** A wrong done to the village. {@code witnessed}: seen being done; otherwise only suspected. */
     public static void report(ServerWorld world, Village village, PlayerEntity player, Crime crime, double value, Map<Item, Integer> items, boolean witnessed) {
-        if (village == null || player.isCreative() || player.isSpectator()) return;
+        if (village == null || player.isSpectator()) return;
         Case c = CASES.computeIfAbsent(player.getUuid(), Case::new);
         boolean fresh = c.stage == Stage.REPORTED && c.crime == null;
         c.villageId = village.getId();
@@ -128,7 +128,7 @@ public final class Justice {
      * was seen about the place, he is suspected; otherwise it stays a mystery the village talks about.
      */
     public static void suspect(ServerWorld world, Village village, PlayerEntity p, Crime crime, double value, Map<Item, Integer> items, BlockPos where) {
-        if (village == null || p.isCreative()) return;
+        if (village == null || p.isSpectator()) return;
         boolean seen = !world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(32),
                 v -> v.isAlive() && !v.isSleeping() && v.canSee(p)).isEmpty();
         long at = world.getTime() + 20L * (120 + world.random.nextInt(240));
