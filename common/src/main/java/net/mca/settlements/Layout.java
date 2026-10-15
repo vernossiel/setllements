@@ -22,7 +22,7 @@ import java.util.Set;
  */
 public final class Layout {
     /** Distance between parallel streets, and the half-width of a street (3 wide). */
-    static final int GRID = 32, HALF = 1;
+    static final int GRID = 40, HALF = 1;
     private static final int PLAZA = 9;
     private static final int[] RINGS = {14, 22, 30, 38, 46, 54};
     private static final int MARGIN = 2;
@@ -43,9 +43,17 @@ public final class Layout {
     }
 
     /** How far out the streets of this village reach (in streets either side of the main ones). */
+    private static final java.util.Map<Integer, Integer> GROWN = new java.util.HashMap<>();
+
     private static int reach(Village village) {
         int pop = village.getPopulation();
-        return pop >= 24 ? 2 : pop >= 10 ? 1 : 0;
+        int base = pop >= 24 ? 2 : pop >= 10 ? 1 : 0;
+        return Math.max(base, GROWN.getOrDefault(village.getId(), 0));
+    }
+
+    /** Streets laid out further when the village has run out of room (for a big building, or simply many). */
+    private static void grow(Village village, int to) {
+        GROWN.merge(village.getId(), Math.min(4, to), Math::max);
     }
 
     /** The street the workshops line: one of the four arms of the main streets, the same for good. */
@@ -55,10 +63,14 @@ public final class Layout {
 
     /** True for a cell on a street (or the plaza) of the village's plan. */
     static boolean onStreet(Village village, int x, int z) {
+        return onStreet(village, reach(village), x, z);
+    }
+
+    static boolean onStreet(Village village, int r, int x, int z) {
         BlockPos c = new BlockPos(village.getCenter());
         int dx = x - c.getX(), dz = z - c.getZ();
         if (dx * dx + dz * dz <= PLAZA * PLAZA) return true;
-        int r = reach(village), lim = (r + 1) * GRID;
+        int lim = (r + 1) * GRID;
         if (Math.abs(dx) > lim + HALF || Math.abs(dz) > lim + HALF) return false;
         for (int k = -r; k <= r; k++) {
             if (Math.abs(dz - k * GRID) <= HALF) return true; // an east-west street
@@ -73,9 +85,21 @@ public final class Layout {
     public static Slot find(ServerWorld world, Village village, String type, int w, int d, int minRing, int maxRing) {
         String base = Tiers.isHome(type) ? "home" : Buildings.base(type);
         int[] fp = Blueprints.footprint(type, w, d);
-        if (type.equals("mine") || OUTSKIRTS.contains(base) || minRing >= 2) return ring(world, village, type, fp, Math.max(minRing, 2), Math.max(maxRing, 3));
+        if (type.equals("mine") || OUTSKIRTS.contains(base) || minRing >= 2) return ring(world, village, type, fp, Math.max(minRing, reach(village) + 2), Math.max(maxRing, reach(village) + 3));
+        for (int extra = 0; extra <= 2; extra++) {
+            Slot s = grid(world, village, type, fp, base, reach(village) + extra);
+            if (s != null) {
+                if (extra > 0) grow(village, reach(village) + extra); // the village spreads: new streets out there
+                return s;
+            }
+        }
+        // no plot left on the streets: out on the rings beyond them
+        return ring(world, village, type, fp, Math.max(minRing, reach(village) + 2), Math.max(maxRing, reach(village) + 4));
+    }
+
+    private static Slot grid(ServerWorld world, Village village, String type, int[] fp, String base, int r) {
         BlockPos c = new BlockPos(village.getCenter());
-        int r = reach(village), arm = workArm(village);
+        int arm = workArm(village);
         boolean centre = CENTRE.contains(base), work = WORK.contains(base);
         List<Lot> lots = new ArrayList<>();
         int lim = (r + 1) * GRID - 4;
@@ -87,7 +111,9 @@ public final class Layout {
                     int rot = axis == 0 ? (side < 0 ? 0 : 2) : (side < 0 ? 3 : 1);
                     int fw = (rot & 1) == 0 ? fp[0] : fp[1], fd = (rot & 1) == 0 ? fp[1] : fp[0];
                     int along = (rot & 1) == 0 ? fw : fd, deep = (rot & 1) == 0 ? fd : fw;
-                    if (deep > GRID - 2 * HALF - 4) continue; // too deep for the block
+                    // a plot is half a block deep; a big building takes the whole block, from one street to the next
+                    boolean whole = deep > GRID / 2 - HALF - 3;
+                    if (deep > GRID - 2 * HALF - 6 || whole && side > 0) continue;
                     for (int t = -lim; t <= lim - along; t += 2) {
                         int mid = t + along / 2;
                         if (Math.abs(mid) < PLAZA + 2 && k == 0) continue;
@@ -113,12 +139,11 @@ public final class Layout {
         for (Lot lot : lots) {
             if (++tries > 400) break;
             int fw = (lot.rot() & 1) == 0 ? fp[0] : fp[1], fd = (lot.rot() & 1) == 0 ? fp[1] : fp[0];
-            if (!free(village, lot.x(), lot.z(), fw, fd)) continue;
+            if (!free(village, r, lot.x(), lot.z(), fw, fd)) continue;
             BlockPos origin = flat(world, lot.x(), lot.z(), fw, fd);
             if (origin != null) return new Slot(origin, lot.rot(), fw, fd);
         }
-        // no plot left on the streets: out on the rings beyond them
-        return ring(world, village, type, fp, Math.max(minRing, r + 2), Math.max(maxRing, r + 4));
+        return null;
     }
 
     /** The outskirts: plots on rings round the village, beyond the streets, facing the middle. */
@@ -126,7 +151,7 @@ public final class Layout {
         BlockPos c = new BlockPos(village.getCenter());
         var rand = world.random;
         for (int ri = Math.min(minRing, RINGS.length - 1); ri <= Math.min(maxRing, RINGS.length - 1); ri++) {
-            int radius = RINGS[ri];
+            int radius = RINGS[ri] + (reach(village) + 1) * GRID - 14; // beyond the ends of the streets
             int n = Math.max(4, (int) (2 * Math.PI * radius / (Math.max(fp[0], fp[1]) + MARGIN + 2)));
             double offset = rand.nextDouble() * Math.PI * 2;
             int start = rand.nextInt(n);
@@ -176,13 +201,17 @@ public final class Layout {
 
     /** The plot is clear: off the streets, off other plots and off what is built already (with room between). */
     private static boolean free(Village village, int x, int z, int w, int d) {
+        return free(village, reach(village), x, z, w, d);
+    }
+
+    private static boolean free(Village village, int r, int x, int z, int w, int d) {
         for (int dx = -1; dx <= w; dx++) {
-            if (onStreet(village, x + dx, z - 1) || onStreet(village, x + dx, z + d)) return false;
+            if (onStreet(village, r, x + dx, z - 1) || onStreet(village, r, x + dx, z + d)) return false;
         }
         for (int dz = -1; dz <= d; dz++) {
-            if (onStreet(village, x - 1, z + dz) || onStreet(village, x + w, z + dz)) return false;
+            if (onStreet(village, r, x - 1, z + dz) || onStreet(village, r, x + w, z + dz)) return false;
         }
-        for (int dx = 0; dx < w; dx += 2) for (int dz = 0; dz < d; dz += 2) if (onStreet(village, x + dx, z + dz)) return false;
+        for (int dx = 0; dx < w; dx += 2) for (int dz = 0; dz < d; dz += 2) if (onStreet(village, r, x + dx, z + dz)) return false;
         return freeOfBuildings(village, x, z, w, d);
     }
 

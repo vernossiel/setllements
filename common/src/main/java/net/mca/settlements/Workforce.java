@@ -241,6 +241,7 @@ public final class Workforce {
             else if (prof == VillagerProfession.BUTCHER) worked = Cooking.work(v, village);
             else if (prof == VillagerProfession.MASON) {
                 if (v.age % 400 == 0 || !Mining.hasPick(v)) Gear.equipTool(v, village, Chore.PROSPECT);
+                if (v.age % 400 == 0) Gear.equipShovel(v, village); // and a shovel for the earth and gravel
                 worked = Mining.work(v, village);
             }
             else if (prof == VillagerProfession.ARMORER) worked = Smithing.work(v, village);

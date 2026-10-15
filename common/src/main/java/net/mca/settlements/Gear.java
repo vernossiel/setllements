@@ -269,6 +269,45 @@ public final class Gear {
         return false;
     }
 
+    /**
+     * One use of the best tool he has for this block - a shovel for earth, sand and gravel, the pick for rock, the
+     * axe for wood - taken in hand and worn down. False when the block needs a tool he does not have, or it broke.
+     */
+    public static boolean wearFor(VillagerEntityMCA v, net.minecraft.block.BlockState state) {
+        var inv = v.getInventory();
+        int best = -1;
+        float bestSpeed = 1f;
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack s = inv.getStack(i);
+            if (!(s.getItem() instanceof MiningToolItem)) continue;
+            float sp = s.getMiningSpeedMultiplier(state);
+            if (sp > bestSpeed) {
+                bestSpeed = sp;
+                best = i;
+            }
+        }
+        if (best < 0) {
+            if (state.isToolRequired()) return wear(v, PickaxeItem.class); // rock wants the pick, whatever
+            v.setStackInHand(v.getDominantHand(), ItemStack.EMPTY); // with his hands, then
+            return true;
+        }
+        return wear(v, inv.getStack(best).getItem().getClass());
+    }
+
+    /** A shovel for earth and gravel, made from the stores if he has none (one piece of material and a stick). */
+    public static void equipShovel(VillagerEntityMCA v, Village village) {
+        if (has(v, ShovelItem.class) || village == null) return;
+        String[] m = {"wooden", "stone", "iron", "diamond"};
+        for (int tier = village.smithyBuilt ? 2 : 1; tier >= 0; tier--) {
+            if (!canPay(village, tier, 1)) continue;
+            pay(village, tier, 1);
+            ItemStack shovel = new ItemStack(Registries.ITEM.get(new Identifier(m[tier] + "_shovel")));
+            v.getInventory().addStack(shovel);
+            Speech.say(v, "settlements.say.tool.craft", shovel.getName());
+            return;
+        }
+    }
+
     public static boolean has(VillagerEntityMCA v, Class<?> type) {
         var inv = v.getInventory();
         for (int i = 0; i < inv.size(); i++) if (type.isInstance(inv.getStack(i).getItem())) return true;

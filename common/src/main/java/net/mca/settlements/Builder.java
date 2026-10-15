@@ -1211,6 +1211,11 @@ public final class Builder {
                 net.mca.server.world.data.VillageManager.get(world).reportBuilding(o.add(r[0], s.dy(), r[1]));
                 break;
             }
+            // the village's bounds take in the new building, wherever it stands (so the village grows outward with it)
+            if (!java.util.Set.of("farm", "pen", "well", "wall", "palisade", "mine", "board").contains(Buildings.base(type))) {
+                int[] mid = Blueprints.rotate(bfp[0] / 2, bfp[1] / 2, bfp[0], bfp[1], rot);
+                net.mca.server.world.data.VillageManager.get(world).reportBuilding(o.add(mid[0], 1, mid[1]));
+            }
         }
         village.buildOrigin = null;
         village.buildStep = 0;

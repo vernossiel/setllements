@@ -117,7 +117,7 @@ public final class Mining {
                     Move.to(v, target.getX() + 0.5, target.getY(), target.getZ() + 0.5, 0.6);
                     break;
                 }
-                if (!Gear.wear(v, net.minecraft.item.PickaxeItem.class)) break; // the pick broke: a new one first
+                if (!Gear.wearFor(v, world.getBlockState(target))) break; // the right tool for it (a shovel for earth and gravel, the pick for rock); broke: a new one first
                 Gear.face(v, target);
                 Move.clearFalling(world, target, drop -> v.getInventory().addStack(drop));
                 Dig.start(v, target); // block by block, with the pick, as anyone would
@@ -242,7 +242,7 @@ public final class Mining {
         if (dig == null) return false;
         BlockState s = world.getBlockState(dig);
         if (wet(world, dig) || s.getBlock() instanceof net.minecraft.block.BlockWithEntity || s.getHardness(world, dig) < 0) return false;
-        if (!Gear.wear(v, net.minecraft.item.PickaxeItem.class)) return false;
+        if (!Gear.wearFor(v, s)) return false;
         if (ore(s)) Speech.sayAny(v, "settlements.say.mine.ore", 3);
         Gear.face(v, dig);
         Move.clearFalling(world, dig, drop -> v.getInventory().addStack(drop));
