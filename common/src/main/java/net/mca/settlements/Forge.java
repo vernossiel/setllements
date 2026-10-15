@@ -54,7 +54,7 @@ public final class Forge {
     /** The smith of the village, if it has one and a smithy to work in. */
     static VillagerEntityMCA smith(Village village) {
         ServerWorld world = village.getWorld();
-        if (world == null || village.smithyFurnace == null) return null;
+        if (!Staffing.SMITHS || world == null || village.smithyFurnace == null) return null;
         for (VillagerEntityMCA r : village.getResidents(world)) if (r.isAlive() && r.getProfession() == VillagerProfession.ARMORER) return r;
         return null;
     }

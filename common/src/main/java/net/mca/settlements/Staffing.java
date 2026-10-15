@@ -30,6 +30,9 @@ public final class Staffing {
                 || p == VillagerProfession.LEATHERWORKER || p == VillagerProfession.CLERIC;
     }
 
+    /** The smith's trade is switched off for now (workers make their own tools); true brings it back. */
+    static final boolean SMITHS = false;
+
     private static boolean isCore(VillagerProfession p) {
         return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH
                 || p == VillagerProfession.MASON || p == VillagerProfession.FARMER;
@@ -88,7 +91,7 @@ public final class Staffing {
         roles.add(new Role(VillagerProfession.FLETCHER, Math.max(1, p / 4) + (short_ != null && short_.need() == Needs.Need.PLANKS ? 1 : 0)));
         if (p >= 3) roles.add(new Role(VillagerProfession.MASON, Math.max(1, p / 5) + (short_ != null && short_.need() == Needs.Need.COBBLE ? 1 : 0)));
         // a smith only once there is a smithy to work in: tools, ingots
-        boolean smithy = v.smithyBuilt && v.smithyFurnace != null;
+        boolean smithy = SMITHS && v.smithyBuilt && v.smithyFurnace != null;
         if (smithy && p >= 4) roles.add(new Role(VillagerProfession.ARMORER, 1));
 
         // trades that are switched off for now go back to the pool
