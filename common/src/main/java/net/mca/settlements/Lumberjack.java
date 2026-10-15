@@ -177,7 +177,7 @@ public final class Lumberjack {
         BlockPos next = null;
         for (BlockPos p : trunk) {
             double lx = p.getX() + 0.5 - v.getX(), lz = p.getZ() + 0.5 - v.getZ(), ly = p.getY() - v.getY();
-            if (lx * lx + lz * lz <= 20 && ly >= -2 && ly <= 4) {
+            if (lx * lx + lz * lz <= 20 && ly >= -2 && ly <= 4 && Dig.sees(v, p)) {
                 next = p;
                 break;
             }

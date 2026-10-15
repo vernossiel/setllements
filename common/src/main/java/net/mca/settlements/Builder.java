@@ -576,7 +576,9 @@ public final class Builder {
             boolean mine = village.buildType.equals("mine");
             boolean border = village.buildType.equals("palisade") || village.buildType.equals("wall");
             double bx = target.getX() + 0.5 - v.getX(), bz = target.getZ() + 0.5 - v.getZ();
-            boolean far = mine ? v.squaredDistanceTo(origin.getX() + 0.5, origin.getY(), origin.getZ() + 0.5) > 144 : !Scaffold.inReach(v, target);
+            // within reach, and nothing in the way between his eyes and the spot (no building through walls)
+            boolean far = mine ? v.squaredDistanceTo(origin.getX() + 0.5, origin.getY(), origin.getZ() + 0.5) > 144 : !Scaffold.inReach(v, target)
+                    || target.getY() - origin.getY() < 3 && !Dig.sees(v, target); // (ceilings and roofs are laid from the scaffolding, over the edge)
             if (far && !mine && !border && target.getY() - origin.getY() >= 3) {
                 Built site = new Built(village.buildType, origin, village.buildW, village.buildD, Math.max(1, village.buildF), village.buildRot);
                 if (Scaffold.approach(v, village, world, target, site)) return worked;

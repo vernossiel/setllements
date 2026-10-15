@@ -101,6 +101,10 @@ public final class Mining {
                     village.mineStep++;
                     continue;
                 }
+                if (!Dig.sees(v, target)) { // not from here: to the face first
+                    Move.to(v, target.getX() + 0.5, target.getY(), target.getZ() + 0.5, 0.6);
+                    break;
+                }
                 if (!Gear.wear(v, net.minecraft.item.PickaxeItem.class)) break; // the pick broke: a new one first
                 Gear.face(v, target);
                 Move.clearFalling(world, target, drop -> v.getInventory().addStack(drop));

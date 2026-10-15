@@ -96,21 +96,27 @@ public final class Scavenge {
             Move.to(v, t.getX() + 0.5, t.getY() + 1, t.getZ() + 0.5, 0.65);
             return true;
         }
-        v.getLookControl().lookAt(t.getX() + 0.5, t.getY() + 0.5, t.getZ() + 0.5);
-        BlockState s = world.getBlockState(t);
-        for (ItemStack drop : Block.getDroppedStacks(s, world, t, null)) Workforce.addToTreasury(village, drop);
-        world.breakBlock(t, false);
+        if (Dig.busy(v)) return true;
+        if (!Dig.sees(v, t)) {
+            Move.to(v, t.getX() + 0.5, t.getY() + 1, t.getZ() + 0.5, 0.65);
+            return true;
+        }
+        // with a pick, a crack at a time; the stone falls and is picked up (see the things lying around, above)
+        for (int i = 0; i < v.getInventory().size(); i++) {
+            if (v.getInventory().getStack(i).getItem() instanceof net.minecraft.item.PickaxeItem) {
+                v.setStackInHand(v.getDominantHand(), v.getInventory().getStack(i).copy());
+                break;
+            }
+        }
         if (world.getBlockState(t.up()).isOf(Blocks.SNOW)) world.breakBlock(t.up(), false);
-        v.swingHand(v.getDominantHand());
+        Dig.start(v, t);
         v.scavengeTarget = null;
         return true;
     }
 
+    /** Only a stone outcrop is worth breaking: nobody digs up the village's ground for filler. */
     private static boolean source(BlockState s, Needs.Need need, boolean anyBlock) {
-        if (!SOURCES.contains(s.getBlock())) return false;
-        if (anyBlock) return true;
-        if (need == Needs.Need.COBBLE) return STONES.contains(s.getBlock());
-        return false;
+        return (anyBlock || need == Needs.Need.COBBLE) && STONES.contains(s.getBlock());
     }
 
     private static boolean valid(ServerWorld world, Village village, BlockPos p, Needs.Need need, boolean anyBlock) {

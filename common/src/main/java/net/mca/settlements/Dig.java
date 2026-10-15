@@ -19,6 +19,18 @@ public final class Dig {
     private Dig() {
     }
 
+    /**
+     * Whether he can touch the block at {@code pos} from where he stands, as a player could: nothing solid between his
+     * eyes and it (for an empty spot, nothing in the way of putting a block there).
+     */
+    public static boolean sees(VillagerEntityMCA v, BlockPos pos) {
+        net.minecraft.util.math.Vec3d eye = v.getEyePos(), c = net.minecraft.util.math.Vec3d.ofCenter(pos);
+        net.minecraft.util.hit.BlockHitResult hit = v.getWorld().raycast(new net.minecraft.world.RaycastContext(eye, c,
+                net.minecraft.world.RaycastContext.ShapeType.COLLIDER, net.minecraft.world.RaycastContext.FluidHandling.NONE, v));
+        if (hit.getType() == net.minecraft.util.hit.HitResult.Type.MISS) return true;
+        return hit.getBlockPos().equals(pos) || hit.getPos().squaredDistanceTo(c) <= 0.76; // struck on the block itself
+    }
+
     /** True while he is still at a block. */
     public static boolean busy(VillagerEntityMCA v) {
         return v.settlementsDigPos != null;
@@ -46,7 +58,7 @@ public final class Dig {
         BlockState s = world.getBlockState(p);
         float hardness = s.getHardness(world, p);
         if (s.isAir() || hardness < 0 || !v.isAlive() || v.isSleeping()
-                || v.squaredDistanceTo(p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5) > REACH * REACH) {
+                || v.squaredDistanceTo(p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5) > REACH * REACH || v.age % 10 == 0 && !sees(v, p)) {
             stop(v);
             return;
         }
