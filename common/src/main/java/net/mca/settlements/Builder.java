@@ -643,7 +643,7 @@ public final class Builder {
         String[] types = {"townhall", "cruck", "wealden", "rowhouse", "hut", "house", "longhouse", "porch", "twin", "farmhouse", "tallhouse", "annex", "manor", "mansion", "storage", "granary", "sawmill", "charcoal", "mason", "mill",
                 "smithy", "armory", "tavern", "barracks", "jail", "market", "chapel", "well", "board", "farm", "pen", "tower", "shop"};
         java.util.List<String> all = new java.util.ArrayList<>(java.util.List.of(types));
-        for (String[] d : Buildings.designs()) for (int i = 1; i < d.length; i++) all.add(d[i]);
+        for (String[] d : Buildings.designs()) for (String t : d) if (!all.contains(t)) all.add(t);
         for (String t : all) {
             SHOWCASE.put(t, switch (t) {
                 case "hut" -> new int[]{5, 5, 1};
@@ -1340,20 +1340,30 @@ public final class Builder {
                 if (!FREE && !take(village, s -> s.isOf(Items.GOLD_INGOT), 4)) return null;
                 return Blocks.AIR.getDefaultState(); // marker, the frame is hung in execute()
             case THATCH: {
-                // straw: a sheaf's worth of wheat, a bale, or roof boards when there is no straw
-                if (take(village, s -> s.isOf(Items.HAY_BLOCK), 1) || take(village, s -> s.isOf(Items.WHEAT), 2)) return Blocks.HAY_BLOCK.getDefaultState();
+                // the land's roofing: straw (wheat or a bale), sod in the north (earth), bamboo in the jungle; boards if none
+                Block th = pal.thatch();
+                if (th == Blocks.HAY_BLOCK && (take(village, s -> s.isOf(Items.HAY_BLOCK), 1) || take(village, s -> s.isOf(Items.WHEAT), 2))) return th.getDefaultState();
+                if (th == Blocks.MOSS_BLOCK && (FREE || take(village, s -> s.isOf(Items.DIRT) || s.isOf(Items.MOSS_BLOCK) || s.isOf(Items.GRASS_BLOCK), 1))) return th.getDefaultState();
+                if (th == Blocks.BAMBOO_BLOCK && (FREE || take(village, s -> s.isOf(Items.BAMBOO), 4) || take(village, s -> s.isOf(Items.BAMBOO_BLOCK), 1))) return th.getDefaultState();
+                if (FREE) return th.getDefaultState();
                 return plank(village, pal.roofPlanks());
             }
             case DAUB: {
-                // wattle and daub: mud from the stores (earth gathered about), or boards
+                // the land's walling: daub or mud brick from earth, adobe from sand, clay in the savanna, logs in the north
+                Block db = pal.daub();
+                if (FREE) return db.getDefaultState();
+                if (db.getDefaultState().isIn(net.minecraft.registry.tag.BlockTags.LOGS)) {
+                    if (take(village, LOG, 1)) return db.getDefaultState();
+                    return plank(village, pal.planks());
+                }
                 for (ItemStack fs : village.storageBuffer) {
-                    if (fs.isOf(Items.DIRT) || fs.isOf(Items.COARSE_DIRT) || fs.isOf(Items.MUD) || fs.isOf(Items.PACKED_MUD) || fs.isOf(Items.CLAY_BALL)) {
+                    if (fs.isOf(Items.DIRT) || fs.isOf(Items.COARSE_DIRT) || fs.isOf(Items.MUD) || fs.isOf(Items.PACKED_MUD) || fs.isOf(Items.CLAY_BALL)
+                            || fs.isOf(Items.SAND) || fs.isOf(Items.RED_SAND) || fs.isOf(Items.SANDSTONE) || fs.isOf(Items.TERRACOTTA)) {
                         fs.decrement(1);
                         village.storageBuffer.removeIf(ItemStack::isEmpty);
-                        return Blocks.PACKED_MUD.getDefaultState();
+                        return db.getDefaultState();
                     }
                 }
-                if (FREE) return Blocks.PACKED_MUD.getDefaultState();
                 return plank(village, pal.planks());
             }
             case RSTAIR_S, RSTAIR_N: {

@@ -94,7 +94,27 @@ public final class SettlementsCommand {
                             Builder.placeForLook((ServerWorld) player.getWorld(), type, new net.minecraft.util.math.BlockPos(x0, y, z0), rot);
                             return say(c, "Placed " + type + ".");
                         })))
-                .then(CommandManager.literal("showcase").executes(c -> {
+                .then(CommandManager.literal("showcase")
+                        .then(CommandManager.literal("tier").then(CommandManager.argument("tier", StringArgumentType.word())
+                                .suggests((c, b) -> net.minecraft.command.CommandSource.suggestMatching(java.util.List.of(Works.TIER_NAMES), b))
+                                .executes(c -> {
+                                    String t = StringArgumentType.getString(c, "tier");
+                                    int tier = java.util.List.of(Works.TIER_NAMES).indexOf(t);
+                                    if (tier < 0) return say(c, "Tiers: poor, ordinary, wealthy, city");
+                                    java.util.List<String> list = new java.util.ArrayList<>();
+                                    for (String kind : Tiers.kinds()) for (String d : Tiers.row(kind, tier)) if (!list.contains(d)) list.add(d);
+                                    return placeRow(c, list, "Every building of a " + t + " village");
+                                })))
+                        .then(CommandManager.literal("kind").then(CommandManager.argument("kind", StringArgumentType.word())
+                                .suggests((c, b) -> net.minecraft.command.CommandSource.suggestMatching(Tiers.kinds(), b))
+                                .executes(c -> {
+                                    String kind = StringArgumentType.getString(c, "kind");
+                                    if (!Tiers.kinds().contains(kind)) return say(c, "Kinds: " + String.join(", ", Tiers.kinds()));
+                                    java.util.List<String> list = new java.util.ArrayList<>();
+                                    for (int tier = 0; tier <= Tiers.CITY; tier++) for (String d : Tiers.row(kind, tier)) if (!list.contains(d)) list.add(d);
+                                    return placeRow(c, list, kind + " from the poorest to the city's");
+                                })))
+                        .executes(c -> {
                     var player = c.getSource().getPlayerOrThrow();
                     int x = player.getBlockX() + 4, y = player.getBlockY(), z = player.getBlockZ() + 6;
                     for (String type : Builder.SHOWCASE.keySet()) {
@@ -229,5 +249,18 @@ public final class SettlementsCommand {
         add(opt.get(), Registries.ITEM.get(ident), count);
         opt.get().markDirty();
         return say(c, "Added " + count + " x " + ident + " to the treasury.");
+    }
+
+    /** Places these designs in a row going east, a few blocks south of the player, and lists them in order. */
+    private static int placeRow(com.mojang.brigadier.context.CommandContext<net.minecraft.server.command.ServerCommandSource> c, java.util.List<String> types, String title)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        var player = c.getSource().getPlayerOrThrow();
+        int x = player.getBlockX() + 4, y = player.getBlockY(), z = player.getBlockZ() + 6;
+        for (String type : types) {
+            int[] f = Builder.footprintOf(type, 0);
+            Builder.placeForLook((ServerWorld) player.getWorld(), type, new net.minecraft.util.math.BlockPos(x, y, z), 0);
+            x += f[0] + 5;
+        }
+        return say(c, title + ", west to east: " + String.join(", ", types) + ". Doors face south.");
     }
 }

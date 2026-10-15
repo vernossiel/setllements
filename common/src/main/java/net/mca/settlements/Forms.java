@@ -33,7 +33,7 @@ public final class Forms {
             case "cruck" -> cruck();
             case "wealden" -> wealdenHall(false);
             case "rowhouse" -> rowhouse();
-            default -> List.of();
+            default -> Works.plan(type);
         };
     }
 
@@ -44,7 +44,7 @@ public final class Forms {
             case "townhall-4" -> new int[]{15, 17};
             case "cruck" -> new int[]{6, 9};
             case "rowhouse" -> new int[]{6, 11};
-            default -> null;
+            default -> Works.footprint(type);
         };
     }
 

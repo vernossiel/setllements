@@ -52,29 +52,28 @@ public final class Buildings {
     /** The kind of a building whatever its design: "storage-2" is a storage. */
     public static String base(String type) {
         if (type == null) return null;
-        int i = type.lastIndexOf('-');
-        if (i > 0 && i < type.length() - 1 && type.substring(i + 1).chars().allMatch(Character::isDigit)) return type.substring(0, i);
-        return type;
+        int i = type.indexOf('-'); // "storage-city", "shop-bakery", "demolish:jail-3": the kind comes first
+        return i > 0 ? type.substring(0, i) : type;
     }
 
     private static final java.util.Map<String, String[]> DESIGNS = java.util.Map.ofEntries(
-            java.util.Map.entry("storage", new String[]{"storage", "storage-2", "storage-3", "storage-4", "storage-5"}),
-            java.util.Map.entry("granary", new String[]{"granary", "granary-2"}),
-            java.util.Map.entry("sawmill", new String[]{"sawmill", "sawmill-2"}),
-            java.util.Map.entry("mason", new String[]{"mason", "mason-2"}),
-            java.util.Map.entry("mill", new String[]{"mill", "mill-2"}),
-            java.util.Map.entry("smithy", new String[]{"smithy", "smithy-2", "smithy-3", "smithy-4"}),
-            java.util.Map.entry("armory", new String[]{"armory", "armory-2"}),
-            java.util.Map.entry("tavern", new String[]{"tavern", "tavern-2", "tavern-3", "tavern-4"}),
-            java.util.Map.entry("barracks", new String[]{"barracks", "barracks-2", "barracks-3", "barracks-4"}),
+            java.util.Map.entry("storage", new String[]{"storage-poor", "storage-ordinary", "storage-wealthy", "storage-city", "storage", "storage-2", "storage-3", "storage-4", "storage-5"}),
+            java.util.Map.entry("granary", new String[]{"granary-poor", "granary-ordinary", "granary-wealthy", "granary-city", "granary", "granary-2"}),
+            java.util.Map.entry("sawmill", new String[]{"sawmill-poor", "sawmill", "sawmill-2", "sawmill-city"}),
+            java.util.Map.entry("mason", new String[]{"mason-poor", "mason", "mason-2", "mason-city"}),
+            java.util.Map.entry("mill", new String[]{"mill-poor", "mill-2", "mill", "mill-city"}),
+            java.util.Map.entry("smithy", new String[]{"smithy-3", "smithy-2", "smithy-wealthy", "smithy-city", "smithy", "smithy-4"}),
+            java.util.Map.entry("armory", new String[]{"armory-poor", "armory", "armory-wealthy", "armory-city", "armory-2"}),
+            java.util.Map.entry("tavern", new String[]{"tavern-poor", "tavern-ordinary", "tavern-wealthy", "tavern-city", "tavern", "tavern-2", "tavern-3", "tavern-4"}),
+            java.util.Map.entry("barracks", new String[]{"barracks-poor", "barracks-ordinary", "barracks-wealthy", "barracks-city", "barracks", "barracks-2", "barracks-3", "barracks-4"}),
             java.util.Map.entry("market", new String[]{"market", "market-2", "market-3", "market-4"}),
             java.util.Map.entry("chapel", new String[]{"chapel", "chapel-2", "chapel-3", "chapel-4"}),
             java.util.Map.entry("well", new String[]{"well", "well-2", "well-3", "well-4"}),
             java.util.Map.entry("tower", new String[]{"tower", "tower-2", "tower-3", "tower-4"}),
-            java.util.Map.entry("charcoal", new String[]{"charcoal", "charcoal-2"}),
-            java.util.Map.entry("jail", new String[]{"jail", "jail-2", "jail-3", "jail-4"}),
+            java.util.Map.entry("charcoal", new String[]{"charcoal", "charcoal-2", "charcoal-city"}),
+            java.util.Map.entry("jail", new String[]{"jail-2", "jail-ordinary", "jail-wealthy", "jail-city", "jail", "jail-3", "jail-4"}),
             java.util.Map.entry("townhall", new String[]{"townhall", "townhall-2", "townhall-3", "townhall-4"}),
-            java.util.Map.entry("shop", new String[]{"shop", "shop-2", "shop-3", "shop-4"}));
+            java.util.Map.entry("shop", new String[]{"shop-bakery", "shop-weaver", "shop-general", "shop-apothecary", "shop", "shop-2", "shop-3", "shop-4"}));
 
     /** One of the designs of a kind of building, at random. */
     public static String variant(String type, net.minecraft.util.math.random.Random random) {

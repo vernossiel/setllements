@@ -16,7 +16,8 @@ import java.util.Map;
  * woods, sandstone in the desert, acacia in the savanna... The roof takes a darker wood for contrast.
  */
 public record Palette(String wood, String roofWood, Block stone, Block stoneStairs, Block accent, Block flower) {
-    private static final Map<Integer, Palette> CACHE = new HashMap<>();
+    /** By world, village and center: village numbers repeat from world to world, and a village's center moves. */
+    private static final Map<String, Palette> CACHE = new HashMap<>();
     private static final Palette OAK = new Palette("oak", "spruce", Blocks.COBBLESTONE, Blocks.COBBLESTONE_STAIRS, Blocks.STONE_BRICKS, Blocks.POTTED_POPPY);
 
     /** Set while a test building is placed outside any village: the materials of the land it stands in. */
@@ -24,14 +25,15 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
 
     public static Palette of(Village village) {
         if (OVERRIDE != null) return OVERRIDE;
-        Palette p = CACHE.get(village.getId());
-        if (p != null) return p;
         ServerWorld world = village.getWorld();
         if (world == null) return OAK;
         BlockPos c = new BlockPos(village.getCenter());
+        String key = world.getRegistryKey().getValue() + "|" + village.getId() + "|" + (c.getX() >> 4) + "," + (c.getZ() >> 4);
+        Palette p = CACHE.get(key);
+        if (p != null) return p;
         String biome = world.getBiome(c).getKey().map(k -> k.getValue().getPath()).orElse("plains");
         p = forBiome(biome);
-        CACHE.put(village.getId(), p);
+        CACHE.put(key, p);
         return p;
     }
 
@@ -70,10 +72,32 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
     public Block roofPlanks() { return get(roofWood + "_planks", Blocks.SPRUCE_PLANKS); }
     public Block stairs() { return get(wood + "_stairs", Blocks.OAK_STAIRS); }
     public Block fenceGate() { return get(wood + "_fence_gate", Blocks.OAK_FENCE_GATE); }
+    private boolean northern() {
+        return wood.equals("spruce");
+    }
+
+    /** The roof of the poorest houses: straw, a sod roof in the north, bamboo in the jungle. */
+    public Block thatch() {
+        if (northern()) return Blocks.MOSS_BLOCK;
+        if (wood.equals("jungle")) return Blocks.BAMBOO_BLOCK;
+        return Blocks.HAY_BLOCK;
+    }
+
+    /** The walls of the poorest houses: daub, adobe in the desert, red clay in the savanna, logs in the north, mud brick in the swamps. */
+    public Block daub() {
+        if (stone == Blocks.SANDSTONE) return Blocks.SMOOTH_SANDSTONE;
+        if (accent == Blocks.TERRACOTTA) return Blocks.TERRACOTTA;
+        if (northern()) return strippedLog();
+        if (stone == Blocks.MUD_BRICKS) return Blocks.MUD_BRICKS;
+        if (wood.equals("jungle")) return get("bamboo_mosaic", Blocks.PACKED_MUD);
+        return Blocks.PACKED_MUD;
+    }
+
     /** A city's plastered walls above its stone ground floors. */
     public Block plaster() {
         if (stone == Blocks.SANDSTONE) return Blocks.SMOOTH_SANDSTONE;
         if (stone == Blocks.MUD_BRICKS) return Blocks.PACKED_MUD;
+        if (northern()) return Blocks.CALCITE;
         return Blocks.WHITE_TERRACOTTA;
     }
 
@@ -81,12 +105,14 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
     public Block tiles() {
         if (stone == Blocks.SANDSTONE) return Blocks.SMOOTH_RED_SANDSTONE;
         if (accent == Blocks.TERRACOTTA) return Blocks.BRICKS;
+        if (wood.equals("cherry") || wood.equals("birch")) return Blocks.BRICKS;
         return Blocks.DEEPSLATE_TILES;
     }
 
     public Block tileStairs() {
         if (stone == Blocks.SANDSTONE) return Blocks.SMOOTH_RED_SANDSTONE_STAIRS;
         if (accent == Blocks.TERRACOTTA) return Blocks.BRICK_STAIRS;
+        if (wood.equals("cherry") || wood.equals("birch")) return Blocks.BRICK_STAIRS;
         return Blocks.DEEPSLATE_TILE_STAIRS;
     }
 

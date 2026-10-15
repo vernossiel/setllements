@@ -34,24 +34,48 @@ public final class Tiers {
     /** Designs per kind of building, for each station from poor to city. */
     private static final Map<String, String[][]> TIERS = Map.ofEntries(
             Map.entry("townhall", new String[][]{a("townhall-2"), a("townhall"), a("townhall-3"), a("townhall-4")}),
-            Map.entry("jail", new String[][]{a("jail-2"), a("jail"), a("jail-3"), a("jail-4")}),
-            Map.entry("tavern", new String[][]{a("tavern-3"), a("tavern"), a("tavern-2"), a("tavern-4")}),
-            Map.entry("storage", new String[][]{a("storage-4"), a("storage", "storage-2"), a("storage-3", "storage-2"), a("storage-5")}),
+            Map.entry("jail", new String[][]{a("jail-2"), a("jail-ordinary"), a("jail-wealthy"), a("jail-city")}),
+            Map.entry("tavern", new String[][]{a("tavern-poor"), a("tavern-ordinary"), a("tavern-wealthy"), a("tavern-city")}),
+            Map.entry("storage", new String[][]{a("storage-poor"), a("storage-ordinary"), a("storage-wealthy"), a("storage-city")}),
             Map.entry("chapel", new String[][]{a("chapel-4"), a("chapel-3"), a("chapel"), a("chapel-2")}),
-            Map.entry("smithy", new String[][]{a("smithy-3"), a("smithy-2"), a("smithy"), a("smithy-4")}),
+            Map.entry("smithy", new String[][]{a("smithy-3"), a("smithy-2"), a("smithy-wealthy"), a("smithy-city")}),
             Map.entry("market", new String[][]{a("market-3"), a("market"), a("market-2"), a("market-4")}),
-            Map.entry("barracks", new String[][]{a("barracks-3"), a("barracks"), a("barracks-2"), a("barracks-4")}),
+            Map.entry("barracks", new String[][]{a("barracks-poor"), a("barracks-ordinary"), a("barracks-wealthy"), a("barracks-city")}),
             Map.entry("well", new String[][]{a("well-4"), a("well"), a("well-2"), a("well-3")}),
             Map.entry("tower", new String[][]{a("tower-3"), a("tower-2"), a("tower"), a("tower-4")}),
-            Map.entry("granary", new String[][]{a("granary"), a("granary"), a("granary-2"), a("granary-2")}),
-            Map.entry("mill", new String[][]{a("mill-2"), a("mill-2"), a("mill"), a("mill")}),
-            Map.entry("shop", new String[][]{a(), a(), a("shop-3", "shop"), a("shop", "shop-2", "shop-3", "shop-4")}),
+            Map.entry("granary", new String[][]{a("granary-poor"), a("granary-ordinary"), a("granary-wealthy"), a("granary-city")}),
+            Map.entry("mill", new String[][]{a("mill-poor"), a("mill-2"), a("mill"), a("mill-city")}),
+            Map.entry("sawmill", new String[][]{a("sawmill-poor"), a("sawmill"), a("sawmill-2"), a("sawmill-city")}),
+            Map.entry("mason", new String[][]{a("mason-poor"), a("mason"), a("mason-2"), a("mason-city")}),
+            Map.entry("charcoal", new String[][]{a("charcoal"), a("charcoal"), a("charcoal-2"), a("charcoal-city")}),
+            Map.entry("armory", new String[][]{a("armory-poor"), a("armory"), a("armory-wealthy"), a("armory-city")}),
+            Map.entry("shop", new String[][]{a(), a(), a("shop-general", "shop-bakery"), a("shop-bakery", "shop-weaver", "shop-general", "shop-apothecary")}),
             Map.entry("home", new String[][]{a("cruck", "cruck", "hut", "longhouse"), a("house", "porch", "annex", "farmhouse", "twin"),
                     a("wealden", "wealden", "manor", "mansion"), a("rowhouse", "rowhouse", "rowhouse", "tallhouse", "wealden")})
     );
 
+    /** Older designs still standing in older villages, by the station they were built for. They are rebuilt in the new style. */
+    private static final Map<String, Integer> LEGACY = Map.ofEntries(
+            Map.entry("jail", 1), Map.entry("jail-3", 2), Map.entry("jail-4", 3),
+            Map.entry("tavern-3", 0), Map.entry("tavern", 1), Map.entry("tavern-2", 2), Map.entry("tavern-4", 3),
+            Map.entry("storage-4", 0), Map.entry("storage", 1), Map.entry("storage-2", 1), Map.entry("storage-3", 2), Map.entry("storage-5", 3),
+            Map.entry("smithy", 2), Map.entry("smithy-4", 3),
+            Map.entry("barracks-3", 0), Map.entry("barracks", 1), Map.entry("barracks-2", 2), Map.entry("barracks-4", 3),
+            Map.entry("granary", 1), Map.entry("granary-2", 2), Map.entry("armory-2", 2),
+            Map.entry("shop", 3), Map.entry("shop-2", 3), Map.entry("shop-3", 3), Map.entry("shop-4", 3));
+
+    /** Every kind with stations, and the designs of one station, for the test commands. */
+    public static java.util.Set<String> kinds() {
+        return new java.util.TreeSet<>(TIERS.keySet());
+    }
+
+    public static String[] row(String kind, int tier) {
+        String[][] rows = TIERS.get(kind);
+        return rows == null ? new String[0] : rows[Math.max(0, Math.min(CITY, tier))];
+    }
+
     /** Kinds the builder rebuilds in a better design when the village climbs a station. The churchyard keeps its dead. */
-    private static final java.util.Set<String> RENEWED = java.util.Set.of("townhall", "jail", "tavern", "storage", "smithy", "market", "barracks", "well", "tower", "granary", "mill", "shop");
+    private static final java.util.Set<String> RENEWED = java.util.Set.of("sawmill", "mason", "charcoal", "armory", "townhall", "jail", "tavern", "storage", "smithy", "market", "barracks", "well", "tower", "granary", "mill", "shop");
 
     private static final java.util.Set<String> HOMES = java.util.Set.of("hut", "longhouse", "twin", "house", "porch", "annex", "farmhouse", "mansion", "manor", "tallhouse", "cruck", "wealden", "rowhouse");
 
@@ -86,7 +110,7 @@ public final class Tiers {
         String[][] rows = TIERS.get(base);
         if (rows == null) return -1;
         for (int t = 0; t < rows.length; t++) for (String s : rows[t]) if (s.equals(design)) return t;
-        return -1;
+        return LEGACY.getOrDefault(design, -1);
     }
 
     public static boolean isHome(String type) {
@@ -98,13 +122,14 @@ public final class Tiers {
         int t = tierOf(design);
         if (t < 0) return false;
         if (isHome(design)) return t + 2 <= tier; // homes lag behind: the huts go when the village is wealthy
-        return RENEWED.contains(Buildings.base(design)) && t < tier;
+        return RENEWED.contains(Buildings.base(design)) && (t < tier || LEGACY.containsKey(design) && t <= tier);
     }
 
     // ---------- where things are in the designs ----------
 
     /** The cell a prisoner is put in, plan coordinates. */
     static int[] jailCell(String type) {
+        if (Works.jailPoints(type) != null) return Works.jailPoints(type)[0];
         return switch (type) {
             case "jail-2" -> new int[]{2, 0, 2};
             case "jail-3" -> new int[]{2, 1, 1};
@@ -115,6 +140,7 @@ public final class Tiers {
 
     /** Where a prisoner is let out. */
     static int[] jailExit(String type) {
+        if (Works.jailPoints(type) != null) return Works.jailPoints(type)[1];
         return switch (type) {
             case "jail-2" -> new int[]{2, 0, 6};
             case "jail-3" -> new int[]{4, 0, 8};
