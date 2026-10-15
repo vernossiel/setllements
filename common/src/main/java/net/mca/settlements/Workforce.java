@@ -29,6 +29,9 @@ public final class Workforce {
     private Workforce() {
     }
 
+    /** How far through his second a villager got last time (for /settlements dump). */
+    static final java.util.Map<java.util.UUID, String> STAGE = new java.util.HashMap<>();
+
     public static Chore choreFor(VillagerProfession p) {
         if (p == VillagerProfession.FARMER) return Chore.HARVEST;
         if (p == VillagerProfession.FISHERMAN) return Chore.FISH;
@@ -99,16 +102,19 @@ public final class Workforce {
         Move.shutBehind(v);
         Unstick.tick(v, village);
         Move.tick(v, village);
+        STAGE.put(v.getUuid(), "life");
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld lifeWorld && Life.tick(v, village, lifeWorld, time)) return;
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld watchWorld) {
             GuardIntel.civilianWatch(v, watchWorld);
             Remember.tick(v, village, watchWorld); // a word about what that player did, if anything stands out
         }
+        STAGE.put(v.getUuid(), "escort");
         if (v.isGuard() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld ew && Escort.guard(v, village, ew)) return; // seeing a worker safe out and back
         // a conversation: carried on, or started when he has a moment (on the guards' watch, nobody stands chatting)
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld tw && !(v.isGuard() && GuardAI.onDuty(v, time))) {
             boolean moment = !Mind.onDuty(v, village, time) || v.settlementsBreak || v.settlementsIdleWork >= 10 || Morning.active(v, time)
                     || Mind.before(v, village, time, Mind.Drive.TALK);
+            STAGE.put(v.getUuid(), "talk");
             if (Talk.tick(v, village, tw, moment && !Dig.busy(v) && !v.settlementsHauling)) return;
         }
 
@@ -132,6 +138,7 @@ public final class Workforce {
         if (village != null && village.tavern != null && v.settlementsHunger >= 250 && (v.settlementsHunger >= HUNGER_STOP_AT || Mind.before(v, village, time, Mind.Drive.EAT))
                 && v.getProfession() != VillagerProfession.BUTCHER) {
             if (job != Chore.NONE) v.getVillagerBrain().abandonJob();
+            STAGE.put(v.getUuid(), "tavern");
             if (Tavern.visit(v, village)) {
                 Doing.set(v, "settlements.doing.tavern");
                 return;
@@ -142,6 +149,7 @@ public final class Workforce {
         // a meal when hunger outweighs the work (a busy man eats late, an idle one early); past the limit, always
         if (v.settlementsHunger >= 250 && hasMeal(v, village) && (v.settlementsHunger >= HUNGER_STOP_AT || Mind.before(v, village, time, Mind.Drive.EAT))) {
             if (job != Chore.NONE) v.getVillagerBrain().abandonJob();
+            STAGE.put(v.getUuid(), "eat");
             if (startEating(v, village, 250)) return;
         }
 
@@ -149,9 +157,11 @@ public final class Workforce {
         if (village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld ow) Orders.refreshDue(village, ow);
 
         // the morning: breakfast, a wash at the well, a word with the neighbours - then work
+        STAGE.put(v.getUuid(), "morning");
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld mw && Morning.tick(v, village, mw, time)) return;
 
         // the day's rhythm: morning gathering with the elder, lunch at the hearth
+        STAGE.put(v.getUuid(), "routine");
         if (Persona.working(v, time) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld rw && Routine.tick(v, village, rw, time)) {
             Doing.set(v, "settlements.doing.routine");
             return;
@@ -173,6 +183,7 @@ public final class Workforce {
                 job = Chore.NONE;
             }
         }
+        STAGE.put(v.getUuid(), "break");
         if (v.settlementsBreak) {
             Gear.pocket(v);
             Doing.set(v, v.settlementsBreakLong ? "settlements.doing.break.long" : "settlements.doing.break");
@@ -192,6 +203,7 @@ public final class Workforce {
             return;
         }
 
+        STAGE.put(v.getUuid(), "mcajob");
         if (job != Chore.NONE) {
             // an autonomous chore is running
             Worksite.check(v, job);
@@ -219,6 +231,7 @@ public final class Workforce {
                 if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) Reputation.restock(sw, village);
             }
         }
+        STAGE.put(v.getUuid(), "offduty");
         if (!Mind.onDuty(v, village, time) && !Persona.working(v, time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
             Gear.pocket(v); // off work: the tools go back in the bag
@@ -237,10 +250,12 @@ public final class Workforce {
         }
         if (!Persona.working(v, time)) Doing.set(v, "settlements.doing.overtime"); // stayed on: the work cannot wait
         // and a moment's pause now and then: nobody works like a machine
+        STAGE.put(v.getUuid(), "pause");
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld pw && Trade.pausing(v, village, pw)) return;
 
         VillagerProfession prof = v.getProfession();
         if (Seat.seated(v)) Rest.end(v); // up, back to work
+        STAGE.put(v.getUuid(), "custom");
         if (isCustomWorker(prof)) {
             if (Forge.waiting(v, village)) return; // at the smithy, waiting for his new tool
             boolean worked = false;

@@ -1965,5 +1965,6 @@
   "settlements.doing.build.wait": "building held up: short of %s",
   "settlements.doing.build.nosite": "no place found for the %s: looking for level ground",
   "settlements.doing.build.nothing": "thinking what to build next",
-  "settlements.doing.road": "laying the village road"
+  "settlements.doing.road": "laying the village road",
+  "settlements.doing.pause": "a moment's pause, looking the work over"
 }

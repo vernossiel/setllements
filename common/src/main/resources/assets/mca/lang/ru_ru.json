@@ -1962,5 +1962,6 @@
   "settlements.doing.build.wait": "стройка стоит: не хватает (%s)",
   "settlements.doing.build.nosite": "не нашёл места под %s: ищет ровный участок",
   "settlements.doing.build.nothing": "думает, что строить дальше",
-  "settlements.doing.road": "мостит деревенскую дорогу"
+  "settlements.doing.road": "мостит деревенскую дорогу",
+  "settlements.doing.pause": "переводит дух, оглядывает работу"
 }

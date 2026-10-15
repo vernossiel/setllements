@@ -66,6 +66,10 @@ public final class SettlementsCommand {
         d.register(CommandManager.literal("settlements").requires(s -> s.hasPermissionLevel(2))
                 .then(CommandManager.literal("status").executes(SettlementsCommand::status))
                 .then(CommandManager.literal("dump").executes(SettlementsCommand::dump))
+                .then(CommandManager.literal("fake")
+                        .then(CommandManager.literal("spawn").executes(SettlementsCommand::fakeSpawn))
+                        .then(CommandManager.literal("hit").then(CommandManager.argument("name", StringArgumentType.word()).executes(SettlementsCommand::fakeHit)))
+                        .then(CommandManager.literal("remove").executes(SettlementsCommand::fakeRemove)))
                 .then(CommandManager.literal("rich").executes(SettlementsCommand::rich))
                 .then(CommandManager.literal("give")
                         .then(CommandManager.argument("item", StringArgumentType.string())
@@ -210,6 +214,7 @@ public final class SettlementsCommand {
         var at = c.getSource().getPosition();
         var box = new net.minecraft.util.math.Box(at, at).expand(128, 64, 128);
         long tod = w.getTimeOfDay();
+        if (fake != null) say(c, "Tester @" + fake.getBlockPos().toShortString() + " health " + fake.getHealth());
         say(c, "time " + tod % 24000L + " day " + tod / 24000L + (Workforce.isRestDay(tod) ? " (rest day)" : ""));
         for (var v : w.getEntitiesByClass(net.mca.entity.VillagerEntityMCA.class, box, x -> x.isAlive())) {
             String prof = v.isBaby() ? "child" : v.isGuard() ? "guard" : v.isElder() ? "elder" : Registries.VILLAGER_PROFESSION.getId(v.getProfession()).getPath();
@@ -218,9 +223,48 @@ public final class SettlementsCommand {
                     + " idle=" + v.settlementsIdleWork + " job=" + v.getVillagerBrain().getCurrentJob() + " vil=" + (vil == null ? "-" : vil.getId())
                     + " load=" + Haul.load(v) + (v.settlementsHauling ? "(hauling)" : "") + " store=" + (vil == null || Haul.store(v, vil) == null ? "-" : Haul.store(v, vil).toShortString())
                     + " hand=" + Registries.ITEM.getId(v.getMainHandStack().getItem()).getPath() + " goal=" + (Move.goal(v) == null ? "-" : Move.goal(v).toShortString())
+                    + v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).map(t -> " TARGET=" + t.getName().getString() + " d=" + (int) t.distanceTo(v)).orElse("")
+                    + " stage=" + Workforce.STAGE.getOrDefault(v.getUuid(), "-")
                     + " :: " + Doing.describe(v).getString());
         }
         return 1;
+    }
+
+    // ---------- a stand-in player for testing on a server nobody plays on ----------
+
+    private static ServerPlayerEntity fake;
+
+    /** A player standing where the command is run (from the console: execute positioned ... run), seen by villagers and guards. */
+    private static int fakeSpawn(CommandContext<ServerCommandSource> c) {
+        ServerWorld w = c.getSource().getWorld();
+        if (fake != null) w.removePlayer(fake, net.minecraft.entity.Entity.RemovalReason.DISCARDED);
+        var profile = new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes("settlements-tester".getBytes()), "Tester");
+        fake = new ServerPlayerEntity(w.getServer(), w, profile);
+        var conn = new net.minecraft.network.ClientConnection(net.minecraft.network.NetworkSide.SERVERBOUND);
+        new net.minecraft.server.network.ServerPlayNetworkHandler(w.getServer(), conn, fake);
+        var at = c.getSource().getPosition();
+        fake.refreshPositionAndAngles(at.x, at.y, at.z, 0f, 0f);
+        w.onPlayerConnected(fake);
+        return say(c, "Tester stands at " + net.minecraft.util.math.BlockPos.ofFloored(at).toShortString());
+    }
+
+    /** The stand-in hits the named villager, as a player would. */
+    private static int fakeHit(CommandContext<ServerCommandSource> c) {
+        if (fake == null) return say(c, "No tester. /settlements fake spawn first.");
+        String name = StringArgumentType.getString(c, "name");
+        ServerWorld w = c.getSource().getWorld();
+        for (var v : w.getEntitiesByClass(net.mca.entity.VillagerEntityMCA.class, fake.getBoundingBox().expand(128), x -> x.isAlive())) {
+            if (!v.getName().getString().equalsIgnoreCase(name)) continue;
+            v.damage(w.getDamageSources().playerAttack(fake), 3f);
+            return say(c, "Tester hit " + name + " (health " + v.getHealth() + ")");
+        }
+        return say(c, "No villager called " + name + " near the tester.");
+    }
+
+    private static int fakeRemove(CommandContext<ServerCommandSource> c) {
+        if (fake != null) c.getSource().getWorld().removePlayer(fake, net.minecraft.entity.Entity.RemovalReason.DISCARDED);
+        fake = null;
+        return say(c, "Tester gone.");
     }
 
     private static void add(Village v, Item item, int count) {

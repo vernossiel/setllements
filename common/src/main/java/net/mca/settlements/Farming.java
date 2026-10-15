@@ -115,7 +115,7 @@ public final class Farming {
         int what = want(world, t);
         if (v.squaredDistanceTo(t.getX() + 0.5, t.getY(), t.getZ() + 0.5) > 6.25) {
             Move.to(v, t.getX() + 0.5, t.getY(), t.getZ() + 0.5, 0.55);
-            Doing.set(v, what == 1 ? "settlements.doing.farm.reap" : what == 2 ? "settlements.doing.farm.sow" : "settlements.doing.farm.feed");
+            Doing.set(v, what == 1 ? "settlements.doing.farm.reap" : what == 2 ? "settlements.doing.farm.sow" : what == 4 ? "settlements.doing.farm.till" : "settlements.doing.farm.feed");
             return true;
         }
         v.getNavigation().stop();
@@ -140,6 +140,13 @@ public final class Farming {
             world.setBlockState(t, crop.getDefaultState());
             world.playSound(null, t, SoundEvents.ITEM_CROP_PLANT, SoundCategory.BLOCKS, 1f, 1f);
             Doing.set(v, "settlements.doing.farm.sow");
+        } else if (what == 4) {
+            // a new bed hoed beside the old ones (by hand if there is no hoe), to be sown next
+            if (!Gear.has(v, HoeItem.class)) Gear.equipTool(v, village, Chore.HARVEST);
+            if (Gear.has(v, HoeItem.class)) Gear.wear(v, HoeItem.class);
+            world.setBlockState(t.down(), Blocks.FARMLAND.getDefaultState());
+            world.playSound(null, t, SoundEvents.ITEM_HOE_TILL, SoundCategory.BLOCKS, 1f, 1f);
+            Doing.set(v, "settlements.doing.farm.till");
         } else if (what == 3 && s.getBlock() instanceof CropBlock crop && (take(village, Items.BONE_MEAL, 1) || compost(village))) {
             crop.applyGrowth(world, t, s);
             world.syncWorldEvent(1505, t, 15);
@@ -156,9 +163,18 @@ public final class Farming {
     /** 1 a ripe crop, 2 a bare bed, 3 a growing crop (fed only when there is bone meal to spare), 0 nothing. */
     private static int want(ServerWorld world, BlockPos crop) {
         BlockState s = world.getBlockState(crop), under = world.getBlockState(crop.down());
-        if (!under.isOf(Blocks.FARMLAND)) return 0;
+        if (!under.isOf(Blocks.FARMLAND)) return newBed(world, crop.down()) && s.isAir() ? 4 : 0;
         if (s.getBlock() instanceof CropBlock c) return c.isMature(s) ? 1 : 3;
         return s.isAir() ? 2 : 0;
+    }
+
+    /** Earth beside a bed of the field, near water: where the field can grow by a bed. */
+    private static boolean newBed(ServerWorld world, BlockPos p) {
+        BlockState s = world.getBlockState(p);
+        if (!(s.isOf(Blocks.DIRT) || s.isOf(Blocks.GRASS_BLOCK))) return false;
+        boolean beside = false;
+        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) if (world.getBlockState(p.offset(d)).isOf(Blocks.FARMLAND)) beside = true;
+        return beside && nearWater(world, p);
     }
 
     /** The nearest bed round the village that wants something done: ripe first, then bare; growing ones only with bone meal in the stores. */
@@ -167,8 +183,9 @@ public final class Farming {
         boolean meal = count(village, Items.BONE_MEAL) > 0 || count(village, Items.WHEAT_SEEDS) >= 24;
         boolean seed = false;
         for (Item i : SOW.keySet()) if (count(village, i) > 0 || v.getInventory().count(i) > 0) seed = true;
-        BlockPos best = null;
-        double bd = Double.MAX_VALUE;
+        BlockPos best = null, bed = null;
+        double bd = Double.MAX_VALUE, bedD = Double.MAX_VALUE;
+        int beds = 0, most = 40 + 24 * Prosperity.tier(village);
         for (int dx = -FIELD_RADIUS; dx <= FIELD_RADIUS; dx++) {
             for (int dz = -FIELD_RADIUS; dz <= FIELD_RADIUS; dz++) {
                 int x = c.getX() + dx, z = c.getZ() + dz;
@@ -177,7 +194,16 @@ public final class Farming {
                 // the crop stands on the farmland: the top is the farmland itself (a bare bed or a young crop) or one above
                 for (int yy = y; yy >= y - 1; yy--) {
                     BlockPos p = new BlockPos(x, yy, z);
+                    if (world.getBlockState(p.down()).isOf(Blocks.FARMLAND)) beds++;
                     int w = want(world, p);
+                    if (w == 4) {
+                        double d = v.squaredDistanceTo(x + 0.5, yy, z + 0.5);
+                        if (seed && d < bedD) {
+                            bedD = d;
+                            bed = p;
+                        }
+                        break;
+                    }
                     if (w == 0 || w == 2 && !seed || w == 3 && !meal) continue;
                     double d = v.squaredDistanceTo(x + 0.5, yy, z + 0.5) + (w == 1 ? 0 : w == 2 ? 200 : 900);
                     if (d < bd) {
@@ -188,7 +214,8 @@ public final class Farming {
                 }
             }
         }
-        return best;
+        // nothing to do in the fields: they are made bigger, a bed at a time, while there is seed and use for more
+        return best != null ? best : beds < most ? bed : null;
     }
 
     /** Within the fence, not on it or outside it. */

@@ -45,7 +45,10 @@ public final class Trade {
      * looking over the work, or with a word; a novice now and then has to redo something he got wrong.
      */
     public static boolean pausing(VillagerEntityMCA v, Village village, ServerWorld world) {
+        // nobody stops dead in the middle of the road: the pause waits till he is at the work
+        if (v.settlementsPauseLeft <= 0 && v.getNavigation().isFollowingPath()) return false;
         if (v.settlementsPauseLeft > 0) {
+            Doing.set(v, "settlements.doing.pause");
             v.settlementsPauseLeft--;
             v.getNavigation().stop();
             if (v.getRandom().nextInt(3) == 0) {
