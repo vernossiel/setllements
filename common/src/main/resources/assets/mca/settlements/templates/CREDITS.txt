@@ -1,5 +1,12 @@
 The building templates in this folder are converted from MineColonies blueprints
-(https://github.com/ldtteam/minecolonies), licensed under the GNU GPL v3.0.
-Style "nordic" by Luna and John Reiher (MineColonies schematic builders) (see the "credit" field in each file).
-Converted to vanilla blocks, turned to face south and cropped; the timber is swapped for the
-village's own wood when built. MineColonies-only blocks were replaced by vanilla equivalents.
+(https://github.com/ldtteam/minecolonies), licensed under the GNU GPL v3.0. The designs are the work of
+the MineColonies schematic builders; each file names its style and authors in its "credit" field:
+  nordic          - Luna, John Reiher
+  medievaloak,
+  medievalbirch,
+  medievaldarkoak - Carlansor
+  sandstone       - Raycoms, John Reiher, SomeAddons, AravanFox, Moobien
+Changes made for Settlements: converted to vanilla blocks (Domum Ornamentum's shaped blocks become the
+vanilla stairs, slabs, walls, fences and doors of their material, its bricks the nearest vanilla stone),
+MineColonies' own blocks replaced by vanilla ones, turned to face south and cropped; when built, the
+timber is swapped for the village's own wood.

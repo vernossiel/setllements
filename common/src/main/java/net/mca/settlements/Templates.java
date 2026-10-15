@@ -62,13 +62,46 @@ public final class Templates {
         return load(rest.substring(0, dot) + "/" + rest.substring(dot + 1));
     }
 
-    /** The MineColonies style that suits a village's land; null where none does (we keep our own designs there). */
+    /** The MineColonies style that suits a village's land. */
     static String style(Village village) {
         ServerWorld world = village.getWorld();
-        if (world == null) return "nordic";
+        if (world == null) return "medievaloak";
         String biome = world.getBiome(new BlockPos(village.getCenter())).getKey().map(k -> k.getValue().getPath()).orElse("plains");
-        if (biome.contains("desert") || biome.contains("badlands") || biome.contains("beach") || biome.contains("ocean")) return null;
-        return "nordic"; // in its timber of the place: acacia in the savanna, jungle wood in the jungle
+        if (biome.contains("desert") || biome.contains("badlands")) return "sandstone";
+        if (biome.contains("snow") || biome.contains("taiga") || biome.contains("frozen") || biome.contains("ice") || biome.contains("grove")
+                || biome.contains("slope") || biome.contains("peak")) return "nordic";
+        if (biome.contains("birch")) return "medievalbirch";
+        if (biome.contains("dark_forest")) return "medievaldarkoak";
+        return "medievaloak"; // in the timber of the place: acacia in the savanna, jungle wood in the jungle
+    }
+
+    /** The timber a style is drawn in (swapped for the village's own), or null for a style of stone. */
+    private static String styleWood(String style) {
+        return switch (style) {
+            case "nordic" -> "spruce";
+            case "medievaloak" -> "oak";
+            case "medievalbirch" -> "birch";
+            case "medievaldarkoak" -> "dark_oak";
+            default -> null;
+        };
+    }
+
+    /** The files that can stand for a logical building name ("home3": a residence, or a desert tower house...). */
+    private static String[] aliases(String name) {
+        String n = name.replaceAll("\\d", ""), lv = name.replaceAll("\\D", "");
+        return switch (n) {
+            case "home" -> new String[]{"residence" + lv, "residencetower" + lv, "residencelarge" + lv, "residenceluxuryred" + lv, "residenceluxuryblue" + lv};
+            case "bakery" -> new String[]{"baker" + lv, "bakery" + lv};
+            default -> new String[]{name};
+        };
+    }
+
+    /** The logical name of a template file ("residencetower3" -> "home3"). */
+    static String logical(String file) {
+        String n = file.replaceAll("\\d", ""), lv = file.replaceAll("\\D", "");
+        if (n.startsWith("residence")) return "home" + lv;
+        if (n.equals("baker")) return "bakery" + lv;
+        return file;
     }
 
     /** Turns a placeholder into a concrete design for this village (the style of its land), or null if there is none. */
@@ -77,11 +110,13 @@ public final class Templates {
         String base = placeholder.substring(0, i), name = placeholder.substring(i + 4);
         String style = style(village);
         if (style == null) return null;
-        for (String s : new String[]{style, "nordic"}) { // a style lacking that building borrows the northern one
-            String type = base + "-mc." + s + "." + name;
-            if (of(type) != null) return type;
+        List<String> found = new ArrayList<>();
+        for (String file : aliases(name)) {
+            String type = base + "-mc." + style + "." + file;
+            if (of(type) != null) found.add(type);
         }
-        return null;
+        if (found.isEmpty()) return null;
+        return found.get(Math.floorMod((int) (village.getId() * 31L + found.size() * 7L + (village.getWorld() == null ? 0 : village.getWorld().getTime() / 24000L)), found.size()));
     }
 
     private static synchronized Template load(String id) {
@@ -154,16 +189,23 @@ public final class Templates {
     static BlockState state(Village village, Step step, int rot) {
         Template t = of(village.buildType);
         if (t == null || step.face() < 0 || step.face() >= t.palette().length) return null;
-        BlockState s = reskin(t.palette()[step.face()], Palette.of(village));
+        String style = t.id().substring(0, t.id().indexOf('/'));
+        BlockState s = reskin(t.palette()[step.face()], Palette.of(village), style);
         return s.rotate(net.minecraft.util.BlockRotation.values()[rot & 3]);
     }
 
-    /** Northern spruce becomes the village's own wood. */
-    static BlockState reskin(BlockState s, Palette pal) {
-        if (pal.wood().equals("spruce")) return s;
+    /** The style's own timber becomes the village's wood. */
+    static BlockState reskin(BlockState s, Palette pal, String style) {
+        String from = styleWood(style);
+        if (from == null || pal.wood().equals(from)) return s;
         Identifier id = Registries.BLOCK.getId(s.getBlock());
-        if (!id.getNamespace().equals("minecraft") || !id.getPath().contains("spruce")) return s;
-        Identifier other = new Identifier("minecraft", id.getPath().replace("spruce", pal.wood()));
+        String path = id.getPath();
+        if (!id.getNamespace().equals("minecraft")) return s;
+        boolean match = path.startsWith(from + "_") || path.startsWith("stripped_" + from + "_");
+        if (from.equals("oak") && (path.startsWith("dark_oak") || path.startsWith("stripped_dark_oak"))) match = false;
+        if (!match) return s;
+        Identifier other = new Identifier("minecraft", path.startsWith("stripped_") ? "stripped_" + pal.wood() + path.substring(9 + from.length())
+                : pal.wood() + path.substring(from.length()));
         if (!Registries.BLOCK.containsId(other)) return s;
         return Registries.BLOCK.get(other).getStateWithProperties(s);
     }

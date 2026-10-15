@@ -1257,9 +1257,25 @@ public final class Builder {
                 case BARREL -> barrel = p;
                 case CRAFT -> craft = p;
                 case SEAT_W, SEAT_E -> seats.add(p);
+                case TPL_FIT, TPL -> { // a MineColonies tavern: its stove, barrel, table and benches from the template
+                    Templates.Template t = Templates.of(village.buildType);
+                    if (t == null) break;
+                    BlockState bs = t.palette()[step.face()];
+                    Block b = bs.getBlock();
+                    if (b instanceof AbstractFurnaceBlock && smoker == null) smoker = p;
+                    else if (b instanceof BarrelBlock && barrel == null) barrel = p;
+                    else if (b == Blocks.CRAFTING_TABLE && craft == null) craft = p;
+                    else if (b instanceof StairsBlock && step.dy() >= 0 && bs.get(StairsBlock.HALF) == net.minecraft.block.enums.BlockHalf.BOTTOM
+                            && step.dy() < 3 && seats.size() < 12) seats.add(p);
+                }
                 default -> {
                 }
             }
+        }
+        if (Templates.of(village.buildType) != null) { // what a template lacks is made up from what it has
+            if (barrel == null) barrel = craft != null ? craft : smoker;
+            if (craft == null) craft = barrel;
+            if (smoker == null) smoker = craft;
         }
         if (smoker != null && barrel != null && craft != null) village.tavern = new Tavern(smoker, barrel, craft, seats);
     }

@@ -33,26 +33,26 @@ public final class Tiers {
 
     /** Designs per kind of building, for each station from poor to city. */
     private static final Map<String, String[][]> TIERS = Map.ofEntries(
-            Map.entry("townhall", new String[][]{a("townhall-2"), a("townhall"), a("townhall-3"), a("townhall-4", "townhall-mc:townhall4", "townhall-mc:townhall5")}),
+            Map.entry("townhall", new String[][]{a("townhall-2"), a("townhall", "townhall-mc:townhall1"), a("townhall-3", "townhall-mc:townhall3"), a("townhall-4", "townhall-mc:townhall4", "townhall-mc:townhall5")}),
             Map.entry("jail", new String[][]{a("jail-2"), a("jail-ordinary"), a("jail-wealthy"), a("jail-city")}),
-            Map.entry("tavern", new String[][]{a("tavern-poor"), a("tavern-ordinary"), a("tavern-wealthy"), a("tavern-city")}),
-            Map.entry("storage", new String[][]{a("storage-poor"), a("storage-ordinary"), a("storage-wealthy"), a("storage-city", "storage-mc:warehouse4", "storage-mc:warehouse5")}),
+            Map.entry("tavern", new String[][]{a("tavern-poor"), a("tavern-ordinary", "tavern-mc:tavern1"), a("tavern-wealthy", "tavern-mc:tavern2"), a("tavern-city", "tavern-mc:tavern3")}),
+            Map.entry("storage", new String[][]{a("storage-poor"), a("storage-ordinary"), a("storage-wealthy", "storage-mc:warehouse3"), a("storage-city", "storage-mc:warehouse4", "storage-mc:warehouse5")}),
             Map.entry("chapel", new String[][]{a("chapel-4"), a("chapel-3"), a("chapel"), a("chapel-2")}),
             Map.entry("smithy", new String[][]{a("smithy-3"), a("smithy-2", "smithy-mc:blacksmith2"), a("smithy-wealthy", "smithy-mc:blacksmith3"), a("smithy-city", "smithy-mc:blacksmith5")}),
             Map.entry("market", new String[][]{a("market-3"), a("market"), a("market-2"), a("market-4")}),
-            Map.entry("barracks", new String[][]{a("barracks-poor"), a("barracks-ordinary"), a("barracks-wealthy"), a("barracks-city")}),
+            Map.entry("barracks", new String[][]{a("barracks-poor"), a("barracks-ordinary"), a("barracks-wealthy", "barracks-mc:barracks3"), a("barracks-city", "barracks-mc:barracks5")}),
             Map.entry("well", new String[][]{a("well-4"), a("well"), a("well-2"), a("well-3")}),
             Map.entry("tower", new String[][]{a("tower-3"), a("tower-2"), a("tower"), a("tower-4")}),
             Map.entry("granary", new String[][]{a("granary-poor"), a("granary-ordinary"), a("granary-wealthy"), a("granary-city")}),
             Map.entry("mill", new String[][]{a("mill-poor"), a("mill-2"), a("mill"), a("mill-city")}),
-            Map.entry("sawmill", new String[][]{a("sawmill-poor"), a("sawmill"), a("sawmill-2", "sawmill-mc:sawmill3"), a("sawmill-city", "sawmill-mc:sawmill4")}),
-            Map.entry("mason", new String[][]{a("mason-poor"), a("mason"), a("mason-2", "mason-mc:stonemason3"), a("mason-city", "mason-mc:stonemason5")}),
+            Map.entry("sawmill", new String[][]{a("sawmill-poor"), a("sawmill", "sawmill-mc:sawmill2"), a("sawmill-2", "sawmill-mc:sawmill2"), a("sawmill-city", "sawmill-mc:sawmill4")}),
+            Map.entry("mason", new String[][]{a("mason-poor"), a("mason", "mason-mc:stonemason2"), a("mason-2", "mason-mc:stonemason2"), a("mason-city", "mason-mc:stonemason4")}),
             Map.entry("charcoal", new String[][]{a("charcoal"), a("charcoal"), a("charcoal-2"), a("charcoal-city")}),
             Map.entry("armory", new String[][]{a("armory-poor"), a("armory"), a("armory-wealthy"), a("armory-city")}),
-            Map.entry("shop", new String[][]{a(), a(), a("shop-general", "shop-bakery", "shop-mc:baker3"), a("shop-bakery", "shop-weaver", "shop-general", "shop-apothecary", "shop-mc:baker5")}),
-            Map.entry("home", new String[][]{a("cruck", "cruck", "hut", "longhouse"), a("house", "porch", "annex", "farmhouse", "twin", "cottage", "home-mc:residence1", "home-mc:residence2"),
-                    a("wealden", "wealden", "manor", "mansion", "cottage", "home-mc:residence3", "home-mc:residence4"),
-                    a("rowhouse", "rowhouse", "rowhouse", "tallhouse", "wealden", "home-mc:residence5", "home-mc:residence4")})
+            Map.entry("shop", new String[][]{a(), a(), a("shop-general", "shop-bakery", "shop-mc:bakery3"), a("shop-bakery", "shop-weaver", "shop-general", "shop-apothecary", "shop-mc:bakery5")}),
+            Map.entry("home", new String[][]{a("cruck", "cruck", "hut", "longhouse"), a("house", "porch", "annex", "farmhouse", "twin", "cottage", "home-mc:home1", "home-mc:home2", "home-mc:home2"),
+                    a("wealden", "wealden", "manor", "mansion", "cottage", "home-mc:home3", "home-mc:home4", "home-mc:home3"),
+                    a("rowhouse", "rowhouse", "rowhouse", "tallhouse", "wealden", "home-mc:home5", "home-mc:home4", "home-mc:home5")})
     );
 
     /** Older designs still standing in older villages, by the station they were built for. They are rebuilt in the new style. */
@@ -118,9 +118,9 @@ public final class Tiers {
 
     /** The lowest station a design belongs to, -1 for designs that have none. */
     public static int tierOf(String design) {
-        if (Templates.isTemplate(design)) { // "smithy-mc.nordic.blacksmith3" stands in the table as "smithy-mc:blacksmith3"
+        if (Templates.isTemplate(design)) { // "home-mc.sandstone.residencetower3" stands in the table as "home-mc:home3"
             String rest = design.substring(design.indexOf("-mc.") + 4);
-            design = design.substring(0, design.indexOf("-mc.")) + "-mc:" + rest.substring(rest.indexOf('.') + 1);
+            design = design.substring(0, design.indexOf("-mc.")) + "-mc:" + Templates.logical(rest.substring(rest.indexOf('.') + 1));
         }
         String base = isHome(design) ? "home" : Buildings.base(design);
         String[][] rows = TIERS.get(base);
