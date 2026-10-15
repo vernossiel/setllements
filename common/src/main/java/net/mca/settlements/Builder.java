@@ -1121,7 +1121,20 @@ public final class Builder {
                 default -> Result.WAIT;
             };
         }
-        if (step.kind() == Kind.LANTERN) {
+        if (step.kind() == Kind.LANTERN && !state.isOf(Blocks.LANTERN)) {
+            // no lantern to be had (a poor village, or no iron): a torch on the nearest wall, or standing on the floor
+            BlockState torch = null;
+            for (Direction dir : Direction.Type.HORIZONTAL) {
+                BlockPos n = target.offset(dir);
+                if (world.getBlockState(n).isSideSolidFullSquare(world, n, dir.getOpposite())) {
+                    torch = Blocks.WALL_TORCH.getDefaultState().with(WallTorchBlock.FACING, dir.getOpposite());
+                    break;
+                }
+            }
+            if (torch == null && world.getBlockState(target.down()).isSideSolidFullSquare(world, target.down(), Direction.UP)) torch = Blocks.TORCH.getDefaultState();
+            if (torch == null) return Result.SKIPPED;
+            state = torch;
+        } else if (step.kind() == Kind.LANTERN) {
             if (Block.sideCoversSmallSquare(world, target.down(), Direction.UP)) state = state.with(LanternBlock.HANGING, false);
             else if (Block.sideCoversSmallSquare(world, target.up(), Direction.DOWN)) state = state.with(LanternBlock.HANGING, true);
             else return Result.SKIPPED;
@@ -1340,8 +1353,11 @@ public final class Builder {
                 if (!FREE && !take(village, s -> s.isOf(Items.GOLD_INGOT), 1)) return null;
                 return Blocks.BELL.getDefaultState().with(BellBlock.FACING, turn(Direction.SOUTH, rot));
             case LANTERN: {
+                // a lantern is a torch in an iron cage: without iron (and in a poor village) it stays a torch
                 if (!take(village, s -> s.isOf(Items.TORCH), 1)) return null;
-                return Blocks.LANTERN.getDefaultState();
+                if (tier > Tiers.POOR && (FREE || take(village, s -> s.isOf(Items.IRON_INGOT), 1) || take(village, s -> s.isOf(Items.IRON_NUGGET), 8)))
+                    return Blocks.LANTERN.getDefaultState();
+                return Blocks.TORCH.getDefaultState();
             }
             case STONECUTTER:
                 if (!take(village, COBBLE, 3)) return null;

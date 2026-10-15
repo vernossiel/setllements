@@ -161,9 +161,7 @@ public final class Forms {
             at(l, 1, 1, z, Kind.PEW, E);
             at(l, 5, 1, z, Kind.PEW, W);
         }
-        // light: lanterns from the ridge, torches on the posts
-        at(l, 3, 5, 2, Kind.LANTERN);
-        at(l, 3, 5, 9, Kind.LANTERN);
+        // light: torches on the posts
         for (int z : new int[]{3, 9}) {
             at(l, 1, 2, z, Kind.TORCH, W);
             at(l, 5, 2, z, Kind.TORCH, E);
@@ -197,7 +195,7 @@ public final class Forms {
         at(l, 1, 1, 2, Kind.BED_HEAD);
         at(l, 3, 1, 1, Kind.BARREL);
         at(l, 3, 1, 3, Kind.CRAFT);
-        at(l, 2, 3, 3, Kind.LANTERN);
+        at(l, 1, 2, 3, Kind.TORCH, W);
         at(l, 2, 0, d, Kind.STEP, N);
         for (int z = d + 1; z <= d + 1; z++) at(l, 2, -1, z, Kind.PATH);
         // a woodpile by the wall

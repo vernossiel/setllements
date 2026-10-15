@@ -131,6 +131,8 @@ public final class Roads {
         if (!world.getBlockState(p).isAir() || !world.getBlockState(p.down()).isSolidBlock(world, p.down())) return;
         if (!Builder.takeItem(village, s -> s.isOf(Items.TORCH), 1)) return;
         world.setBlockState(p, Blocks.OAK_FENCE.getDefaultState());
-        world.setBlockState(p.up(), (village.getId() >= 0 && Prosperity.tier(village) >= Tiers.WEALTHY ? Blocks.LANTERN : Blocks.TORCH).getDefaultState());
+        boolean lantern = village.getId() >= 0 && Prosperity.tier(village) >= Tiers.WEALTHY
+                && (Builder.takeItem(village, s -> s.isOf(Items.IRON_INGOT), 1) || Builder.takeItem(village, s -> s.isOf(Items.IRON_NUGGET), 8));
+        world.setBlockState(p.up(), (lantern ? Blocks.LANTERN : Blocks.TORCH).getDefaultState()); // a lantern needs iron
     }
 }
