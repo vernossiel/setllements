@@ -90,6 +90,18 @@ public final class GuardAI {
             return;
         } else {
             g.settlementsWatch = null;
+            // a player with a bad name in the village is not left to wander about unwatched: one guard takes him on
+            if (g.age % 100 == 0) {
+                for (PlayerEntity p : world.getPlayers()) {
+                    if (p.isCreative() || p.isSpectator() || p.squaredDistanceTo(g) > 28 * 28 || !village.isWithinBorder(p)) continue;
+                    if (Reputation.tier(village.getReputation(p)) > 2 || !g.canSee(p)) continue;
+                    boolean taken = !world.getEntitiesByClass(VillagerEntityMCA.class, g.getBoundingBox().expand(64),
+                            o -> o != g && o.isGuard() && p.getUuid().equals(o.settlementsWatch)).isEmpty();
+                    if (taken) continue;
+                    g.settlementsWatch = p.getUuid();
+                    break;
+                }
+            }
         }
 
         List<LivingEntity> hostiles = world.getEntitiesByClass(LivingEntity.class, g.getBoundingBox().expand(SIGHT, 8, SIGHT),

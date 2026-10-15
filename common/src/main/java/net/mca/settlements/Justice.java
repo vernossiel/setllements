@@ -47,7 +47,7 @@ public final class Justice {
         double value;
         boolean witnessed;
         final Map<Item, Integer> stolen = new HashMap<>();
-        long deadline, lastTalk, until;
+        long deadline, lastTalk, until, since; // since: wanted since
         int arrests;
         BlockPos hold;
 
@@ -202,15 +202,24 @@ public final class Justice {
                     if (guard != null && guard.squaredDistanceTo(p) > 16) guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(p, 0.5f, 2));
                     if (now >= c.deadline) {
                         c.stage = Stage.WANTED;
+                        c.since = now;
                         talk(world, village, guard, p, "settlements.justice.wanted", now);
                     } else if (now - c.lastTalk > 400) {
                         demand(world, village, guard, p, c);
                     }
                 }
                 case WANTED -> {
+                    if (c.since == 0) c.since = now;
+                    // every guard about goes after him; one who keeps out of their way in the village resists arrest
+                    for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(48), o -> o.isGuard() && o.isAlive() && !o.isSleeping())) {
+                        g.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(p, 0.8f, 1));
+                    }
+                    if (now - c.since > 20 * 45 && village.isWithinBorder(p)) {
+                        resist(p);
+                        continue;
+                    }
                     if (guard == null) continue;
-                    guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(p, 0.6f, 1));
-                    if (guard.squaredDistanceTo(p) < 16) {
+                    if (guard.squaredDistanceTo(p) < 36 && guard.canSee(p)) {
                         c.stage = Stage.ARREST;
                         c.deadline = now + 20 * 20;
                         c.lastTalk = now;
@@ -234,6 +243,7 @@ public final class Justice {
                     if (c.hold != null && p.squaredDistanceTo(c.hold.getX() + 0.5, c.hold.getY(), c.hold.getZ() + 0.5) > 9) {
                         // broke out
                         c.stage = Stage.WANTED;
+                        c.since = now;
                         c.until += 20 * 60;
                         p.sendMessage(Text.translatable("settlements.justice.escaped").formatted(Formatting.RED), false);
                         Life.news(village, "crime.escape", p.getName().getString());
@@ -244,7 +254,13 @@ public final class Justice {
                         it.remove();
                         continue;
                     }
-                    if (village.isWithinBorder(p) && now - c.lastTalk > 600) talk(world, village, guard, p, "settlements.justice.exiled_back", now);
+                    if (village.isWithinBorder(p)) {
+                        // an exile inside the village is driven out by force, by every guard about
+                        if (now - c.lastTalk > 600) talk(world, village, guard, p, "settlements.justice.exiled_back", now);
+                        for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(48), o -> o.isGuard() && o.isAlive() && !o.isSleeping())) {
+                            g.getBrain().remember(MemoryModuleType.ATTACK_TARGET, p, 200);
+                        }
+                    }
                 }
             }
         }
@@ -423,23 +439,16 @@ public final class Justice {
     /** A guard about to land a blow on a resisting player: when he is down to his last strength, he is arrested instead. */
     public static boolean subdue(VillagerEntityMCA guard, PlayerEntity p) {
         if (p.getHealth() > 6f || !(p instanceof ServerPlayerEntity sp)) return false;
-        ServerWorld world = sp.getServerWorld();
         Case c = CASES.get(p.getUuid());
-        if (c != null && c.stage != Stage.SERVING && c.stage != Stage.EXILED) {
-            guard.sendChatMessage(Text.translatable("settlements.justice.subdued", p.getName()), p);
-            sentence(world, sp, c);
-            return true;
-        }
-        // nothing to arrest him for (a sworn enemy, an exile come back): beaten, thrown out, left alone a while
-        SPARED.put(p.getUuid(), world.getTime() + 1200);
-        for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(64), VillagerEntityMCA::isGuard)) {
-            if (g.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).orElse(null) == p) g.getBrain().forget(MemoryModuleType.ATTACK_TARGET);
-        }
-        double dx = p.getX() - guard.getX(), dz = p.getZ() - guard.getZ(), len = Math.max(0.1, Math.sqrt(dx * dx + dz * dz));
-        p.takeKnockback(1.2, -dx / len, -dz / len);
-        sp.velocityModified = true;
-        guard.sendChatMessage(Text.translatable("settlements.justice.beaten", p.getName()), p);
+        if (!detaining(c)) return false; // an exile or a sworn enemy is not arrested: he is fought like anyone
+        guard.sendChatMessage(Text.translatable("settlements.justice.subdued", p.getName()), p);
+        sentence(sp.getServerWorld(), sp, c);
         return true;
+    }
+
+    /** A case the guards mean to end with an arrest, not a killing. */
+    private static boolean detaining(Case c) {
+        return c != null && c.stage != Stage.SERVING && c.stage != Stage.EXILED;
     }
 
     /** Beaten down and thrown out a moment ago: the guards let him crawl away. */
@@ -451,9 +460,12 @@ public final class Justice {
         return false;
     }
 
-    /** A guard's blow on a player hurts, but never kills: a few hearts at most. */
+    /** How hard a guard's blow lands on a player. */
     public static float blow(PlayerEntity p, float damage) {
-        return Math.min(damage, Math.max(1f, Math.min(5f, p.getHealth() - 4f)));
+        // a man they are arresting is beaten down, not killed (at his last strength he is taken, see subdue);
+        // anybody else gets the full weight of the blow
+        if (!detaining(CASES.get(p.getUuid()))) return damage;
+        return Math.min(damage, Math.max(1f, p.getHealth() - 5f));
     }
 
     // ---------- punishment ----------
