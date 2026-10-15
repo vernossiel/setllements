@@ -642,11 +642,9 @@ public final class Builder {
                 markShort(village, need, any);
                 Life.askForHelp(v, village, world, need);
                 Doing.set(v, "settlements.doing.build.short", Text.translatable("settlements.need.name." + need.name().toLowerCase()));
-                if (Scavenge.work(v, village, world, need, any)) {
-                    if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, Needs.Need.NONE);
-                    Speech.say(v, "settlements.say.build.scavenge");
-                    return true;
-                }
+                // what he does about it is a plan of his own (see Planner): wait for the supplier and pave meanwhile,
+                // get it himself, ask a friend of the village, tell the elder
+                if (Planner.supply(v, village, world, need)) return true;
                 Needs.set(v, need);
                 return worked;
             }

@@ -2031,5 +2031,16 @@
   "settlements.recall.struck.2": "After what you did, %s, we've nothing to talk about.",
   "settlements.recall.helped.0": "%s, thanks for your help back then!",
   "settlements.recall.helped.1": "Ah, %s, I remember - you saved us.",
-  "settlements.recall.helped.2": "%s! Good to see you."
+  "settlements.recall.helped.2": "%s! Good to see you.",
+  "settlements.plan.say.wait": "The %s is on its way. I'll pave meanwhile.",
+  "settlements.plan.say.gather": "Nobody's bringing the %s - I'll get it myself.",
+  "settlements.plan.say.ask": "Maybe the traveller can help with the %s...",
+  "settlements.plan.say.elder": "I'll tell the elder we're stuck without %s.",
+  "settlements.plan.doing.wait": "plan: waiting for the ordered %s, paving meanwhile",
+  "settlements.plan.doing.gather": "plan: nobody is bringing %s - getting it himself",
+  "settlements.plan.doing.ask": "plan: asking the player for %s",
+  "settlements.plan.doing.elder": "plan: off to tell the elder there's no %s",
+  "settlements.plan.ask": "%s, could you help? We need %s - the building's stuck.",
+  "settlements.plan.tell": "%s, the building's stuck: no %s, and nobody's bringing any.",
+  "settlements.plan.elder": "I hear you, %s. I'll find someone to send."
 }

@@ -1919,5 +1919,16 @@
   "settlements.recall.struck.2": "После того, что ты сделал, %s, нам не о чем говорить.",
   "settlements.recall.helped.0": "%s, спасибо за помощь тогда!",
   "settlements.recall.helped.1": "А, %s, помню, помню — выручил.",
-  "settlements.recall.helped.2": "%s! Рады видеть."
+  "settlements.recall.helped.2": "%s! Рады видеть.",
+  "settlements.plan.say.wait": "Материал (%s) уже везут. Пока помощу дорогу.",
+  "settlements.plan.say.gather": "Никто не везёт (%s) — сам добуду.",
+  "settlements.plan.say.ask": "Может, путник поможет с этим (%s)...",
+  "settlements.plan.say.elder": "Пойду скажу старейшине, что стоим без (%s).",
+  "settlements.plan.doing.wait": "план: ждёт заказанное (%s), пока мостит дорогу",
+  "settlements.plan.doing.gather": "план: никто не везёт (%s) — добывает сам",
+  "settlements.plan.doing.ask": "план: просит игрока помочь (%s)",
+  "settlements.plan.doing.elder": "план: идёт сказать старейшине, что нет (%s)",
+  "settlements.plan.ask": "%s, выручишь? Нам бы %s — стройка стоит.",
+  "settlements.plan.tell": "%s, стройка стоит: нет (%s), и никто не везёт.",
+  "settlements.plan.elder": "Понял, %s. Займусь — найду, кого послать."
 }
