@@ -130,6 +130,7 @@ public final class Haul {
                 v.settlementsDeliverNow = false;
                 v.settlementsHauling = true;
                 Speech.say(v, "settlements.say.haul");
+                Doing.set(v, "settlements.doing.haul");
             } else {
                 return false;
             }
@@ -154,6 +155,7 @@ public final class Haul {
     public static boolean fetch(VillagerEntityMCA v, Village village) {
         BlockPos s = store(v, village);
         if (v.settlementsCarry > 0 || s == null) return false;
+        Doing.set(v, "settlements.doing.fetch");
         if (!s.isWithinDistance(v.getBlockPos(), 160)) {
             v.settlementsCarry = FULL_LOAD; // too far to walk back for every load
             return false;

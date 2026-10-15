@@ -110,6 +110,13 @@ public final class Board {
             if (s.missWool() > 0 && line < 4) t[line++] = Text.translatable("settlements.missing.wool", s.missWool());
             break;
         }
+        // the order book: what is wanted, for whom, and who has taken it on
+        for (Orders.Order o : Orders.open(village)) {
+            if (line >= 4) break;
+            Text name = Text.translatable("settlements.need.name." + o.what().name().toLowerCase());
+            t[line++] = o.takerName() != null ? Text.translatable("settlements.board.order.taken", name, o.amount(), o.takerName())
+                    : Text.translatable("settlements.board.order", name, o.amount());
+        }
         int food = 0;
         for (ItemStack s : village.storageBuffer) if (s.isFood()) food += s.getCount();
         if (food < village.getPopulation() * 3 && line < 4) t[line++] = Text.translatable("settlements.board.food");

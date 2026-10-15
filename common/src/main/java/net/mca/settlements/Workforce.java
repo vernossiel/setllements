@@ -134,6 +134,7 @@ public final class Workforce {
         }
 
         Needs.update(v, village);
+        if (village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld ow) Orders.refreshDue(village, ow);
 
         // the morning: breakfast, a wash at the well, a word with the neighbours - then work
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld mw && Morning.tick(v, village, mw, time)) return;
@@ -159,6 +160,7 @@ public final class Workforce {
         }
         if (v.settlementsBreak) {
             Gear.pocket(v);
+            Doing.set(v, v.settlementsBreakLong ? "settlements.doing.break.long" : "settlements.doing.break");
             boolean seated = Rest.tick(v, village);
             v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + (seated ? FIRE_REST_GAIN : REST_GAIN));
             // the break only counts once he sits at the fire (or after a long walk that got him nowhere)
@@ -199,6 +201,7 @@ public final class Workforce {
         if (!Persona.working(v, time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
             Gear.pocket(v); // off work: the tools go back in the bag
+            Doing.set(v, v.settlementsHunger >= HUNGER_STOP_AT ? "settlements.doing.hungry" : Persona.free(v, time) ? "settlements.doing.free" : "settlements.doing.home");
             // supper and chat: eat a little earlier in the evening
             if (!Persona.free(v, time)) Rest.end(v); // bedtime: up and off home
             if (Persona.free(v, time) && !(v.isGuard() && GuardAI.onDuty(v, time))) {
@@ -216,7 +219,7 @@ public final class Workforce {
         if (isCustomWorker(prof)) {
             boolean worked = false;
             // a worker with nothing to do for a while lends the builders a hand (and looks for his own work now and then)
-            boolean helping = prof != VillagerProfession.CARTOGRAPHER && village != null && v.settlementsIdleWork >= 45 && v.settlementsIdleWork % 60 != 0
+            boolean helping = prof != VillagerProfession.CARTOGRAPHER && village != null && v.settlementsIdleWork >= 15 && v.settlementsIdleWork % 60 != 0
                     && v.getWorld() instanceof net.minecraft.server.world.ServerWorld hw && Life.helpBuilders(v, village, hw);
             // a hungry village: whoever has nothing to do goes out for food
             boolean foraging = !helping && village != null && v.settlementsIdleWork >= 20 && prof != VillagerProfession.CARTOGRAPHER
@@ -444,6 +447,7 @@ public final class Workforce {
 
     /** Puts the meal in the villager's hand and has him eat it like a player does: hand up, crumbs, the sound. */
     static void beginMeal(VillagerEntityMCA v, ItemStack meal, int seconds) {
+        Doing.set(v, "settlements.doing.eat");
         ItemStack held = v.getStackInHand(v.getDominantHand());
         if (!held.isEmpty()) v.getInventory().addStack(held);
         v.setStackInHand(v.getDominantHand(), meal);

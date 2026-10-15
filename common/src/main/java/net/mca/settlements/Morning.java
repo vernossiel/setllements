@@ -36,6 +36,7 @@ public final class Morning {
         int sec = v.settlementsMorningSec++;
         Persona.Traits tr = Persona.of(v);
         if (sec == 0) Speech.sayAny(v, "settlements.say.morning.wake", 5);
+        Doing.set(v, "settlements.doing.morning");
         // breakfast first, if there is anything to eat
         if (sec == 2 && Workforce.hasMeal(v, village) && Workforce.startEating(v, village, 0)) return true;
         // out to the well (or the fire), a stretch, a wash, a chat

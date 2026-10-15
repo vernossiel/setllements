@@ -562,6 +562,8 @@ public final class Builder {
         }
 
         BlockPos origin = village.buildOrigin;
+        Doing.set(v, "settlements.doing.build", Text.translatable("settlements.building." + Buildings.base(village.buildType)),
+                Math.min(100, village.buildStep * 100 / Math.max(1, steps.size())));
         if (Haul.fetch(v, village)) return true;
         // two builders do not crowd one spot: the first lays the blocks in order, the others take a stretch further on
         if (!village.buildRepair && !village.buildType.equals("mine") && !village.buildType.equals("wall") && !village.buildType.equals("palisade")
@@ -619,6 +621,7 @@ public final class Builder {
                 };
                 markShort(village, need, any);
                 Life.askForHelp(v, village, world, need);
+                Doing.set(v, "settlements.doing.build.short", Text.translatable("settlements.need.name." + need.name().toLowerCase()));
                 if (Scavenge.work(v, village, world, need, any)) {
                     if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, Needs.Need.NONE);
                     Speech.say(v, "settlements.say.build.scavenge");
@@ -733,6 +736,25 @@ public final class Builder {
             return true;
         }
         return Repair.roadWork(v, village, world);
+    }
+
+    /** About how much of this the current project still needs (one per block left to lay that takes it). */
+    public static int stillNeeded(Village village, Needs.Need need) {
+        if (village.buildOrigin == null) return 0;
+        List<Step> steps = plan(village);
+        int n = 0;
+        for (int i = village.buildStep; i < steps.size(); i++) {
+            Kind k = steps.get(i).kind();
+            if (k == Kind.CLEAR || k == Kind.DIG) continue;
+            if (needFor(k) == need) n++;
+        }
+        return n;
+    }
+
+    /** The name of the village's builder, for the order book. */
+    public static String builderName(Village village, ServerWorld world) {
+        for (VillagerEntityMCA r : village.getResidents(world)) if (r.getProfession() == net.minecraft.village.VillagerProfession.CARTOGRAPHER) return r.getName().getString();
+        return "";
     }
 
     private static Needs.Need needFor(Kind kind) {

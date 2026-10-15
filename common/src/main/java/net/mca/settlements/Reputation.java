@@ -230,6 +230,7 @@ public final class Reputation {
     /** Once per second per world: the village's justice takes its course. */
     public static void tick(ServerWorld world) {
         Justice.tick(world);
+        Doing.tick(world);
     }
 
     /** /settle return: hands the stolen goods back from the player's inventory. */

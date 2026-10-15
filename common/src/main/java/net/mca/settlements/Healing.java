@@ -15,6 +15,7 @@ public final class Healing {
     }
 
     public static boolean work(VillagerEntityMCA v, Village village) {
+        Doing.set(v, "settlements.doing.heal");
         if (!(v.getWorld() instanceof ServerWorld world)) return false;
         VillagerEntityMCA patient = world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(48, 12, 48),
                         o -> o != v && o.isAlive() && o.getHealth() < o.getMaxHealth() * 0.7f)

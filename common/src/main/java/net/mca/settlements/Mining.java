@@ -42,7 +42,10 @@ public final class Mining {
         Workforce.craftTorches(village); // the mine needs light: torches from charcoal burnt out of logs
         if (Dig.busy(v)) return true; // still at the rock
         Dig.gather(v, 3); // what he broke goes into his pockets, then to the stores
-        if (village.mineLevel > MAX_LEVEL || Builder.stockCobble(village) >= STONE_QUOTA) return false;
+        Orders.Order order = Orders.take(v, village, Needs.Need.COBBLE); // the builder's order for stone
+        if (village.mineLevel > MAX_LEVEL || order == null && Builder.stockCobble(village) >= STONE_QUOTA) return false;
+        if (order != null) Doing.set(v, "settlements.doing.mine.order", order.amount(), order.forWhom());
+        else Doing.set(v, "settlements.doing.mine", village.mineLevel + 1);
 
         List<Step> steps = LEVELS.computeIfAbsent(village.mineLevel, k -> k == 0 ? Blueprints.mine() : Blueprints.mineExtension(k));
         if (village.mineStep >= steps.size()) {

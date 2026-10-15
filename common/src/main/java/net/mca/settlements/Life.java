@@ -192,6 +192,7 @@ public final class Life {
         if (guard != null && guard.squaredDistanceTo(from) > v.squaredDistanceTo(from) * 0.5) to = guard.getPos();
         if (to == null) to = NoPenaltyTargeting.findFrom(v, 14, 5, from.getPos());
         if (to != null) v.getNavigation().startMovingTo(to.x, to.y, to.z, 0.75);
+        Doing.set(v, "settlements.doing.flee", from.getName());
         v.settlementsFleeUntil = world.getTime() + 160;
     }
 
@@ -475,9 +476,17 @@ public final class Life {
 
     /** Idle workers lend the builders a hand when the village is short of materials. */
     public static boolean helpBuilders(VillagerEntityMCA v, Village village, ServerWorld world) {
+        // an open order nobody has taken: he takes it on himself, with what he has to hand
+        Orders.Order o = Orders.held(v, village);
+        if (o == null) {
+            Orders.Order free = Orders.free(village, Needs.Need.PLANKS, Needs.Need.COBBLE);
+            if (free != null) o = Orders.take(v, village, free.what());
+        }
         Builder.Shortage s = Builder.shortage(village);
-        if (s == null) return false;
-        if (!Scavenge.work(v, village, world, s.need(), s.any())) return false;
+        Needs.Need need = o != null ? o.what() : s != null ? s.need() : null;
+        if (need == null || need == Needs.Need.FOOD) return false;
+        if (!Scavenge.work(v, village, world, need, true)) return false;
+        Doing.set(v, "settlements.doing.help", Text.translatable("settlements.need.name." + need.name().toLowerCase()));
         Speech.say(v, "settlements.say.help.builders");
         return true;
     }

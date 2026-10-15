@@ -44,6 +44,7 @@ public final class Cooking {
 
     /** One cook second. Returns true when the cook actually worked. */
     public static boolean work(VillagerEntityMCA v, Village village) {
+        Doing.set(v, "settlements.doing.cook");
         Tavern t = village.tavern;
         if (t == null || !(v.getWorld() instanceof ServerWorld world)) return false;
         if (!world.isChunkLoaded(t.smoker().getX() >> 4, t.smoker().getZ() >> 4)) return false;

@@ -76,6 +76,7 @@ public final class Talk {
             v.getNavigation().stop();
             if (v.squaredDistanceTo(other) < 1.7 && c.b.equals(v.getUuid())) Move.stepBack(v, other); // a step back to talk
             v.getLookControl().lookAt(other, 30f, 30f);
+            Doing.set(v, "settlements.doing.talk", other.getName());
             if (c.a.equals(v.getUuid()) && now >= c.next) {
                 VillagerEntityMCA speaker = c.line % 2 == 0 ? v : other;
                 say(speaker, "settlements.talk." + c.topic + "." + "abcd".charAt(c.line), c.args);

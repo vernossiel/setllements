@@ -34,6 +34,7 @@ public final class SettlementsCommand {
                 .then(CommandManager.literal("surrender").executes(c -> Justice.surrender(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("resist").executes(c -> Justice.resist(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("rep").executes(c -> Reputation.showStanding(c.getSource().getPlayerOrThrow())))
+                .then(CommandManager.literal("why").executes(c -> Doing.toggle(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("hall").executes(c -> {
                     var player = c.getSource().getPlayerOrThrow();
                     var vil = net.mca.server.world.data.Village.findNearest(player).orElse(null);

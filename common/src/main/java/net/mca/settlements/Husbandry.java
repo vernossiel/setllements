@@ -52,6 +52,7 @@ public final class Husbandry {
 
     /** One herdsman second. Returns true when he actually worked. */
     public static boolean work(VillagerEntityMCA v, Village village) {
+        Doing.set(v, "settlements.doing.herd");
         if (village == null || !(v.getWorld() instanceof ServerWorld world)) return false;
         BlockPos pen = village.penCenter;
         BlockPos home = pen != null ? pen : new BlockPos(village.getCenter());

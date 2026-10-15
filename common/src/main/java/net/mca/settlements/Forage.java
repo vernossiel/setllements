@@ -43,10 +43,18 @@ public final class Forage {
         return food < Math.max(1, village.getPopulation()) * 3;
     }
 
+    /** Meals in the stores. */
+    public static int food(Village village) {
+        int food = 0;
+        for (ItemStack s : village.storageBuffer) if (s.isFood()) food += s.getCount();
+        return food;
+    }
+
     /** One second of foraging. True while he is at it. */
     public static boolean work(VillagerEntityMCA v, Village village, ServerWorld world) {
         if (v.isBaby() || v.getVillagerBrain().isPanicking()) return false;
         long now = world.getTime();
+        Doing.set(v, "settlements.doing.forage");
 
         // 1. food lying about: a kill's meat, dropped crops
         ItemEntity food = null;

@@ -59,7 +59,11 @@ public final class Lumberjack {
     /** {@code force}: a builder short of wood fells a tree even when the stores are full or the forest is thin. */
     public static boolean work(VillagerEntityMCA v, Village village, boolean force) {
         if (!(v.getWorld() instanceof ServerWorld world)) return false;
+        Orders.Order order = Orders.take(v, village, Needs.Need.PLANKS); // the builder's order for wood, if nobody has it
+        if (order != null) force = true;
         if (!force && village != null && stockLogs(village) >= LOG_QUOTA) return false;
+        if (order != null) Doing.set(v, "settlements.doing.lumber.order", order.amount(), order.forWhom());
+        else Doing.set(v, "settlements.doing.lumber");
 
         if (Dig.busy(v)) return true; // still swinging at a log
         Dig.gather(v, 2.5);
@@ -104,7 +108,7 @@ public final class Lumberjack {
             List<BlockPos> trees = trees(world, v.getBlockPos(), village);
             // the stand of trees round the village is spared, unless the builders are short of wood
             Builder.Shortage sh = village == null ? null : Builder.shortage(village);
-            if (sh != null && sh.need() == Needs.Need.PLANKS || village != null && stockLogs(village) < 16) force = true;
+            if (order != null || village != null && stockLogs(village) < 16) force = true;
             if (trees.size() <= (force ? 0 : MIN_TREES_LEFT) && v.settlementsExploreTries < 6) {
                 // no wood worth cutting around here: go further and look again
                 BlockPos from = village != null ? new BlockPos(village.getCenter()) : v.getBlockPos();
@@ -116,6 +120,7 @@ public final class Lumberjack {
                     v.settlementsExplore = new BlockPos(x, world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z), z);
                     v.settlementsExploreTries++;
                     Speech.say(v, "settlements.say.lumber.explore");
+                    Doing.set(v, "settlements.doing.lumber.explore");
                     return false;
                 }
             }
