@@ -67,11 +67,14 @@ public final class Talk {
                 return false;
             }
             // up to each other, then face to face
-            if (v.squaredDistanceTo(other) > 6.25) {
-                v.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(other, 0.45f, 1));
+            // up to a couple of paces apart, not nose to nose
+            if (v.squaredDistanceTo(other) > 9) {
+                v.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(other, 0.45f, 2));
                 return true;
             }
+            v.getBrain().forget(MemoryModuleType.WALK_TARGET);
             v.getNavigation().stop();
+            if (v.squaredDistanceTo(other) < 1.7 && c.b.equals(v.getUuid())) Move.stepBack(v, other); // a step back to talk
             v.getLookControl().lookAt(other, 30f, 30f);
             if (c.a.equals(v.getUuid()) && now >= c.next) {
                 VillagerEntityMCA speaker = c.line % 2 == 0 ? v : other;

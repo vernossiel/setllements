@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -59,7 +61,7 @@ public final class Builder {
     /** The plan of a building type with its parameters (cached). */
     public static List<Step> stepsFor(String type, int w, int d, int f) {
         String key = type + "|" + w + "|" + d + "|" + f;
-        return CACHE.computeIfAbsent(key, k -> ordered(type.equals("mine") ? null : type, rawSteps(type, w, d, f)));
+        return CACHE.computeIfAbsent(key, k -> ordered(type.equals("mine") ? null : type, type.equals("mine") ? rawSteps(type, w, d, f) : Decor.dress(type, rawSteps(type, w, d, f))));
     }
 
     /** Fittings go in once the shell stands: furniture, light, decoration. */
@@ -67,7 +69,7 @@ public final class Builder {
         return switch (k) {
             case BED_FOOT, BED_HEAD, CHEST, HALL_CHEST, CRAFT, CARPET, TORCH, LANTERN, BARREL, BOOKSHELF, LECTERN, SMOKER, FURNACE, ANVIL,
                  GRINDSTONE, SMITHING, STONECUTTER, CAULDRON, COMPOSTER, ARMOR_STAND, PLATE, SEAT_W, SEAT_E, PEW, POT, FLOWER, HEDGE,
-                 HAY, PUMPKIN, TARGET, CHAIN, BELL, SIGN, SMOKE, CLOCK, SHUTTER, WOOL, LADDER -> true;
+                 HAY, PUMPKIN, TARGET, CHAIN, BELL, SIGN, SMOKE, CLOCK, SHUTTER, WOOL, LADDER, SHELF, BANNER, FRAME, PROP -> true;
             default -> false;
         };
     }
@@ -549,12 +551,19 @@ public final class Builder {
 
         BlockPos origin = village.buildOrigin;
         if (Haul.fetch(v, village)) return true;
+        // two builders do not crowd one spot: the first lays the blocks in order, the others take a stretch further on
+        if (!village.buildRepair && !village.buildType.equals("mine") && !village.buildType.equals("wall") && !village.buildType.equals("palisade")
+                && !lead(v, village, world)) return helper(v, village, world, steps, origin);
         boolean worked = false;
         int ops = 0, skips = 0;
         int checks = 0;
         int budget = Prosperity.ops(v, village, opsPerSecond); // tired builders and struggling villages build slower
         if (budget == 0) return true; // working, just slowly
         while (ops < budget && skips < MAX_TRIVIAL_SKIPS && village.buildOrigin != null && village.buildStep < steps.size()) {
+            if (ahead(village).remove(village.buildStep)) { // a helper laid this one already
+                village.buildStep++;
+                continue;
+            }
             Step step = steps.get(village.buildStep);
             int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
             int[] rp = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], village.buildRot);
@@ -632,6 +641,86 @@ public final class Builder {
         if (village.buildOrigin != null && village.buildStep >= steps.size()) finish(village);
         village.markDirty();
         return worked;
+    }
+
+    private record Lead(java.util.UUID id, long at) {
+    }
+
+    private static final Map<Integer, Lead> LEAD = new HashMap<>();
+    private static final Map<Integer, Set<Integer>> AHEAD = new HashMap<>();
+    private static final Map<Integer, String> AHEAD_SITE = new HashMap<>();
+
+    /** Whether he is the one laying the blocks in order (the first to come, as long as he keeps at it). */
+    private static boolean lead(VillagerEntityMCA v, Village village, ServerWorld world) {
+        long now = world.getTime();
+        Lead l = LEAD.get(village.getId());
+        if (l == null || l.id().equals(v.getUuid()) || now - l.at() > 100) {
+            LEAD.put(village.getId(), new Lead(v.getUuid(), now));
+            return true;
+        }
+        return false;
+    }
+
+    /** The steps of this project the helpers have laid ahead of the leader. */
+    private static Set<Integer> ahead(Village village) {
+        String site = village.buildType + "@" + village.buildOrigin;
+        if (!site.equals(AHEAD_SITE.get(village.getId()))) {
+            AHEAD_SITE.put(village.getId(), site);
+            AHEAD.put(village.getId(), new HashSet<>());
+        }
+        return AHEAD.computeIfAbsent(village.getId(), k -> new HashSet<>());
+    }
+
+    private static int group(Kind k) {
+        return k == Kind.CLEAR || k == Kind.DIG ? 0 : fitting(k) ? 2 : 1;
+    }
+
+    /**
+     * A helper's second: a block of the same kind of work as the leader's (the same course of the wall, the same
+     * stage), a few paces away from him, within his own reach from the ground. Else he mends a road.
+     */
+    private static boolean helper(VillagerEntityMCA v, Village village, ServerWorld world, List<Step> steps, BlockPos origin) {
+        int cur = village.buildStep;
+        if (cur >= steps.size()) return false;
+        Set<Integer> done = ahead(village);
+        Step now = steps.get(cur);
+        int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
+        int[] rc = Blueprints.rotate(now.dx(), now.dz(), fp[0], fp[1], village.buildRot);
+        BlockPos leadAt = origin.add(rc[0], now.dy(), rc[1]);
+        Lead l = LEAD.get(village.getId());
+        net.minecraft.entity.Entity leader = l == null ? null : world.getEntity(l.id());
+        for (int i = cur + 4; i < Math.min(steps.size(), cur + 80); i++) {
+            if (done.contains(i)) continue;
+            Step s = steps.get(i);
+            if (s.kind() == Kind.DIG || group(s.kind()) != group(now.kind()) || s.dy() > now.dy() + 1 || s.dy() >= 3) continue;
+            int[] rp = Blueprints.rotate(s.dx(), s.dz(), fp[0], fp[1], village.buildRot);
+            BlockPos t = origin.add(rp[0], s.dy(), rp[1]);
+            int hx = t.getX() - leadAt.getX(), hz = t.getZ() - leadAt.getZ();
+            if (hx * hx + hz * hz < 16) continue; // his elbow room
+            if (leader != null && leader.squaredDistanceTo(t.getX() + 0.5, t.getY(), t.getZ() + 0.5) < 9) continue;
+            if (s.kind() == Kind.CLEAR && world.getBlockState(t).isAir()) {
+                done.add(i);
+                continue;
+            }
+            double bx = t.getX() + 0.5 - v.getX(), bz = t.getZ() + 0.5 - v.getZ();
+            if (!Scaffold.inReach(v, t) || !Dig.sees(v, t)) {
+                if (bx * bx + bz * bz < 4) continue; // right by it and still cannot get at it: another one
+                Move.to(v, t.getX() + 0.5, origin.getY(), t.getZ() + 0.5, 0.6);
+                return true;
+            }
+            Result r = execute(world, village, s, t, village.buildRot);
+            if (r == Result.WAIT || r == Result.ABORT) return false;
+            done.add(i);
+            if (r == Result.PLACED) {
+                Gear.face(v, t);
+                Item held = world.getBlockState(t).getBlock().asItem();
+                if (held != Items.AIR) v.setStackInHand(v.getDominantHand(), new ItemStack(held));
+                v.swingHand(v.getDominantHand());
+                village.markDirty();
+            }
+            return true;
+        }
+        return Repair.roadWork(v, village, world);
     }
 
     private static Needs.Need needFor(Kind kind) {
@@ -1011,16 +1100,7 @@ public final class Builder {
             }
         }
         ServerWorld world = village.getWorld();
-        if (world != null && !type.equals("upgrade") && !type.equals("hallup") && !type.equals("mine") && !type.equals("wall") && !type.equals("palisade")) {
-            if (Buildings.base(type).equals("well")) {
-                Roads.plaza(world, village);
-            } else {
-                int[] fp = Blueprints.footprint(type, village.buildW, village.buildD);
-                int[] front = Blueprints.rotate(fp[0] / 2, fp[1], fp[0], fp[1], rot);
-                BlockPos fr = o.add(front[0], 0, front[1]);
-                Roads.connect(world, village, fr);
-            }
-        }
+        // the road to it is not laid by magic: the builders pave it a cell at a time between projects (Repair.roadWork)
         if (!type.equals("wall") || village.wallBuilt) Life.news(village, "built", Text.translatable("settlements.building." + Buildings.base(type)));
         if (world != null) {
             int[] bfp = Blueprints.footprint(type, village.buildW, village.buildD);
@@ -1099,7 +1179,7 @@ public final class Builder {
         }
 
         boolean decoration = switch (step.kind()) {
-            case SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY, FLOWER -> true;
+            case SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY, FLOWER, SHELF, BANNER, FRAME, PROP -> true;
             default -> false;
         };
         if (decoration) {
@@ -1119,7 +1199,7 @@ public final class Builder {
             // glass, light and decoration are optional: without them the house is plainer, not unfinished
             return switch (step.kind()) {
                 case GLASS, TORCH, CROP, CARPET, SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY,
-                     STONECUTTER, HAY, COMPOSTER, PUMPKIN, CAULDRON, FLOWER, LOG_X, LOG_Z, WOOL, TARGET, CHAIN, CLOCK -> Result.SKIPPED;
+                     STONECUTTER, HAY, COMPOSTER, PUMPKIN, CAULDRON, FLOWER, LOG_X, LOG_Z, WOOL, TARGET, CHAIN, CLOCK, SHELF, BANNER, FRAME, PROP -> Result.SKIPPED;
                 default -> Result.WAIT;
             };
         }
@@ -1147,6 +1227,23 @@ public final class Builder {
             var frame = new net.minecraft.entity.decoration.ItemFrameEntity(world, target, turn(Direction.SOUTH, rot));
             frame.setHeldItemStack(new ItemStack(Items.CLOCK), false);
             if (!frame.canStayAttached()) return Result.SKIPPED;
+            world.spawnEntity(frame);
+            return Result.PLACED;
+        }
+        if (step.kind() == Kind.FRAME) {
+            // something of the house's in a frame on the wall: a frame needs leather, the thing in it comes from the stores
+            if (!world.getEntitiesByClass(net.minecraft.entity.decoration.ItemFrameEntity.class, new net.minecraft.util.math.Box(target), e -> true).isEmpty()) return Result.SKIPPED;
+            var frame = new net.minecraft.entity.decoration.ItemFrameEntity(world, target, face(step, rot).getOpposite());
+            if (!frame.canStayAttached()) return Result.SKIPPED;
+            Item[] keep = {Items.BOOK, Items.MAP, Items.COMPASS, Items.CLOCK, Items.BREAD, Items.WHEAT, Items.APPLE, Items.FEATHER, Items.SHEARS, Items.FISHING_ROD};
+            ItemStack shown = ItemStack.EMPTY;
+            int h = Math.floorMod(target.hashCode(), keep.length);
+            for (int i = 0; i < keep.length && shown.isEmpty(); i++) {
+                Item it = keep[(h + i) % keep.length];
+                if (take(village, x -> x.isOf(it), 1)) shown = new ItemStack(it);
+            }
+            if (shown.isEmpty()) return Result.SKIPPED;
+            frame.setHeldItemStack(shown, false);
             world.spawnEntity(frame);
             return Result.PLACED;
         }
@@ -1203,7 +1300,7 @@ public final class Builder {
     /** Everything standing on the ground plane gets a footing; small things on top of others do not. */
     private static boolean needsFooting(Kind k) {
         return switch (k) {
-            case CARPET, TORCH, CROP, FARMLAND, WATER, PLATE, SIGN, LANTERN, SMOKE, POT, FLOWER, HEDGE, PATH, DIG, CLEAR -> false;
+            case CARPET, TORCH, CROP, FARMLAND, WATER, PLATE, SIGN, LANTERN, SMOKE, POT, FLOWER, HEDGE, PATH, DIG, CLEAR, SHELF, BANNER, FRAME -> false;
             default -> true;
         };
     }
@@ -1575,6 +1672,42 @@ public final class Builder {
                 return Blocks.FARMLAND.getDefaultState();
             case WATER:
                 return Blocks.WATER.getDefaultState();
+            case SHELF:
+                // a board on the wall at head height: a trapdoor laid shut in the top half
+                if (!takePlanks(village, 2)) return null;
+                return pal.trapdoor().getDefaultState().with(TrapdoorBlock.HALF, net.minecraft.block.enums.BlockHalf.TOP)
+                        .with(TrapdoorBlock.OPEN, false).with(TrapdoorBlock.FACING, face(step, rot).getOpposite());
+            case BANNER: {
+                if (tier == Tiers.POOR || !take(village, WOOL, 2)) return null;
+                Block[] banners = {Blocks.RED_WALL_BANNER, Blocks.BLUE_WALL_BANNER, Blocks.GREEN_WALL_BANNER, Blocks.YELLOW_WALL_BANNER, Blocks.WHITE_WALL_BANNER, Blocks.CYAN_WALL_BANNER};
+                Block b = banners[Math.floorMod(step.dx() * 7 + step.dz() * 3 + step.dy(), banners.length)];
+                return b.getDefaultState().with(WallBannerBlock.FACING, face(step, rot).getOpposite());
+            }
+            case FRAME:
+                return tier == Tiers.POOR ? null : Blocks.AIR.getDefaultState(); // the frame itself is an entity (see execute)
+            case PROP:
+                switch (step.face()) {
+                    case Decor.CRATE -> {
+                        if (!takePlanks(village, 8)) return null;
+                        return Blocks.BARREL.getDefaultState().with(BarrelBlock.FACING, turn(Direction.EAST, rot)); // on its side
+                    }
+                    case Decor.HAY -> {
+                        if (!take(village, x -> x.isOf(Items.HAY_BLOCK), 1) && !take(village, x -> x.isOf(Items.WHEAT), 9)) return null;
+                        return Blocks.HAY_BLOCK.getDefaultState();
+                    }
+                    case Decor.BOOKS -> {
+                        if (!take(village, x -> x.isOf(Items.BOOKSHELF), 1) && !takePlanks(village, 6)) return null;
+                        return Blocks.BOOKSHELF.getDefaultState();
+                    }
+                    case Decor.POT -> {
+                        if (tier == Tiers.POOR) return null;
+                        return pal.flower().getDefaultState();
+                    }
+                    default -> {
+                        if (!takePlanks(village, 8)) return null;
+                        return Blocks.BARREL.getDefaultState().with(BarrelBlock.FACING, Direction.UP);
+                    }
+                }
             case CROP:
                 if (!take(village, x -> x.isOf(Items.WHEAT_SEEDS), 1)) return null;
                 return Blocks.WHEAT.getDefaultState();

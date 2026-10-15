@@ -72,9 +72,11 @@ public final class Repair {
             int[] fp = b.footprint();
             BlockPos front = b.point(fp[0] / 2, 0, fp[1]);
             Deque<int[]> roads = ROADS.computeIfAbsent(village.getId(), k -> new ArrayDeque<>());
-            for (int[] cell : Roads.route(village, front)) {
+            java.util.List<int[]> cells = new java.util.ArrayList<>(Roads.route(village, front));
+            if (village.built.stream().anyMatch(x -> Buildings.base(x.type()).equals("well"))) cells.addAll(Roads.plazaCells(village));
+            for (int[] cell : cells) {
                 if (roads.size() >= 48) break;
-                if (Roads.broken(world, village, cell[0], cell[1]) && roads.stream().noneMatch(c -> c[0] == cell[0] && c[1] == cell[1])) roads.add(cell);
+                if (Roads.needs(world, village, cell) && roads.stream().noneMatch(c -> c[0] == cell[0] && c[1] == cell[1] && c.length == cell.length)) roads.add(cell);
             }
         }
     }
@@ -101,7 +103,7 @@ public final class Repair {
         Deque<int[]> roads = ROADS.get(village.getId());
         if (roads == null || roads.isEmpty()) return false;
         int[] cell = roads.peek();
-        if (!Roads.broken(world, village, cell[0], cell[1])) {
+        if (!Roads.needs(world, village, cell)) {
             roads.poll();
             return true;
         }
@@ -111,7 +113,7 @@ public final class Repair {
             Move.to(v, cell[0] + 0.5, y, cell[1] + 0.5, 0.6);
             return true;
         }
-        Roads.mend(world, village, cell[0], cell[1]);
+        Roads.work(world, village, cell);
         v.swingHand(v.getDominantHand());
         Speech.say(v, "settlements.say.build.road");
         roads.poll();

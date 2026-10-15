@@ -86,6 +86,7 @@ public final class Lumberjack {
             if (felling.isEmpty() && v.lumberTarget != null) {
                 // the last log is down: a sapling in its place, then pick up the logs
                 Speech.sayAny(v, "settlements.say.lumber.timber", 3);
+                loose(world, v.lumberTarget, v); // and no branch left hanging in the air
                 plant(v, world, v.lumberTarget);
                 if (village != null) plantGrove(v, village, world);
                 v.lumberTarget = null;
@@ -198,6 +199,7 @@ public final class Lumberjack {
         // cut through at the foot: what is left up there comes down
         Speech.sayAny(v, "settlements.say.lumber.timber", 3);
         for (BlockPos p : trunk) world.breakBlock(p, true, v);
+        loose(world, base, v);
         FELLING.remove(v.getUuid());
         plant(v, world, base);
         if (village != null) plantGrove(v, village, world);
@@ -269,6 +271,32 @@ public final class Lumberjack {
             if (p.getX() >= o.getX() - 1 && p.getX() <= o.getX() + h.fw() && p.getZ() >= o.getZ() - 1 && p.getZ() <= o.getZ() + h.fd()) return true;
         }
         return false;
+    }
+
+    /** Logs left hanging round a felled tree, with nothing under them that reaches the ground: a branch the felling missed. */
+    private static void loose(ServerWorld world, BlockPos base, VillagerEntityMCA v) {
+        for (BlockPos p : BlockPos.iterate(base.add(-4, 0, -4), base.add(4, 18, 4))) {
+            if (!world.getBlockState(p).isIn(BlockTags.LOGS) || grounded(world, p.toImmutable())) continue;
+            world.breakBlock(p, true, v);
+        }
+    }
+
+    /** Whether this log stands on something: a chain of logs down to solid ground (not leaves). */
+    private static boolean grounded(ServerWorld world, BlockPos start) {
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        Set<BlockPos> seen = new HashSet<>();
+        queue.add(start);
+        seen.add(start);
+        while (!queue.isEmpty() && seen.size() < 200) {
+            BlockPos p = queue.poll();
+            BlockState below = world.getBlockState(p.down());
+            if (!below.isIn(BlockTags.LOGS) && !below.isIn(BlockTags.LEAVES) && below.isSolidBlock(world, p.down())) return true;
+            for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++) {
+                BlockPos n = p.add(dx, dy, dz);
+                if (world.getBlockState(n).isIn(BlockTags.LOGS) && seen.add(n)) queue.add(n);
+            }
+        }
+        return seen.size() >= 200; // a great tree we did not finish looking at: leave it be
     }
 
     /** A crown on this trunk: leaves next to any of its logs, up the bends and branches (acacia, dark oak) too. */

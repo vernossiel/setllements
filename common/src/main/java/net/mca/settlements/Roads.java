@@ -37,7 +37,7 @@ public final class Roads {
         if (pavable(g)) world.setBlockState(ground, Blocks.DIRT_PATH.getDefaultState());
     }
 
-    /** The cells of the road from a building's front to the plaza (two wide), as {x, z}. */
+    /** The cells of the road from a building's front to the plaza (two wide), as {x, z}; a lamp post spot as {x, z, 1}. */
     public static java.util.List<int[]> route(Village village, BlockPos front) {
         java.util.List<int[]> out = new java.util.ArrayList<>();
         BlockPos c = new BlockPos(village.getCenter());
@@ -47,6 +47,7 @@ public final class Roads {
         while (steps++ < 90 && Math.hypot(x0 - x1, z0 - z1) > 5) {
             out.add(new int[]{x0, z0});
             out.add(new int[]{x0 + (dx > dz ? 0 : 1), z0 + (dx > dz ? 1 : 0)});
+            if (steps % 8 == 4) out.add(new int[]{x0 + (dx > dz ? 0 : 2), z0 + (dx > dz ? 2 : 0), 1});
             int e2 = 2 * err;
             if (e2 > -dz) {
                 err -= dz;
@@ -58,6 +59,38 @@ public final class Roads {
             }
         }
         return out;
+    }
+
+    /** The paved ring around the well, as {x, z}. */
+    public static java.util.List<int[]> plazaCells(Village village) {
+        java.util.List<int[]> out = new java.util.ArrayList<>();
+        BlockPos c = new BlockPos(village.getCenter());
+        for (int dx = -6; dx <= 6; dx++) {
+            for (int dz = -6; dz <= 6; dz++) {
+                double dist = Math.hypot(dx, dz);
+                if (dist > 3.4 && dist <= 5.6) out.add(new int[]{c.getX() + dx, c.getZ() + dz});
+            }
+        }
+        return out;
+    }
+
+    /** Whether there is work at this cell: a road cell to lay or mend, a lamp post missing (when there is a torch for it). */
+    public static boolean needs(ServerWorld world, Village village, int[] cell) {
+        if (cell.length < 3) return broken(world, village, cell[0], cell[1]);
+        int x = cell[0], z = cell[1];
+        if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
+        int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+        BlockPos p = new BlockPos(x, y, z);
+        BlockState top = world.getBlockState(p.down());
+        if (top.isOf(Blocks.TORCH) || top.isOf(Blocks.LANTERN) || top.isIn(net.minecraft.registry.tag.BlockTags.FENCES)) return false;
+        return world.getBlockState(p).isAir() && world.getBlockState(p.down()).isSolidBlock(world, p.down())
+                && village.storageBuffer.stream().anyMatch(s -> s.isOf(Items.TORCH));
+    }
+
+    /** Lays the work at a cell: the road, or the lamp post. */
+    public static void work(ServerWorld world, Village village, int[] cell) {
+        if (cell.length < 3) mend(world, village, cell[0], cell[1]);
+        else lamp(world, village, cell[0], cell[1]);
     }
 
     /** A road cell that needs mending: grass grew back over it, or somebody dug it up. */

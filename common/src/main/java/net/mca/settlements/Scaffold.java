@@ -87,6 +87,7 @@ public final class Scaffold {
     public static boolean approach(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos target, Built site) {
         BlockPos col = columnFor(world, v, target, site);
         if (col == null) return false;
+        v.fallDistance = 0; // on the scaffolding a step down is a step, not a fall
         boolean onIt = Math.abs(v.getX() - (col.getX() + 0.5)) < 0.8 && Math.abs(v.getZ() - (col.getZ() + 0.5)) < 0.8;
         if (!onIt && onScaffold(world, v)) {
             // down the scaffolding he is on, a block at a time
@@ -130,6 +131,7 @@ public final class Scaffold {
             if (s.contains(r.getBlockPos().down()) || world.getBlockState(r.getBlockPos().down()).isAir() && s.stream().anyMatch(p -> p.getX() == r.getBlockX() && p.getZ() == r.getBlockZ())) {
                 int g = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, r.getBlockX(), r.getBlockZ());
                 r.refreshPositionAndAngles(r.getX(), g, r.getZ(), r.getYaw(), r.getPitch());
+                r.fallDistance = 0;
             }
         }
     }

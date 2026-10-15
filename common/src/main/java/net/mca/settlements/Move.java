@@ -259,9 +259,10 @@ public final class Move {
             if (tunnel) {
                 if (v.settlementsHandSec > HAND_AFTER + 30) {
                     // no way through on foot after half a minute: he finds his own way round (put down by the goal)
-                    int gy = passable(world, goal) && passable(world, goal.up()) ? goal.getY()
-                            : world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, goal.getX(), goal.getZ());
-                    v.refreshPositionAndAngles(goal.getX() + 0.5, gy, goal.getZ() + 0.5, v.getYaw(), 0);
+                    if (!putSafely(v, goal)) {
+                        int gy = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, goal.getX(), goal.getZ());
+                        putSafely(v, new BlockPos(goal.getX(), gy, goal.getZ()));
+                    }
                     v.settlementsHandSec = 0;
                     return true;
                 }
@@ -319,5 +320,67 @@ public final class Move {
     private static void step(VillagerEntityMCA v, BlockPos cell) {
         if (cell.getY() > v.getBlockPos().getY()) v.getJumpControl().setActive();
         v.getMoveControl().moveTo(cell.getX() + 0.5, cell.getY(), cell.getZ() + 0.5, PACE);
+    }
+
+    private static final java.util.Map<java.util.UUID, Integer> PRESSED = new java.util.HashMap<>();
+
+    /** A step back from {@code from}, a little to the side. */
+    public static void stepBack(VillagerEntityMCA v, net.minecraft.entity.Entity from) {
+        double ax = v.getX() - from.getX(), az = v.getZ() - from.getZ(), len = Math.sqrt(ax * ax + az * az);
+        if (len < 0.05) {
+            double a = v.getRandom().nextDouble() * Math.PI * 2;
+            ax = Math.cos(a);
+            az = Math.sin(a);
+            len = 1;
+        }
+        ax /= len;
+        az /= len;
+        double side = (v.getId() & 1) == 0 ? 0.8 : -0.8;
+        v.getNavigation().startMovingTo(v.getX() + ax * 1.6 - az * side, v.getY(), v.getZ() + az * 1.6 + ax * side, 0.55);
+        v.addVelocity(ax * 0.12, 0, az * 0.12);
+    }
+
+    /**
+     * Once a second. Two people walking into each other and standing there pressed together: after a couple of
+     * seconds each steps back and aside, as people do.
+     */
+    public static void elbowRoom(VillagerEntityMCA v) {
+        if (!(v.getWorld() instanceof ServerWorld world) || v.isSleeping() || v.hasVehicle()) return;
+        for (VillagerEntityMCA o : world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(0.25, 0.5, 0.25),
+                o -> o != v && o.isAlive() && !o.isSleeping())) {
+            int n = PRESSED.merge(v.getUuid(), 1, Integer::sum);
+            if (n >= 2) {
+                stepBack(v, o);
+                PRESSED.remove(v.getUuid());
+            }
+            return;
+        }
+        PRESSED.remove(v.getUuid());
+    }
+
+    /**
+     * Sets him down at {@code at} or the nearest spot around it where a man can stand: a floor under his feet and room
+     * for his head. Never in the air, never in the rock; no fall to hurt him. False when there is no such spot near.
+     */
+    public static boolean putSafely(VillagerEntityMCA v, BlockPos at) {
+        if (!(v.getWorld() instanceof ServerWorld world) || !world.isChunkLoaded(at.getX() >> 4, at.getZ() >> 4)) return false;
+        BlockPos best = null;
+        double bd = Double.MAX_VALUE;
+        for (BlockPos p : BlockPos.iterate(at.add(-2, -2, -2), at.add(2, 2, 2))) {
+            BlockState floor = world.getBlockState(p.down());
+            if (!passable(world, p) || !passable(world, p.up()) || !world.getFluidState(p).isEmpty()) continue;
+            if (!floor.isSideSolidFullSquare(world, p.down(), Direction.UP) && !floor.isOf(Blocks.SCAFFOLDING)) continue;
+            double d = p.getSquaredDistance(at);
+            if (d < bd) {
+                bd = d;
+                best = p.toImmutable();
+            }
+        }
+        if (best == null) return false;
+        v.refreshPositionAndAngles(best.getX() + 0.5, best.getY(), best.getZ() + 0.5, v.getYaw(), 0);
+        v.fallDistance = 0;
+        v.setVelocity(Vec3d.ZERO);
+        v.getNavigation().stop();
+        return true;
     }
 }

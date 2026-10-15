@@ -13,7 +13,9 @@ public final class Blueprints {
         STONECUTTER, HAY, COMPOSTER, BARS, WOOL, GRAVE, SLAB, PUMPKIN, GATE, CAULDRON, FLOWER, MOUND, PEW, LOG_X, LOG_Z,
         TARGET, CHAIN,
         /** Straw (hay) roofing of a poor house; daub (packed mud) walls; roof stairs rising to the south / north; a clock on the wall. */
-        THATCH, DAUB, RSTAIR_S, RSTAIR_N, CLOCK }
+        THATCH, DAUB, RSTAIR_S, RSTAIR_N, CLOCK,
+        /** Fittings that dress a room (see Decor): a shelf board on the wall, a wall banner, a framed thing, a prop (face picks which). */
+        SHELF, BANNER, FRAME, PROP }
 
     /** {@code face}: a horizontal direction index (0 south, 1 west, 2 north, 3 east) for blocks that face somewhere, -1 otherwise. */
     public record Step(int dx, int dy, int dz, Kind kind, int face) {
@@ -316,8 +318,8 @@ public final class Blueprints {
         for (int x = 0; x < n; x++) {
             for (int z = 0; z < n; z++) {
                 boolean border = x == 0 || z == 0 || x == n - 1 || z == n - 1;
-                boolean gate = z == n - 1 && Math.abs(x - n / 2) <= 1;
-                if (border && !gate) l.add(new Step(x, 0, z, Kind.FENCE));
+                boolean gate = z == n - 1 && x == n / 2;
+                if (border) l.add(new Step(x, 0, z, gate ? Kind.GATE : Kind.FENCE)); // a gate in the front, or the animals walk out
             }
         }
         return l;
@@ -385,12 +387,11 @@ public final class Blueprints {
                 boolean border = x == 0 || z == 0 || x == n - 1 || z == n - 1;
                 boolean gate = x == n / 2 && z == n - 1;
                 if (border) {
-                    if (!gate) l.add(new Step(x, 0, z, Kind.FENCE));
+                    l.add(new Step(x, 0, z, gate ? Kind.GATE : Kind.FENCE));
                 } else if (x == n / 2 && z == n / 2) {
                     l.add(new Step(x, -1, z, Kind.WATER));
                 } else {
-                    l.add(new Step(x, -1, z, Kind.FARMLAND));
-                    l.add(new Step(x, 0, z, Kind.CROP));
+                    l.add(new Step(x, -1, z, Kind.FARMLAND)); // the farmer sows it, not the builder
                 }
             }
         }
