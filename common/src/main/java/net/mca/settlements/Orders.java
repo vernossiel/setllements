@@ -114,6 +114,43 @@ public final class Orders {
         if (o != null) book(village).put(what, o.taken(v, v.getWorld().getTime()));
     }
 
+    /**
+     * A player put things into the village stores. Whatever of it answers an open order is noticed: the one the
+     * order was for (or whoever is near) thanks him, the village remembers it, and the order shrinks by as much.
+     */
+    public static void brought(net.minecraft.server.network.ServerPlayerEntity player, Village village,
+                               Map<net.minecraft.item.Item, Integer> before, Map<net.minecraft.item.Item, Integer> after) {
+        if (!(player.getWorld() instanceof ServerWorld world)) return;
+        EnumMap<Needs.Need, Order> b = book(village);
+        for (Order o : new ArrayList<>(b.values())) {
+            int n = 0;
+            for (Map.Entry<net.minecraft.item.Item, Integer> e : after.entrySet()) {
+                int diff = e.getValue() - before.getOrDefault(e.getKey(), 0);
+                if (diff > 0 && o.what().matches(new net.minecraft.item.ItemStack(e.getKey()))) n += diff;
+            }
+            if (n <= 0) continue;
+            int left = o.amount() - n;
+            if (left <= 0) b.remove(o.what());
+            else b.put(o.what(), new Order(o.what(), left, o.forWhom(), o.taker(), o.takerName(), o.takenAt()));
+            village.pushHearts(player, Math.min(10, 1 + n / 8));
+            Life.news(village, "player_brought", player.getName().getString(), n, net.minecraft.text.Text.translatable("settlements.need.name." + o.what().name().toLowerCase()));
+            VillagerEntityMCA thanker = null;
+            double bd = 24 * 24;
+            for (VillagerEntityMCA r : village.getResidents(world)) {
+                if (!r.isAlive() || r.isSleeping()) continue;
+                double d = r.squaredDistanceTo(player) / (r.getName().getString().equals(o.forWhom()) ? 4 : 1);
+                if (d < bd) {
+                    bd = d;
+                    thanker = r;
+                }
+            }
+            if (thanker != null) {
+                thanker.getLookControl().lookAt(player, 30f, 30f);
+                Speech.sayNow(thanker, "settlements.say.thanks.brought", player.getName(), n);
+            }
+        }
+    }
+
     /** The order he holds, if any. */
     public static Order held(VillagerEntityMCA v, Village village) {
         if (village == null) return null;

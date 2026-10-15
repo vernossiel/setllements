@@ -1986,5 +1986,20 @@
   "settlements.say.lumber.join": "%s, hold on, I'll help you with that giant!",
   "settlements.doing.lumber.join": "felling a big tree together with %s",
   "settlements.say.escort.go": "I'll go with %s, you never know out there.",
-  "settlements.doing.escort": "escorting %s outside the village"
+  "settlements.doing.escort": "escorting %s outside the village",
+  "settlements.doing.kid.watch": "watching %s at work",
+  "settlements.kid.watch.0": "%s, can I have a go?",
+  "settlements.kid.watch.1": "%s, how do you do that?",
+  "settlements.kid.watch.2": "When I grow up I'll be like %s!",
+  "settlements.kid.answer.0": "When you're bigger, %s, I'll teach you.",
+  "settlements.kid.answer.1": "Watch and remember, %s.",
+  "settlements.kid.answer.2": "Mind out from under my feet, %s!",
+  "settlements.say.thanks.brought": "%s, thank you! %s of it - just what we were short of!",
+  "settlements.doing.lumber.grove": "waiting for the grove to grow (%s saplings)",
+  "settlements.say.lumber.grove": "The grove isn't grown yet. We'll wait, no sense stripping the woods.",
+  "settlements.news.player_brought": "%s brought %s (%s) for the village.",
+  "settlements.talk.news.player_brought.a": "Heard? %s brought us materials!",
+  "settlements.talk.news.player_brought.b": "I did. A good sort, not like some.",
+  "settlements.talk.news.player_brought.c": "We ought to thank them when we can.",
+  "settlements.talk.news.player_brought.d": "Bake them a pie, maybe."
 }

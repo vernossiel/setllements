@@ -1874,5 +1874,20 @@
   "settlements.say.lumber.join": "%s, держись, помогу тебе с этим великаном!",
   "settlements.doing.lumber.join": "валит большое дерево вместе с %s",
   "settlements.say.escort.go": "Пойду с %s, мало ли что в лесу.",
-  "settlements.doing.escort": "сопровождает %s за пределами деревни"
+  "settlements.doing.escort": "сопровождает %s за пределами деревни",
+  "settlements.doing.kid.watch": "смотрит, как работает %s",
+  "settlements.kid.watch.0": "%s, а можно я тоже?",
+  "settlements.kid.watch.1": "%s, а как ты это делаешь?",
+  "settlements.kid.watch.2": "Когда вырасту, буду как %s!",
+  "settlements.kid.answer.0": "Подрастёшь, %s, — научу.",
+  "settlements.kid.answer.1": "Смотри и запоминай, %s.",
+  "settlements.kid.answer.2": "Не путайся под ногами, %s!",
+  "settlements.say.thanks.brought": "%s, спасибо! %s — как раз то, чего не хватало!",
+  "settlements.doing.lumber.grove": "ждёт, пока подрастёт роща (%s саженцев)",
+  "settlements.say.lumber.grove": "Роща ещё не подросла. Подождём, нечего лес вокруг сводить.",
+  "settlements.news.player_brought": "%s привёз %s (%s) для деревни.",
+  "settlements.talk.news.player_brought.a": "Слыхал? %s нам материалов привёз!",
+  "settlements.talk.news.player_brought.b": "Слыхал. Хороший человек, не то что некоторые.",
+  "settlements.talk.news.player_brought.c": "Надо будет отблагодарить при случае.",
+  "settlements.talk.news.player_brought.d": "Пирога бы ему испечь."
 }

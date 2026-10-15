@@ -127,6 +127,17 @@ public final class Lumberjack {
             // the stand of trees round the village is spared, unless the builders are short of wood
             Builder.Shortage sh = village == null ? null : Builder.shortage(village);
             if (order != null || village != null && stockLogs(village) < 16) force = true;
+            // the grove he planted: grown trees in it come first; still saplings, and nothing else about - wait for it
+            if (village != null && trees.size() <= (force ? 0 : MIN_TREES_LEFT)) {
+                List<BlockPos> grown = Grove.grown(world, village);
+                if (!grown.isEmpty()) trees = grown;
+                else if (Grove.growing(world, village) > 3 && !force) {
+                    Doing.set(v, "settlements.doing.lumber.grove", Grove.growing(world, village));
+                    if (world.random.nextInt(30) == 0) Speech.say(v, "settlements.say.lumber.grove");
+                    v.settlementsNoWorkUntil = world.getTime() + 600;
+                    return false;
+                }
+            }
             if (trees.size() <= (force ? 0 : MIN_TREES_LEFT) && v.settlementsExploreTries < 6) {
                 // no wood worth cutting around here: go further and look again
                 BlockPos from = village != null ? new BlockPos(village.getCenter()) : v.getBlockPos();
@@ -388,6 +399,8 @@ public final class Lumberjack {
         Block sapling = Registries.BLOCK.get(new Identifier(wood + "_sapling"));
         if (sapling == Blocks.AIR) sapling = Blocks.OAK_SAPLING;
         world.setBlockState(base, sapling.getDefaultState());
+        Village home = v.getResidency().getHomeVillage().orElse(null);
+        if (home != null) Grove.remember(home, base);
         Speech.say(v, "settlements.say.lumber.plant");
     }
 
@@ -413,6 +426,7 @@ public final class Lumberjack {
             }
             if (crowded) continue;
             world.setBlockState(p, Blocks.OAK_SAPLING.getDefaultState());
+            Grove.remember(village, p);
             village.groveSaplings++;
             village.markDirty();
             return;

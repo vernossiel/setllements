@@ -158,6 +158,7 @@ public final class Reputation {
             sweepIntoTreasury(village, chest); // whatever is left goes back into the stores
             village.markDirty();
         }
+        if (returned > 0 && Haul.storeChest(village, opened.pos())) Orders.brought(player, village, before, after);
         if (returned > 0) settleDebt(player, village, returned);
         if (taken >= 1) steal(player, village, taken, takenItems);
     }

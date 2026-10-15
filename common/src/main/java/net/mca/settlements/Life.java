@@ -459,6 +459,28 @@ public final class Life {
         long t = world.getTimeOfDay() % 24000L;
         if (t < 1000 || t > 11000 || world.isRaining()) return;
         if ((v.age / 20 + v.getUuid().hashCode()) % 4 != 0) return;
+        // now and then off to watch father or mother at work, and copy them
+        if (!v.isBaby() || v.getRandom().nextInt(3) == 0) {
+            net.mca.server.world.data.FamilyTreeNode me = v.getRelationships().getFamilyEntry();
+            for (java.util.UUID pid : new java.util.UUID[]{me.father(), me.mother()}) {
+                if (pid == null || !(world.getEntity(pid) instanceof VillagerEntityMCA parent) || !parent.isAlive() || parent.isSleeping()) continue;
+                if (!Persona.working(parent, world.getTimeOfDay()) || parent.squaredDistanceTo(v) > 48 * 48) continue;
+                Doing.set(v, "settlements.doing.kid.watch", parent.getName());
+                if (v.squaredDistanceTo(parent) > 12) v.getNavigation().startMovingTo(parent, 0.55);
+                else {
+                    v.getNavigation().stop();
+                    v.getLookControl().lookAt(parent, 30f, 30f);
+                    if (world.random.nextInt(4) == 0) v.swingHand(v.getDominantHand()); // doing it too, after a fashion
+                    if (world.random.nextInt(20) == 0) {
+                        Speech.say(v, "settlements.kid.watch." + world.random.nextInt(3), parent.getName());
+                        parent.settlementsReplyKey = "settlements.kid.answer." + world.random.nextInt(3);
+                        parent.settlementsReplyArgs = new Object[]{v.getName()};
+                        parent.settlementsReplyAt = world.getTime() + 40;
+                    }
+                }
+                return;
+            }
+        }
         List<VillagerEntityMCA> kids = world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(16), o -> o != v && o.isBaby() && o.isAlive());
         if (!kids.isEmpty() && world.random.nextInt(3) > 0) {
             VillagerEntityMCA friend = kids.get(world.random.nextInt(kids.size()));
