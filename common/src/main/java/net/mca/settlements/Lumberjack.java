@@ -176,8 +176,8 @@ public final class Lumberjack {
         // log by log, like a man with an axe: the lowest log he can reach from where he stands
         BlockPos next = null;
         for (BlockPos p : trunk) {
-            double dx = p.getX() + 0.5 - v.getX(), dz = p.getZ() + 0.5 - v.getZ(), dy = p.getY() - v.getY();
-            if (dx * dx + dz * dz <= 20 && dy >= -2 && dy <= 4) {
+            double lx = p.getX() + 0.5 - v.getX(), lz = p.getZ() + 0.5 - v.getZ(), ly = p.getY() - v.getY();
+            if (lx * lx + lz * lz <= 20 && ly >= -2 && ly <= 4) {
                 next = p;
                 break;
             }

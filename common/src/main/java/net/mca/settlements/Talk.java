@@ -123,7 +123,7 @@ public final class Talk {
     }
 
     private static void say(VillagerEntityMCA v, String key, Object[] args) {
-        Text line = Text.translatable(key, args).formatted(Formatting.WHITE);
+        net.minecraft.text.MutableText line = Text.translatable(key, args).formatted(Formatting.WHITE);
         for (PlayerEntity p : v.getWorld().getPlayers()) {
             if (p.squaredDistanceTo(v) <= HEAR * HEAR) v.sendChatMessage(line, p);
         }

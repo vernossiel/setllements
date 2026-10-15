@@ -102,7 +102,7 @@ public final class SettlementsCommand {
                                     int tier = java.util.List.of(Works.TIER_NAMES).indexOf(t);
                                     if (tier < 0) return say(c, "Tiers: poor, ordinary, wealthy, city");
                                     java.util.List<String> list = new java.util.ArrayList<>();
-                                    for (String kind : Tiers.kinds()) for (String d : Tiers.row(kind, tier)) if (!list.contains(d)) list.add(d);
+                                    for (String kind : Tiers.kinds()) for (String design : Tiers.row(kind, tier)) if (!list.contains(design)) list.add(design);
                                     return placeRow(c, list, "Every building of a " + t + " village");
                                 })))
                         .then(CommandManager.literal("kind").then(CommandManager.argument("kind", StringArgumentType.word())
@@ -111,7 +111,7 @@ public final class SettlementsCommand {
                                     String kind = StringArgumentType.getString(c, "kind");
                                     if (!Tiers.kinds().contains(kind)) return say(c, "Kinds: " + String.join(", ", Tiers.kinds()));
                                     java.util.List<String> list = new java.util.ArrayList<>();
-                                    for (int tier = 0; tier <= Tiers.CITY; tier++) for (String d : Tiers.row(kind, tier)) if (!list.contains(d)) list.add(d);
+                                    for (int tier = 0; tier <= Tiers.CITY; tier++) for (String design : Tiers.row(kind, tier)) if (!list.contains(design)) list.add(design);
                                     return placeRow(c, list, kind + " from the poorest to the city's");
                                 })))
                         .executes(c -> {
