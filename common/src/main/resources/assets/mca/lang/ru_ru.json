@@ -1896,5 +1896,9 @@
   "settlements.say.apprentice.ok": "Ладно, %s, смотри и подавай, что скажу.",
   "settlements.say.apprentice.learn": "Кажется, понемногу понимаю, как %s это делает.",
   "settlements.doing.apprentice": "подмастерье у %s: учится, подаёт, подбирает",
-  "settlements.doing.mine.remembered": "идёт к руде, которую заприметил раньше"
+  "settlements.doing.mine.remembered": "идёт к руде, которую заприметил раньше",
+  "settlements.doing.farm.till": "вскапывает грядку мотыгой",
+  "settlements.doing.farm.sow": "сеет на пустой грядке",
+  "settlements.doing.farm.feed": "подкармливает всходы костной мукой",
+  "settlements.say.farm.feed": "Подкормим — быстрее пойдёт."
 }

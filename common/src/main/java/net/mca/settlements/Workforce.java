@@ -178,6 +178,8 @@ public final class Workforce {
         if (job != Chore.NONE) {
             // an autonomous chore is running
             Worksite.check(v, job);
+            if (v.getProfession() == VillagerProfession.FARMER && v.getWorld() instanceof net.minecraft.server.world.ServerWorld fw)
+                Farming.tend(v, village, fw); // hoeing, sowing, feeding the crop between the harvests
             Trade.practise(v);
             v.settlementsEnergy -= WORK_DRAIN;
             v.settlementsHunger += HUNGER_RISE;

@@ -2008,5 +2008,9 @@
   "settlements.say.apprentice.ok": "All right, %s, watch and hand me what I ask for.",
   "settlements.say.apprentice.learn": "I think I'm getting how %s does it.",
   "settlements.doing.apprentice": "apprenticed to %s: learning, fetching, picking up",
-  "settlements.doing.mine.remembered": "going for ore he spotted earlier"
+  "settlements.doing.mine.remembered": "going for ore he spotted earlier",
+  "settlements.doing.farm.till": "hoeing a bed",
+  "settlements.doing.farm.sow": "sowing a bare bed",
+  "settlements.doing.farm.feed": "feeding the crop with bone meal",
+  "settlements.say.farm.feed": "A bit of feed and it'll come on quicker."
 }
