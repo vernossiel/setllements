@@ -1930,5 +1930,19 @@
   "settlements.plan.doing.elder": "план: идёт сказать старейшине, что нет (%s)",
   "settlements.plan.ask": "%s, выручишь? Нам бы %s — стройка стоит.",
   "settlements.plan.tell": "%s, стройка стоит: нет (%s), и никто не везёт.",
-  "settlements.plan.elder": "Понял, %s. Займусь — найду, кого послать."
+  "settlements.plan.elder": "Понял, %s. Займусь — найду, кого послать.",
+  "settlements.plan.say.idle.haul": "Сначала отнесу добычу на склад.",
+  "settlements.plan.doing.idle.haul": "план: относит добычу на склад",
+  "settlements.plan.say.idle.forage": "В деревне голодно — пойду поищу еды.",
+  "settlements.plan.doing.idle.forage": "план: своей работы нет, деревня голодает — ищет еду",
+  "settlements.plan.say.idle.order": "Своей работы нет — возьмусь за то, что нужно стройке.",
+  "settlements.plan.doing.idle.order": "план: своей работы нет — берёт заказ стройки",
+  "settlements.plan.say.idle.roads": "Пока дел нет — подлатаю дорогу.",
+  "settlements.plan.doing.idle.roads": "план: своей работы нет — чинит дороги",
+  "settlements.plan.say.idle.elder": "Пойду спрошу старейшину, чем заняться.",
+  "settlements.plan.doing.idle.elder": "план: идёт к старейшине за работой",
+  "settlements.plan.idle.tell": "%s, мне нечем заняться. Чем помочь деревне?",
+  "settlements.plan.idle.answer.0": "Помоги строителям, %s, им вечно чего-то не хватает.",
+  "settlements.plan.idle.answer.1": "Отдохни пока, %s. Завтра будет работа.",
+  "settlements.plan.idle.answer.2": "Сходи на окраину, %s, глянь, нет ли там леса или камня."
 }

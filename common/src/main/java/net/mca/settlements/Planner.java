@@ -48,14 +48,98 @@ public final class Planner {
             if (now < SET_ASIDE.getOrDefault(id(v, s), 0L)) continue;
             if (!s.possible(v, village, world, need)) continue;
             String was = CURRENT.put(v.getUuid(), s.key());
-            if (!s.key().equals(was)) Speech.say(v, "settlements.plan.say." + s.key(), Text.translatable("settlements.need.name." + need.name().toLowerCase()));
-            Doing.set(v, "settlements.plan.doing." + s.key(), Text.translatable("settlements.need.name." + need.name().toLowerCase()));
+            String group = need == Needs.Need.NONE ? "idle." : "";
+            if (!s.key().equals(was)) Speech.say(v, "settlements.plan.say." + group + s.key(), Text.translatable("settlements.need.name." + need.name().toLowerCase()));
+            Doing.set(v, "settlements.plan.doing." + group + s.key(), Text.translatable("settlements.need.name." + need.name().toLowerCase()));
             if (s.run(v, village, world, need)) return true;
             SET_ASIDE.put(id(v, s), now + 20 * 90); // did not work out: the next way, and this one again later
         }
         CURRENT.remove(v.getUuid());
         return false;
     }
+
+    /** A worker with nothing to do at his own trade. True while the plan keeps him busy. */
+    public static boolean idle(VillagerEntityMCA v, Village village, ServerWorld world) {
+        return run(v, village, world, Needs.Need.NONE, IDLE);
+    }
+
+    private static final List<Step> IDLE = List.of(
+            new Step() { // what he has in his bag goes to the stores first
+                public String key() {
+                    return "haul";
+                }
+
+                public boolean possible(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
+                    return Workforce.isGatherer(v.getProfession()) && Haul.load(v) > 0;
+                }
+
+                public boolean run(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
+                    return Haul.carry(v, village, true);
+                }
+            },
+            new Step() { // a hungry village: food before anything
+                public String key() {
+                    return "forage";
+                }
+
+                public boolean possible(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
+                    return Forage.hungry(village);
+                }
+
+                public boolean run(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
+                    return Forage.work(v, village, world);
+                }
+            },
+            new Step() { // an order nobody has taken, or the builders short of something
+                public String key() {
+                    return "order";
+                }
+
+                public boolean possible(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
+                    return Orders.held(v, village) != null || Orders.free(village, Needs.Need.PLANKS, Needs.Need.COBBLE) != null || Builder.shortage(village) != null;
+                }
+
+                public boolean run(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
+                    return Life.helpBuilders(v, village, world);
+                }
+            },
+            new Step() { // the roads want mending
+                public String key() {
+                    return "roads";
+                }
+
+                public boolean possible(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
+                    return village.buildOrigin == null || v.getRandom().nextBoolean();
+                }
+
+                public boolean run(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
+                    return Repair.roadWork(v, village, world);
+                }
+            },
+            new Step() { // nothing at all: he says so to the elder, who may have something
+                public String key() {
+                    return "elder";
+                }
+
+                public boolean possible(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
+                    return village.hallPos != null && v.settlementsIdleWork >= 120;
+                }
+
+                public boolean run(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
+                    VillagerEntityMCA elder = null;
+                    for (VillagerEntityMCA r : village.getResidents(world)) if (r.isElder() && r.isAlive()) elder = r;
+                    if (elder == null || elder == v) return false;
+                    if (v.squaredDistanceTo(elder) > 16) {
+                        Move.to(v, elder.getX(), elder.getY(), elder.getZ(), 0.5);
+                        return true;
+                    }
+                    Speech.sayNow(v, "settlements.plan.idle.tell", elder.getName());
+                    elder.settlementsReplyKey = "settlements.plan.idle.answer." + v.getRandom().nextInt(3);
+                    elder.settlementsReplyArgs = new Object[]{v.getName()};
+                    elder.settlementsReplyAt = world.getTime() + 40;
+                    return false;
+                }
+            });
 
     // ---------- the builder short of material ----------
 

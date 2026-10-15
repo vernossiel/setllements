@@ -2042,5 +2042,19 @@
   "settlements.plan.doing.elder": "plan: off to tell the elder there's no %s",
   "settlements.plan.ask": "%s, could you help? We need %s - the building's stuck.",
   "settlements.plan.tell": "%s, the building's stuck: no %s, and nobody's bringing any.",
-  "settlements.plan.elder": "I hear you, %s. I'll find someone to send."
+  "settlements.plan.elder": "I hear you, %s. I'll find someone to send.",
+  "settlements.plan.say.idle.haul": "First I'll take my load to the stores.",
+  "settlements.plan.doing.idle.haul": "plan: taking his load to the stores",
+  "settlements.plan.say.idle.forage": "The village is hungry - I'll look for food.",
+  "settlements.plan.doing.idle.forage": "plan: no work of his own, the village is hungry - foraging",
+  "settlements.plan.say.idle.order": "No work of my own - I'll see to what the building needs.",
+  "settlements.plan.doing.idle.order": "plan: no work of his own - taking an order for the building",
+  "settlements.plan.say.idle.roads": "Nothing to do - I'll mend the road.",
+  "settlements.plan.doing.idle.roads": "plan: no work of his own - mending roads",
+  "settlements.plan.say.idle.elder": "I'll ask the elder what to do.",
+  "settlements.plan.doing.idle.elder": "plan: off to the elder for work",
+  "settlements.plan.idle.tell": "%s, I've nothing to do. How can I help the village?",
+  "settlements.plan.idle.answer.0": "Help the builders, %s, they're always short of something.",
+  "settlements.plan.idle.answer.1": "Rest for now, %s. There'll be work tomorrow.",
+  "settlements.plan.idle.answer.2": "Go out to the edge, %s, see if there's wood or stone out there."
 }

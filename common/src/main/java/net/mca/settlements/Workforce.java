@@ -231,11 +231,11 @@ public final class Workforce {
             if (Forge.waiting(v, village)) return; // at the smithy, waiting for his new tool
             boolean worked = false;
             // a worker with nothing to do for a while lends the builders a hand (and looks for his own work now and then)
+            // nothing at his own trade: a plan of what else is worth doing (see Planner.idle) - carry his load in,
+            // take on an order nobody has, find food for a hungry village, mend the roads, tell the elder
             boolean helping = prof != VillagerProfession.CARTOGRAPHER && village != null && v.settlementsIdleWork >= 15 && v.settlementsIdleWork % 60 != 0
-                    && v.getWorld() instanceof net.minecraft.server.world.ServerWorld hw && Life.helpBuilders(v, village, hw);
-            // a hungry village: whoever has nothing to do goes out for food
-            boolean foraging = !helping && village != null && v.settlementsIdleWork >= 20 && prof != VillagerProfession.CARTOGRAPHER
-                    && Forage.hungry(village) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld fw && Forage.work(v, village, fw);
+                    && v.getWorld() instanceof net.minecraft.server.world.ServerWorld hw && Planner.idle(v, village, hw);
+            boolean foraging = false;
             if (foraging) {
                 worked = true;
                 v.settlementsIdleWork = 20; // still idle at his own trade
