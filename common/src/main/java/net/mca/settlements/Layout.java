@@ -7,13 +7,28 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.Heightmap;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+
 /**
- * Village plan: plots sit on rings around the central plaza and face it, so the roads run straight to the middle.
- * Houses and workshops take the inner rings, farms and watchtowers the outer ones.
+ * The village plan. From the plaza in the middle, streets run out straight (east-west and north-south, and parallel
+ * streets a block's depth apart as the village grows), and the plots line them on both sides with their fronts to the
+ * street, set back a step. Every village keeps its quarters: the town hall, the inn, the market and the chapel round
+ * the plaza; the workshops and stores along one street of their own, the way towards the woods and the mine; the
+ * homes along the others; farms, pens and watchtowers out beyond the streets. Nothing is put on a street, on another
+ * plot or on a building that stands already.
  */
 public final class Layout {
+    /** Distance between parallel streets, and the half-width of a street (3 wide). */
+    static final int GRID = 32, HALF = 1;
+    private static final int PLAZA = 9;
     private static final int[] RINGS = {14, 22, 30, 38, 46, 54};
-    private static final int MARGIN = 3;
+    private static final int MARGIN = 2;
+    private static final Set<String> CENTRE = Set.of("townhall", "well", "market", "tavern", "chapel", "shop", "board", "jail");
+    private static final Set<String> WORK = Set.of("storage", "granary", "sawmill", "mason", "smithy", "charcoal", "mill", "armory", "barracks");
+    private static final Set<String> OUTSKIRTS = Set.of("farm", "pen", "tower", "mine", "palisade", "wall", "graveyard");
 
     public record Slot(BlockPos origin, int rot, int fw, int fd) {
     }
@@ -27,11 +42,90 @@ public final class Layout {
         return dz > 0 ? 2 : 0;
     }
 
+    /** How far out the streets of this village reach (in streets either side of the main ones). */
+    private static int reach(Village village) {
+        int pop = village.getPopulation();
+        return pop >= 24 ? 2 : pop >= 10 ? 1 : 0;
+    }
+
+    /** The street the workshops line: one of the four arms of the main streets, the same for good. */
+    private static int workArm(Village village) {
+        return Math.floorMod(village.getId() * 7 + 3, 4); // 0 east, 1 south, 2 west, 3 north
+    }
+
+    /** True for a cell on a street (or the plaza) of the village's plan. */
+    static boolean onStreet(Village village, int x, int z) {
+        BlockPos c = new BlockPos(village.getCenter());
+        int dx = x - c.getX(), dz = z - c.getZ();
+        if (dx * dx + dz * dz <= PLAZA * PLAZA) return true;
+        int r = reach(village), lim = (r + 1) * GRID;
+        if (Math.abs(dx) > lim + HALF || Math.abs(dz) > lim + HALF) return false;
+        for (int k = -r; k <= r; k++) {
+            if (Math.abs(dz - k * GRID) <= HALF) return true; // an east-west street
+            if (Math.abs(dx - k * GRID) <= HALF) return true; // a north-south street
+        }
+        return false;
+    }
+
+    private record Lot(int x, int z, int rot, double score) {
+    }
+
     public static Slot find(ServerWorld world, Village village, String type, int w, int d, int minRing, int maxRing) {
+        String base = Tiers.isHome(type) ? "home" : Buildings.base(type);
         int[] fp = Blueprints.footprint(type, w, d);
+        if (type.equals("mine") || OUTSKIRTS.contains(base) || minRing >= 2) return ring(world, village, type, fp, Math.max(minRing, 2), Math.max(maxRing, 3));
+        BlockPos c = new BlockPos(village.getCenter());
+        int r = reach(village), arm = workArm(village);
+        boolean centre = CENTRE.contains(base), work = WORK.contains(base);
+        List<Lot> lots = new ArrayList<>();
+        int lim = (r + 1) * GRID - 4;
+        for (int k = -r; k <= r; k++) {
+            // along an east-west street at z = k*GRID: plots north of it face south (rot 0), south of it face north (rot 2)
+            // along a north-south street at x = k*GRID: plots east of it face west (rot 1), west of it face east (rot 3)
+            for (int axis = 0; axis < 2; axis++) {
+                for (int side = -1; side <= 1; side += 2) {
+                    int rot = axis == 0 ? (side < 0 ? 0 : 2) : (side < 0 ? 3 : 1);
+                    int fw = (rot & 1) == 0 ? fp[0] : fp[1], fd = (rot & 1) == 0 ? fp[1] : fp[0];
+                    int along = (rot & 1) == 0 ? fw : fd, deep = (rot & 1) == 0 ? fd : fw;
+                    if (deep > GRID - 2 * HALF - 4) continue; // too deep for the block
+                    for (int t = -lim; t <= lim - along; t += 2) {
+                        int mid = t + along / 2;
+                        if (Math.abs(mid) < PLAZA + 2 && k == 0) continue;
+                        int line = k * GRID;
+                        int off = side < 0 ? line - HALF - 2 - deep : line + HALF + 2; // set back a step from the street
+                        int x = axis == 0 ? c.getX() + t : c.getX() + off;
+                        int z = axis == 0 ? c.getZ() + off : c.getZ() + t;
+                        double dist = Math.hypot(axis == 0 ? mid : line, axis == 0 ? line : mid);
+                        // which arm of the main streets this plot belongs to
+                        int plotArm = k != 0 ? -1 : axis == 0 ? (mid > 0 ? 0 : 2) : (mid > 0 ? 1 : 3);
+                        double score = dist;
+                        if (centre) score = dist + (k == 0 ? 0 : 200);
+                        else if (work) score = (plotArm == arm ? 0 : 400) + dist;
+                        else score = (plotArm == arm ? 300 : 0) + (dist < 18 ? 60 : 0) + dist; // homes off the plaza and the work street
+                        score += world.random.nextDouble() * 6; // not all in a row from the plaza
+                        lots.add(new Lot(x, z, rot, score));
+                    }
+                }
+            }
+        }
+        lots.sort(Comparator.comparingDouble(Lot::score));
+        int tries = 0;
+        for (Lot lot : lots) {
+            if (++tries > 400) break;
+            int fw = (lot.rot() & 1) == 0 ? fp[0] : fp[1], fd = (lot.rot() & 1) == 0 ? fp[1] : fp[0];
+            if (!free(village, lot.x(), lot.z(), fw, fd)) continue;
+            BlockPos origin = flat(world, lot.x(), lot.z(), fw, fd);
+            if (origin != null) return new Slot(origin, lot.rot(), fw, fd);
+        }
+        // no plot left on the streets: out on the rings beyond them
+        return ring(world, village, type, fp, Math.max(minRing, r + 2), Math.max(maxRing, r + 4));
+    }
+
+    /** The outskirts: plots on rings round the village, beyond the streets, facing the middle. */
+    private static Slot ring(ServerWorld world, Village village, String type, int[] fp, int minRing, int maxRing) {
         BlockPos c = new BlockPos(village.getCenter());
         var rand = world.random;
-        for (int ri = minRing; ri <= Math.min(maxRing, RINGS.length - 1); ri++) {
+        for (int ri = Math.min(minRing, RINGS.length - 1); ri <= Math.min(maxRing, RINGS.length - 1); ri++) {
             int radius = RINGS[ri];
             int n = Math.max(4, (int) (2 * Math.PI * radius / (Math.max(fp[0], fp[1]) + MARGIN + 2)));
             double offset = rand.nextDouble() * Math.PI * 2;
@@ -42,8 +136,9 @@ public final class Layout {
                 int rot = type.equals("mine") ? 0 : facingCenter(dx, dz);
                 int fw = (rot & 1) == 0 ? fp[0] : fp[1], fd = (rot & 1) == 0 ? fp[1] : fp[0];
                 int x = c.getX() + (int) dx - fw / 2, z = c.getZ() + (int) dz - fd / 2;
+                if (!free(village, x, z, fw, fd)) continue;
                 BlockPos origin = flat(world, x, z, fw, fd);
-                if (origin != null && free(village, origin, fw, fd)) return new Slot(origin, rot, fw, fd);
+                if (origin != null) return new Slot(origin, rot, fw, fd);
             }
         }
         return null;
@@ -55,7 +150,7 @@ public final class Layout {
         BlockPos c = new BlockPos(village.getCenter());
         int x = c.getX() - fp[0] / 2, z = c.getZ() - fp[1] / 2;
         BlockPos origin = flat(world, x, z, fp[0], fp[1]);
-        if (origin == null || !free(village, origin, fp[0], fp[1])) return null;
+        if (origin == null || !freeOfBuildings(village, origin.getX(), origin.getZ(), fp[0], fp[1])) return null;
         return new Slot(origin, 0, fp[0], fp[1]);
     }
 
@@ -76,19 +171,39 @@ public final class Layout {
                 maxY = Math.max(maxY, y);
             }
         }
-        return maxY - minY <= 1 ? new BlockPos(x, maxY, z) : null;
+        return maxY - minY <= 2 ? new BlockPos(x, maxY, z) : null; // the builders level a step or two
     }
 
-    private static boolean free(Village village, BlockPos o, int w, int d) {
+    /** The plot is clear: off the streets, off other plots and off what is built already (with room between). */
+    private static boolean free(Village village, int x, int z, int w, int d) {
+        for (int dx = -1; dx <= w; dx++) {
+            if (onStreet(village, x + dx, z - 1) || onStreet(village, x + dx, z + d)) return false;
+        }
+        for (int dz = -1; dz <= d; dz++) {
+            if (onStreet(village, x - 1, z + dz) || onStreet(village, x + w, z + dz)) return false;
+        }
+        for (int dx = 0; dx < w; dx += 2) for (int dz = 0; dz < d; dz += 2) if (onStreet(village, x + dx, z + dz)) return false;
+        return freeOfBuildings(village, x, z, w, d);
+    }
+
+    private static boolean freeOfBuildings(Village village, int x, int z, int w, int d) {
         for (int[] p : village.plots) {
-            if (o.getX() - MARGIN < p[0] + p[2] && o.getX() + w + MARGIN > p[0] && o.getZ() - MARGIN < p[1] + p[3] && o.getZ() + d + MARGIN > p[1]) return false;
+            if (x - MARGIN < p[0] + p[2] && x + w + MARGIN > p[0] && z - MARGIN < p[1] + p[3] && z + d + MARGIN > p[1]) return false;
+        }
+        for (Built b : village.built) {
+            BlockPos o = b.origin();
+            if (x - MARGIN < o.getX() + b.fw() && x + w + MARGIN > o.getX() && z - MARGIN < o.getZ() + b.fd() && z + d + MARGIN > o.getZ()) return false;
         }
         for (Building b : village.getBuildings().values()) {
-            for (int dx = -1; dx <= w; dx += w + 1) {
-                for (int dz = -1; dz <= d; dz += d + 1) {
-                    if (b.containsPos(o.add(dx, 1, dz))) return false;
-                }
-            }
+            if (b.getBuildingType().grouped()) continue; // a field or a pen marked by MCA, not a building
+            BlockPos p0 = b.getPos0(), p1 = b.getPos1();
+            int bx0 = Math.min(p0.getX(), p1.getX()), bx1 = Math.max(p0.getX(), p1.getX());
+            int bz0 = Math.min(p0.getZ(), p1.getZ()), bz1 = Math.max(p0.getZ(), p1.getZ());
+            if (x - MARGIN <= bx1 && x + w + MARGIN > bx0 && z - MARGIN <= bz1 && z + d + MARGIN > bz0) return false;
+        }
+        for (House h : village.houses) {
+            BlockPos o = h.origin();
+            if (x - MARGIN < o.getX() + h.w() && x + w + MARGIN > o.getX() && z - MARGIN < o.getZ() + h.d() && z + d + MARGIN > o.getZ()) return false;
         }
         return true;
     }

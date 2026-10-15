@@ -37,25 +37,45 @@ public final class Roads {
         if (pavable(g)) world.setBlockState(ground, Blocks.DIRT_PATH.getDefaultState());
     }
 
-    /** The cells of the road from a building's front to the plaza (two wide), as {x, z}; a lamp post spot as {x, z, 1}. */
+    /**
+     * The cells of the road from a building's front to the plaza, as {x, z}; a lamp post spot as {x, z, 1}. The road
+     * follows the village's streets (see Layout): out of the door onto the street, along it to the main street, and
+     * down the main street to the plaza. Streets are three wide.
+     */
     public static java.util.List<int[]> route(Village village, BlockPos front) {
         java.util.List<int[]> out = new java.util.ArrayList<>();
         BlockPos c = new BlockPos(village.getCenter());
-        int x0 = front.getX(), z0 = front.getZ(), x1 = c.getX(), z1 = c.getZ();
-        int dx = Math.abs(x1 - x0), dz = Math.abs(z1 - z0), sx = x0 < x1 ? 1 : -1, sz = z0 < z1 ? 1 : -1;
-        int err = dx - dz, steps = 0;
-        while (steps++ < 90 && Math.hypot(x0 - x1, z0 - z1) > 5) {
-            out.add(new int[]{x0, z0});
-            out.add(new int[]{x0 + (dx > dz ? 0 : 1), z0 + (dx > dz ? 1 : 0)});
-            if (steps % 8 == 4) out.add(new int[]{x0 + (dx > dz ? 0 : 2), z0 + (dx > dz ? 2 : 0), 1});
-            int e2 = 2 * err;
-            if (e2 > -dz) {
-                err -= dz;
-                x0 += sx;
-            }
-            if (e2 < dx) {
-                err += dx;
-                z0 += sz;
+        int g = Layout.GRID;
+        int fx = front.getX(), fz = front.getZ();
+        // the street line nearest the door, east-west (z = sz) or north-south (x = sx)
+        int sz = c.getZ() + Math.round((fz - c.getZ()) / (float) g) * g, sx = c.getX() + Math.round((fx - c.getX()) / (float) g) * g;
+        java.util.List<int[]> path = new java.util.ArrayList<>();
+        if (Math.abs(fz - sz) <= Math.abs(fx - sx)) {
+            path.add(new int[]{fx, fz});
+            path.add(new int[]{fx, sz});      // out onto the street
+            path.add(new int[]{c.getX(), sz}); // along it to the main north-south street
+            path.add(new int[]{c.getX(), c.getZ()});
+        } else {
+            path.add(new int[]{fx, fz});
+            path.add(new int[]{sx, fz});
+            path.add(new int[]{sx, c.getZ()});
+            path.add(new int[]{c.getX(), c.getZ()});
+        }
+        int steps = 0;
+        for (int i = 0; i + 1 < path.size(); i++) {
+            int x = path.get(i)[0], z = path.get(i)[1], x1 = path.get(i + 1)[0], z1 = path.get(i + 1)[1];
+            boolean street = i > 0; // the walk out of the door is a path, the streets are wide
+            while ((x != x1 || z != z1) && steps++ < 160) {
+                if (Math.hypot(x - c.getX(), z - c.getZ()) <= 5) return out; // the plaza
+                boolean alongX = x != x1;
+                out.add(new int[]{x, z});
+                if (street) {
+                    out.add(alongX ? new int[]{x, z - 1} : new int[]{x - 1, z});
+                    out.add(alongX ? new int[]{x, z + 1} : new int[]{x + 1, z});
+                    if (steps % 10 == 5) out.add(alongX ? new int[]{x, z + 2, 1} : new int[]{x + 2, z, 1});
+                }
+                if (alongX) x += Integer.signum(x1 - x);
+                else z += Integer.signum(z1 - z);
             }
         }
         return out;
