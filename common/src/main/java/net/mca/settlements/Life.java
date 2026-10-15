@@ -134,7 +134,7 @@ public final class Life {
         double bd = range * range;
         for (PlayerEntity p : world.getPlayers()) {
             double d = p.squaredDistanceTo(watcher);
-            if (d < bd && which.test(p) && watcher.canSee(p)) {
+            if (d < bd && p.isAlive() && which.test(p) && watcher.canSee(p)) {
                 bd = d;
                 best = p;
             }
@@ -289,6 +289,7 @@ public final class Life {
             PlayerEntity enemy = scaryPlayer(world, village, v, 20);
             if (enemy != null) {
                 flee(v, enemy, village, world);
+                Doing.set(v, "settlements.doing.flee", enemy.getName());
                 Speech.say(v, feared(village, enemy) ? "settlements.react.attacker_seen" : "settlements.react.fear");
                 callGuards(world, village, v, enemy, true);
                 return true;

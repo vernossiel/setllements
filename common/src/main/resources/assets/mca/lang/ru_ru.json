@@ -985,7 +985,7 @@
   "settlements.raid.shared": "Вы пошли с налётчиками и получили долю добычи. %s довольна.",
   "settlements.defense.major": "%s подвергается нападению: %s! Прячьтесь или помогите стражникам!",
   "settlements.expansion": "Поселенцы из %s отправились основывать новую деревню.",
-  "gui.button.plans": "Планы деревни",
+  "gui.button.plans": "О деревне",
   "settlements.plan.notme": "О планах расскажет старейшина, %s.",
   "settlements.plan.header": "%s, %s, жителей: %s.",
   "settlements.plan.none": "Пока всё намечено. Мирные времена.",

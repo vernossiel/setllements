@@ -988,7 +988,7 @@
   "settlements.raid.shared": "You rode with the raiders and took your share of the loot. %s is pleased.",
   "settlements.defense.major": "%s is under attack by %s! Take cover or help the guards!",
   "settlements.expansion": "Settlers from %s have set out to found a new village.",
-  "gui.button.plans": "Village Plans",
+  "gui.button.plans": "About the village",
   "settlements.plan.notme": "Ask the elder, %s, about the plans.",
   "settlements.plan.header": "%s, %s, %s residents.",
   "settlements.plan.none": "We have everything planned for now. Peaceful times.",
