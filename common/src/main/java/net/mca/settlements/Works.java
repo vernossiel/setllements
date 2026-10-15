@@ -439,7 +439,7 @@ public final class Works {
     static List<Step> millPoor() {
         List<Step> l = body(0, 5, 7, 1, false);
         at(l, 2, 1, 2, Kind.GRINDSTONE); // the hand quern
-        at(l, 1, 1, 1, Kind.HAY);
+        at(l, 2, 1, 1, Kind.HAY); // behind the quern, the corner beside it free
         at(l, 3, 1, 1, Kind.BARREL);
         at(l, 1, 1, 4, Kind.COMPOSTER);
         at(l, 3, 1, 4, Kind.SMOKER);
@@ -786,7 +786,10 @@ public final class Works {
             }
         }
         if (tier > 1) for (int y = 1; y < h0; y++) for (int z = 1; z <= 3; z++) at(l, w - 3, y, z, Kind.STONE);
-        for (int x = 1; x <= last; x += 3) at(l, x + (x + 1 <= last ? 1 : 0), 1, 2, Kind.HAY); // straw to sleep on, off the spot a prisoner is put
+        for (int x = 1; x <= last; x += 3) { // straw to sleep on, off the spot a prisoner is put (in a narrow cell at the back)
+            if (x + 1 <= last) at(l, x + 1, 1, 2, Kind.HAY);
+            else at(l, x, 1, 1, Kind.HAY);
+        }
         // the guards' desk
         at(l, 1, 1, d - 2, Kind.LECTERN);
         at(l, 2, 1, d - 2, Kind.CHEST);

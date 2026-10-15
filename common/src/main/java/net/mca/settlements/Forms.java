@@ -237,6 +237,8 @@ public final class Forms {
             for (int y = 1; y <= 7; y++) if (y != 4) at(l, wx + 1, y, 0, y <= 3 ? Kind.STONE : Kind.WALL); // no window behind the ladder
             for (int y = 1; y <= 4; y++) at(l, wx + 1, y, 1, Kind.LADDER);
         }
+        // the wings open into the hall near the front: no wall (and no window) there
+        l.removeIf(s -> (s.dx() == 4 || s.dx() == 12) && s.dz() == d - 2 && s.dy() >= 1 && s.dy() <= 2);
         // the hall between the wings: one tall storey with tall windows
         for (int y = 1; y <= 7; y++) {
             for (int x = 5; x <= 11; x++) {
@@ -404,6 +406,8 @@ public final class Forms {
         }
         for (int x = tx + 1; x < tx + n - 1; x++) for (int z = tz + 1; z < tz + n - 1; z++) at(l, x, top - 3, z, Kind.STONE);
         at(l, tx + 2, top - 2, tz + 2, Kind.BELL);
+        // a ladder up to the bell on the back wall, beside the way through, through a hatch in the belfry floor
+        for (int y = 1; y <= top - 3; y++) at(l, tx + 1, y, tz + 1, Kind.LADDER);
         at(l, tx + 2, 11, tz + n, Kind.CLOCK); // the clock over the square
         // the spire
         for (int x = tx; x < tx + n; x++) for (int z = tz; z < tz + n; z++) at(l, x, top + 1, z, Kind.ROOF);

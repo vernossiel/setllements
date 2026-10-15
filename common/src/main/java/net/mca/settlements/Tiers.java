@@ -286,22 +286,24 @@ public final class Tiers {
         int w = 11, d = 9;
         List<Step> l = new ArrayList<>(Blueprints.shell(w, d, 2, false, false, true, true));
         for (int x = 0; x < w; x++) for (int z = 0; z < d; z++) if (Blueprints.window(x, z, w, d)) at(l, x, 2, z, Kind.BARS);
-        // cells: two of them along the back wall, stone between, iron bars and gates in front
+        // cells: two of them along the back wall, stone between, iron bars and gates in front; a passage at x 2
+        // past them to the foot of the stairs
         for (int y = 1; y <= 3; y++) {
             for (int z = 1; z <= 3; z++) {
-                at(l, 2, y, z, Kind.STONE);
+                at(l, 3, y, z, Kind.STONE);
                 at(l, 6, y, z, Kind.STONE);
             }
             for (int x = 2; x <= 9; x++) {
-                if (x == 2 || x == 6) at(l, x, y, 4, Kind.STONE);
+                if (x == 3 || x == 6 || (x == 2 && y == 3)) at(l, x, y, 4, Kind.STONE);
+                else if (x == 2) continue;
                 else if (y == 1 && (x == 4 || x == 8)) at(l, x, y, 4, Kind.GATE, S);
                 else if (y <= 2) at(l, x, y, 4, Kind.BARS);
                 else at(l, x, y, 4, Kind.STONE);
             }
         }
-        at(l, 3, 1, 1, Kind.HAY);
+        at(l, 5, 1, 1, Kind.HAY);
         at(l, 9, 1, 1, Kind.HAY);
-        at(l, 5, 1, 1, Kind.CAULDRON);
+        at(l, 4, 1, 1, Kind.CAULDRON);
         // the warden's desk
         at(l, 8, 1, 6, Kind.LECTERN);
         at(l, 9, 1, 7, Kind.CHEST);
@@ -673,7 +675,7 @@ public final class Tiers {
                 at(l, 4, 1, 1, Kind.SMOKER);
                 at(l, 5, 1, 1, Kind.SMOKER);
                 at(l, 3, 1, 1, Kind.HAY);
-                at(l, 5, 1, 2, Kind.BARREL);
+                at(l, 5, 1, 3, Kind.BARREL); // (a step free before the ovens)
                 at(l, 4, 2, 4, Kind.POT);
             }
             case 1 -> { // weaver's
@@ -689,14 +691,14 @@ public final class Tiers {
                 at(l, 4, 1, 1, Kind.CHEST);
                 at(l, 5, 1, 1, Kind.BARREL);
                 at(l, 5, 2, 1, Kind.BARREL);
-                at(l, 5, 1, 2, Kind.BARREL);
+                at(l, 5, 1, 3, Kind.BARREL);
                 at(l, 4, 2, 4, Kind.PUMPKIN, S);
             }
             default -> { // apothecary
                 at(l, 3, 1, 1, Kind.BOOKSHELF);
                 at(l, 4, 1, 1, Kind.BOOKSHELF);
                 at(l, 5, 1, 1, Kind.CAULDRON);
-                at(l, 5, 1, 2, Kind.LECTERN);
+                at(l, 5, 1, 3, Kind.LECTERN);
                 at(l, 4, 2, 4, Kind.POT);
                 at(l, 5, 2, 4, Kind.POT);
             }

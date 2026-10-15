@@ -167,7 +167,7 @@ public final class Buildings {
         at(l, 4, 1, 2, Kind.STONECUTTER);
         at(l, 6, 1, 1, Kind.CRAFT);
         at(l, 7, 1, 1, Kind.CHEST);
-        at(l, 7, 1, 2, Kind.BARREL);
+        at(l, 7, 1, 3, Kind.BARREL); // (a step in front of the chest stays free)
         for (int x = 1; x <= 3; x++) at(l, x, 1, 1, Kind.LOG_X);
         for (int x = 1; x <= 2; x++) at(l, x, 2, 1, Kind.LOG_X);
         at(l, 1, 1, 3, Kind.LOG_Z);
@@ -237,7 +237,7 @@ public final class Buildings {
         List<Step> l = Blueprints.shell(8, 7, 1, false, false, true, false);
         for (int x = 1; x <= 3; x++) at(l, x, 1, 1, Kind.BARREL);
         at(l, 1, 2, 1, Kind.BARREL);
-        at(l, 1, 1, 2, Kind.CHEST);
+        at(l, 1, 1, 3, Kind.CHEST); // in front of the barrels a free step
         for (int[] p : new int[][]{{6, 1, 1}, {6, 1, 2}, {6, 2, 1}, {5, 1, 1}}) at(l, p[0], p[1], p[2], Kind.HAY);
         at(l, 1, 1, 4, Kind.COMPOSTER);
         at(l, 6, 1, 4, Kind.BARREL);
@@ -288,9 +288,8 @@ public final class Buildings {
         Blueprints.plane(cap, 4, 4, 9, Kind.ROOF, -1);
         Blueprints.gable(cap, 4, 4, 9, false);
         shift(cap, 7, 2, l);
-        at(l, 8, 1, 3, Kind.GRINDSTONE); // the millstone
+        at(l, 8, 1, 4, Kind.GRINDSTONE); // the millstone, clear of the doorway
         at(l, 9, 1, 4, Kind.BARREL);
-        at(l, 9, 1, 3, Kind.HAY);
         at(l, 8, 3, 4, Kind.TORCH);
         // sails on the front of the tower, around the hub
         int hx = 8, hy = 7, sz = 1;
@@ -504,13 +503,14 @@ public final class Buildings {
         at(l, 1, 1, 2, Kind.BED_HEAD);
         at(l, 3, 1, 1, Kind.BED_FOOT);
         at(l, 3, 1, 2, Kind.BED_HEAD);
-        at(l, 1, 1, 4, Kind.CHEST);
-        at(l, 3, 1, 4, Kind.BARREL);
-        at(l, 3, 2, 4, Kind.POT);
-        at(l, 2, 1, 6, Kind.FENCE);
-        at(l, 2, 2, 6, Kind.PLATE);
-        at(l, 1, 1, 6, Kind.SEAT_W);
-        at(l, 3, 1, 6, Kind.SEAT_E);
+        // the middle (x 2) is the way from the door to the beds, everything else stands along the walls
+        at(l, 1, 1, 3, Kind.CHEST);
+        at(l, 3, 1, 3, Kind.BARREL);
+        at(l, 3, 2, 3, Kind.POT);
+        at(l, 1, 1, 6, Kind.FENCE); // the table against the wall, a bench at either end
+        at(l, 1, 2, 6, Kind.PLATE);
+        at(l, 1, 1, 5, Kind.PEW, S);
+        at(l, 1, 1, 7, Kind.PEW, N);
         at(l, 1, 1, 8, Kind.SMOKER);
         at(l, 3, 1, 8, Kind.CRAFT);
         at(l, 2, 3, 3, Kind.LANTERN);

@@ -127,7 +127,7 @@ public final class Variants {
         for (int z = 1; z <= 3; z++) at(l, 5, 1, z, Kind.CHEST);
         at(l, 3, 1, 1, Kind.BARREL);
         at(l, 3, 2, 1, Kind.BARREL);
-        at(l, 4, 1, 1, Kind.BARREL);
+        at(l, 5, 1, 4, Kind.BARREL); // (x 4 stays free along the chests)
         for (int z = 1; z <= 4; z++) at(l, 5, 5, z, Kind.CHEST);
         at(l, 3, 5, 1, Kind.BARREL);
         at(l, 3, 5, 4, Kind.HAY);
@@ -217,9 +217,9 @@ public final class Variants {
         for (int x = 1; x <= 4; x++) for (int z = 1; z <= 3; z++) at(l, x, 0, z, Kind.STONE);
         for (int[] c : new int[][]{{1, 1}, {4, 1}, {1, 3}, {4, 3}}) for (int y = 1; y <= 2; y++) at(l, c[0], y, c[1], Kind.PILLAR);
         for (int x = 0; x <= 5; x++) for (int z = 0; z <= 4; z++) at(l, x, 3, z, Kind.SLAB);
-        at(l, 2, 1, 2, Kind.STONECUTTER);
-        at(l, 3, 1, 2, Kind.GRINDSTONE);
-        at(l, 2, 1, 1, Kind.CHEST);
+        at(l, 2, 1, 1, Kind.STONECUTTER); // against the back, worked from the front
+        at(l, 3, 1, 1, Kind.GRINDSTONE);
+        at(l, 4, 1, 2, Kind.CHEST);
         for (int[] p : new int[][]{{6, 0, 2}, {7, 0, 2}, {7, 1, 2}, {6, 0, 3}, {7, 0, 3}}) at(l, p[0], p[1], p[2], Kind.ACCENT);
         for (int[] p : new int[][]{{6, 0, 6}, {7, 0, 6}, {7, 1, 6}, {6, 0, 7}}) at(l, p[0], p[1], p[2], Kind.STONE);
         at(l, 2, 0, 6, Kind.CAULDRON);
@@ -247,8 +247,8 @@ public final class Variants {
         for (int x = 8; x <= 10; x++) for (int z = 2; z <= 4; z++) at(l, x, 0, z, Kind.ACCENT);
         for (int x = 8; x <= 10; x++) {
             for (int z = 2; z <= 4; z++) {
-                if (x == 9 && z == 3) at(l, x, 1, z, Kind.SMOKER);
-                else if (!(x == 9 && z == 4)) at(l, x, 1, z, Kind.STONE);
+                if (x == 9 && z == 4) at(l, x, 1, z, Kind.SMOKER); // the oven's mouth, opened from the front
+                else at(l, x, 1, z, Kind.STONE);
                 at(l, x, 2, z, Kind.STONE);
             }
         }
@@ -415,7 +415,7 @@ public final class Variants {
                     }
                     boolean belfry = (y == 8 || y == 9) && !corner;
                     if (belfry) continue;
-                    if (y == 1 && x == 14 && z == 9) continue; // a way in at the foot
+                    if (y <= 2 && x == 14 && z == 9) continue; // a way in at the foot
                     at(l, x, y, z, corner ? Kind.ACCENT : Kind.STONE);
                 }
             }
@@ -507,7 +507,7 @@ public final class Variants {
                 at(l, n - 1, y, z, Kind.BEAM_Z);
             }
         }
-        for (int y = 1; y <= h; y++) at(l, 2, y, 1, Kind.LADDER);
+        for (int y = 0; y <= h; y++) at(l, 2, y, 1, Kind.LADDER); // from the ground, to be reached
         for (int x = 0; x < n; x++) for (int z = 0; z < n; z++) if (!(x == 2 && z == 1)) at(l, x, h, z, Kind.FLOOR);
         for (int x = 0; x < n; x++) {
             for (int z = 0; z < n; z++) {

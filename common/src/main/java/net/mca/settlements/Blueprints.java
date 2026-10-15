@@ -15,7 +15,9 @@ public final class Blueprints {
         /** Straw (hay) roofing of a poor house; daub (packed mud) walls; roof stairs rising to the south / north; a clock on the wall. */
         THATCH, DAUB, RSTAIR_S, RSTAIR_N, CLOCK,
         /** Fittings that dress a room (see Decor): a shelf board on the wall, a wall banner, a framed thing, a prop (face picks which). */
-        SHELF, BANNER, FRAME, PROP }
+        SHELF, BANNER, FRAME, PROP,
+        /** A block of an imported template (see Templates): the face is its index in the template's palette; TPL_FIT for the fittings. */
+        TPL, TPL_FIT }
 
     /** {@code face}: a horizontal direction index (0 south, 1 west, 2 north, 3 east) for blocks that face somewhere, -1 otherwise. */
     public record Step(int dx, int dy, int dz, Kind kind, int face) {
@@ -192,22 +194,24 @@ public final class Blueprints {
                 case 0 -> { // a plain living room: chest, workbench, barrel with flowers
                     if (d >= 7) l.add(new Step(bx, base + 1, 3, Kind.CHEST));
                     l.add(new Step(bx, base + 1, d - 2, Kind.CRAFT));
-                    if (w >= 7 && !stairsFromBelow) {
-                        l.add(new Step(2, base + 1, 1, Kind.BARREL));
-                        l.add(new Step(2, base + 2, 1, Kind.POT));
+                    if (w >= 7 && !stairsFromBelow) { // (x 2 stays free: the foot of the stairs, should a floor be added)
+                        l.add(new Step(3, base + 1, 1, Kind.BARREL));
+                        l.add(new Step(3, base + 2, 1, Kind.POT));
                     }
                     l.add(new Step(door, base + 1, d / 2, Kind.CARPET, rug));
                 }
-                case 1 -> { // a kitchen: smoker and barrel, a table with two chairs, a bookshelf
-                    l.add(new Step(bx, base + 1, d - 2, Kind.SMOKER));
-                    if (d >= 7) l.add(new Step(bx, base + 1, 4, Kind.BOOKSHELF));
-                    if (!stairsFromBelow && w >= 7) l.add(new Step(2, base + 1, 1, Kind.BARREL));
-                    int tz = d >= 7 ? 3 : 2;
+                case 1 -> { // a kitchen: smoker and barrel, a table with chairs, a bookshelf
+                    // x 1..2 stay free beside the table (the stairs, and the way past them), so does the side by the bed
+                    l.add(new Step(bx, base + 1, d >= 7 ? d - 2 : 3, Kind.SMOKER));
+                    if (d >= 7 && w / 2 + 1 < bx) l.add(new Step(w / 2 + 1, base + 1, 1, Kind.BOOKSHELF));
+                    if (!stairsFromBelow && w >= 7) l.add(new Step(3, base + 1, 1, Kind.BARREL));
+                    int tz = d >= 6 ? 3 : 2; // a free row behind the table
                     if (w >= 7) {
                         l.add(new Step(w / 2, base + 1, tz, Kind.FENCE));
                         l.add(new Step(w / 2, base + 2, tz, Kind.PLATE));
-                        l.add(new Step(w / 2 - 1, base + 1, tz, Kind.SEAT_W));
+                        if (w / 2 - 1 > 2) l.add(new Step(w / 2 - 1, base + 1, tz, Kind.SEAT_W));
                         if (w / 2 + 1 < bx) l.add(new Step(w / 2 + 1, base + 1, tz, Kind.SEAT_E));
+                        if (d >= 7) l.add(new Step(w / 2, base + 1, tz + 1, Kind.PEW, N)); // a stool at the front of the table
                     }
                 }
                 default -> { // a store room: chests and barrels, a lantern from the ceiling
@@ -218,8 +222,8 @@ public final class Blueprints {
                     }
                     l.add(new Step(bx, base + 1, d - 2, Kind.CRAFT));
                     if (!stairsFromBelow && w >= 7) {
-                        l.add(new Step(2, base + 1, 1, Kind.CHEST));
-                        l.add(new Step(3, base + 1, 1, Kind.BARREL));
+                        l.add(new Step(3, base + 1, 1, Kind.CHEST));
+                        l.add(new Step(4, base + 1, 1, Kind.BARREL));
                     }
                     l.add(new Step(door, base + 1, d / 2, Kind.CARPET, rug));
                     l.add(new Step(door, base + 1, d / 2 - 1, Kind.CARPET, rug));
@@ -287,10 +291,10 @@ public final class Blueprints {
      */
     public static List<Step> townhall() {
         List<Step> l = house(HALL_W, HALL_D, 1, true);
-        l.add(new Step(2, 1, 1, Kind.HALL_CHEST));
-        l.add(new Step(3, 1, 1, Kind.HALL_CHEST));
-        l.add(new Step(4, 1, 1, Kind.BOOKSHELF));
+        l.add(new Step(3, 1, 1, Kind.HALL_CHEST)); // (x 2 free: the foot of the stairs when a floor is added)
+        l.add(new Step(4, 1, 1, Kind.HALL_CHEST));
         l.add(new Step(5, 1, 1, Kind.BOOKSHELF));
+        l.add(new Step(6, 1, 1, Kind.BOOKSHELF));
         l.add(new Step(4, 1, 3, Kind.LECTERN));
         l.add(new Step(2, 1, 4, Kind.FENCE));
         l.add(new Step(2, 2, 4, Kind.PLATE));
@@ -305,7 +309,7 @@ public final class Blueprints {
     public static List<Step> hallUpgrade(int w, int d, int floors) {
         List<Step> l = addFloor(w, d, floors, true);
         int base = floors * LEVEL_HEIGHT;
-        for (int x = 2; x <= 4; x++) l.add(new Step(x, base + 1, 1, Kind.HALL_CHEST));
+        for (int x = 3; x <= 5; x++) l.add(new Step(x, base + 1, 1, Kind.HALL_CHEST)); // (x 2: the foot of the next stairs)
         for (int x = 2; x <= w - 3; x++) l.add(new Step(x, base + 1, d - 2, Kind.BOOKSHELF));
         for (int x = 3; x <= w - 4; x++) for (int z = 3; z <= 4; z++) l.add(new Step(x, base + 1, z, Kind.CARPET));
         return l;
