@@ -1930,5 +1930,8 @@
   "settlements.say.morning.off.4": "Time to go...",
   "settlements.say.way.round": "What a road... made it somehow.",
   "settlements.say.way.round.1": "Phew, got round.",
-  "settlements.say.way.round.2": "Barely got through."
+  "settlements.say.way.round.2": "Barely got through.",
+  "settlements.building.home": "house",
+  "settlements.say.build.home": "A new house going up, a big northern one.",
+  "settlements.building.demolish:home": "taking down an old building"
 }

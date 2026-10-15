@@ -1,0 +1,5 @@
+The building templates in this folder are converted from MineColonies blueprints
+(https://github.com/ldtteam/minecolonies), licensed under the GNU GPL v3.0.
+Style "nordic" by Luna and John Reiher (MineColonies schematic builders) (see the "credit" field in each file).
+Converted to vanilla blocks, turned to face south and cropped; the timber is swapped for the
+village's own wood when built. MineColonies-only blocks were replaced by vanilla equivalents.

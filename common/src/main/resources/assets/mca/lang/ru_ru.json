@@ -1818,5 +1818,8 @@
   "settlements.say.morning.off.4": "Пора, пора...",
   "settlements.say.way.round": "Ну и дорога... кое-как добрался.",
   "settlements.say.way.round.1": "Фух, обошёл.",
-  "settlements.say.way.round.2": "Еле пробрался."
+  "settlements.say.way.round.2": "Еле пробрался.",
+  "settlements.building.home": "жилой дом",
+  "settlements.say.build.home": "Ставим новый дом, большой, северный.",
+  "settlements.building.demolish:home": "снос старого здания"
 }

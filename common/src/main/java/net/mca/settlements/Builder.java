@@ -12,6 +12,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -61,7 +62,8 @@ public final class Builder {
     /** The plan of a building type with its parameters (cached). */
     public static List<Step> stepsFor(String type, int w, int d, int f) {
         String key = type + "|" + w + "|" + d + "|" + f;
-        return CACHE.computeIfAbsent(key, k -> ordered(type.equals("mine") ? null : type, type.equals("mine") ? rawSteps(type, w, d, f) : Decor.dress(type, rawSteps(type, w, d, f))));
+        return CACHE.computeIfAbsent(key, k -> ordered(type.equals("mine") ? null : type,
+                type.equals("mine") || Templates.isTemplate(type) ? rawSteps(type, w, d, f) : Decor.dress(type, rawSteps(type, w, d, f))));
     }
 
     /** Fittings go in once the shell stands: furniture, light, decoration. */
@@ -69,7 +71,7 @@ public final class Builder {
         return switch (k) {
             case BED_FOOT, BED_HEAD, CHEST, HALL_CHEST, CRAFT, CARPET, TORCH, LANTERN, BARREL, BOOKSHELF, LECTERN, SMOKER, FURNACE, ANVIL,
                  GRINDSTONE, SMITHING, STONECUTTER, CAULDRON, COMPOSTER, ARMOR_STAND, PLATE, SEAT_W, SEAT_E, PEW, POT, FLOWER, HEDGE,
-                 HAY, PUMPKIN, TARGET, CHAIN, BELL, SIGN, SMOKE, CLOCK, SHUTTER, WOOL, LADDER, SHELF, BANNER, FRAME, PROP -> true;
+                 HAY, PUMPKIN, TARGET, CHAIN, BELL, SIGN, SMOKE, CLOCK, SHUTTER, WOOL, LADDER, SHELF, BANNER, FRAME, PROP, TPL_FIT -> true;
             default -> false;
         };
     }
@@ -135,7 +137,7 @@ public final class Builder {
             case "well" -> Blueprints.well();
             case "farm" -> Blueprints.farm();
             case "tower" -> Blueprints.tower();
-            default -> Buildings.plan(type, w, d, f);
+            default -> Templates.isTemplate(type) ? Templates.steps(type) : Buildings.plan(type, w, d, f);
         };
     }
 
@@ -308,7 +310,7 @@ public final class Builder {
                         default -> 110;
                     };
                     if (planks >= need && roll < 0.8) {
-                        int[] dm = SHOWCASE.get(kind);
+                        int[] dm = SHOWCASE.getOrDefault(kind, new int[]{0, 0, 1});
                         if (kind.equals("house")) { // an ordinary house comes in sizes, larger the better off the village
                             dm = new int[]{7 + rand.nextInt(2) + wealth, 7 + rand.nextInt(2) + wealth / 2, wealth >= 2 || rand.nextInt(3) == 0 ? 2 : 1};
                         }
@@ -406,7 +408,17 @@ public final class Builder {
     }
 
     private static boolean startRing(Village village, ServerWorld world, String type, int w, int d, int floors, int minRing, int maxRing) {
-        type = Tiers.design(type, Prosperity.tier(village), world.random, village); // the design that suits the village's station
+        if (!Templates.placeholder(type)) type = Tiers.design(type, Prosperity.tier(village), world.random, village); // the design that suits the village's station
+        if (Templates.placeholder(type)) {
+            // a MineColonies building: in the style of the village's land (or our own design where none suits)
+            String concrete = Templates.resolve(type, village);
+            if (concrete == null) return false;
+            Templates.Template t = Templates.of(concrete);
+            type = concrete;
+            w = t.w();
+            d = t.d();
+            floors = 1;
+        }
         Layout.Slot slot = Layout.find(world, village, type, w, d, minRing, maxRing);
         if (slot == null) return false;
         return startAt(village, type, w, d, floors, slot);
@@ -995,6 +1007,50 @@ public final class Builder {
         return Direction.fromHorizontal(base.getHorizontal() + rot);
     }
 
+    /** Sentinel: a template frill left out (see execute). */
+    private static final BlockState SKIP = Blocks.STRUCTURE_VOID.getDefaultState();
+
+    /**
+     * What a template block costs the village, the way a player would have to come by it: timber from planks or
+     * logs, stonework from cobble, iron work from iron, cloth from wool; earth and plants cost nothing. Glass, lamps
+     * and frills a poor village does without (a lattice for glass, a torch for a lantern). Null when the village
+     * cannot pay for a structural block yet; SKIP for a frill it cannot afford.
+     */
+    private static BlockState pay(Village village, BlockState s, int tier, boolean fit, Palette pal) {
+        Block b = s.getBlock();
+        Item item = b.asItem();
+        if (s.isIn(BlockTags.DIRT) || s.isIn(BlockTags.SAND) || b == Blocks.GRAVEL || b == Blocks.DIRT_PATH || b instanceof PlantBlock
+                || s.isIn(BlockTags.LEAVES) || b == Blocks.WATER || b == Blocks.SNOW || b == Blocks.SNOW_BLOCK) return s;
+        if (b instanceof PaneBlock && b != Blocks.IRON_BARS || b instanceof AbstractGlassBlock) {
+            if (tier != Tiers.POOR && (take(village, GLASS, 1) || take(village, x -> x.isOf(Items.SAND) || x.isOf(Items.RED_SAND), 1))) return s;
+            if (b instanceof PaneBlock && takePlanks(village, 1)) return pal.fence().getDefaultState();
+            return fit ? SKIP : null;
+        }
+        if (b instanceof LanternBlock) {
+            if (tier > Tiers.POOR && (take(village, x -> x.isOf(Items.LANTERN), 1) || take(village, x -> x.isOf(Items.IRON_INGOT), 1) || take(village, x -> x.isOf(Items.IRON_NUGGET), 8))) return s;
+            if (!s.get(LanternBlock.HANGING) && take(village, x -> x.isOf(Items.TORCH), 1)) return Blocks.TORCH.getDefaultState();
+            return SKIP;
+        }
+        if (b instanceof TorchBlock) return take(village, x -> x.isOf(Items.TORCH), 1) ? s : SKIP;
+        if (item != Items.AIR && take(village, x -> x.isOf(item), 1)) return s; // the very thing, from the stores
+        if (s.isIn(BlockTags.LOGS)) return take(village, LOG, 1) || takePlanks(village, 4) ? s : null;
+        if (s.isIn(BlockTags.PLANKS) || s.isIn(BlockTags.WOODEN_STAIRS) || s.isIn(BlockTags.WOODEN_SLABS) || s.isIn(BlockTags.WOODEN_FENCES)
+                || s.isIn(BlockTags.FENCE_GATES) || s.isIn(BlockTags.WOODEN_TRAPDOORS) || s.isIn(BlockTags.WOODEN_PRESSURE_PLATES)
+                || s.isIn(BlockTags.WOODEN_BUTTONS) || b instanceof LadderBlock || b instanceof AbstractSignBlock) return takePlanks(village, 1) ? s : fit ? SKIP : null;
+        if (s.isIn(BlockTags.WOODEN_DOORS)) return takePlanks(village, 2) ? s : null;
+        if (b instanceof ChestBlock || b instanceof BarrelBlock || b == Blocks.CRAFTING_TABLE || b instanceof LecternBlock || b == Blocks.BOOKSHELF
+                || b == Blocks.CARTOGRAPHY_TABLE || b == Blocks.FLETCHING_TABLE || b == Blocks.SMITHING_TABLE || b == Blocks.LOOM || b instanceof ComposterBlock)
+            return takePlanks(village, b instanceof ChestBlock || b instanceof BarrelBlock ? 8 : 4) ? s : SKIP;
+        if (s.isIn(BlockTags.WOOL) || s.isIn(BlockTags.WOOL_CARPETS) || b instanceof BedBlock || s.isIn(BlockTags.BANNERS))
+            return tier > Tiers.POOR || b instanceof BedBlock ? (take(village, WOOL, 1) ? s : fit ? SKIP : null) : SKIP;
+        if (b == Blocks.IRON_BARS || b instanceof ChainBlock || b instanceof AbstractCauldronBlock || b instanceof AnvilBlock
+                || b == Blocks.BLAST_FURNACE || b == Blocks.HOPPER) return take(village, x -> x.isOf(Items.IRON_INGOT), 1) ? s : SKIP;
+        if (b instanceof AbstractFurnaceBlock || b instanceof StonecutterBlock || b instanceof GrindstoneBlock) return take(village, COBBLE, 4) ? s : SKIP;
+        if (s.isIn(BlockTags.PICKAXE_MINEABLE) && !s.isIn(BlockTags.NEEDS_IRON_TOOL) && !s.isIn(BlockTags.NEEDS_DIAMOND_TOOL))
+            return take(village, COBBLE, 1) ? s : fit ? SKIP : null; // stonework: dressed from cobble
+        return fit ? SKIP : take(village, COBBLE, 1) ? s : null;
+    }
+
     /** Takes items from the treasury for other systems (lamp posts on the roads). */
     public static boolean takeItem(Village v, Predicate<ItemStack> p, int amount) {
         return take(v, p, amount);
@@ -1105,7 +1161,10 @@ public final class Builder {
         if (world != null) {
             int[] bfp = Blueprints.footprint(type, village.buildW, village.buildD);
             for (Step s : plan(village)) {
-                if (s.kind() != Kind.BED_FOOT) continue;
+                boolean tplBed = s.kind() == Kind.TPL_FIT && village.buildType != null && Templates.of(village.buildType) != null
+                        && Templates.of(village.buildType).palette()[s.face()].getBlock() instanceof BedBlock
+                        && Templates.of(village.buildType).palette()[s.face()].get(BedBlock.PART) == net.minecraft.block.enums.BedPart.FOOT;
+                if (s.kind() != Kind.BED_FOOT && !tplBed) continue;
                 int[] r = Blueprints.rotate(s.dx(), s.dz(), bfp[0], bfp[1], rot);
                 net.mca.server.world.data.VillageManager.get(world).reportBuilding(o.add(r[0], s.dy(), r[1]));
                 break;
@@ -1199,10 +1258,11 @@ public final class Builder {
             // glass, light and decoration are optional: without them the house is plainer, not unfinished
             return switch (step.kind()) {
                 case GLASS, TORCH, CROP, CARPET, SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY,
-                     STONECUTTER, HAY, COMPOSTER, PUMPKIN, CAULDRON, FLOWER, LOG_X, LOG_Z, WOOL, TARGET, CHAIN, CLOCK, SHELF, BANNER, FRAME, PROP -> Result.SKIPPED;
+                     STONECUTTER, HAY, COMPOSTER, PUMPKIN, CAULDRON, FLOWER, LOG_X, LOG_Z, WOOL, TARGET, CHAIN, CLOCK, SHELF, BANNER, FRAME, PROP, TPL_FIT -> Result.SKIPPED;
                 default -> Result.WAIT;
             };
         }
+        if (state.isOf(Blocks.STRUCTURE_VOID)) return Result.SKIPPED; // a template's frill the village cannot afford
         if (step.kind() == Kind.LANTERN && !state.isOf(Blocks.LANTERN)) {
             // no lantern to be had (a poor village, or no iron): a torch on the nearest wall, or standing on the floor
             BlockState torch = null;
@@ -1275,7 +1335,7 @@ public final class Builder {
         }
         // panes, fences, bars and stairs join up with what is around them, like when a player places them
         switch (step.kind()) {
-            case GLASS, FENCE, BARS, GATE, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, RSTAIR_S, RSTAIR_N, PEW, SEAT_W, SEAT_E, STEP, CHAIN, LOG_X, LOG_Z -> state = Block.postProcessState(state, world, target);
+            case GLASS, FENCE, BARS, GATE, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, RSTAIR_S, RSTAIR_N, PEW, SEAT_W, SEAT_E, STEP, CHAIN, LOG_X, LOG_Z, TPL, TPL_FIT -> state = Block.postProcessState(state, world, target);
             default -> {
             }
         }
@@ -1284,6 +1344,11 @@ public final class Builder {
         // the floor rests on the ground: under it a stone footing goes down to solid earth
         if (step.dy() == 0 && needsFooting(step.kind())) foundation(world, village, target.down());
         if (step.kind() == Kind.CHEST) village.lootChests.add(target.toImmutable());
+        if (step.kind() == Kind.TPL_FIT && state.getBlock() instanceof ChestBlock) {
+            if (Buildings.base(village.buildType).equals("townhall")) village.hallChests.add(target.toImmutable());
+            else village.lootChests.add(target.toImmutable());
+        }
+        if (step.kind() == Kind.TPL_FIT && state.getBlock() instanceof LecternBlock && Buildings.base(village.buildType).equals("townhall")) village.hallPos = target.toImmutable();
         if (step.kind() == Kind.HALL_CHEST) village.hallChests.add(target.toImmutable());
         if (step.kind() == Kind.LECTERN) village.hallPos = target.toImmutable();
         if (step.kind() == Kind.SIGN) {
@@ -1300,7 +1365,7 @@ public final class Builder {
     /** Everything standing on the ground plane gets a footing; small things on top of others do not. */
     private static boolean needsFooting(Kind k) {
         return switch (k) {
-            case CARPET, TORCH, CROP, FARMLAND, WATER, PLATE, SIGN, LANTERN, SMOKE, POT, FLOWER, HEDGE, PATH, DIG, CLEAR, SHELF, BANNER, FRAME -> false;
+            case CARPET, TORCH, CROP, FARMLAND, WATER, PLATE, SIGN, LANTERN, SMOKE, POT, FLOWER, HEDGE, PATH, DIG, CLEAR, SHELF, BANNER, FRAME, TPL_FIT -> false;
             default -> true;
         };
     }
@@ -1672,6 +1737,10 @@ public final class Builder {
                 return Blocks.FARMLAND.getDefaultState();
             case WATER:
                 return Blocks.WATER.getDefaultState();
+            case TPL, TPL_FIT: {
+                BlockState ts = Templates.state(village, step, rot);
+                return ts == null ? null : pay(village, ts, tier, step.kind() == Kind.TPL_FIT, pal);
+            }
             case SHELF:
                 // a board on the wall at head height: a trapdoor laid shut in the top half
                 if (!takePlanks(village, 2)) return null;

@@ -102,6 +102,8 @@ public final class Rebuild {
     }
 
     private static int[] dims(String type) {
+        Templates.Template t = Templates.of(type);
+        if (t != null) return new int[]{t.w(), t.d(), 1};
         return Builder.SHOWCASE.getOrDefault(type, new int[]{0, 0, 0});
     }
 
