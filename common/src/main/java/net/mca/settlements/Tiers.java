@@ -33,7 +33,7 @@ public final class Tiers {
 
     /** Designs per kind of building, for each station from poor to city. */
     private static final Map<String, String[][]> TIERS = Map.ofEntries(
-            Map.entry("townhall", new String[][]{a("townhall-2"), a("townhall", "townhall-mc:townhall1"), a("townhall-3", "townhall-mc:townhall3"), a("townhall-4", "townhall-mc:townhall4", "townhall-mc:townhall5")}),
+            Map.entry("townhall", new String[][]{a("townhall-mc:townhall1"), a("townhall", "townhall-mc:townhall1"), a("townhall-3", "townhall-mc:townhall3"), a("townhall-4", "townhall-mc:townhall4", "townhall-mc:townhall5")}),
             Map.entry("jail", new String[][]{a("jail-2"), a("jail-ordinary"), a("jail-wealthy"), a("jail-city")}),
             Map.entry("tavern", new String[][]{a("tavern-poor"), a("tavern-ordinary", "tavern-mc:tavern1"), a("tavern-wealthy", "tavern-mc:tavern2"), a("tavern-city", "tavern-mc:tavern3")}),
             Map.entry("storage", new String[][]{a("storage-poor"), a("storage-ordinary"), a("storage-wealthy", "storage-mc:warehouse3"), a("storage-city", "storage-mc:warehouse4", "storage-mc:warehouse5")}),
@@ -113,6 +113,7 @@ public final class Tiers {
             if (fit.isEmpty()) continue;
             return fit.get(random.nextInt(fit.size()));
         }
+        if (type.equals("townhall")) return "townhall"; // no hall in the land's style: the plain one, not a big one at random
         return Buildings.variant(type, random);
     }
 

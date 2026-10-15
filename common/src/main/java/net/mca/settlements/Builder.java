@@ -1650,7 +1650,8 @@ public final class Builder {
                 return Blocks.COARSE_DIRT.getDefaultState();
             case PEW:
                 if (!takePlanks(village, 1)) return null;
-                return pal.stairs().getDefaultState().with(StairsBlock.FACING, face(step, rot));
+                // the plans give the way the sitter looks; a stair's facing is the side of its back
+                return pal.stairs().getDefaultState().with(StairsBlock.FACING, face(step, rot).getOpposite());
             case LOG_X, LOG_Z: {
                 Direction.Axis axis = (kind == Kind.LOG_X) == ((rot & 1) == 0) ? Direction.Axis.X : Direction.Axis.Z;
                 if (!take(village, LOG, 1)) return null;
