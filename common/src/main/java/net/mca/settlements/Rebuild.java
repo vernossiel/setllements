@@ -109,7 +109,7 @@ public final class Rebuild {
     public static boolean start(Village village, ServerWorld world) {
         Building old = candidate(village);
         if (old == null) return false;
-        String type = Buildings.variant(replacement(village, old), world.random);
+        String type = Tiers.design(replacement(village, old), Prosperity.tier(village), world.random, village);
         int[] dm = dims(type);
         int[] fp = Blueprints.footprint(type, dm[0], dm[1]);
         BlockPos c = old.getCenter();
@@ -153,6 +153,98 @@ public final class Rebuild {
         village.removeBuilding(old.getId()); // its residents look for a new home; they get one here soon
         village.markDirty();
         Builder.announceProject = "rebuild";
+        return true;
+    }
+
+    // ---------- renovation: the village's own buildings, rebuilt better as it climbs ----------
+
+    private static String renoKey(Village village, Built b) {
+        return village.getId() + ":r:" + b.origin().asLong();
+    }
+
+    /** The building most behind the village's station, or null. */
+    public static Built renovation(Village village) {
+        int tier = Prosperity.tier(village);
+        Built best = null;
+        int bestGap = 0;
+        for (Built b : village.built) {
+            if (SKIPPED.contains(renoKey(village, b)) || !Tiers.outdated(b.type(), tier)) continue;
+            int gap = tier - Tiers.tierOf(b.type()) + (Tiers.isHome(b.type()) ? 0 : 1); // the public buildings first
+            if (gap > bestGap) {
+                bestGap = gap;
+                best = b;
+            }
+        }
+        return best;
+    }
+
+    /** Takes on the next outdated building: down it comes, and a better one goes up in its place. */
+    public static boolean renovate(Village village, ServerWorld world) {
+        Built old = renovation(village);
+        if (old == null) return false;
+        int tier = Prosperity.tier(village);
+        boolean home = Tiers.isHome(old.type());
+        String type = Tiers.design(home ? "home" : Buildings.base(old.type()), tier, world.random, village);
+        if (Tiers.tierOf(type) <= Tiers.tierOf(old.type())) {
+            SKIPPED.add(renoKey(village, old));
+            return false;
+        }
+        int[] dm = type.equals("house") ? new int[]{9, 8, 2} : dims(type);
+        int[] fp = Blueprints.footprint(type, dm[0], dm[1]);
+        int rot = old.rot();
+        int fw = (rot & 1) == 0 ? fp[0] : fp[1], fd = (rot & 1) == 0 ? fp[1] : fp[0];
+        int cx = old.origin().getX() + old.fw() / 2, cz = old.origin().getZ() + old.fd() / 2;
+        int x0 = cx - fw / 2, z0 = cz - fd / 2;
+        int y = old.origin().getY();
+        // the new building must not run into anything else of the village
+        for (int x = x0 - 1; x <= x0 + fw; x++) {
+            for (int z = z0 - 1; z <= z0 + fd; z++) {
+                BlockPos p = new BlockPos(x, y, z);
+                boolean clash = false;
+                for (Built b : village.built) if (b != old && b.contains(p)) clash = true;
+                for (Building other : village.getBuildings().values()) {
+                    if (!other.getBuildingType().grouped() && other.containsPos(p) && !old.contains(other.getCenter())) clash = true;
+                }
+                if (clash) {
+                    SKIPPED.add(renoKey(village, old));
+                    return false;
+                }
+            }
+        }
+        // the old one leaves the books
+        village.built.remove(old);
+        village.houses.removeIf(h -> h.origin().equals(old.origin()));
+        for (Building b : new ArrayList<>(village.getBuildings().values())) {
+            if (!b.getBuildingType().grouped() && old.contains(b.getCenter())) village.removeBuilding(b.getId());
+        }
+        switch (Buildings.base(old.type())) {
+            case "tavern" -> village.tavern = null;
+            case "tower" -> {
+                village.towers = Math.max(0, village.towers - 1);
+                for (int i = village.watchPoints.size() - 1; i >= 0; i--) {
+                    BlockPos w = village.watchPoints.get(i);
+                    if (w.getX() >= old.origin().getX() && w.getX() < old.origin().getX() + old.fw() && w.getZ() >= old.origin().getZ() && w.getZ() < old.origin().getZ() + old.fd()) {
+                        village.watchPoints.remove(i);
+                        if (i < village.towerLadders.size()) village.towerLadders.remove(i);
+                    }
+                }
+            }
+            default -> {
+            }
+        }
+        village.buildType = PREFIX + type;
+        village.buildOrigin = new BlockPos(x0, y, z0);
+        village.buildW = dm[0];
+        village.buildD = dm[1];
+        village.buildF = dm[2];
+        village.buildRot = rot;
+        village.buildStep = 0;
+        village.plots.add(new int[]{x0, z0, fw, fd});
+        int top = y + Math.max(1, old.f()) * Blueprints.LEVEL_HEIGHT + 12;
+        OLD_BOX.put(village.getId(), new int[]{old.origin().getX() - 2, y - 1, old.origin().getZ() - 2, old.origin().getX() + old.fw() + 1, top, old.origin().getZ() + old.fd() + 1});
+        PLANS.remove(village.getId());
+        village.markDirty();
+        Builder.announceProject = "renovate";
         return true;
     }
 

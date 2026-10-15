@@ -74,7 +74,7 @@ public final class Repair {
             Deque<int[]> roads = ROADS.computeIfAbsent(village.getId(), k -> new ArrayDeque<>());
             for (int[] cell : Roads.route(village, front)) {
                 if (roads.size() >= 48) break;
-                if (Roads.broken(world, cell[0], cell[1]) && roads.stream().noneMatch(c -> c[0] == cell[0] && c[1] == cell[1])) roads.add(cell);
+                if (Roads.broken(world, village, cell[0], cell[1]) && roads.stream().noneMatch(c -> c[0] == cell[0] && c[1] == cell[1])) roads.add(cell);
             }
         }
     }
@@ -101,7 +101,7 @@ public final class Repair {
         Deque<int[]> roads = ROADS.get(village.getId());
         if (roads == null || roads.isEmpty()) return false;
         int[] cell = roads.peek();
-        if (!Roads.broken(world, cell[0], cell[1])) {
+        if (!Roads.broken(world, village, cell[0], cell[1])) {
             roads.poll();
             return true;
         }

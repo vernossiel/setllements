@@ -1716,5 +1716,10 @@
   "settlements.building.mansion": "mansion",
   "settlements.say.build.mansion": "Building a mansion. The village is getting rich!",
   "settlements.building.demolish:mansion": "demolishing an old building",
-  "settlements.justice.beaten": "That's enough for you, %s. Get lost and don't come back."
+  "settlements.justice.beaten": "That's enough for you, %s. Get lost and don't come back.",
+  "settlements.building.shop": "shop",
+  "settlements.say.build.shop": "Building a shop. A town needs a street of shops!",
+  "settlements.building.demolish:shop": "demolishing an old building",
+  "settlements.say.build.renovate": "The village is getting richer and this building is beneath it now. I'll take it down and build a better one.",
+  "settlements.building.renovate": "rebuilding"
 }

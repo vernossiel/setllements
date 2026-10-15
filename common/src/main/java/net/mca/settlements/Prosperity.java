@@ -93,6 +93,14 @@ public final class Prosperity {
         return tier;
     }
 
+    /** The village's station, as its buildings show it: 0 poor, 1 ordinary, 2 wealthy, 3 a city (a wealthy town). */
+    public static int tier(Village village) {
+        int w = wealth(village);
+        if (village.getId() < 0) return w;
+        if (w >= 2 && Plan.level(village).ordinal() >= Plan.Level.TOWN.ordinal()) return Tiers.CITY;
+        return w;
+    }
+
     public static Text describe(Village village) {
         double f = factor(village);
         if (f >= 1.0) return Text.translatable("settlements.prosperity.good").formatted(Formatting.DARK_GREEN);

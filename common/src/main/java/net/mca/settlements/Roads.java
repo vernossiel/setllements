@@ -17,13 +17,24 @@ public final class Roads {
         return s.isOf(Blocks.GRASS_BLOCK) || s.isOf(Blocks.DIRT) || s.isOf(Blocks.COARSE_DIRT) || s.isOf(Blocks.PODZOL) || s.isOf(Blocks.ROOTED_DIRT);
     }
 
-    private static void pave(ServerWorld world, int x, int z) {
+    private static boolean city(Village village) {
+        return village != null && village.getId() >= 0 && Prosperity.tier(village) >= Tiers.CITY;
+    }
+
+    private static void pave(ServerWorld world, Village village, int x, int z) {
         if (!world.isChunkLoaded(x >> 4, z >> 4)) return;
         int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
         BlockPos ground = new BlockPos(x, y - 1, z);
-        if (pavable(world.getBlockState(ground)) && world.getBlockState(ground.up()).isAir()) {
-            world.setBlockState(ground, Blocks.DIRT_PATH.getDefaultState());
+        BlockState g = world.getBlockState(ground);
+        if (!world.getBlockState(ground.up()).isAir()) return;
+        // a city paves its streets in stone: cobbles and dressed stone, laid as the stores allow
+        if (city(village) && (pavable(g) || g.isOf(Blocks.DIRT_PATH))
+                && Builder.takeItem(village, s -> s.isOf(Items.COBBLESTONE) || s.isOf(Items.COBBLED_DEEPSLATE), 1)) {
+            Palette pal = Palette.of(village);
+            world.setBlockState(ground, (Math.floorMod(x * 31 + z * 17, 3) == 0 ? pal.stone() : pal.accent()).getDefaultState());
+            return;
         }
+        if (pavable(g)) world.setBlockState(ground, Blocks.DIRT_PATH.getDefaultState());
     }
 
     /** The cells of the road from a building's front to the plaza (two wide), as {x, z}. */
@@ -50,11 +61,12 @@ public final class Roads {
     }
 
     /** A road cell that needs mending: grass grew back over it, or somebody dug it up. */
-    public static boolean broken(ServerWorld world, int x, int z) {
+    public static boolean broken(ServerWorld world, Village village, int x, int z) {
         if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
         int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
         BlockPos ground = new BlockPos(x, y - 1, z);
-        if (pavable(world.getBlockState(ground)) && world.getBlockState(ground.up()).isAir()) return true;
+        BlockState g = world.getBlockState(ground);
+        if ((pavable(g) || city(village) && g.isOf(Blocks.DIRT_PATH)) && world.getBlockState(ground.up()).isAir()) return true;
         return hole(world, x, y, z);
     }
 
@@ -76,7 +88,7 @@ public final class Roads {
             BlockPos fill = new BlockPos(x, y, z);
             if (world.getBlockState(fill).isReplaceable()) world.setBlockState(fill, Blocks.DIRT.getDefaultState());
         }
-        pave(world, x, z);
+        pave(world, village, x, z);
     }
 
     /** Straight road from the front of a building to the plaza ring. */
@@ -86,8 +98,8 @@ public final class Roads {
         int dx = Math.abs(x1 - x0), dz = Math.abs(z1 - z0), sx = x0 < x1 ? 1 : -1, sz = z0 < z1 ? 1 : -1;
         int err = dx - dz, steps = 0;
         while (steps++ < 90 && Math.hypot(x0 - x1, z0 - z1) > 5) {
-            pave(world, x0, z0);
-            pave(world, x0 + (dx > dz ? 0 : 1), z0 + (dx > dz ? 1 : 0)); // two wide
+            pave(world, village, x0, z0);
+            pave(world, village, x0 + (dx > dz ? 0 : 1), z0 + (dx > dz ? 1 : 0)); // two wide
             if (steps % 8 == 4) lamp(world, village, x0 + (dx > dz ? 0 : 2), z0 + (dx > dz ? 2 : 0));
             int e2 = 2 * err;
             if (e2 > -dz) {
@@ -107,7 +119,7 @@ public final class Roads {
         for (int dx = -6; dx <= 6; dx++) {
             for (int dz = -6; dz <= 6; dz++) {
                 double dist = Math.hypot(dx, dz);
-                if (dist > 3.4 && dist <= 5.6) pave(world, c.getX() + dx, c.getZ() + dz);
+                if (dist > 3.4 && dist <= 5.6) pave(world, village, c.getX() + dx, c.getZ() + dz);
             }
         }
     }
@@ -119,6 +131,6 @@ public final class Roads {
         if (!world.getBlockState(p).isAir() || !world.getBlockState(p.down()).isSolidBlock(world, p.down())) return;
         if (!Builder.takeItem(village, s -> s.isOf(Items.TORCH), 1)) return;
         world.setBlockState(p, Blocks.OAK_FENCE.getDefaultState());
-        world.setBlockState(p.up(), Blocks.TORCH.getDefaultState());
+        world.setBlockState(p.up(), (village.getId() >= 0 && Prosperity.tier(village) >= Tiers.WEALTHY ? Blocks.LANTERN : Blocks.TORCH).getDefaultState());
     }
 }

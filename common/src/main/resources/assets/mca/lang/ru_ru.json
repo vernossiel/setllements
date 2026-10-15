@@ -1604,5 +1604,10 @@
   "settlements.building.mansion": "особняк",
   "settlements.say.build.mansion": "Строю особняк. Деревня-то богатеет!",
   "settlements.building.demolish:mansion": "снос старого здания",
-  "settlements.justice.beaten": "Хватит с тебя, %s. Проваливай и не возвращайся."
+  "settlements.justice.beaten": "Хватит с тебя, %s. Проваливай и не возвращайся.",
+  "settlements.building.shop": "лавка",
+  "settlements.say.build.shop": "Строю лавку. В городе должна быть торговая улица!",
+  "settlements.building.demolish:shop": "снос старого здания",
+  "settlements.say.build.renovate": "Деревня богатеет, а это здание уже не по ней. Разберу и построю получше.",
+  "settlements.building.renovate": "перестройка"
 }

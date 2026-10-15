@@ -479,7 +479,8 @@ public final class Justice {
         c.until = world.getTime() + seconds * 20L;
         Built jail = Buildings.find(village, "jail");
         if (jail != null) {
-            BlockPos cell = jail.point(2, 1, 1);
+            int[] jc = Tiers.jailCell(jail.type());
+            BlockPos cell = jail.point(jc[0], jc[1], jc[2]);
             p.teleport(world, cell.getX() + 0.5, cell.getY(), cell.getZ() + 0.5, p.getYaw(), p.getPitch());
             c.hold = cell;
             p.sendMessage(Text.translatable("settlements.justice.jailed", seconds).formatted(Formatting.GOLD), false);
@@ -503,7 +504,8 @@ public final class Justice {
     private static void release(ServerWorld world, Village village, ServerPlayerEntity p, Case c) {
         Built jail = Buildings.find(village, "jail");
         if (jail != null && c.hold != null) {
-            BlockPos out = jail.point(3, 0, 7);
+            int[] je = Tiers.jailExit(jail.type());
+            BlockPos out = jail.point(je[0], je[1], je[2]);
             p.teleport(world, out.getX() + 0.5, out.getY(), out.getZ() + 0.5, p.getYaw(), p.getPitch());
         }
         p.removeStatusEffect(StatusEffects.SLOWNESS);

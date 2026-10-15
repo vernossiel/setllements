@@ -58,20 +58,22 @@ public final class Buildings {
     }
 
     private static final java.util.Map<String, String[]> DESIGNS = java.util.Map.ofEntries(
-            java.util.Map.entry("storage", new String[]{"storage", "storage-2", "storage-3"}),
+            java.util.Map.entry("storage", new String[]{"storage", "storage-2", "storage-3", "storage-4", "storage-5"}),
             java.util.Map.entry("granary", new String[]{"granary", "granary-2"}),
             java.util.Map.entry("sawmill", new String[]{"sawmill", "sawmill-2"}),
             java.util.Map.entry("mason", new String[]{"mason", "mason-2"}),
             java.util.Map.entry("mill", new String[]{"mill", "mill-2"}),
-            java.util.Map.entry("smithy", new String[]{"smithy", "smithy-2"}),
+            java.util.Map.entry("smithy", new String[]{"smithy", "smithy-2", "smithy-3", "smithy-4"}),
             java.util.Map.entry("armory", new String[]{"armory", "armory-2"}),
-            java.util.Map.entry("tavern", new String[]{"tavern", "tavern-2"}),
-            java.util.Map.entry("barracks", new String[]{"barracks", "barracks-2"}),
-            java.util.Map.entry("market", new String[]{"market", "market-2"}),
-            java.util.Map.entry("chapel", new String[]{"chapel", "chapel-2", "chapel-3"}),
-            java.util.Map.entry("well", new String[]{"well", "well-2", "well-3"}),
-            java.util.Map.entry("tower", new String[]{"tower", "tower-2"}),
-            java.util.Map.entry("charcoal", new String[]{"charcoal", "charcoal-2"}));
+            java.util.Map.entry("tavern", new String[]{"tavern", "tavern-2", "tavern-3", "tavern-4"}),
+            java.util.Map.entry("barracks", new String[]{"barracks", "barracks-2", "barracks-3", "barracks-4"}),
+            java.util.Map.entry("market", new String[]{"market", "market-2", "market-3", "market-4"}),
+            java.util.Map.entry("chapel", new String[]{"chapel", "chapel-2", "chapel-3", "chapel-4"}),
+            java.util.Map.entry("well", new String[]{"well", "well-2", "well-3", "well-4"}),
+            java.util.Map.entry("tower", new String[]{"tower", "tower-2", "tower-3", "tower-4"}),
+            java.util.Map.entry("charcoal", new String[]{"charcoal", "charcoal-2"}),
+            java.util.Map.entry("jail", new String[]{"jail", "jail-2", "jail-3", "jail-4"}),
+            java.util.Map.entry("shop", new String[]{"shop", "shop-2", "shop-3", "shop-4"}));
 
     /** One of the designs of a kind of building, at random. */
     public static String variant(String type, net.minecraft.util.math.random.Random random) {
@@ -81,6 +83,12 @@ public final class Buildings {
 
     public static java.util.Collection<String[]> designs() {
         return DESIGNS.values();
+    }
+
+    public static int count(Village village, String type) {
+        int n = 0;
+        for (Built b : village.built) if (base(b.type()).equals(type)) n++;
+        return n;
     }
 
     public static boolean has(Village village, String type) {

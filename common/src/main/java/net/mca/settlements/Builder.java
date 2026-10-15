@@ -94,6 +94,9 @@ public final class Builder {
     /** While the founders raise the town hall, materials come with the founding and are not taken from the stores. */
     private static boolean FREE = false;
 
+    /** The station whose materials a building is put up in; -1: the village's own. */
+    static int MAT_TIER = -1;
+
     private static int count(Village v, Predicate<ItemStack> p) {
         if (FREE) return 9999;
         int n = 0;
@@ -204,7 +207,7 @@ public final class Builder {
                 case "well" -> {
                     Layout.Slot slot = Layout.center(world, village, "well");
                     village.wellBuilt = true; // a blocked center is simply skipped
-                    if (slot != null) return startAt(village, Buildings.variant("well", rand), 0, 0, 0, slot);
+                    if (slot != null) return startAt(village, Tiers.design("well", Prosperity.tier(village), rand, village), 0, 0, 0, slot);
                 }
                 case "storage" -> {
                     if (startRing(village, world, "storage", 0, 0, 0, 0, 3)) return true;
@@ -229,14 +232,10 @@ public final class Builder {
                     double roll = rand.nextDouble();
                     // homes after the village's means: huts and longhouses when poor, family houses when it gets by,
                     // mansions and town houses when it is wealthy
-                    int wealth = Prosperity.wealth(village);
-                    String[] kinds = switch (wealth) {
-                        case 0 -> new String[]{"hut", "hut", "longhouse", "twin"};
-                        case 1 -> lv == Plan.Level.HAMLET ? new String[]{"house", "longhouse", "twin", "porch"}
-                                : new String[]{"house", "porch", "annex", "farmhouse", "longhouse"};
-                        default -> new String[]{"mansion", "manor", "tallhouse", "porch", "house"};
-                    };
-                    String kind = kinds[rand.nextInt(kinds.length)];
+                    int tier = Prosperity.tier(village);
+                    int wealth = Math.min(2, tier);
+                    String kind = tier == Tiers.ORDINARY && lv == Plan.Level.HAMLET ? new String[]{"house", "longhouse", "twin", "porch"}[rand.nextInt(4)]
+                            : Tiers.design("home", tier, rand, null);
                     int need = switch (kind) {
                         case "mansion" -> 340;
                         case "manor", "farmhouse" -> 260;
@@ -309,6 +308,12 @@ public final class Builder {
                 case "rebuild" -> {
                     if (Rebuild.start(village, world)) return true;
                 }
+                case "renovate" -> {
+                    if (Rebuild.renovate(village, world)) return true;
+                }
+                case "shop" -> {
+                    if (startRing(village, world, "shop", 0, 0, 0, 0, 3)) return true;
+                }
                 case "board" -> {
                     if (startRing(village, world, "board", 0, 0, 0, 0, 1)) return true;
                     if (start(village, world, "board", 3, 2, 0)) return true;
@@ -337,7 +342,7 @@ public final class Builder {
     }
 
     private static boolean startRing(Village village, ServerWorld world, String type, int w, int d, int floors, int minRing, int maxRing) {
-        type = Buildings.variant(type, world.random); // one of the designs of this kind of building
+        type = Tiers.design(type, Prosperity.tier(village), world.random, village); // the design that suits the village's station
         Layout.Slot slot = Layout.find(world, village, type, w, d, minRing, maxRing);
         if (slot == null) return false;
         return startAt(village, type, w, d, floors, slot);
@@ -634,7 +639,7 @@ public final class Builder {
 
     static {
         String[] types = {"townhall", "hut", "house", "longhouse", "porch", "twin", "farmhouse", "tallhouse", "annex", "manor", "mansion", "storage", "granary", "sawmill", "charcoal", "mason", "mill",
-                "smithy", "armory", "tavern", "barracks", "jail", "market", "chapel", "well", "board", "farm", "pen", "tower"};
+                "smithy", "armory", "tavern", "barracks", "jail", "market", "chapel", "well", "board", "farm", "pen", "tower", "shop"};
         java.util.List<String> all = new java.util.ArrayList<>(java.util.List.of(types));
         for (String[] d : Buildings.designs()) for (int i = 1; i < d.length; i++) all.add(d[i]);
         for (String t : all) {
@@ -675,6 +680,8 @@ public final class Builder {
         String biome = world.getBiome(origin).getKey().map(k -> k.getValue().getPath()).orElse("plains");
         Palette.OVERRIDE = Palette.forBiome(biome);
         FREE = true;
+        int t = Tiers.tierOf(type);
+        MAT_TIER = t >= 0 ? t : Tiers.ORDINARY; // each design in the materials of its station
         try {
             for (Step step : steps) {
                 int[] rp = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], rot);
@@ -682,6 +689,7 @@ public final class Builder {
             }
         } finally {
             FREE = false;
+            MAT_TIER = -1;
             Palette.OVERRIDE = null;
         }
     }
@@ -708,7 +716,7 @@ public final class Builder {
     private static boolean startCenter(Village village, ServerWorld world) {
         Layout.Slot slot = Layout.center(world, village, "well");
         if (slot == null) slot = Layout.find(world, village, "well", 0, 0, 0, 0);
-        return slot != null && startAt(village, Buildings.variant("well", world.random), 0, 0, 0, slot);
+        return slot != null && startAt(village, Tiers.design("well", Prosperity.tier(village), world.random, village), 0, 0, 0, slot);
     }
 
     /**
@@ -871,10 +879,12 @@ public final class Builder {
             case "farm" -> village.farms++;
             case "tower" -> {
                 village.towers++;
-                int[] tr = Blueprints.rotate(2, 2, Blueprints.TOWER, Blueprints.TOWER, rot);
-                village.watchPoints.add(o.add(tr[0], 11, tr[1]));
-                int[] lr = Blueprints.rotate(2, 1, Blueprints.TOWER, Blueprints.TOWER, rot);
-                village.towerLadders.add(o.add(lr[0], 1, lr[1]));
+                int[][] tp = Tiers.towerPoints(type);
+                int[] tfp = Blueprints.footprint(type, 0, 0);
+                int[] tr = Blueprints.rotate(tp[0][0], tp[0][2], tfp[0], tfp[1], rot);
+                village.watchPoints.add(o.add(tr[0], tp[0][1], tr[1]));
+                int[] lr = Blueprints.rotate(tp[1][0], tp[1][2], tfp[0], tfp[1], rot);
+                village.towerLadders.add(o.add(lr[0], tp[1][1], lr[1]));
             }
             case "tavern" -> registerTavern(village);
             case "townhall" -> village.hall = new House(o, Blueprints.HALL_W, Blueprints.HALL_D, 1, rot);
@@ -1112,9 +1122,10 @@ public final class Builder {
     private static BlockState stateFor(Village village, Step step, int rot) {
         Kind kind = step.kind();
         Palette pal = Palette.of(village);
-        int wealth = Prosperity.wealth(village);
-        if (wealth == 0) {
-            // a poor village does without: no glass, no shutters, flowers or rugs, timber instead of dressed stone
+        int tier = MAT_TIER >= 0 ? MAT_TIER : Prosperity.tier(village);
+        if (tier == Tiers.POOR) {
+            // a poor village does without: no glass, no shutters, flowers or rugs, timber instead of dressed stone,
+            // beaten earth for a floor
             switch (kind) {
                 case SHUTTER, POT, HEDGE, FLOWER, CARPET, BELL -> {
                     return null;
@@ -1127,11 +1138,34 @@ public final class Builder {
                     if (take(village, LOG, 1)) return pal.log().getDefaultState();
                     return plank(village, pal.planks());
                 }
+                case FLOOR -> {
+                    if (step.dy() == 0) return Blocks.COARSE_DIRT.getDefaultState();
+                }
                 default -> {
                 }
             }
-        } else if (wealth == 2 && (kind == Kind.STONE || kind == Kind.CHIMNEY) && take(village, COBBLE, 1)) {
-            return pal.accent().getDefaultState(); // a wealthy village builds in dressed stone
+        } else if (tier >= Tiers.WEALTHY) {
+            boolean city = tier >= Tiers.CITY;
+            switch (kind) {
+                case STONE, CHIMNEY -> { // a wealthy village builds in dressed stone
+                    if (take(village, COBBLE, 1)) return pal.accent().getDefaultState();
+                }
+                case WALL -> { // a city: a stone ground floor, plastered storeys above
+                    if (city && take(village, COBBLE, 1)) return (step.dy() <= 3 ? pal.accent() : pal.plaster()).getDefaultState();
+                }
+                case ROOF -> { // and tiled roofs
+                    if (city && take(village, COBBLE, 1)) return pal.tiles().getDefaultState();
+                }
+                case STAIRS_E, STAIRS_W -> {
+                    if (city && step.dy() >= Blueprints.LEVEL_HEIGHT && take(village, COBBLE, 1))
+                        return pal.tileStairs().getDefaultState().with(StairsBlock.FACING, turn(kind == Kind.STAIRS_E ? Direction.EAST : Direction.WEST, rot));
+                }
+                case PATH -> { // paved paths
+                    if (city && take(village, COBBLE, 1)) return pal.accent().getDefaultState();
+                }
+                default -> {
+                }
+            }
         }
         switch (kind) {
             case FLOOR:

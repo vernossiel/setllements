@@ -43,7 +43,7 @@ public final class Variants {
             case "well-3" -> fountain();
             case "tower-2" -> woodenTower();
             case "charcoal-2" -> kiln();
-            default -> List.of();
+            default -> Tiers.plan(type);
         };
     }
 
@@ -64,7 +64,7 @@ public final class Variants {
             case "chapel-3" -> new int[]{11, 7};
             case "well-2", "well-3", "tower-2" -> new int[]{5, 5};
             case "charcoal-2" -> new int[]{6, 6};
-            default -> null;
+            default -> Tiers.footprint(type);
         };
     }
 
@@ -73,6 +73,7 @@ public final class Variants {
         return switch (type) {
             case "chapel-2" -> new int[][]{{1, 2}, {3, 2}, {1, 4}, {3, 4}, {1, 6}, {3, 6}, {1, 8}, {3, 8}};
             case "chapel-3" -> new int[][]{{7, 2}, {9, 2}, {7, 4}, {9, 4}};
+            case "chapel-4" -> Tiers.graves(type);
             default -> Buildings.GRAVES;
         };
     }
@@ -81,6 +82,7 @@ public final class Variants {
         return switch (type) {
             case "chapel-2" -> new int[]{2, 0, 9};
             case "chapel-3" -> new int[]{8, 0, 5};
+            case "chapel-4" -> Tiers.mournSpot(type);
             default -> new int[]{10, 0, 7};
         };
     }

@@ -70,5 +70,25 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
     public Block roofPlanks() { return get(roofWood + "_planks", Blocks.SPRUCE_PLANKS); }
     public Block stairs() { return get(wood + "_stairs", Blocks.OAK_STAIRS); }
     public Block fenceGate() { return get(wood + "_fence_gate", Blocks.OAK_FENCE_GATE); }
+    /** A city's plastered walls above its stone ground floors. */
+    public Block plaster() {
+        if (stone == Blocks.SANDSTONE) return Blocks.SMOOTH_SANDSTONE;
+        if (stone == Blocks.MUD_BRICKS) return Blocks.PACKED_MUD;
+        return Blocks.WHITE_TERRACOTTA;
+    }
+
+    /** A city's roof tiles: red sandstone in the desert, brick in the savanna, slate elsewhere. */
+    public Block tiles() {
+        if (stone == Blocks.SANDSTONE) return Blocks.SMOOTH_RED_SANDSTONE;
+        if (accent == Blocks.TERRACOTTA) return Blocks.BRICKS;
+        return Blocks.DEEPSLATE_TILES;
+    }
+
+    public Block tileStairs() {
+        if (stone == Blocks.SANDSTONE) return Blocks.SMOOTH_RED_SANDSTONE_STAIRS;
+        if (accent == Blocks.TERRACOTTA) return Blocks.BRICK_STAIRS;
+        return Blocks.DEEPSLATE_TILE_STAIRS;
+    }
+
     public Block plainFlower() { return flower instanceof net.minecraft.block.FlowerPotBlock pot ? pot.getContent() : Blocks.POPPY; }
 }
