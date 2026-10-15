@@ -2001,5 +2001,11 @@
   "settlements.talk.news.player_brought.a": "Heard? %s brought us materials!",
   "settlements.talk.news.player_brought.b": "I did. A good sort, not like some.",
   "settlements.talk.news.player_brought.c": "We ought to thank them when we can.",
-  "settlements.talk.news.player_brought.d": "Bake them a pie, maybe."
+  "settlements.talk.news.player_brought.d": "Bake them a pie, maybe.",
+  "settlements.say.idle.nothing": "Nothing to do... I'll see who needs a hand.",
+  "settlements.doing.idle.nothing": "idle: no work of his own, looking for someone to help",
+  "settlements.say.apprentice.ask": "%s, will you take me on? I want to learn.",
+  "settlements.say.apprentice.ok": "All right, %s, watch and hand me what I ask for.",
+  "settlements.say.apprentice.learn": "I think I'm getting how %s does it.",
+  "settlements.doing.apprentice": "apprenticed to %s: learning, fetching, picking up"
 }

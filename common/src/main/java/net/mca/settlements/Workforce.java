@@ -249,6 +249,10 @@ public final class Workforce {
             }
             else worked = Husbandry.work(v, village);
             if (!helping && !foraging) v.settlementsIdleWork = worked || Move.goal(v) != null ? 0 : v.settlementsIdleWork + 1; // walking to work is not idling
+            if (v.settlementsIdleWork == 120) { // two minutes with nothing to do: he says so, and looks for a hand to lend
+                Speech.say(v, "settlements.say.idle.nothing");
+                Doing.set(v, "settlements.doing.idle.nothing");
+            }
             if (!worked) v.settlementsWorkSeconds++; // time on the job counts, walking included, for the next break
             if (worked) {
                 Trade.practise(v);
@@ -274,6 +278,9 @@ public final class Workforce {
             v.settlementsHunger += HUNGER_RISE;
             return;
         }
+        // nothing for him to do: he goes along with a master at work and learns the trade by watching and fetching
+        if ((prof == VillagerProfession.NONE || prof == VillagerProfession.NITWIT) && village != null && !v.isElder()
+                && v.getWorld() instanceof net.minecraft.server.world.ServerWorld aw && apprentice(v, village, aw)) return;
         Chore wanted = choreFor(prof);
         if (wanted != Chore.NONE && quotaAllows(village, wanted) && v.getWorld().getTime() >= v.settlementsNoWorkUntil) {
             Gear.equipTool(v, village, wanted);
@@ -281,6 +288,47 @@ public final class Workforce {
             v.getVillagerBrain().assignAutonomous(wanted);
             Speech.sayWork(v);
         }
+    }
+
+    private static final java.util.Map<java.util.UUID, java.util.UUID> MASTER = new java.util.HashMap<>();
+
+    /** One second as an apprentice: at the master's elbow while he works. True while he is at it. */
+    private static boolean apprentice(VillagerEntityMCA v, net.mca.server.world.data.Village village, net.minecraft.server.world.ServerWorld world) {
+        if (!Persona.working(v, world.getTimeOfDay())) return false;
+        VillagerEntityMCA master = null;
+        java.util.UUID m = MASTER.get(v.getUuid());
+        if (m != null && world.getEntity(m) instanceof VillagerEntityMCA mm && mm.isAlive() && !mm.isSleeping() && Persona.working(mm, world.getTimeOfDay())) master = mm;
+        if (master == null) {
+            double bd = 64 * 64;
+            for (VillagerEntityMCA r : village.getResidents(world)) {
+                if (r == v || !r.isAlive() || r.isSleeping() || !isCustomWorker(r.getProfession()) || r.settlementsIdleWork > 10) continue;
+                if (MASTER.containsValue(r.getUuid())) continue; // one apprentice a master
+                double d = r.squaredDistanceTo(v) / (1 + Trade.level(r));
+                if (d < bd) {
+                    bd = d;
+                    master = r;
+                }
+            }
+            if (master == null) return false;
+            MASTER.put(v.getUuid(), master.getUuid());
+            Speech.sayNow(v, "settlements.say.apprentice.ask", master.getName());
+            master.settlementsReplyKey = "settlements.say.apprentice.ok";
+            master.settlementsReplyArgs = new Object[]{v.getName()};
+            master.settlementsReplyAt = world.getTime() + 40;
+        }
+        Doing.set(v, "settlements.doing.apprentice", master.getName());
+        if (v.squaredDistanceTo(master) > 16) Move.to(v, master.getX(), master.getY(), master.getZ(), 0.5);
+        else {
+            v.getNavigation().stop();
+            v.getLookControl().lookAt(master, 30f, 30f);
+            Dig.gather(v, 3); // picks up what falls, as a lad at the elbow does
+            if (Dig.busy(master) && world.random.nextInt(3) == 0) v.swingHand(v.getDominantHand());
+            Trade.practise(v);
+        }
+        v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
+        v.settlementsHunger += HUNGER_RISE;
+        if (world.random.nextInt(400) == 0) Speech.say(v, "settlements.say.apprentice.learn", master.getName());
+        return true;
     }
 
     private static boolean autonomousWorking(VillagerEntityMCA v, Chore job) {

@@ -1889,5 +1889,11 @@
   "settlements.talk.news.player_brought.a": "Слыхал? %s нам материалов привёз!",
   "settlements.talk.news.player_brought.b": "Слыхал. Хороший человек, не то что некоторые.",
   "settlements.talk.news.player_brought.c": "Надо будет отблагодарить при случае.",
-  "settlements.talk.news.player_brought.d": "Пирога бы ему испечь."
+  "settlements.talk.news.player_brought.d": "Пирога бы ему испечь.",
+  "settlements.say.idle.nothing": "Нечего делать... Пойду гляну, кому помочь.",
+  "settlements.doing.idle.nothing": "без дела: своей работы нет, ищет, кому помочь",
+  "settlements.say.apprentice.ask": "%s, возьмёшь в подмастерья? Хочу научиться.",
+  "settlements.say.apprentice.ok": "Ладно, %s, смотри и подавай, что скажу.",
+  "settlements.say.apprentice.learn": "Кажется, понемногу понимаю, как %s это делает.",
+  "settlements.doing.apprentice": "подмастерье у %s: учится, подаёт, подбирает"
 }
