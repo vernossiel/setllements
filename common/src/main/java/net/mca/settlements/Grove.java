@@ -18,31 +18,27 @@ import java.util.Set;
  * still saplings and there is nothing else about, he waits for them rather than walking off into the wild.
  */
 public final class Grove {
-    private static final Map<Integer, Set<BlockPos>> PLANTED = new HashMap<>();
 
     private Grove() {
     }
 
     public static void remember(Village village, BlockPos p) {
-        Set<BlockPos> s = PLANTED.computeIfAbsent(village.getId(), k -> new HashSet<>());
-        if (s.size() < 256) s.add(p.toImmutable());
+        if (village.grove.size() < 256 && village.grove.add(p.toImmutable())) village.markDirty();
     }
 
     /** The planted spots that are trees now. */
     public static List<BlockPos> grown(ServerWorld world, Village village) {
         List<BlockPos> out = new ArrayList<>();
-        Set<BlockPos> s = PLANTED.get(village.getId());
-        if (s == null) return out;
-        s.removeIf(p -> world.isChunkLoaded(p.getX() >> 4, p.getZ() >> 4) && !(world.getBlockState(p).getBlock() instanceof SaplingBlock)
-                && !world.getBlockState(p).isIn(BlockTags.LOGS));
+        Set<BlockPos> s = village.grove;
+        if (s.removeIf(p -> world.isChunkLoaded(p.getX() >> 4, p.getZ() >> 4) && !(world.getBlockState(p).getBlock() instanceof SaplingBlock)
+                && !world.getBlockState(p).isIn(BlockTags.LOGS))) village.markDirty();
         for (BlockPos p : s) if (world.isChunkLoaded(p.getX() >> 4, p.getZ() >> 4) && world.getBlockState(p).isIn(BlockTags.LOGS)) out.add(p);
         return out;
     }
 
     /** How many are still saplings. */
     public static int growing(ServerWorld world, Village village) {
-        Set<BlockPos> s = PLANTED.get(village.getId());
-        if (s == null) return 0;
+        Set<BlockPos> s = village.grove;
         int n = 0;
         for (BlockPos p : s) if (world.isChunkLoaded(p.getX() >> 4, p.getZ() >> 4) && world.getBlockState(p).getBlock() instanceof SaplingBlock) n++;
         return n;

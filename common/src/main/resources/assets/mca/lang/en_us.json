@@ -2015,5 +2015,21 @@
   "settlements.say.farm.feed": "A bit of feed and it'll come on quicker.",
   "settlements.say.mine.flooded": "Water or lava down there. No mine here - I'll find another spot.",
   "settlements.say.mine.noplanks": "No planks for the props. Fine, I'll dig on, we'll fit them later.",
-  "settlements.doing.mine.noplanks": "digging without props: no planks"
+  "settlements.doing.mine.noplanks": "digging without props: no planks",
+  "settlements.doing.overtime": "staying on at work: it can't wait",
+  "settlements.recall.brought.0": "%s! You brought us materials, didn't you? Thanks again.",
+  "settlements.recall.brought.1": "Ah, %s! The building stands on your planks.",
+  "settlements.recall.brought.2": "%s, a good soul - come in, you're always welcome.",
+  "settlements.recall.returned.0": "%s... Well, you gave it back. But I remember.",
+  "settlements.recall.returned.1": "Good that you returned it all, %s.",
+  "settlements.recall.returned.2": "%s, I won't forgive it twice.",
+  "settlements.recall.stole.0": "%s! Thief! Keep away from our chests.",
+  "settlements.recall.stole.1": "That's %s, who stole from us...",
+  "settlements.recall.stole.2": "%s, I'm watching you.",
+  "settlements.recall.struck.0": "Stay back, %s! I remember you raising your hand to us.",
+  "settlements.recall.struck.1": "%s... back again? The guard is near, mind.",
+  "settlements.recall.struck.2": "After what you did, %s, we've nothing to talk about.",
+  "settlements.recall.helped.0": "%s, thanks for your help back then!",
+  "settlements.recall.helped.1": "Ah, %s, I remember - you saved us.",
+  "settlements.recall.helped.2": "%s! Good to see you."
 }

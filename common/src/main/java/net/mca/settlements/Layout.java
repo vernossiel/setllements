@@ -43,19 +43,21 @@ public final class Layout {
     }
 
     /** How far out the streets of this village reach (in streets either side of the main ones). */
-    private static final java.util.Map<Integer, Integer> GROWN = new java.util.HashMap<>();
 
     private static int reach(Village village) {
         // the village's grade sets its bounds: a poor one lives along the two main streets, an ordinary one adds a
         // street either side, a wealthy one two, a city three; within that it spreads when it runs out of room
         int tier = village.getId() >= 0 ? Prosperity.tier(village) : 0;
         int base = tier;
-        return Math.min(tier + 1, Math.max(base, GROWN.getOrDefault(village.getId(), 0)));
+        return Math.min(tier + 1, Math.max(base, village.streets));
     }
 
     /** Streets laid out further when the village has run out of room (for a big building, or simply many). */
     private static void grow(Village village, int to) {
-        GROWN.merge(village.getId(), Math.min(4, to), Math::max);
+        if (to > village.streets) {
+            village.streets = Math.min(4, to);
+            village.markDirty();
+        }
     }
 
     /** The street the workshops line: one of the four arms of the main streets, the same for good. */

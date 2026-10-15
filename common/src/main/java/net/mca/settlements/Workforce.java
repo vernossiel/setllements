@@ -98,12 +98,15 @@ public final class Workforce {
         Unstick.tick(v, village);
         Move.tick(v, village);
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld lifeWorld && Life.tick(v, village, lifeWorld, time)) return;
-        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld watchWorld) GuardIntel.civilianWatch(v, watchWorld);
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld watchWorld) {
+            GuardIntel.civilianWatch(v, watchWorld);
+            Remember.tick(v, village, watchWorld); // a word about what that player did, if anything stands out
+        }
         if (v.isGuard() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld ew && Escort.guard(v, village, ew)) return; // seeing a worker safe out and back
         // a conversation: carried on, or started when he has a moment (on the guards' watch, nobody stands chatting)
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld tw && !(v.isGuard() && GuardAI.onDuty(v, time))) {
-            boolean moment = !Persona.working(v, time) || v.settlementsBreak || v.settlementsIdleWork >= 10 || Morning.active(v, time)
-                    || Persona.of(v).sociability() > 0.6 && v.getRandom().nextInt(8) == 0;
+            boolean moment = !Mind.onDuty(v, village, time) || v.settlementsBreak || v.settlementsIdleWork >= 10 || Morning.active(v, time)
+                    || Mind.before(v, village, time, Mind.Drive.TALK);
             if (Talk.tick(v, village, tw, moment && !Dig.busy(v) && !v.settlementsHauling)) return;
         }
 
@@ -122,16 +125,17 @@ public final class Workforce {
         if (v.age % 60 == 0) v.settlementsHunger = Math.min(MAX, v.settlementsHunger + 1); // slow idle hunger
 
         // hungry villagers eat in the tavern when there is one with food on the shelf
-        if (village != null && village.tavern != null && v.settlementsHunger >= (job == Chore.NONE ? 250 : HUNGER_EAT_AT)
+        if (village != null && village.tavern != null && v.settlementsHunger >= 250 && (v.settlementsHunger >= HUNGER_STOP_AT || Mind.before(v, village, time, Mind.Drive.EAT))
                 && v.getProfession() != VillagerProfession.BUTCHER) {
             if (job != Chore.NONE) v.getVillagerBrain().abandonJob();
             if (Tavern.visit(v, village)) return;
         }
 
         // a meal comes first, stopping work if needed
-        if (v.settlementsHunger >= HUNGER_EAT_AT && hasMeal(v, village)) {
+        // a meal when hunger outweighs the work (a busy man eats late, an idle one early); past the limit, always
+        if (v.settlementsHunger >= 250 && hasMeal(v, village) && (v.settlementsHunger >= HUNGER_STOP_AT || Mind.before(v, village, time, Mind.Drive.EAT))) {
             if (job != Chore.NONE) v.getVillagerBrain().abandonJob();
-            if (startEating(v, village)) return;
+            if (startEating(v, village, 250)) return;
         }
 
         Needs.update(v, village);
@@ -150,7 +154,7 @@ public final class Workforce {
                 startBreak(v, 0);
                 v.settlementsBreakLong = true; // worn out: back to work only when properly rested
                 Speech.sayAny(v, "settlements.say.tired", 5);
-            } else if (v.settlementsEnergy <= 450 && v.getRandom().nextDouble() < Persona.breakFactor(v) / 45) {
+            } else if (v.settlementsEnergy <= 500 && Mind.before(v, village, time, Mind.Drive.REST) && v.getRandom().nextInt(4) == 0) {
                 startBreak(v, MICRO_BREAK_SECONDS);
                 Speech.sayAny(v, "settlements.say.break", 5);
             }
@@ -166,7 +170,10 @@ public final class Workforce {
             v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + (seated ? FIRE_REST_GAIN : REST_GAIN));
             // the break only counts once he sits at the fire (or after a long walk that got him nowhere)
             if (v.settlementsBreakLeft > 0 && (seated || v.settlementsBreakWalk++ > 60)) v.settlementsBreakLeft--;
-            if (v.settlementsBreakLeft <= 0 && v.settlementsEnergy >= (v.settlementsBreakLong ? RESUME_AFTER_EXHAUST : START_WORK_ENERGY) || !Persona.working(v, time)) {
+            // back to work when rested enough - sooner if the work is pressing (Mind), later for the idle
+            boolean rested = v.settlementsEnergy >= (v.settlementsBreakLong ? RESUME_AFTER_EXHAUST : START_WORK_ENERGY)
+                    && (v.settlementsBreakLeft <= 0 || !Mind.before(v, village, time, Mind.Drive.REST) && v.settlementsBreakLeft < MICRO_BREAK_SECONDS / 2);
+            if (rested || !Mind.onDuty(v, village, time)) {
                 v.settlementsBreak = false;
                 Rest.end(v);
                 v.settlementsBreakLong = false;
@@ -184,7 +191,7 @@ public final class Workforce {
             v.settlementsEnergy -= WORK_DRAIN;
             v.settlementsHunger += HUNGER_RISE;
             v.settlementsWorkSeconds++;
-            if (v.settlementsHunger >= HUNGER_STOP_AT || !Persona.working(v, time)) {
+            if (v.settlementsHunger >= HUNGER_STOP_AT || !Mind.onDuty(v, village, time)) {
                 v.getVillagerBrain().abandonJob();
             }
             return;
@@ -201,7 +208,7 @@ public final class Workforce {
                 if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) Reputation.restock(sw, village);
             }
         }
-        if (!Persona.working(v, time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
+        if (!Mind.onDuty(v, village, time) && !Persona.working(v, time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
             Gear.pocket(v); // off work: the tools go back in the bag
             Doing.set(v, v.settlementsHunger >= HUNGER_STOP_AT ? "settlements.doing.hungry" : Persona.free(v, time) ? "settlements.doing.free" : "settlements.doing.home");
@@ -214,6 +221,7 @@ public final class Workforce {
             return;
         }
         if (v.settlementsEnergy < START_WORK_ENERGY) return;
+        if (!Persona.working(v, time)) Doing.set(v, "settlements.doing.overtime"); // stayed on: the work cannot wait
         // and a moment's pause now and then: nobody works like a machine
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld pw && Trade.pausing(v, village, pw)) return;
 

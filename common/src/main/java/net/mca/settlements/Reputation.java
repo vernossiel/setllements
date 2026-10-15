@@ -159,6 +159,7 @@ public final class Reputation {
             village.markDirty();
         }
         if (returned > 0 && Haul.storeChest(village, opened.pos())) Orders.brought(player, village, before, after);
+        if (returned > 0 && Justice.owes(player)) Remember.note(village, player, "returned");
         if (returned > 0) settleDebt(player, village, returned);
         if (taken >= 1) steal(player, village, taken, takenItems);
     }
@@ -222,6 +223,7 @@ public final class Reputation {
             GuardIntel.alertNearestGuard(sw, witness, player);
         }
         village.pushHearts(player, -(int) Math.ceil(value * 1.5));
+        Remember.note(village, player, "stole");
         witness.sendChatMessage(player, "settlements.theft.seen");
         Justice.report(sw, village, player, Justice.Crime.THEFT, value, items, true);
     }

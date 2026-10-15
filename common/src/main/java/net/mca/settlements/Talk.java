@@ -85,6 +85,8 @@ public final class Talk {
                 c.next = now + 50 + world.random.nextInt(30);
                 if (c.line >= lines(c.topic)) {
                     end(c);
+                    Mind.talked(v);
+                    Mind.talked(other);
                     v.settlementsTalkAfter = now + 900 + world.random.nextInt(900);
                     other.settlementsTalkAfter = v.settlementsTalkAfter;
                 }
@@ -119,6 +121,7 @@ public final class Talk {
     private static void end(Conversation c) {
         TALKING.remove(c.a);
         TALKING.remove(c.b);
+
     }
 
     /** Lines in a conversation: the old two-line topics are four lines now, greetings stay two. */

@@ -43,6 +43,10 @@ public class Village implements Iterable<Building> {
     public int palisadeR;
     public net.mca.settlements.Tavern tavern;
     public BlockPos mineOrigin, smithyFurnace, smithyAnvil, hallPos, penCenter;
+    /** What the village remembers (Settlements): the lumberjacks' grove, ore the miners have seen, how far its streets reach. */
+    public final Set<BlockPos> grove = new HashSet<>(), knownOres = new HashSet<>();
+    public int streets;
+    public NbtCompound memories = new NbtCompound();
     public net.mca.settlements.House hall;
     public boolean seeded;
     public int groveSaplings;
@@ -144,6 +148,10 @@ public class Village implements Iterable<Building> {
         wallBuilt = v.getBoolean("wallBuilt");
         palisadeR = v.getInt("palisadeR");
         farms = v.getInt("farms");
+        for (long l : v.getLongArray("grove")) grove.add(BlockPos.fromLong(l));
+        for (long l : v.getLongArray("knownOres")) knownOres.add(BlockPos.fromLong(l));
+        streets = v.getInt("streets");
+        memories = v.getCompound("memories");
         towers = v.getInt("towers");
         int[] flatPlots = v.getIntArray("plots");
         for (int i = 0; i + 3 < flatPlots.length; i += 4) plots.add(new int[]{flatPlots[i], flatPlots[i + 1], flatPlots[i + 2], flatPlots[i + 3]});
@@ -537,6 +545,10 @@ public class Village implements Iterable<Building> {
         v.putBoolean("wallBuilt", wallBuilt);
         v.putInt("palisadeR", palisadeR);
         v.putInt("farms", farms);
+        v.putLongArray("grove", grove.stream().mapToLong(BlockPos::asLong).toArray());
+        v.putLongArray("knownOres", knownOres.stream().mapToLong(BlockPos::asLong).toArray());
+        v.putInt("streets", streets);
+        v.put("memories", memories);
         v.putInt("towers", towers);
         int[] flat = new int[plots.size() * 4];
         for (int i = 0; i < plots.size(); i++) System.arraycopy(plots.get(i), 0, flat, i * 4, 4);

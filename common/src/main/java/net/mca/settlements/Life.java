@@ -148,6 +148,7 @@ public final class Life {
         FEAR.put(k, now + FEAR_TICKS);
         if (fresh) {
             news(village, "attacked", attacker.getName().getString(), victim.getName().getString());
+            Remember.note(village, attacker, "struck");
             village.pushHearts(attacker, -15);
         }
         Speech.sayNow(victim, "settlements.react.help");

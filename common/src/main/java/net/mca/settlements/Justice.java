@@ -353,6 +353,12 @@ public final class Justice {
         return returned;
     }
 
+    /** Whether he has a theft standing against him. */
+    public static boolean owes(ServerPlayerEntity p) {
+        Case c = CASES.get(p.getUuid());
+        return c != null && c.crime == Crime.THEFT;
+    }
+
     /** Goods put back into a village chest count against the theft. */
     public static void credit(ServerPlayerEntity p, double value) {
         Case c = CASES.get(p.getUuid());

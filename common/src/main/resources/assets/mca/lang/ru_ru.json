@@ -1903,5 +1903,21 @@
   "settlements.say.farm.feed": "Подкормим — быстрее пойдёт.",
   "settlements.say.mine.flooded": "Тут вода или лава под землёй. Шахту здесь не выкопать — поищу другое место.",
   "settlements.say.mine.noplanks": "Досок на крепь нет. Ладно, копаю так, потом доделаем.",
-  "settlements.doing.mine.noplanks": "копает без крепи: досок нет"
+  "settlements.doing.mine.noplanks": "копает без крепи: досок нет",
+  "settlements.doing.overtime": "задержался на работе: дело не ждёт",
+  "settlements.recall.brought.0": "%s! Это ты нам материалы привёз? Спасибо тебе ещё раз.",
+  "settlements.recall.brought.1": "А, %s! Стройка твоими досками держится.",
+  "settlements.recall.brought.2": "%s, добрый человек, заходи, всегда рады.",
+  "settlements.recall.returned.0": "%s... Ну, вернул — и ладно. Но я помню.",
+  "settlements.recall.returned.1": "Хорошо, что ты всё вернул, %s.",
+  "settlements.recall.returned.2": "%s, второй раз не прощу.",
+  "settlements.recall.stole.0": "%s! Вор! Держись подальше от наших сундуков.",
+  "settlements.recall.stole.1": "Это же %s, который у нас крал...",
+  "settlements.recall.stole.2": "%s, я за тобой слежу.",
+  "settlements.recall.struck.0": "Не подходи, %s! Помню, как ты на нас руку поднял.",
+  "settlements.recall.struck.1": "%s... опять пришёл? Стража рядом, учти.",
+  "settlements.recall.struck.2": "После того, что ты сделал, %s, нам не о чем говорить.",
+  "settlements.recall.helped.0": "%s, спасибо за помощь тогда!",
+  "settlements.recall.helped.1": "А, %s, помню, помню — выручил.",
+  "settlements.recall.helped.2": "%s! Рады видеть."
 }
