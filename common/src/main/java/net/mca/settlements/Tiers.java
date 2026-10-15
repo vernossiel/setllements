@@ -33,6 +33,7 @@ public final class Tiers {
 
     /** Designs per kind of building, for each station from poor to city. */
     private static final Map<String, String[][]> TIERS = Map.ofEntries(
+            Map.entry("townhall", new String[][]{a("townhall-2"), a("townhall"), a("townhall-3"), a("townhall-4")}),
             Map.entry("jail", new String[][]{a("jail-2"), a("jail"), a("jail-3"), a("jail-4")}),
             Map.entry("tavern", new String[][]{a("tavern-3"), a("tavern"), a("tavern-2"), a("tavern-4")}),
             Map.entry("storage", new String[][]{a("storage-4"), a("storage", "storage-2"), a("storage-3", "storage-2"), a("storage-5")}),
@@ -45,14 +46,14 @@ public final class Tiers {
             Map.entry("granary", new String[][]{a("granary"), a("granary"), a("granary-2"), a("granary-2")}),
             Map.entry("mill", new String[][]{a("mill-2"), a("mill-2"), a("mill"), a("mill")}),
             Map.entry("shop", new String[][]{a(), a(), a("shop-3", "shop"), a("shop", "shop-2", "shop-3", "shop-4")}),
-            Map.entry("home", new String[][]{a("hut", "hut", "longhouse", "twin"), a("house", "porch", "annex", "farmhouse", "longhouse"),
-                    a("mansion", "manor", "porch", "house"), a("tallhouse", "tallhouse", "manor", "mansion")})
+            Map.entry("home", new String[][]{a("cruck", "cruck", "hut", "longhouse"), a("house", "porch", "annex", "farmhouse", "twin"),
+                    a("wealden", "wealden", "manor", "mansion"), a("rowhouse", "rowhouse", "rowhouse", "tallhouse", "wealden")})
     );
 
     /** Kinds the builder rebuilds in a better design when the village climbs a station. The churchyard keeps its dead. */
-    private static final java.util.Set<String> RENEWED = java.util.Set.of("jail", "tavern", "storage", "smithy", "market", "barracks", "well", "tower", "granary", "mill", "shop");
+    private static final java.util.Set<String> RENEWED = java.util.Set.of("townhall", "jail", "tavern", "storage", "smithy", "market", "barracks", "well", "tower", "granary", "mill", "shop");
 
-    private static final java.util.Set<String> HOMES = java.util.Set.of("hut", "longhouse", "twin", "house", "porch", "annex", "farmhouse", "mansion", "manor", "tallhouse");
+    private static final java.util.Set<String> HOMES = java.util.Set.of("hut", "longhouse", "twin", "house", "porch", "annex", "farmhouse", "mansion", "manor", "tallhouse", "cruck", "wealden", "rowhouse");
 
     private Tiers() {
     }
@@ -164,7 +165,7 @@ public final class Tiers {
             case "shop-2" -> shop(1);
             case "shop-3" -> shop(2);
             case "shop-4" -> shop(3);
-            default -> List.of();
+            default -> Forms.plan(type);
         };
     }
 
@@ -188,7 +189,7 @@ public final class Tiers {
             case "tower-3" -> new int[]{5, 5};
             case "tower-4" -> new int[]{7, 7};
             case "shop", "shop-2", "shop-3", "shop-4" -> new int[]{8, 9};
-            default -> null;
+            default -> Forms.footprint(type);
         };
     }
 

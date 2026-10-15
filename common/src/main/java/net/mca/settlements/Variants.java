@@ -231,8 +231,8 @@ public final class Variants {
     /** A bakehouse with a stone dome oven outside and a millstone under the open sky. */
     static List<Step> bakery() {
         List<Step> l = new ArrayList<>(Blueprints.shell(7, 7, 1, false, false, false, false));
-        for (int y = 0; y <= 9; y++) at(l, -1, y, 3, Kind.CHIMNEY);
-        at(l, -1, 10, 3, Kind.SMOKE);
+        for (int y = 0; y <= 9; y++) at(l, -1, y, 0, Kind.CHIMNEY);
+        at(l, -1, 10, 0, Kind.SMOKE);
         at(l, 1, 1, 1, Kind.SMOKER);
         at(l, 2, 1, 1, Kind.SMOKER);
         at(l, 3, 1, 1, Kind.CRAFT);

@@ -219,6 +219,7 @@ public final class Rebuild {
         }
         switch (Buildings.base(old.type())) {
             case "tavern" -> village.tavern = null;
+            case "townhall" -> village.hallChests.clear(); // emptied into the stores with the old hall; the new hall's chests take over
             case "tower" -> {
                 village.towers = Math.max(0, village.towers - 1);
                 for (int i = village.watchPoints.size() - 1; i >= 0; i--) {

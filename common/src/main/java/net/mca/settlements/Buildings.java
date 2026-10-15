@@ -73,6 +73,7 @@ public final class Buildings {
             java.util.Map.entry("tower", new String[]{"tower", "tower-2", "tower-3", "tower-4"}),
             java.util.Map.entry("charcoal", new String[]{"charcoal", "charcoal-2"}),
             java.util.Map.entry("jail", new String[]{"jail", "jail-2", "jail-3", "jail-4"}),
+            java.util.Map.entry("townhall", new String[]{"townhall", "townhall-2", "townhall-3", "townhall-4"}),
             java.util.Map.entry("shop", new String[]{"shop", "shop-2", "shop-3", "shop-4"}));
 
     /** One of the designs of a kind of building, at random. */
@@ -251,8 +252,8 @@ public final class Buildings {
     static List<Step> mill() {
         List<Step> l = new ArrayList<>(Blueprints.shell(7, 8, 1, false, false, false, false));
         // the bakery's chimney on the west side, the tower takes the east
-        for (int y = 0; y <= 9; y++) at(l, -1, y, 4, Kind.CHIMNEY);
-        at(l, -1, 10, 4, Kind.SMOKE);
+        for (int y = 0; y <= 9; y++) at(l, -1, y, 0, Kind.CHIMNEY);
+        at(l, -1, 10, 0, Kind.SMOKE);
         at(l, 1, 1, 1, Kind.SMOKER);
         at(l, 2, 1, 1, Kind.SMOKER);
         at(l, 3, 1, 1, Kind.CRAFT);
@@ -547,8 +548,8 @@ public final class Buildings {
     static List<Step> twin() {
         List<Step> l = new ArrayList<>();
         shift(Blueprints.shell(5, 6, 1, false, true, false, false), 0, 0, l);
-        for (int y = 0; y <= 8; y++) at(l, -1, y, 3, Kind.CHIMNEY); // the left home's chimney on its own side
-        at(l, -1, 9, 3, Kind.SMOKE);
+        for (int y = 0; y <= 8; y++) at(l, -1, y, 0, Kind.CHIMNEY); // the left home's chimney on its own side
+        at(l, -1, 9, 0, Kind.SMOKE);
         shift(Blueprints.house(5, 6, 1), 4, 0, l);
         return l;
     }
@@ -556,8 +557,8 @@ public final class Buildings {
     /** A farmhouse with a barn built on at the side: hay, a composter, a cauldron, a small fenced yard. */
     static List<Step> farmhouse() {
         List<Step> l = new ArrayList<>(Blueprints.shell(7, 7, 1, false, true, false, false));
-        for (int y = 0; y <= 9; y++) at(l, -1, y, 3, Kind.CHIMNEY);
-        at(l, -1, 10, 3, Kind.SMOKE);
+        for (int y = 0; y <= 9; y++) at(l, -1, y, 0, Kind.CHIMNEY);
+        at(l, -1, 10, 0, Kind.SMOKE);
         // the barn: x 7..12, open towards the yard in front
         for (int x = 7; x <= 12; x++) for (int z = 0; z <= 6; z++) at(l, x, 0, z, x == 12 || z == 0 ? Kind.STONE : Kind.FLOOR);
         for (int y = 1; y <= 3; y++) {

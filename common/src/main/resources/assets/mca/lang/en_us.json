@@ -1744,5 +1744,14 @@
   "settlements.say.lumber.timber.2": "That was a good tree.",
   "settlements.say.mine.ore": "Oh, a vein!",
   "settlements.say.mine.ore.1": "Look at that, ore!",
-  "settlements.say.mine.ore.2": "Now that's a find."
+  "settlements.say.mine.ore.2": "Now that's a find.",
+  "settlements.building.cruck": "thatched cottage",
+  "settlements.say.build.cruck": "Putting up a thatched cottage. Not a palace, but a roof over our heads.",
+  "settlements.building.demolish:cruck": "demolishing an old building",
+  "settlements.building.wealden": "hall house",
+  "settlements.say.build.wealden": "Building a hall house with a great hall and two wings.",
+  "settlements.building.demolish:wealden": "demolishing an old building",
+  "settlements.building.rowhouse": "town house",
+  "settlements.say.build.rowhouse": "Building a town house, three storeys, each jutting over the street.",
+  "settlements.building.demolish:rowhouse": "demolishing an old building"
 }

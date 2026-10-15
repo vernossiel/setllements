@@ -237,7 +237,9 @@ public final class Builder {
                     String kind = tier == Tiers.ORDINARY && lv == Plan.Level.HAMLET ? new String[]{"house", "longhouse", "twin", "porch"}[rand.nextInt(4)]
                             : Tiers.design("home", tier, rand, null);
                     int need = switch (kind) {
-                        case "mansion" -> 340;
+                        case "mansion", "wealden" -> 340;
+                        case "rowhouse" -> 220;
+                        case "cruck" -> 0;
                         case "manor", "farmhouse" -> 260;
                         case "annex", "tallhouse", "twin" -> 180;
                         case "hut" -> 0;
@@ -557,7 +559,7 @@ public final class Builder {
         if (!started) return false;
         announceProject = null;
         List<Step> steps = plan(village);
-        int[] fp = Blueprints.footprint("townhall", 0, 0);
+        int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
         BlockPos origin = village.buildOrigin;
         int rot = village.buildRot;
         FREE = true;
@@ -579,7 +581,7 @@ public final class Builder {
                         .formatted(net.minecraft.util.Formatting.GOLD), false);
             }
         }
-        if (o != null && t != null && !t.equals("townhall")) {
+        if (o != null && t != null && !Buildings.base(t).equals("townhall")) {
             village.buildType = t;
             village.buildOrigin = o;
             village.buildStep = st;
@@ -638,7 +640,7 @@ public final class Builder {
     public static final java.util.LinkedHashMap<String, int[]> SHOWCASE = new java.util.LinkedHashMap<>();
 
     static {
-        String[] types = {"townhall", "hut", "house", "longhouse", "porch", "twin", "farmhouse", "tallhouse", "annex", "manor", "mansion", "storage", "granary", "sawmill", "charcoal", "mason", "mill",
+        String[] types = {"townhall", "cruck", "wealden", "rowhouse", "hut", "house", "longhouse", "porch", "twin", "farmhouse", "tallhouse", "annex", "manor", "mansion", "storage", "granary", "sawmill", "charcoal", "mason", "mill",
                 "smithy", "armory", "tavern", "barracks", "jail", "market", "chapel", "well", "board", "farm", "pen", "tower", "shop"};
         java.util.List<String> all = new java.util.ArrayList<>(java.util.List.of(types));
         for (String[] d : Buildings.designs()) for (int i = 1; i < d.length; i++) all.add(d[i]);
@@ -887,7 +889,11 @@ public final class Builder {
                 village.towerLadders.add(o.add(lr[0], tp[1][1], lr[1]));
             }
             case "tavern" -> registerTavern(village);
-            case "townhall" -> village.hall = new House(o, Blueprints.HALL_W, Blueprints.HALL_D, 1, rot);
+            case "townhall" -> {
+                // the new designs are built whole: no storeys are added to them later
+                int[] hfp = Blueprints.footprint(type, 0, 0);
+                village.hall = type.equals("townhall") ? new House(o, Blueprints.HALL_W, Blueprints.HALL_D, 1, rot) : new House(o, hfp[0], hfp[1], 3, rot);
+            }
             case "hallup" -> {
                 if (village.hall != null) village.hall = village.hall.withFloors(village.hall.floors() + 1);
             }
@@ -1009,7 +1015,7 @@ public final class Builder {
             // glass, light and decoration are optional: without them the house is plainer, not unfinished
             return switch (step.kind()) {
                 case GLASS, TORCH, CROP, CARPET, SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY,
-                     STONECUTTER, HAY, COMPOSTER, PUMPKIN, CAULDRON, FLOWER, LOG_X, LOG_Z, WOOL, TARGET, CHAIN -> Result.SKIPPED;
+                     STONECUTTER, HAY, COMPOSTER, PUMPKIN, CAULDRON, FLOWER, LOG_X, LOG_Z, WOOL, TARGET, CHAIN, CLOCK -> Result.SKIPPED;
                 default -> Result.WAIT;
             };
         }
@@ -1017,6 +1023,15 @@ public final class Builder {
             if (Block.sideCoversSmallSquare(world, target.down(), Direction.UP)) state = state.with(LanternBlock.HANGING, false);
             else if (Block.sideCoversSmallSquare(world, target.up(), Direction.DOWN)) state = state.with(LanternBlock.HANGING, true);
             else return Result.SKIPPED;
+        }
+        if (step.kind() == Kind.CLOCK) {
+            // a clock in a frame on the wall behind this spot, facing out
+            if (!world.getEntitiesByClass(net.minecraft.entity.decoration.ItemFrameEntity.class, new net.minecraft.util.math.Box(target), e -> true).isEmpty()) return Result.SKIPPED;
+            var frame = new net.minecraft.entity.decoration.ItemFrameEntity(world, target, turn(Direction.SOUTH, rot));
+            frame.setHeldItemStack(new ItemStack(Items.CLOCK), false);
+            if (!frame.canStayAttached()) return Result.SKIPPED;
+            world.spawnEntity(frame);
+            return Result.PLACED;
         }
         if (step.kind() == Kind.ARMOR_STAND) {
             var stand = net.minecraft.entity.EntityType.ARMOR_STAND.create(world);
@@ -1041,7 +1056,7 @@ public final class Builder {
         }
         // panes, fences, bars and stairs join up with what is around them, like when a player places them
         switch (step.kind()) {
-            case GLASS, FENCE, BARS, GATE, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, PEW, SEAT_W, SEAT_E, STEP, CHAIN, LOG_X, LOG_Z -> state = Block.postProcessState(state, world, target);
+            case GLASS, FENCE, BARS, GATE, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, RSTAIR_S, RSTAIR_N, PEW, SEAT_W, SEAT_E, STEP, CHAIN, LOG_X, LOG_Z -> state = Block.postProcessState(state, world, target);
             default -> {
             }
         }
@@ -1320,6 +1335,33 @@ public final class Builder {
                 take(village, s -> s.isOf(Items.IRON_INGOT), 2);
                 takePlanks(village, 4);
                 return Blocks.SMITHING_TABLE.getDefaultState();
+            }
+            case CLOCK:
+                if (!FREE && !take(village, s -> s.isOf(Items.GOLD_INGOT), 4)) return null;
+                return Blocks.AIR.getDefaultState(); // marker, the frame is hung in execute()
+            case THATCH: {
+                // straw: a sheaf's worth of wheat, a bale, or roof boards when there is no straw
+                if (take(village, s -> s.isOf(Items.HAY_BLOCK), 1) || take(village, s -> s.isOf(Items.WHEAT), 2)) return Blocks.HAY_BLOCK.getDefaultState();
+                return plank(village, pal.roofPlanks());
+            }
+            case DAUB: {
+                // wattle and daub: mud from the stores (earth gathered about), or boards
+                for (ItemStack fs : village.storageBuffer) {
+                    if (fs.isOf(Items.DIRT) || fs.isOf(Items.COARSE_DIRT) || fs.isOf(Items.MUD) || fs.isOf(Items.PACKED_MUD) || fs.isOf(Items.CLAY_BALL)) {
+                        fs.decrement(1);
+                        village.storageBuffer.removeIf(ItemStack::isEmpty);
+                        return Blocks.PACKED_MUD.getDefaultState();
+                    }
+                }
+                if (FREE) return Blocks.PACKED_MUD.getDefaultState();
+                return plank(village, pal.planks());
+            }
+            case RSTAIR_S, RSTAIR_N: {
+                Direction facing = turn(kind == Kind.RSTAIR_S ? Direction.SOUTH : Direction.NORTH, rot);
+                if (tier >= Tiers.CITY && take(village, COBBLE, 1)) return pal.tileStairs().getDefaultState().with(StairsBlock.FACING, facing);
+                if (takePlanks(village, 1)) return pal.roofStairs().getDefaultState().with(StairsBlock.FACING, facing);
+                if (!take(village, COBBLE, 1)) return null;
+                return pal.stoneStairs().getDefaultState().with(StairsBlock.FACING, facing);
             }
             case ARMOR_STAND: {
                 if (!takePlanks(village, 4)) return null;

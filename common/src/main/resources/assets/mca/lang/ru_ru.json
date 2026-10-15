@@ -1632,5 +1632,14 @@
   "settlements.say.lumber.timber.2": "Хорошее было дерево.",
   "settlements.say.mine.ore": "О, жила!",
   "settlements.say.mine.ore.1": "Гляди-ка, руда!",
-  "settlements.say.mine.ore.2": "Вот это находка."
+  "settlements.say.mine.ore.2": "Вот это находка.",
+  "settlements.building.cruck": "хижина под соломой",
+  "settlements.say.build.cruck": "Ставлю хижину под соломой. Не хоромы, но крыша над головой.",
+  "settlements.building.demolish:cruck": "снос старого здания",
+  "settlements.building.wealden": "усадебный дом",
+  "settlements.say.build.wealden": "Строю усадебный дом с залом и двумя крыльями.",
+  "settlements.building.demolish:wealden": "снос старого здания",
+  "settlements.building.rowhouse": "городской дом",
+  "settlements.say.build.rowhouse": "Строю городской дом в три этажа, каждый выше над улицей.",
+  "settlements.building.demolish:rowhouse": "снос старого здания"
 }

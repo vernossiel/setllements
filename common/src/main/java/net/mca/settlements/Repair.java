@@ -32,7 +32,7 @@ public final class Repair {
     static boolean structural(Kind k) {
         return switch (k) {
             case FLOOR, WALL, PILLAR, ROOF, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, STONE, ACCENT, BEAM_X, BEAM_Z, DOOR, FENCE,
-                 SLAB, GATE, BARS, LADDER, CHEST, HALL_CHEST, BED_FOOT, BED_HEAD, CRAFT, BARREL, LECTERN, BOOKSHELF, SEAT_W, SEAT_E, PEW -> true;
+                 SLAB, GATE, BARS, LADDER, CHEST, HALL_CHEST, BED_FOOT, BED_HEAD, CRAFT, BARREL, LECTERN, BOOKSHELF, SEAT_W, SEAT_E, PEW, THATCH, DAUB, RSTAIR_S, RSTAIR_N -> true;
             default -> false;
         };
     }
@@ -66,7 +66,7 @@ public final class Repair {
             for (Step s : steps) {
                 if (missing(world, s, b.point(s.dx(), s.dy(), s.dz())) && ++missing >= 3) break;
             }
-            if (missing >= (b.type().equals("townhall") ? 1 : 3)) PENDING.put(village.getId(), b);
+            if (missing >= (Buildings.base(b.type()).equals("townhall") ? 1 : 3)) PENDING.put(village.getId(), b);
 
             // its road to the plaza
             int[] fp = b.footprint();

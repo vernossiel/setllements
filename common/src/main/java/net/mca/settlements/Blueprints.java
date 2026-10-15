@@ -11,7 +11,9 @@ public final class Blueprints {
     public enum Kind { FLOOR, WALL, PILLAR, GLASS, ROOF, DOOR, BED_FOOT, BED_HEAD, CHEST, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, DIG, CLEAR, TORCH, ANVIL, FURNACE, GRINDSTONE, SMITHING, ARMOR_STAND, FENCE, FARMLAND, WATER, CROP, LADDER, STONE, SMOKER, BARREL, CRAFT, PLATE, SEAT_W, SEAT_E, LECTERN, HALL_CHEST, BOOKSHELF, CARPET, SIGN,
         BEAM_X, BEAM_Z, SHUTTER, POT, HEDGE, PATH, CHIMNEY, SMOKE, ACCENT, BELL, STEP, LANTERN,
         STONECUTTER, HAY, COMPOSTER, BARS, WOOL, GRAVE, SLAB, PUMPKIN, GATE, CAULDRON, FLOWER, MOUND, PEW, LOG_X, LOG_Z,
-        TARGET, CHAIN }
+        TARGET, CHAIN,
+        /** Straw (hay) roofing of a poor house; daub (packed mud) walls; roof stairs rising to the south / north; a clock on the wall. */
+        THATCH, DAUB, RSTAIR_S, RSTAIR_N, CLOCK }
 
     /** {@code face}: a horizontal direction index (0 south, 1 west, 2 north, 3 east) for blocks that face somewhere, -1 otherwise. */
     public record Step(int dx, int dy, int dz, Kind kind, int face) {
@@ -23,6 +25,9 @@ public final class Blueprints {
     public static final int S = 0, W = 1, N = 2, E = 3;
 
     public static final int LEVEL_HEIGHT = 4;
+
+    /** The chimney stands against the side wall at its back corner, where there is never a window or a shutter. */
+    static final int CHIMNEY_Z = 0;
 
     private Blueprints() {
     }
@@ -74,13 +79,16 @@ public final class Blueprints {
         List<Step> l = new ArrayList<>();
         gable(l, w, d, floors * LEVEL_HEIGHT, true); // take the old pitched roof off first
         int oldTop = floors * LEVEL_HEIGHT, chimneyTop = oldTop + 2 + w / 2;
-        for (int y = oldTop + 1; y <= chimneyTop + 1; y++) l.add(new Step(w, y, d / 2, Kind.CLEAR)); // and the old chimney top
+        for (int y = oldTop + 1; y <= chimneyTop + 1; y++) {
+            l.add(new Step(w, y, d / 2, Kind.CLEAR)); // and the old chimney top (older houses had it mid-wall)
+            l.add(new Step(w, y, CHIMNEY_Z, Kind.CLEAR));
+        }
         level(l, w, d, floors, true, grand, true, false);
         int top = (floors + 1) * LEVEL_HEIGHT;
         plane(l, w, d, top, Kind.ROOF, -1);
         gable(l, w, d, top, false);
-        for (int y = 1; y <= top + 2 + w / 2; y++) l.add(new Step(w, y, d / 2, Kind.CHIMNEY));
-        l.add(new Step(w, top + 3 + w / 2, d / 2, Kind.SMOKE));
+        for (int y = 1; y <= top + 2 + w / 2; y++) l.add(new Step(w, y, CHIMNEY_Z, Kind.CHIMNEY));
+        l.add(new Step(w, top + 3 + w / 2, CHIMNEY_Z, Kind.SMOKE));
         return l;
     }
 
@@ -225,8 +233,8 @@ public final class Blueprints {
         int door = w / 2;
         int chimneyTop = top + 2 + w / 2;
         if (chimney) {
-            for (int y = 0; y <= chimneyTop; y++) l.add(new Step(w, y, d / 2, Kind.CHIMNEY));
-            l.add(new Step(w, chimneyTop + 1, d / 2, Kind.SMOKE));
+            for (int y = 0; y <= chimneyTop; y++) l.add(new Step(w, y, CHIMNEY_Z, Kind.CHIMNEY));
+            l.add(new Step(w, chimneyTop + 1, CHIMNEY_Z, Kind.SMOKE));
         }
         l.add(new Step(door, 0, d, Kind.STEP, N));
         // a little roof over the door, and round windows in the gables
