@@ -253,4 +253,17 @@ public final class Gear {
         for (int i = 0; i < inv.size(); i++) if (type.isInstance(inv.getStack(i).getItem())) return true;
         return false;
     }
+
+    /** Puts the tool in his hand away (it stays in his bag; what he holds is only ever a copy of it). */
+    public static void pocket(VillagerEntityMCA v) {
+        if (v.isGuard()) return;
+        ItemStack h = v.getMainHandStack();
+        if (h.isEmpty() || v.isUsingItem()) return;
+        if (h.getItem() instanceof net.minecraft.item.ToolItem || h.getItem() instanceof net.minecraft.item.ShearsItem || h.getItem() instanceof net.minecraft.item.FishingRodItem) {
+            boolean kept = false;
+            for (int i = 0; i < v.getInventory().size() && !kept; i++) if (ItemStack.canCombine(v.getInventory().getStack(i), h) || v.getInventory().getStack(i).isOf(h.getItem())) kept = true;
+            if (!kept) v.getInventory().addStack(h.copy());
+            v.setStackInHand(net.minecraft.util.Hand.MAIN_HAND, ItemStack.EMPTY);
+        }
+    }
 }

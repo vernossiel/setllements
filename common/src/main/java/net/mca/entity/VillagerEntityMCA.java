@@ -125,6 +125,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public java.util.UUID settlementsWatch;
     public long settlementsWarned;
     public long settlementsLunchDay = -1;
+    public long settlementsMorningDay = -1;
+    public int settlementsMorningSec;
     public int settlementsLunchSec, settlementsBreakWalk;
     public final java.util.ArrayDeque<net.minecraft.text.Text> settlementsQueue = new java.util.ArrayDeque<>();
     public long settlementsQueueAt;

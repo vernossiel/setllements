@@ -93,17 +93,15 @@ public final class Workforce {
         }
 
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw0) Haul.closeChests(cw0);
-        if (v.age % 20 == 11) {
-            if (!Talk.talking(v)) Move.elbowRoom(v); // nobody stands pressed into another
-            Move.shutBehind(v);
-        }
+        if (!Talk.talking(v)) Move.elbowRoom(v); // nobody stands pressed into another
+        Move.shutBehind(v);
         Unstick.tick(v, village);
         Move.tick(v, village);
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld lifeWorld && Life.tick(v, village, lifeWorld, time)) return;
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld watchWorld) GuardIntel.civilianWatch(v, watchWorld);
         // a conversation: carried on, or started when he has a moment (on the guards' watch, nobody stands chatting)
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld tw && !(v.isGuard() && GuardAI.onDuty(v, time))) {
-            boolean moment = !Persona.working(v, time) || v.settlementsBreak || v.settlementsIdleWork >= 10
+            boolean moment = !Persona.working(v, time) || v.settlementsBreak || v.settlementsIdleWork >= 10 || Morning.active(v, time)
                     || Persona.of(v).sociability() > 0.6 && v.getRandom().nextInt(8) == 0;
             if (Talk.tick(v, village, tw, moment && !Dig.busy(v) && !v.settlementsHauling)) return;
         }
@@ -137,6 +135,9 @@ public final class Workforce {
 
         Needs.update(v, village);
 
+        // the morning: breakfast, a wash at the well, a word with the neighbours - then work
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld mw && Morning.tick(v, village, mw, time)) return;
+
         // the day's rhythm: morning gathering with the elder, lunch at the hearth
         if (Persona.working(v, time) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld rw && Routine.tick(v, village, rw, time)) return;
 
@@ -157,6 +158,7 @@ public final class Workforce {
             }
         }
         if (v.settlementsBreak) {
+            Gear.pocket(v);
             boolean seated = Rest.tick(v, village);
             v.settlementsEnergy = Math.min(MAX, v.settlementsEnergy + (seated ? FIRE_REST_GAIN : REST_GAIN));
             // the break only counts once he sits at the fire (or after a long walk that got him nowhere)
@@ -196,6 +198,7 @@ public final class Workforce {
         }
         if (!Persona.working(v, time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
+            Gear.pocket(v); // off work: the tools go back in the bag
             // supper and chat: eat a little earlier in the evening
             if (!Persona.free(v, time)) Rest.end(v); // bedtime: up and off home
             if (Persona.free(v, time) && !(v.isGuard() && GuardAI.onDuty(v, time))) {
@@ -416,7 +419,7 @@ public final class Workforce {
         return startEating(v, village, HUNGER_EAT_AT);
     }
 
-    private static boolean startEating(VillagerEntityMCA v, net.mca.server.world.data.Village village, int threshold) {
+    static boolean startEating(VillagerEntityMCA v, net.mca.server.world.data.Village village, int threshold) {
         if (v.settlementsHunger < threshold) return false;
         ItemStack meal = ItemStack.EMPTY;
         for (int i = 0; i < v.getInventory().size() && meal.isEmpty(); i++) {

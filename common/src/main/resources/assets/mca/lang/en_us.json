@@ -1912,5 +1912,20 @@
   "settlements.talk.evening.d": "Let's. The stars are lovely tonight.",
   "settlements.building.cottage": "cottage",
   "settlements.say.build.cottage": "A cottage with a woodshed.",
-  "settlements.building.demolish:cottage": "taking down an old building"
+  "settlements.building.demolish:cottage": "taking down an old building",
+  "settlements.say.morning.wake": "Oh... morning already.",
+  "settlements.say.morning.wake.1": "*yawns*",
+  "settlements.say.morning.wake.2": "One more hour of sleep...",
+  "settlements.say.morning.wake.3": "Well, a new day.",
+  "settlements.say.morning.wake.4": "My back aches... getting old.",
+  "settlements.say.morning.wash": "Brr, cold water!",
+  "settlements.say.morning.wash.1": "*stretches*",
+  "settlements.say.morning.wash.2": "Good morning!",
+  "settlements.say.morning.wash.3": "Nothing like a wash in the morning.",
+  "settlements.say.morning.wash.4": "Sleep well, neighbours?",
+  "settlements.say.morning.off": "Well, time to work.",
+  "settlements.say.morning.off.1": "Off I go, work won't wait.",
+  "settlements.say.morning.off.2": "Right, to it.",
+  "settlements.say.morning.off.3": "Work won't do itself.",
+  "settlements.say.morning.off.4": "Time to go..."
 }

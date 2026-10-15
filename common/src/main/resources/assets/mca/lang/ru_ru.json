@@ -1800,5 +1800,20 @@
   "settlements.talk.evening.d": "Посидим. Звёзды сегодня красивые.",
   "settlements.building.cottage": "двухэтажный дом",
   "settlements.say.build.cottage": "Двухэтажный дом с дровником.",
-  "settlements.building.demolish:cottage": "снос старого здания"
+  "settlements.building.demolish:cottage": "снос старого здания",
+  "settlements.say.morning.wake": "Ох... уже утро.",
+  "settlements.say.morning.wake.1": "*зевает*",
+  "settlements.say.morning.wake.2": "Ещё бы часок поспать.",
+  "settlements.say.morning.wake.3": "Ну, новый день.",
+  "settlements.say.morning.wake.4": "Спина ноет... старею.",
+  "settlements.say.morning.wash": "Брр, холодная водичка!",
+  "settlements.say.morning.wash.1": "*потягивается*",
+  "settlements.say.morning.wash.2": "Доброе утро!",
+  "settlements.say.morning.wash.3": "Хорошо умыться с утра.",
+  "settlements.say.morning.wash.4": "Как спалось, соседи?",
+  "settlements.say.morning.off": "Ну, пора за работу.",
+  "settlements.say.morning.off.1": "Пойду, дела не ждут.",
+  "settlements.say.morning.off.2": "Ладно, за дело.",
+  "settlements.say.morning.off.3": "Работа сама себя не сделает.",
+  "settlements.say.morning.off.4": "Пора, пора..."
 }

@@ -266,8 +266,14 @@ public class VillagerTasksMCA {
         return ImmutableList.of(
                 Pair.of(0, new PanicTask()),
                 Pair.of(1, new EquipmentTask(VillagerTasksMCA::isInDanger, v -> EquipmentSet.NAKED)),
-                Pair.of(2, new ExtendedMeleeAttackTask(15, 2.5F, MemoryModuleType.NEAREST_HOSTILE))
+                // (Settlements) a civilian runs and calls the guards; he strikes back only when cornered: hit in the last
+                // three seconds by something still at arm's length
+                Pair.of(2, new ConditionalTask<>(new ExtendedMeleeAttackTask(15, 2.5F, MemoryModuleType.NEAREST_HOSTILE), VillagerTasksMCA::cornered))
         );
+    }
+
+    private static boolean cornered(VillagerEntityMCA v) {
+        return v.getAttacker() != null && v.age - v.getLastAttackedTime() < 60 && v.getAttacker().squaredDistanceTo(v) < 9;
     }
 
     public static ImmutableList<Pair<Integer, ? extends Task<? super VillagerEntityMCA>>> getGuardCorePackage(VillagerEntityMCA villager) {

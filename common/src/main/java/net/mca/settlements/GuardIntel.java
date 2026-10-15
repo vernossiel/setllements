@@ -51,6 +51,14 @@ public final class GuardIntel {
                 .stream().min(Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
         if (seen == null) return;
         reportThreat(world, seen);
+        // a monster coming close: a miner or a farmer is no soldier - he runs, shouting for the guards
+        boolean coming = seen instanceof net.minecraft.entity.mob.MobEntity m0 && m0.getTarget() == v;
+        if ((coming || v.squaredDistanceTo(seen) < 10 * 10) && world.getTime() >= v.settlementsFleeUntil - 100) {
+            Life.fleeFrom(v, seen, world);
+            Speech.sayNow(v, "settlements.say.report.mob");
+            alertNearestGuard(world, v, seen);
+            return;
+        }
         // a word only when it is really going for someone; otherwise the guard is told quietly
         if (seen instanceof net.minecraft.entity.mob.MobEntity m && m.getTarget() != null) Speech.say(v, "settlements.say.report.mob");
         alertNearestGuard(world, v, seen);

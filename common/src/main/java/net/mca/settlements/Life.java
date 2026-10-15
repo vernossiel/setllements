@@ -182,6 +182,19 @@ public final class Life {
         v.settlementsFleeUntil = world.getTime() + 160;
     }
 
+    /** Runs from a monster: towards the nearest guard if there is one, else away from it. */
+    static void fleeFrom(VillagerEntityMCA v, net.minecraft.entity.Entity from, ServerWorld world) {
+        Rest.end(v);
+        net.mca.settlements.Dig.stop(v);
+        VillagerEntityMCA guard = world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(40), g -> g.isGuard() && g.isAlive() && !g.isSleeping())
+                .stream().min(java.util.Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
+        Vec3d to = null;
+        if (guard != null && guard.squaredDistanceTo(from) > v.squaredDistanceTo(from) * 0.5) to = guard.getPos();
+        if (to == null) to = NoPenaltyTargeting.findFrom(v, 14, 5, from.getPos());
+        if (to != null) v.getNavigation().startMovingTo(to.x, to.y, to.z, 0.75);
+        v.settlementsFleeUntil = world.getTime() + 160;
+    }
+
     /** Calls the guards on a player, at most every twenty seconds per player. */
     static void callGuards(ServerWorld world, Village village, VillagerEntityMCA caller, PlayerEntity p, boolean attack) {
         String k = key(village, p);
