@@ -32,6 +32,7 @@ public final class Smithing {
 
     public static boolean work(VillagerEntityMCA v, Village village) {
         Doing.set(v, "settlements.doing.smith");
+        if (v.getWorld() instanceof ServerWorld fw && Forge.work(v, village, fw)) return true; // tools for those waiting first
         BlockPos fp = village.smithyFurnace;
         if (fp == null || !(v.getWorld() instanceof ServerWorld world) || !world.isChunkLoaded(fp.getX() >> 4, fp.getZ() >> 4)) return false;
         BlockPos anvil = village.smithyAnvil != null ? village.smithyAnvil : fp;

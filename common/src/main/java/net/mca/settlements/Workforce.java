@@ -217,6 +217,7 @@ public final class Workforce {
         VillagerProfession prof = v.getProfession();
         if (Seat.seated(v)) Rest.end(v); // up, back to work
         if (isCustomWorker(prof)) {
+            if (Forge.waiting(v, village)) return; // at the smithy, waiting for his new tool
             boolean worked = false;
             // a worker with nothing to do for a while lends the builders a hand (and looks for his own work now and then)
             boolean helping = prof != VillagerProfession.CARTOGRAPHER && village != null && v.settlementsIdleWork >= 15 && v.settlementsIdleWork % 60 != 0

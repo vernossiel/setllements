@@ -57,13 +57,13 @@ public final class Gear {
     }
 
     /** Wooden tools need planks too; one log counts as four planks, so logs are taken first. */
-    private static boolean canPay(Village village, int tier, int units) {
+    static boolean canPay(Village village, int tier, int units) {
         if (count(village, LOG) < 1 && count(village, PLANKS) < 2) return false; // sticks
         if (tier == 0) return count(village, LOG) * 4 + count(village, PLANKS) >= units + 2;
         return count(village, material(tier)) >= units;
     }
 
-    private static void pay(Village village, int tier, int units) {
+    static void pay(Village village, int tier, int units) {
         // sticks: 2 planks, made from one log when possible
         if (count(village, PLANKS) >= 2) take(village, PLANKS, 2);
         else take(village, LOG, 1);
@@ -87,7 +87,7 @@ public final class Gear {
         return 0;
     }
 
-    private static Item tool(Chore chore, int tier) {
+    static Item tool(Chore chore, int tier) {
         String[] m = {"wooden", "stone", "iron", "diamond"};
         String kind = switch (chore) {
             case CHOP -> "axe";
@@ -101,7 +101,7 @@ public final class Gear {
         return Registries.ITEM.get(new Identifier(m[tier] + "_" + kind));
     }
 
-    private static int toolUnits(Chore chore) {
+    static int toolUnits(Chore chore) {
         return chore == Chore.HARVEST || chore == Chore.HUNT ? 2 : 3;
     }
 
@@ -123,6 +123,10 @@ public final class Gear {
         if (village != null) {
             for (int tier = chore == Chore.FISH ? 0 : village.smithyBuilt ? 3 : 1; tier > have && tier >= 0; tier--) {
                 if (!canPay(village, tier, units)) continue;
+                if (tier >= 1 && chore != Chore.FISH && Forge.goesToSmith(v, village)) { // the smith makes it
+                    Forge.order(v, village, chore, tier);
+                    return;
+                }
                 pay(village, tier, units);
                 ItemStack crafted = new ItemStack(tool(chore, tier));
                 if (slot >= 0) inv.setStack(slot, crafted);
@@ -132,7 +136,24 @@ public final class Gear {
             }
         }
         // the very first tool of a village with nothing in stock: improvised from scrap wood
-        if (slot < 0) inv.addStack(new ItemStack(tool(chore, 0)));
+        if (slot < 0) {
+            inv.addStack(new ItemStack(tool(chore, 0)));
+            v.swingHand(v.getDominantHand());
+            Speech.say(v, "settlements.say.tool.improvise");
+        }
+    }
+
+    /** Puts a new tool in his bag in place of the old one of the same kind. */
+    static void give(VillagerEntityMCA v, Chore chore, ItemStack tool) {
+        Class<?> type = chore.getToolType();
+        var inv = v.getInventory();
+        for (int i = 0; i < inv.size(); i++) {
+            if (type != null && type.isInstance(inv.getStack(i).getItem())) {
+                inv.setStack(i, tool);
+                return;
+            }
+        }
+        inv.addStack(tool);
     }
 
     /** Craft a full armor set from leather, iron or diamond if the treasury holds enough. */

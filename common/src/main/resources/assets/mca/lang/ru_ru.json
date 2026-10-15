@@ -1862,5 +1862,12 @@
   "settlements.why.on": "Теперь видно, что делает житель, на которого смотришь. /settle why — выключить.",
   "settlements.why.off": "Подсказки выключены.",
   "settlements.board.order": "%s: %s",
-  "settlements.board.order.taken": "%s %s: %s"
+  "settlements.board.order.taken": "%s %s: %s",
+  "settlements.say.forge.ask": "Пойду к кузнецу, нужен %s.",
+  "settlements.say.forge.nothing": "%s, не из чего ковать — ни железа, ни камня. Смастери себе сам пока.",
+  "settlements.say.forge.done": "%s, держи — %s, только с наковальни!",
+  "settlements.say.forge.thanks": "Спасибо, %s! Отличная работа.",
+  "settlements.say.tool.improvise": "Ладно, сам что-нибудь смастерю.",
+  "settlements.doing.forge.wait": "ждёт у кузницы: заказал %s",
+  "settlements.doing.forge.make": "куёт %s для %s"
 }

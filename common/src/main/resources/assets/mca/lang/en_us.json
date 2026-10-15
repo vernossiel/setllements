@@ -1974,5 +1974,12 @@
   "settlements.why.on": "You now see what the villager you look at is doing. /settle why to turn it off.",
   "settlements.why.off": "Hints off.",
   "settlements.board.order": "%s: %s",
-  "settlements.board.order.taken": "%s %s: %s"
+  "settlements.board.order.taken": "%s %s: %s",
+  "settlements.say.forge.ask": "Off to the smith, I need a %s.",
+  "settlements.say.forge.nothing": "%s, nothing to forge it from - no iron, no stone. Make do yourself for now.",
+  "settlements.say.forge.done": "%s, here - a %s, fresh off the anvil!",
+  "settlements.say.forge.thanks": "Thanks, %s! Fine work.",
+  "settlements.say.tool.improvise": "Fine, I'll knock something together myself.",
+  "settlements.doing.forge.wait": "waiting at the smithy: ordered a %s",
+  "settlements.doing.forge.make": "forging a %s for %s"
 }
