@@ -106,12 +106,14 @@ public final class Housing {
                 // a home (or one made from the stores' wool and planks), one bed each half minute
                 final Built hb = hall;
                 if (hb != null && h.stream().allMatch(m -> inHall(world, hb, m))) continue; // bedded down in the hall already
-                if (hb != null && !bedMoved) {
+                if (hb != null && !bedMoved && hallBeds(world, hb) < MAX_HALL_BEDS && !FAILED.contains(v.getId())) {
                     VillagerEntityMCA m = h.stream().filter(x -> !inHall(world, hb, x)).findFirst().orElse(null);
                     BlockPos nb = m == null ? null : hallBed(world, v, hb, heart);
                     if (nb != null) {
                         move(world, m, nb);
                         bedMoved = true;
+                        // the bed did not become his (the game would not give it him): no more beds put down for nothing
+                        if (!inHall(world, hb, m)) FAILED.add(v.getId());
                         if (h.stream().allMatch(x -> inHall(world, hb, x))) continue;
                     }
                 }
@@ -239,6 +241,21 @@ public final class Housing {
     }
 
     /** His bed now in the household's house. */
+    /** The most beds the hall takes: it is a hall, not a dormitory. */
+    private static final int MAX_HALL_BEDS = 8;
+    /** Villages where a bed put down in the hall did not become anybody's (till the server restarts). */
+    private static final Set<Integer> FAILED = new HashSet<>();
+
+    private static int hallBeds(ServerWorld world, Built hall) {
+        int n = 0;
+        BlockPos o = hall.origin();
+        for (BlockPos q : BlockPos.iterate(o.add(-2, -1, -2), o.add(Math.max(hall.fw(), hall.fd()) + 2, 12, Math.max(hall.fw(), hall.fd()) + 2))) {
+            var st = world.getBlockState(q);
+            if (st.getBlock() instanceof net.minecraft.block.BedBlock && st.get(net.minecraft.block.BedBlock.PART) == net.minecraft.block.enums.BedPart.HEAD && hall.contains(q)) n++;
+        }
+        return n;
+    }
+
     /** His bed is in the town hall. */
     private static boolean inHall(ServerWorld world, Built hall, VillagerEntityMCA m) {
         GlobalPos g = m.getResidency().getHome().orElse(null);
