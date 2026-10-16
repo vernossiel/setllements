@@ -51,8 +51,11 @@ public final class Housing {
         // the houses: buildings with beds in them
         Map<Building, List<BlockPos>> houses = new HashMap<>();
         PointOfInterestStorage poi = world.getPointOfInterestStorage();
+        BlockPos heart = v.hallPos != null ? v.hallPos : new BlockPos(v.getCenter());
         for (Building b : v.getBuildings().values()) {
             if (b.getBuildingType().grouped()) continue;
+            // a house the village counts but that stands off in the woods is no home: nobody walks there at nightfall
+            if (b.getCenter().getSquaredDistance(heart) > 48 * 48) continue;
             int r = Math.max(4, b.getSize());
             List<BlockPos> beds = poi.getInSquare(t -> t.matchesKey(PointOfInterestTypes.HOME), b.getCenter(), r, PointOfInterestStorage.OccupationStatus.ANY)
                     .map(p -> p.getPos()).filter(b::containsPos).sorted(Comparator.comparingLong(BlockPos::asLong)).toList();
@@ -85,6 +88,14 @@ public final class Housing {
             }
             if (best == null) {
                 homeless++;
+                // a bed far off is no home either: better the town hall's floor than a walk through the woods at night
+                for (VillagerEntityMCA m : h) {
+                    GlobalPos home = m.getResidency().getHome().orElse(null);
+                    if (home != null && home.getPos().getSquaredDistance(heart) > 48 * 48) {
+                        m.releaseTicketFor(MemoryModuleType.HOME);
+                        m.getBrain().forget(MemoryModuleType.HOME);
+                    }
+                }
                 continue;
             }
             taken.add(best);

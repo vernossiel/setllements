@@ -22,6 +22,14 @@ public final class Bed {
     private Bed() {
     }
 
+    /** Where the homeless spend the night: the town hall, or before there is one, by the fire at the heart of the village. */
+    private static BlockPos refuge(net.mca.server.world.data.Village village, ServerWorld world) {
+        if (village == null) return null;
+        if (village.hallPos != null) return village.hallPos;
+        BlockPos c = new BlockPos(village.getCenter());
+        return new BlockPos(c.getX(), world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, c.getX(), c.getZ()), c.getZ());
+    }
+
     /** Nobody is watching him: no player close by, and none who has him in sight. */
     public static boolean unseen(VillagerEntityMCA v, ServerWorld world) {
         for (net.minecraft.server.network.ServerPlayerEntity p : world.getPlayers()) {
@@ -44,7 +52,7 @@ public final class Bed {
             if (t >= 12800 || t < 500) v.sleep(bed);
             return true;
         }
-        BlockPos hall = village != null ? village.hallPos : null;
+        BlockPos hall = refuge(village, world);
         if (hall == null) return false;
         v.requestTeleport(hall.getX() + 0.5, hall.getY(), hall.getZ() + 0.5);
         return true;
@@ -87,7 +95,7 @@ public final class Bed {
             }
         }
         // no bed to be had or reached: the night under the town hall's roof
-        BlockPos hall = village != null ? village.hallPos : null;
+        BlockPos hall = refuge(village, world);
         if (hall == null) return false;
         if (v.squaredDistanceTo(Vec3d.ofCenter(hall)) > 3 * 3) Move.to(v, hall.getX() + 0.5, hall.getY(), hall.getZ() + 0.5, 0.55);
         else v.getNavigation().stop();

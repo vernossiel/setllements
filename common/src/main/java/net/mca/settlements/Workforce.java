@@ -88,9 +88,12 @@ public final class Workforce {
             if (Life.dread(v, rv, rw)) return; // a monster close by: away from it, shouting for the guards
             if (Rogue.tick(v, rv, rw)) return; // a rogue about his business, or in the stocks for it
             if (rv != null && v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get() && Watch.tick(v, rv, rw)) return; // the night watch
-            // no watchman yet (a small village): the guard on the evening shift puts up the lamps at dusk
+            // no watchman yet (a small village): the guard on the evening shift puts up the lamps at dusk, and where there
+            // is no guard either, the elder does it himself from the end of the working day
             long dusk = rw.getTimeOfDay() % 24000L;
-            if (rv != null && v.isGuard() && dusk >= 11500 && dusk < 13500 && !Staffing.has(rw, rv, net.mca.ProfessionsMCA.WATCHMAN.get())
+            boolean lamplighter = rv != null && v.isGuard() && dusk >= 11500 && dusk < 13500
+                    || rv != null && v.isElder() && dusk >= 10500 && dusk < 13300 && !Staffing.has(rw, rv, net.mca.ProfessionsMCA.GUARD.get());
+            if (rv != null && lamplighter && !Staffing.has(rw, rv, net.mca.ProfessionsMCA.WATCHMAN.get())
                     && v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).isEmpty() && Watch.lamps(v, rv, rw)) return;
         }
         // deep in the night nothing gets a villager out of bed - not hunger (it waits for breakfast), not a chat, not the
@@ -273,6 +276,7 @@ public final class Workforce {
                 craftArrows(village);
                 // bread from the wheat, by hand at home - unless there is a miller, who does it at the mill and better
                 if (!(v.getWorld() instanceof net.minecraft.server.world.ServerWorld bw && Staffing.has(bw, village, net.mca.ProfessionsMCA.MILLER.get()))) bake(village);
+                torches(village);
                 if (!village.smithyBuilt) smelt(village);
                 if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) Reputation.restock(sw, village);
             }
@@ -492,6 +496,18 @@ public final class Workforce {
      * Bread without a mill: the grain ground at home on a hand quern and baked on the hearth - slow, wasteful work. Four
      * wheat to a loaf, and only a few loaves a day for the whole village; the miller does far better (see Crafts).
      */
+    /** Torches for the lamps out of coal (or charcoal) and sticks, while the village has fewer than it needs. */
+    private static void torches(net.mca.server.world.data.Village village) {
+        if (Crafts.count(village, s -> s.isOf(net.minecraft.item.Items.TORCH)) >= 24) return;
+        if (Crafts.count(village, s -> s.isOf(net.minecraft.item.Items.COAL) || s.isOf(net.minecraft.item.Items.CHARCOAL)) < 1) return;
+        boolean sticks = Crafts.count(village, s -> s.isOf(net.minecraft.item.Items.STICK)) >= 1;
+        if (!sticks && Crafts.count(village, s -> s.isIn(net.minecraft.registry.tag.ItemTags.PLANKS)) < 1) return;
+        Crafts.take(village, s -> s.isOf(net.minecraft.item.Items.COAL) || s.isOf(net.minecraft.item.Items.CHARCOAL), 1);
+        if (sticks) Crafts.take(village, s -> s.isOf(net.minecraft.item.Items.STICK), 1);
+        else Crafts.take(village, s -> s.isIn(net.minecraft.registry.tag.ItemTags.PLANKS), 1);
+        addToTreasury(village, new ItemStack(net.minecraft.item.Items.TORCH, 4));
+    }
+
     private static void bake(net.mca.server.world.data.Village village) {
         long day = village.getWorld() == null ? 0 : village.getWorld().getTimeOfDay() / 24000L;
         long[] b = BAKED.computeIfAbsent(village.getId(), k -> new long[]{day, 0});
