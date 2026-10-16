@@ -246,7 +246,7 @@ public final class SettlementsCommand {
         for (var v : w.getEntitiesByClass(net.mca.entity.VillagerEntityMCA.class, box, x -> x.isAlive())) {
             String prof = v.isBaby() ? "child" : v.isGuard() ? "guard" : v.isElder() ? "elder" : Registries.VILLAGER_PROFESSION.getId(v.getProfession()).getPath();
             Village vil = Village.findNearest(v).or(() -> v.getResidency().getHomeVillage()).orElse(null);
-            say(c, v.getName().getString() + " [" + prof + "] @" + v.getBlockPos().toShortString() + " e=" + v.settlementsEnergy + " h=" + v.settlementsHunger + " $=" + v.settlementsPurse
+            say(c, v.getName().getString() + " [" + prof + "] @" + v.getBlockPos().toShortString() + " e=" + v.settlementsEnergy + " h=" + v.settlementsHunger + " $=" + v.settlementsPurse + " home=" + v.getResidency().getHome().map(h -> h.getPos().toShortString()).orElse("-")
                     + " idle=" + v.settlementsIdleWork + " job=" + v.getVillagerBrain().getCurrentJob() + " vil=" + (vil == null ? "-" : vil.getId())
                     + " load=" + Haul.load(v) + (v.settlementsHauling ? "(hauling)" : "") + " store=" + (vil == null || Haul.store(v, vil) == null ? "-" : Haul.store(v, vil).toShortString())
                     + " hand=" + Registries.ITEM.getId(v.getMainHandStack().getItem()).getPath() + " goal=" + (Move.goal(v) == null ? "-" : Move.goal(v).toShortString())

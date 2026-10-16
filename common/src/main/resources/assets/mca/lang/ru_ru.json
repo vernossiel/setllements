@@ -4027,5 +4027,6 @@
   "settlements.say.flee.monster": "Чудище! Стража! Помогите!",
   "settlements.say.flee.monster.f": "Чудище! Стража! Помогите!",
   "settlements.elder.poor": "(в долгах)",
-  "settlements.elder.welloff": "(живёт в достатке)"
+  "settlements.elder.welloff": "(живёт в достатке)",
+  "settlements.doing.bed": "идёт спать в свою кровать"
 }

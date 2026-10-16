@@ -293,6 +293,8 @@ public final class Workforce {
             Doing.set(v, v.settlementsHunger >= HUNGER_STOP_AT ? "settlements.doing.hungry" : Persona.free(v, time) ? "settlements.doing.free" : "settlements.doing.home");
             // supper and chat: eat a little earlier in the evening
             if (!Persona.free(v, time)) Rest.end(v); // bedtime: up and off home
+            if (!Persona.free(v, time) && !(v.isGuard() && GuardAI.onDuty(v, time)) && !Persona.working(v, time)
+                    && v.getWorld() instanceof net.minecraft.server.world.ServerWorld bw && Bed.tick(v, village, bw)) return; // to his own bed
             if (Persona.free(v, time) && !(v.isGuard() && GuardAI.onDuty(v, time))) {
                 if (v.settlementsHunger >= 250 && hasMeal(v, village) && startEating(v, village, 250)) return;
                 if (village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld mw3 && Mood.tick(v, village, mw3, true)) return; // the village's mood

@@ -191,7 +191,7 @@ public final class Staffing {
 
         // guards when the village is big enough to need them (more with barracks, more when it is attacked often)
         int guards = (int) adults.stream().filter(VillagerEntityMCA::isGuard).count();
-        int guardTarget = p >= 5 ? Math.max(1, p / 7) : 0;
+        int guardTarget = p >= 6 ? Math.max(1, p / 7) : 0; // a hamlet of five needs a mason more than a guard
         if (Buildings.has(v, "barracks")) guardTarget = Math.max(2, p / 4);
         if (p >= 4 && Prosperity.danger(v) >= 4) guardTarget++;
         // more guards than a village this size needs (it has lost people): the extra ones go back to work
