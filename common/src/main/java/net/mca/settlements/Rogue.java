@@ -58,8 +58,6 @@ public final class Rogue {
 
     // ---------- in the stocks himself ----------
 
-    private static final Map<UUID, Integer> PICKING = new HashMap<>(); // seconds a player has been working the board loose
-
     private static boolean stocks(VillagerEntityMCA v, Village village, ServerWorld world, long until) {
         if (world.getTime() >= until) {
             STOCKED.remove(v.getUuid());
@@ -72,18 +70,16 @@ public final class Rogue {
         if (!v.hasVehicle()) Seat.kneel(v, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 180f); // on his knees, head and hands through the board
         v.getNavigation().stop();
         Doing.set(v, "settlements.doing.rogue.stocks");
-        // a player crouched by the board, working at the pin (a few seconds): he is let out
-        net.minecraft.server.network.ServerPlayerEntity helper = (net.minecraft.server.network.ServerPlayerEntity) world.getClosestPlayer(v, 2.5);
-        if (helper != null && helper.isSneaking() && !helper.isSpectator()) {
-            int t = PICKING.merge(v.getUuid(), 1, Integer::sum);
-            if (t == 1) Speech.sayNow(v, "settlements.say.rogue.freeing");
-            if (t >= 3) {
-                PICKING.remove(v.getUuid());
-                freedBy(v, village, world, helper);
-                return false;
-            }
-        } else PICKING.remove(v.getUuid());
         if (world.random.nextInt(60) == 0) Speech.sayAny(v, "settlements.say.rogue.stocks", 3);
+        return true;
+    }
+
+    /** Shift + right click on a rogue in the stocks: the player pulls the pin and lets him out. True if he was in them. */
+    public static boolean freeByHand(VillagerEntityMCA v, net.minecraft.server.network.ServerPlayerEntity p) {
+        if (!STOCKED.containsKey(v.getUuid()) || !(v.getWorld() instanceof ServerWorld world)) return false;
+        Village village = v.getResidency().getHomeVillage().orElse(null);
+        if (village == null) return false;
+        freedBy(v, village, world, p);
         return true;
     }
 
@@ -161,6 +157,13 @@ public final class Rogue {
             Life.news(village, "rogue.caught", v.getName().getString());
         } else {
             Life.news(village, "rogue.missing");
+            // come morning, a stranger who spent the night in the village is the first one they look at
+            net.minecraft.entity.player.PlayerEntity stranger = world.getClosestPlayer(store.getX(), store.getY(), store.getZ(), 48, false);
+            if (stranger != null && !owes(v, stranger) && world.random.nextInt(3) == 0) {
+                long tod = world.getTimeOfDay() % 24000L;
+                long morning = now + (24000L - tod + 1500L) % 24000L;
+                Justice.askSearch(world, village, stranger, java.util.Map.of(took.getItem(), n), Reputation.value(took), morning, false);
+            }
         }
         return true;
     }

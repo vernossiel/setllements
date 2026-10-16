@@ -168,7 +168,7 @@ public final class Workforce {
             if (v.age % 1200 == 0) Gear.equipGuardKit(v, village);
         }
 
-        if (v.age % 60 == 0) v.settlementsHunger = Math.min(MAX, v.settlementsHunger + 1); // slow idle hunger
+        if (v.age % 60 == 0 && v.settlementsHunger < MAX) hunger(v, 1); // slow idle hunger
 
         // hungry villagers eat in the tavern when there is one with food on the shelf
         if (village != null && village.tavern != null && v.settlementsHunger >= 250 && (v.settlementsHunger >= HUNGER_STOP_AT || Mind.before(v, village, time, Mind.Drive.EAT))
@@ -250,7 +250,7 @@ public final class Workforce {
                 Farming.tend(v, village, fw); // hoeing, sowing, feeding the crop between the harvests
             Trade.practise(v);
             v.settlementsEnergy -= WORK_DRAIN;
-            v.settlementsHunger += HUNGER_RISE;
+            hunger(v, HUNGER_RISE);
             v.settlementsWorkSeconds++;
             if (v.settlementsHunger >= HUNGER_STOP_AT || !Mind.onDuty(v, village, time)) {
                 v.getVillagerBrain().abandonJob();
@@ -374,7 +374,7 @@ public final class Workforce {
                 // digging and felling wear a man out faster than laying blocks
                 int drain = prof == VillagerProfession.MASON ? 3 : 2;
                 v.settlementsEnergy -= drain + REST_GAIN; // cancels the rest gain above
-                v.settlementsHunger += HUNGER_RISE;
+                hunger(v, HUNGER_RISE);
                 v.settlementsWorkSeconds++;
             }
             return;
@@ -383,13 +383,13 @@ public final class Workforce {
         if ((prof == VillagerProfession.NONE || prof == VillagerProfession.NITWIT) && village != null && !v.isElder() && Forage.hungry(village)
                 && v.getWorld() instanceof net.minecraft.server.world.ServerWorld gw && Forage.work(v, village, gw)) {
             v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
-            v.settlementsHunger += HUNGER_RISE;
+            hunger(v, HUNGER_RISE);
             return;
         }
         if ((prof == VillagerProfession.NONE || prof == VillagerProfession.NITWIT) && village != null && !v.isElder()
                 && v.getWorld() instanceof net.minecraft.server.world.ServerWorld lw && Life.helpBuilders(v, village, lw)) {
             v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
-            v.settlementsHunger += HUNGER_RISE;
+            hunger(v, HUNGER_RISE);
             return;
         }
         // nothing for him to do: he goes along with a master at work and learns the trade by watching and fetching
@@ -400,7 +400,7 @@ public final class Workforce {
                 && Farming.fields(v, village, fw2)) {
             if (v.age % 400 == 0) Gear.equipTool(v, village, Chore.HARVEST);
             v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
-            v.settlementsHunger += HUNGER_RISE;
+            hunger(v, HUNGER_RISE);
             v.settlementsWorkSeconds++;
             return;
         }
@@ -409,7 +409,7 @@ public final class Workforce {
                 && v.getWorld().getTime() >= v.settlementsNoWorkUntil && (Life.helpBuilders(v, village, hw2)
                 || !Staffing.has(hw2, village, VillagerProfession.SHEPHERD) && Herding.work(v, village, hw2) || Planner.idle(v, village, hw2))) {
             v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
-            v.settlementsHunger += HUNGER_RISE;
+            hunger(v, HUNGER_RISE);
             return;
         }
         if (prof == VillagerProfession.FARMER) Doing.set(v, "settlements.doing.farm.waiting"); // the fields tended, the crop growing
@@ -462,7 +462,7 @@ public final class Workforce {
             Trade.practise(v);
         }
         v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
-        v.settlementsHunger += HUNGER_RISE;
+        hunger(v, HUNGER_RISE);
         if (world.random.nextInt(400) == 0) Speech.say(v, "settlements.say.apprentice.learn", master.getName());
         return true;
     }
@@ -770,5 +770,32 @@ public final class Workforce {
             village.storageBuffer.add(part);
         }
         village.markDirty();
+    }
+
+    /**
+     * Hunger rises with the body and the trade: a child eats half what a grown man does, the old less, while the ones
+     * who fell trees, cut stone, swing a hammer or walk behind a plough eat the most; a clerk at his books, least.
+     */
+    static float appetite(VillagerEntityMCA v) {
+        if (v.isBaby()) return 0.5f;
+        if (v.isElder()) return 0.75f;
+        if (v.isGuard()) return 1.15f;
+        var p = v.getProfession();
+        if (p == VillagerProfession.FLETCHER || p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.TOOLSMITH
+                || p == VillagerProfession.MASON || p == VillagerProfession.ARMORER || p == VillagerProfession.WEAPONSMITH
+                || p == VillagerProfession.FARMER || p == VillagerProfession.BUTCHER || p == VillagerProfession.FISHERMAN
+                || p == net.mca.ProfessionsMCA.COLLIER.get() || p == net.mca.ProfessionsMCA.MILLER.get() || p == net.mca.ProfessionsMCA.GLAZIER.get())
+            return 1.35f;
+        if (p == VillagerProfession.CLERIC || p == VillagerProfession.LIBRARIAN || p == net.mca.ProfessionsMCA.PRIEST.get()
+                || p == net.mca.ProfessionsMCA.MERCHANT.get() || p == net.mca.ProfessionsMCA.WATCHMAN.get()) return 0.85f;
+        return 1.0f;
+    }
+
+    /** {@code base} points of hunger, scaled by his appetite (the fraction left to chance, so it evens out). */
+    static void hunger(VillagerEntityMCA v, int base) {
+        float a = base * appetite(v);
+        int whole = (int) a;
+        if (v.getRandom().nextFloat() < a - whole) whole++;
+        v.settlementsHunger += whole;
     }
 }

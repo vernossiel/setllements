@@ -557,6 +557,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public final ActionResult interactAt(PlayerEntity player, Vec3d pos, @NotNull Hand hand) {
         // This allows hitbox interactions to be ignored if the player is carrying a child villager.
         if (getVehicle() != null && getVehicle().equals(player)) return ActionResult.PASS;
+        // a rogue in the stocks: shift + right click pulls the pin
+        if (player.isSneaking() && player instanceof ServerPlayerEntity sp && net.mca.settlements.Rogue.freeByHand(this, sp)) return ActionResult.SUCCESS;
 
         ItemStack stack = player.getStackInHand(hand);
         boolean isOnBlacklist = Config.getInstance().villagerInteractionItemBlacklist.contains(Registries.ITEM.getId(stack.getItem()).toString());

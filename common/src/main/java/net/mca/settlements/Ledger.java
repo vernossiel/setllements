@@ -24,7 +24,7 @@ import java.util.List;
 public final class Ledger {
     private static final long DAY = 24000L;
     // the workers, as last seen: indices into Village.ledgerRoles
-    private static final int POP = 0, FARM = 1, WOOD = 2, STONE = 3, BUILD = 4, HERD = 5, HUNT = 6, FISH = 7, MILL = 8, N = 9;
+    private static final int POP = 0, FARM = 1, WOOD = 2, STONE = 3, BUILD = 4, HERD = 5, HUNT = 6, FISH = 7, MILL = 8, MEALS = 9, N = 10;
 
     private Ledger() {
     }
@@ -61,7 +61,9 @@ public final class Ledger {
         List<VillagerEntityMCA> folk = v.getResidents(world);
         int[] r = new int[N];
         r[POP] = folk.size();
+        float meals = 0;
         for (VillagerEntityMCA f : folk) {
+            if (f.isAlive()) meals += 3 * Workforce.appetite(f); // three a head, more for the ones at heavy work, less for the children
             if (!f.isAlive() || f.isBaby()) continue;
             VillagerProfession p = f.getProfession();
             if (p == VillagerProfession.FARMER) r[FARM]++;
@@ -73,6 +75,7 @@ public final class Ledger {
             else if (p == VillagerProfession.FISHERMAN) r[FISH]++;
             else if (p == net.mca.ProfessionsMCA.MILLER.get()) r[MILL]++;
         }
+        r[MEALS] = Math.round(meals);
         v.ledgerRoles = r;
     }
 
@@ -85,7 +88,7 @@ public final class Ledger {
         if (bread > 0) Workforce.addToTreasury(v, new ItemStack(Items.BREAD, bread));
         if (r[WOOD] > 0 && Crafts.count(v, s -> s.isIn(net.minecraft.registry.tag.ItemTags.LOGS)) < 256) Workforce.addToTreasury(v, new ItemStack(Items.OAK_LOG, r[WOOD] * 24));
         if (r[STONE] > 0 && Crafts.count(v, s -> s.isOf(Items.COBBLESTONE)) < 1200) Workforce.addToTreasury(v, new ItemStack(Items.COBBLESTONE, r[STONE] * 48));
-        int food = Forage.food(v), meals = pop * 3;
+        int food = Forage.food(v), meals = r[MEALS] > 0 ? r[MEALS] + (pop - r[POP]) * 3 : pop * 3;
         Crafts.take(v, ItemStack::isFood, Math.min(food, meals));
         if (food < meals / 2 && pop > 4 && Math.random() < 0.3) v.owedLeavers++; // hunger drives somebody away
         if (r[BUILD] > 0) v.owedSteps = Math.min(v.owedSteps + r[BUILD] * 90, 3000);

@@ -4069,5 +4069,7 @@
   "settlements.say.stocks.kind.1.f": "Never mind, %s, we all make mistakes.",
   "settlements.say.stocks.kind.2": "They'll let you go soon, hold on.",
   "settlements.say.stocks.kind.2.f": "They'll let you go soon, hold on.",
-  "item.mca.emerald_nugget": "Emerald Nugget"
+  "item.mca.emerald_nugget": "Emerald Nugget",
+  "settlements.justice.search.ask.weak": "%s, things went missing from the stores last night. There aren't many strangers about... No offence, but let's see what you're carrying.",
+  "settlements.justice.search.refused.strong": "You were seen at that chest, %s, and you won't turn out your pockets? Then we'll talk differently."
 }

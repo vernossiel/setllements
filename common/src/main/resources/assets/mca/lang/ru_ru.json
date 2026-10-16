@@ -4066,5 +4066,7 @@
   "settlements.say.stocks.kind.1.f": "Ничего, %s, все ошибаются.",
   "settlements.say.stocks.kind.2": "Скоро отпустят, потерпи.",
   "settlements.say.stocks.kind.2.f": "Скоро отпустят, потерпи.",
-  "item.mca.emerald_nugget": "Изумрудный самородок"
+  "item.mca.emerald_nugget": "Изумрудный самородок",
+  "settlements.justice.search.ask.weak": "%s, у нас ночью пропало добро со склада. Чужих в деревне немного... Не обессудь, покажи, что при тебе.",
+  "settlements.justice.search.refused.strong": "Тебя видели у сундука, %s, а карманы показать не хочешь? Тогда разговор другой."
 }

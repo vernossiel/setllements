@@ -162,7 +162,14 @@ public final class Justice {
             if (s.seen() && p != null && s.crime() == Crime.THEFT && p.getWorld() == world) {
                 // he was seen about the place: the watch will want a look in his pockets
                 Speech.sayNow(finder, "settlements.justice.found." + what + ".seen", p.getName());
-                SEARCHES.put(p.getUuid(), new Search(village.getId(), s.items(), s.value(), now + 20 * 180));
+                askSearch(world, village, p, s.items(), s.value(), now, true);
+                continue;
+            }
+            if (!s.seen() && p != null && s.crime() == Crime.THEFT && p.getWorld() == world
+                    && p.squaredDistanceTo(s.where().getX(), s.where().getY(), s.where().getZ()) < 64 * 64 && world.random.nextBoolean()) {
+                // nobody saw a thing, but a stranger is about: the watch will want a look all the same
+                Speech.sayNow(finder, "settlements.justice.found." + what);
+                askSearch(world, village, p, s.items(), s.value(), now, false);
                 continue;
             }
             if (s.seen() && p != null) {
@@ -785,7 +792,18 @@ public final class Justice {
 
     // ---------- a look in his pockets ----------
 
-    private record Search(int villageId, Map<Item, Integer> items, double value, long until) {
+    /** {@code strong}: he was seen there, and a refusal is as good as a confession; otherwise only suspected. */
+    private record Search(int villageId, Map<Item, Integer> items, double value, long from, long until, boolean strong) {
+    }
+
+    /**
+     * Something has gone missing and the player is the one the village looks at: the guard will come and ask to see
+     * his pockets, from {@code from} (world time) on. A word from a villager who saw him is enough; so is being the
+     * only stranger about when the stores came up short.
+     */
+    public static void askSearch(ServerWorld world, Village village, PlayerEntity p, Map<Item, Integer> items, double value, long from, boolean strong) {
+        if (village == null || p.isSpectator() || p.isCreative() || CASES.containsKey(p.getUuid()) || SEARCHES.containsKey(p.getUuid())) return;
+        SEARCHES.put(p.getUuid(), new Search(village.getId(), items == null ? Map.of() : Map.copyOf(items), value, from, from + 20 * 240, strong));
     }
 
     private static final Map<UUID, Search> SEARCHES = new HashMap<>();
@@ -802,7 +820,7 @@ public final class Justice {
                 ASKED.remove(e.getKey());
                 continue;
             }
-            if (p.getWorld() != world || ASKED.contains(p.getUuid())) continue;
+            if (p.getWorld() != world || ASKED.contains(p.getUuid()) || now < e.getValue().from() || p.isSleeping()) continue;
             VillagerEntityMCA guard = nearestGuard(world, p, 64);
             if (guard == null) continue;
             if (guard.squaredDistanceTo(p) > 16) {
@@ -813,7 +831,7 @@ public final class Justice {
             Gaze.at(guard, p, 30f, 30f);
             List<Text> labels = List.of(Text.translatable("settlements.justice.button.search_allow"), Text.translatable("settlements.justice.button.search_refuse"));
             net.mca.cobalt.network.NetworkHandler.sendToPlayer(new net.mca.network.s2c.JusticeScreenRequest(guard.getId(), guard.getName(),
-                    List.of(Text.translatable("settlements.justice.search.ask", p.getName())), new String[]{"search allow", "search refuse"}, labels, 30), p);
+                    List.of(Text.translatable(e.getValue().strong() ? "settlements.justice.search.ask" : "settlements.justice.search.ask.weak", p.getName())), new String[]{"search allow", "search refuse"}, labels, 30), p);
         }
     }
 
@@ -826,6 +844,12 @@ public final class Justice {
         Village village = VillageManager.get(world).getOrEmpty(s.villageId()).orElse(null);
         VillagerEntityMCA guard = nearestGuard(world, p, 32);
         if (village == null) return 0;
+        if (!allow && s.strong()) {
+            // seen at the place and won't turn out his pockets: that says enough
+            talk(world, village, guard, p, "settlements.justice.search.refused.strong", world.getTime());
+            report(world, village, p, Crime.THEFT, s.value(), s.items(), true);
+            return 1;
+        }
         if (!allow) {
             talk(world, village, guard, p, "settlements.justice.search.refused", world.getTime());
             village.pushHearts(p, -3);
@@ -837,6 +861,8 @@ public final class Justice {
         Map<Item, Integer> found = new HashMap<>();
         for (Map.Entry<Item, Integer> m : s.items().entrySet()) {
             int have = p.getInventory().count(m.getKey());
+            // on a mere suspicion, a crust or a few planks of his own prove nothing: only the very goods, and enough of them
+            if (!s.strong() && (have < m.getValue() || Reputation.value(new ItemStack(m.getKey())) < 3)) continue;
             if (have > 0) found.put(m.getKey(), Math.min(have, m.getValue()));
         }
         if (found.isEmpty()) {

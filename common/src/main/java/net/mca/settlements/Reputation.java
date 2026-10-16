@@ -55,6 +55,7 @@ public final class Reputation {
         double unit;
         if (i == Items.EMERALD) unit = 8;
         else if (i == Items.DIAMOND) unit = 20;
+        else if (i == net.mca.item.ItemsMCA.EMERALD_NUGGET.get()) unit = 1;
         else if (i == Items.NETHERITE_INGOT) unit = 60;
         else if (i == Items.GOLD_INGOT) unit = 4;
         else if (i == Items.IRON_INGOT) unit = 3;
