@@ -32,10 +32,22 @@ public final class Move {
     /** An ordinary walking pace for every errand: nobody races about the village. */
     private static final double PACE = 0.6;
 
+    private static final java.util.Map<java.util.UUID, long[]> TRYING = new java.util.HashMap<>(); // villager -> {goal, since}
+
     public static boolean to(VillagerEntityMCA v, double x, double y, double z, double speed) {
         speed = Math.min(speed, PACE) * Gaze.pace(v); // the tired drag their feet, the keen step out
         BlockPos goal = BlockPos.ofFloored(x, y, z);
         remember(v, goal);
+        // the same spot asked for a dozen seconds and never reached, though he is close: the spot cannot be had (in a
+        // wall, behind a house, taken) - he stands where he is, instead of running round and round it
+        long now = v.getWorld().getTime();
+        long[] tr = TRYING.get(v.getUuid());
+        if (tr == null || BlockPos.fromLong(tr[0]).getSquaredDistance(goal) > 4) TRYING.put(v.getUuid(), new long[]{goal.asLong(), now});
+        else if (now - tr[1] > 20 * 12 && v.squaredDistanceTo(x, y, z) < 8 * 8
+                && (v.getNavigation().getCurrentPath() == null || !v.getNavigation().getCurrentPath().reachesTarget())) { // (a way that gets there, he keeps walking)
+            v.getNavigation().stop();
+            return true;
+        }
         // already on his way there: he keeps walking the path he has, not stopping each second to work out a new one
         var nav = v.getNavigation();
         var path = nav.getCurrentPath();
