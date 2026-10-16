@@ -57,7 +57,7 @@ public class ForgeBusEvents {
             if (event.level.getTime() % 1200 == 77) net.mca.settlements.Seat.cleanup((ServerWorld)event.level);
             if (event.level.getTime() % 24000 == 6000) {
                 net.mca.settlements.Diplomacy.daily((ServerWorld)event.level);
-                net.mca.settlements.Expansion.daily((ServerWorld)event.level);
+                net.mca.settlements.Expansion.daily((ServerWorld)event.level); // settlers out to found a hamlet of their own
             }
         }
     }

@@ -646,6 +646,7 @@ public final class Builder {
         if (look) lastNoSite = null;
         if (village.buildOrigin == null && (!look || !plan(village, world))) {
             if (look && lastNoSite != null) NEXT_LOOK.put(village.getId(), world.getTime() + 600);
+            if (look && lastNoSite != null && Tiers.isHome(lastNoSite)) Expansion.noRoom(village, world); // no plot for a home: the village is hemmed in
             // nothing to start on now (no site, short of material): the roads meanwhile - buildings come first
             if (Repair.roadWork(v, village, world)) {
                 Doing.set(v, "settlements.doing.road");
