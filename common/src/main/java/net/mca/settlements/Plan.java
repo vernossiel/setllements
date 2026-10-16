@@ -35,7 +35,7 @@ public final class Plan {
             new Goal("storage", Level.HAMLET, v -> !v.storageBuilt && v.getPopulation() >= 3, 150, 0, 0, 0),
             new Goal("housing", Level.HAMLET, v -> v.getPopulation() >= v.getMaxPopulation(), 100, 0, 0, 3),
             new Goal("farm", Level.HAMLET, v -> v.farms < Math.max(1, v.getPopulation() / (Forage.hungry(v) ? 3 : 4)), 30, 0, 0, 0),
-            new Goal("pen", Level.HAMLET, v -> v.penCenter == null && v.getPopulation() >= 4, 50, 0, 0, 0),
+            new Goal("pen", Level.HAMLET, v -> v.penCenter == null && v.getPopulation() >= 3, 50, 0, 0, 0),
             new Goal("rebuild", Level.HAMLET, v -> v.getPopulation() >= 3 && v.hall != null && Rebuild.candidate(v) != null, 120, 0, 0, 0),
             new Goal("sawmill", Level.HAMLET, v -> !Buildings.has(v, "sawmill") && v.getPopulation() >= 3, 40, 8, 0, 0),
             new Goal("charcoal", Level.HAMLET, v -> !Buildings.has(v, "charcoal") && v.getPopulation() >= 3, 12, 16, 0, 0),
@@ -105,7 +105,7 @@ public final class Plan {
             case "farm" -> hungry ? 260 : 70;
             case "granary" -> hungry ? 150 : 40;
             case "mill" -> hungry ? 140 : 45;
-            case "pen" -> hungry ? 120 : 45;
+            case "pen" -> hungry ? 180 : v.farms >= 1 ? 110 : 45; // meat and wool: right after the first field
             case "well" -> 160;
             case "storage" -> 90 + Math.min(80, v.storageBuffer.size() * 2);
             case "sawmill" -> sh != null && sh.need() == Needs.Need.PLANKS ? 170 : 75;

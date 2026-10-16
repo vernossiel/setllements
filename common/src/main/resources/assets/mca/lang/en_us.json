@@ -3804,5 +3804,15 @@
   "settlements.elder.story.end.help.iron": "If you have iron, bring it; we'll pay what we can.",
   "settlements.elder.story.end.help.wool": "Wool, if you find any, would be a great help.",
   "settlements.elder.story.end.help.food": "If you can spare food, bring it to the stores; folk will thank you.",
-  "settlements.elder.story.end.help.meat": "Bring meat, and the tavern will pour you a drink."
+  "settlements.elder.story.end.help.meat": "Bring meat, and the tavern will pour you a drink.",
+  "settlements.news.arrival": "A newcomer has come to live with us: %s.",
+  "settlements.news.arrival.couple": "A family has come to live with us: %s.",
+  "settlements.news.left": "%s has left us; couldn't bear the hunger.",
+  "settlements.elder.welcome": "We've a newcomer: %s. There's room, let them stay.",
+  "settlements.elder.welcome.couple": "A family has come to us: %s. Welcome, there's work for all.",
+  "settlements.say.arrive": "Hello! They say there's a place to live here... Where can I find the elder?",
+  "settlements.say.arrive.f": "Hello! They say there's a place to live here... Where can I find the elder?",
+  "settlements.say.leave": "That's it, I've had enough. All this hunger... I'm off to find somewhere better.",
+  "settlements.say.leave.f": "That's it, I've had enough. All this hunger... I'm off to find somewhere better.",
+  "settlements.doing.leave": "leaving the village: there's hunger here"
 }

@@ -127,7 +127,7 @@ public final class Staffing {
         // the hunter when the larder runs low or the village is big enough to keep one; the butcher once there is a herd
         // to take from; the innkeeper once there is a tavern to keep
         if (p >= 5 && (hungry || p >= 8)) roles.add(new Role(VillagerProfession.LEATHERWORKER, 1));
-        if (p >= 6 && v.penCenter != null) roles.add(new Role(VillagerProfession.BUTCHER, 1));
+        if (p >= 5 && v.penCenter != null) roles.add(new Role(VillagerProfession.BUTCHER, 1));
         if (p >= 6 && v.tavern != null) roles.add(new Role(ProfessionsMCA.INNKEEPER.get(), 1));
         // a smith only once there is a smithy to work in: tools, ingots
         boolean smithy = SMITHS && v.smithyBuilt && v.smithyFurnace != null;

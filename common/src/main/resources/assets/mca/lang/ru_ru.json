@@ -3801,5 +3801,15 @@
   "settlements.elder.story.end.help.iron": "Будет железо — неси, заплатим чем сможем.",
   "settlements.elder.story.end.help.wool": "Шерсть, если найдётся, нам бы очень пригодилась.",
   "settlements.elder.story.end.help.food": "Если можешь поделиться едой — неси на склад, люди спасибо скажут.",
-  "settlements.elder.story.end.help.meat": "Мясо принесёшь — и в таверне тебе нальют."
+  "settlements.elder.story.end.help.meat": "Мясо принесёшь — и в таверне тебе нальют.",
+  "settlements.news.arrival": "В деревню пришёл новый житель: %s.",
+  "settlements.news.arrival.couple": "В деревню пришла семья: %s.",
+  "settlements.news.left": "%s покидает деревню: голода не вынести.",
+  "settlements.elder.welcome": "У нас пополнение: %s. Места хватит, пусть живёт.",
+  "settlements.elder.welcome.couple": "К нам пришла семья: %s. Добро пожаловать, работы на всех хватит.",
+  "settlements.say.arrive": "Здравствуйте! Говорят, у вас тут жить можно... Где найти старейшину?",
+  "settlements.say.arrive.f": "Здравствуйте! Говорят, у вас тут жить можно... Где найти старейшину?",
+  "settlements.say.leave": "Всё, с меня хватит. Сколько можно голодать... Ухожу, поищу место получше.",
+  "settlements.say.leave.f": "Всё, с меня хватит. Сколько можно голодать... Ухожу, поищу место получше.",
+  "settlements.doing.leave": "уходит из деревни: здесь голодно"
 }
