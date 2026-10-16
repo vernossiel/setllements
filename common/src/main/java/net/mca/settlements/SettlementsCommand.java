@@ -139,7 +139,10 @@ public final class SettlementsCommand {
                     StringBuilder b = new StringBuilder("allowed=" + Housing.allowed(vil, pos) + " hall=" + vil.hallPos + " built:");
                     for (Built x : vil.built) if (x.contains(pos)) b.append(' ').append(x.type()).append('@').append(x.origin().toShortString());
                     vil.getBuildingAt(pos).ifPresent(bd -> b.append(" building=").append(bd.getType()).append(' ').append(bd.getPos0().toShortString()).append("..").append(bd.getPos1().toShortString()));
-                    return say(c, b.toString());
+                    say(c, b.toString());
+                    // the whole register, to see what each entry thinks it covers
+                    for (Built x : vil.built) say(c, " " + x.type() + " @" + x.origin().toShortString() + " " + x.fw() + "x" + x.fd() + " rot " + x.rot() + " floors " + x.f());
+                    return 1;
                 })))
                 .then(CommandManager.literal("makerogue").executes(c -> say(c, "Rogue now: " + Rogue.make(c.getSource().getWorld()))))
                 .then(CommandManager.literal("rich").executes(SettlementsCommand::rich))
