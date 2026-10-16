@@ -125,7 +125,17 @@ public final class Housing {
         if (b != null && ours(v, b)) return true;
         for (Built x : v.built) if (x.contains(bed)) return true;
         int reach = Math.min(reach(v, heart), 40);
-        return bed.getSquaredDistance(heart) <= reach * reach && Math.abs(bed.getY() - heart.getY()) <= 10;
+        if (bed.getSquaredDistance(heart) <= reach * reach && Math.abs(bed.getY() - heart.getY()) <= 10) return true;
+        // the houses the village stood in before its hall was raised: the hall may have gone up well off on lower
+        // ground (no level site among them), and the old houses about the bell are homes all the same
+        BlockPos bell = bell(v);
+        return b != null && bell != null && bed.getSquaredDistance(bell) <= 48 * 48 && Math.abs(bed.getY() - bell.getY()) <= 12;
+    }
+
+    /** The village's bell (its meeting place, where it stood before there was a hall); null if it has none. */
+    private static BlockPos bell(Village v) {
+        for (Building x : v.getBuildings().values()) if ("town_center".equals(x.getType())) return x.getCenter();
+        return null;
     }
 
     /** Built by the village itself (one of its own plots). */
