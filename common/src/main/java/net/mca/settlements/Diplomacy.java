@@ -98,6 +98,8 @@ public final class Diplomacy {
         // relations drift back to neutral
         int r = relation(a, b);
         if (r != 0) shift(a, b, r > 0 ? -1 : 1);
+        repay(world, a, b);
+        repay(world, b, a);
 
         boolean traded = false;
         boolean competing = false;
@@ -136,27 +138,78 @@ public final class Diplomacy {
         return food < Math.max(2, v.getPopulation());
     }
 
+    private static final int CREDIT_LIMIT = 48; // nuggets a village will let a neighbour owe it
+    private static final int OVERDUE_DAYS = 7;
+
+    static int owed(Village debtor, Village creditor) {
+        long[] d = debtor.debts.get(creditor.getId());
+        return d == null ? 0 : (int) d[0];
+    }
+
     /**
-     * A caravan of surplus to a village short of it, paid for out of the buyer's coffers. What it cannot pay for, a
-     * friendly neighbour gives for half or for nothing (to a starving one); others sell only what is paid for. Returns
-     * what was sent, or -1 if the buyer could pay for nothing and got nothing.
+     * A caravan of surplus to a village short of it, paid for out of the buyer's coffers. What the buyer cannot pay
+     * for now, a neighbour on decent terms sells on credit, up to a limit: the debt is to be paid back out of the
+     * buyer's coffers later (see {@link #repay}). Nobody gives anything away. Returns what was sent, or -1 if the buyer
+     * could neither pay nor get credit and got nothing.
      */
     private static int sell(ServerWorld world, Village from, Village to, Cat cat, int amount) {
         amount = Math.min(amount, 64);
         if (amount <= 0) return 0;
         int rel = relation(from, to);
-        double price = cat.price * (rel >= 40 ? 0.5 : 1.0);
+        double price = cat.price * (rel >= 40 ? 0.75 : 1.0); // a good neighbour's price
         int coffers = Money.coffers(to);
-        int afford = price <= 0 ? amount : (int) Math.floor(coffers / price);
-        boolean gift = rel >= 20 && cat == Cat.FOOD && starving(to);
-        if (!gift) amount = Math.min(amount, afford);
+        int credit = rel >= 10 ? Math.max(0, CREDIT_LIMIT - owed(to, from)) : 0;
+        int afford = (int) Math.floor((coffers + credit) / price);
+        amount = Math.min(amount, afford);
         if (amount <= 0) return -1;
-        int cost = gift ? 0 : (int) Math.ceil(amount * price);
-        if (cost > 0) Money.deposit(from, Money.take(to, cost));
-        if (!send(world, from, to, cat, amount)) return 0;
-        Life.news(to, gift ? "trade.gift" : "trade.bought", from.getName(), Text.translatable("settlements.cat." + cat.key));
-        Life.news(from, gift ? "trade.gave" : "trade.sold", to.getName(), Text.translatable("settlements.cat." + cat.key));
+        int cost = (int) Math.ceil(amount * price);
+        int paid = Money.take(to, Math.min(cost, coffers));
+        Money.deposit(from, paid);
+        int onCredit = cost - paid;
+        if (!send(world, from, to, cat, amount)) {
+            Money.deposit(to, Money.take(from, paid)); // nothing went: the money back
+            return 0;
+        }
+        if (onCredit > 0) {
+            long day = world.getTimeOfDay() / 24000L;
+            long[] d = to.debts.computeIfAbsent(from.getId(), k -> new long[]{0, day});
+            if (d[0] == 0) d[1] = day;
+            d[0] += onCredit;
+            to.markDirty();
+        }
+        Text what = Text.translatable("settlements.cat." + cat.key);
+        Life.news(to, onCredit > 0 ? "trade.credit" : "trade.bought", from.getName(), what, onCredit);
+        Life.news(from, onCredit > 0 ? "trade.lent" : "trade.sold", to.getName(), what, onCredit);
         return amount;
+    }
+
+    /**
+     * Each day a village that owes pays back what it can spare (keeping enough for a few days' wages); paid off, the
+     * two get on better. A debt that drags on past a week sours things a little more each day - and a creditor that
+     * has had enough may come to take what it is owed (see the raids).
+     */
+    private static void repay(ServerWorld world, Village debtor, Village creditor) {
+        long[] d = debtor.debts.get(creditor.getId());
+        if (d == null || d[0] <= 0) return;
+        int spare = Money.coffers(debtor) - debtor.getPopulation() * 4;
+        if (spare > 0) {
+            int pay = Money.take(debtor, (int) Math.min(spare, d[0]));
+            Money.deposit(creditor, pay);
+            d[0] -= pay;
+            if (d[0] <= 0) {
+                debtor.debts.remove(creditor.getId());
+                shift(debtor, creditor, 3);
+                Life.news(debtor, "debt.paid", creditor.getName());
+                Life.news(creditor, "debt.repaid", debtor.getName());
+            }
+            debtor.markDirty();
+            return;
+        }
+        long day = world.getTimeOfDay() / 24000L;
+        if (day - d[1] > OVERDUE_DAYS) {
+            shift(debtor, creditor, -4);
+            if ((day - d[1]) % 3 == 0) Life.news(creditor, "debt.overdue", debtor.getName(), (int) d[0]);
+        }
     }
 
     private static boolean send(ServerWorld world, Village from, Village to, Cat cat, int amount) {
@@ -291,6 +344,8 @@ public final class Diplomacy {
     }
 
     private static void loot(Village winner, Village loser) {
+        loser.debts.remove(winner.getId()); // taken by force: the debt is settled, one way or another
+        winner.debts.remove(loser.getId());
         for (Iterator<ItemStack> it = loser.storageBuffer.iterator(); it.hasNext(); ) {
             ItemStack s = it.next();
             int take = (s.getCount() + 3) / 4;

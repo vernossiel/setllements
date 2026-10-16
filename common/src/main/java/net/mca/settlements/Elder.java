@@ -180,6 +180,35 @@ public final class Elder {
      * How things are in the village, told the way an old man tells it: who we are and how we live, how we stand for
      * bread, what is going up and who is building it, what we are short of and who goes for it, what has happened.
      */
+    /** The neighbours worth a word: the closest friend, the worst feud, and debts either way. */
+    private static void neighbours(Village village, ServerWorld world) {
+        var manager = net.mca.server.world.data.VillageManager.get(world);
+        Village friend = null, foe = null;
+        int best = 19, worst = -20;
+        for (var e : village.relations.entrySet()) {
+            Village o = manager.getOrEmpty(e.getKey()).orElse(null);
+            if (o == null) continue;
+            if (e.getValue() > best) {
+                best = e.getValue();
+                friend = o;
+            }
+            if (e.getValue() < worst) {
+                worst = e.getValue();
+                foe = o;
+            }
+        }
+        if (friend != null) OUT.add(Text.translatable("settlements.elder.story.friend", friend.getName()));
+        if (foe != null) OUT.add(Text.translatable(worst <= -40 ? "settlements.elder.story.enemy" : "settlements.elder.story.cold", foe.getName()));
+        for (var e : village.debts.entrySet()) {
+            Village o = manager.getOrEmpty(e.getKey()).orElse(null);
+            if (o != null && e.getValue()[0] > 0) OUT.add(Text.translatable("settlements.elder.story.weowe", o.getName(), (int) e.getValue()[0]));
+        }
+        for (Village o : manager) {
+            long[] d = o.debts.get(village.getId());
+            if (d != null && d[0] > 0) OUT.add(Text.translatable("settlements.elder.story.theyowe", o.getName(), (int) d[0]));
+        }
+    }
+
     private static void story(VillagerEntityMCA elder, Village village, ServerWorld world, ServerPlayerEntity p) {
         java.util.Random r = new java.util.Random(world.getTime() / 1200 + village.getId()); // the same words for a while, not the same each day
         List<VillagerEntityMCA> folk = village.getResidents(world);
@@ -225,6 +254,7 @@ public final class Elder {
             Life.News n = news.get(0);
             OUT.add(Text.translatable("settlements.elder.story.news", Text.translatable("settlements.news." + n.key(), n.args())));
         }
+        neighbours(village, world); // how we get on with the villages round about, and who owes whom
         String known = Fame.word(village, p); // and how the village speaks of him, if it speaks of him at all
         if (known != null) OUT.add(Text.translatable(known, p.getName()));
         OUT.add(Text.translatable(need == Needs.Need.NONE ? "settlements.elder.story.end.fine" : "settlements.elder.story.end.help." + need.name().toLowerCase()));

@@ -4125,8 +4125,16 @@
   "settlements.news.rogue.caught.purse": "%s попался на краже у %s и теперь стоит в колодках.",
   "settlements.news.harvest.bad": "Неделя выдалась плохая для полей: урожай скудный, хлеба будет мало.",
   "settlements.news.refused.food": "В %s полные амбары, а нам продать хлеба не захотели — платить нечем. Люди злы.",
-  "settlements.news.trade.gift": "%s прислали нам %s задаром. Не забудем.",
   "settlements.news.trade.bought": "Купили у %s: %s.",
-  "settlements.news.trade.gave": "Отправили в голодающий %s %s задаром.",
-  "settlements.news.trade.sold": "Продали в %s излишки: %s."
+  "settlements.news.trade.sold": "Продали в %s излишки: %s.",
+  "settlements.news.trade.credit": "Купили у %s %s, часть в долг: %s самородков.",
+  "settlements.news.trade.lent": "Продали в %s %s, часть в долг: %s самородков.",
+  "settlements.news.debt.paid": "Расплатились с %s по долгам. Гора с плеч.",
+  "settlements.news.debt.repaid": "%s вернули нам долг сполна.",
+  "settlements.news.debt.overdue": "%s до сих пор не вернули долг (%s самородков). Сколько можно ждать?",
+  "settlements.elder.story.friend": "С %s мы живём душа в душу: торгуем, выручаем друг друга.",
+  "settlements.elder.story.cold": "С %s отношения натянутые. Косо на нас смотрят.",
+  "settlements.elder.story.enemy": "А с %s у нас настоящая вражда. Того и гляди, придут к нам с топорами.",
+  "settlements.elder.story.weowe": "Мы должны %s %s самородков, и долг этот давит.",
+  "settlements.elder.story.theyowe": "%s задолжали нам %s самородков. Ждём."
 }

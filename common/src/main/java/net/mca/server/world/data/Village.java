@@ -72,6 +72,8 @@ public class Village implements Iterable<Building> {
     public boolean storageBuilt, mineBuilt, smithyBuilt, armoryBuilt;
     public final List<BlockPos> campfires = new LinkedList<>();
     public final Map<Integer, Integer> relations = new HashMap<>();
+    /** What this village owes its neighbours for goods bought on credit: creditor id -> {nuggets, day the debt was made}. */
+    public final Map<Integer, long[]> debts = new HashMap<>();
     public final java.util.Set<BlockPos> lootChests = new java.util.HashSet<>();
     /** Houses a household has paid to have rebuilt better (origin of the old house -> the one who paid), see settlements.Home. */
     public final java.util.Map<Long, java.util.UUID> commissions = new java.util.LinkedHashMap<>();
@@ -189,6 +191,8 @@ public class Village implements Iterable<Building> {
         for (long l : v.getLongArray("campfires")) campfires.add(BlockPos.fromLong(l));
         NbtCompound relNbt = v.getCompound("relations");
         for (String k : relNbt.getKeys()) relations.put(Integer.parseInt(k), relNbt.getInt(k));
+        NbtCompound debtNbt = v.getCompound("debts");
+        for (String k : debtNbt.getKeys()) debts.put(Integer.parseInt(k), debtNbt.getLongArray(k));
         for (long l : v.getLongArray("lootChests")) lootChests.add(BlockPos.fromLong(l));
         NbtCompound comNbt = v.getCompound("commissions");
         for (String k : comNbt.getKeys()) commissions.put(Long.parseLong(k), comNbt.getUuid(k));
@@ -603,6 +607,9 @@ public class Village implements Iterable<Building> {
         v.putBoolean("armoryBuilt", armoryBuilt);
         NbtCompound rel = new NbtCompound();
         relations.forEach((k, val) -> rel.putInt(String.valueOf(k), val));
+        NbtCompound debtOut = new NbtCompound();
+        debts.forEach((k, val) -> debtOut.putLongArray(String.valueOf(k), val));
+        v.put("debts", debtOut);
         v.put("relations", rel);
         v.putLongArray("lootChests", lootChests.stream().mapToLong(BlockPos::asLong).toArray());
         NbtCompound com = new NbtCompound();
