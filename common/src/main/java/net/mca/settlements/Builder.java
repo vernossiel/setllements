@@ -766,15 +766,18 @@ public final class Builder {
                 if (Scaffold.approach(v, village, world, target, site)) return worked;
                 far = bx * bx + bz * bz > Scaffold.REACH * Scaffold.REACH; // no way up: he does what he can from below
             }
-            // stuck on one step for two hours with the spot right by him: the ground in the way is dug out, or else
+            // stuck on one step for half a minute with the spot close by: the ground in the way is dug out, or else
             // the step is passed over - a building is never held up for days by one block
             long[] st = STEP_AT.computeIfAbsent(village.getId(), k -> new long[]{-1, 0});
             if (st[0] != village.buildStep) {
                 st[0] = village.buildStep;
                 st[1] = world.getTime();
-            } else if (world.getTime() - st[1] > 2400 && v.squaredDistanceTo(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5) < 36) {
+            } else if (world.getTime() - st[1] > 600 && v.squaredDistanceTo(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5) < 64) {
+                // (it was two hours a step: a field whose last cell could not be reached stood four days unfinished)
                 st[1] = world.getTime();
-                if (Layout.land(world.getBlockState(target)) || world.getBlockState(target).isReplaceable()) world.breakBlock(target, true, v);
+                // (the ground is not dug out where the step is the ground itself: a field's earth, a pond, a cut)
+                boolean ground = step.kind() == Kind.FARMLAND || step.kind() == Kind.WATER || step.kind() == Kind.DIG || step.kind() == Kind.CLEAR;
+                if (!ground && (Layout.land(world.getBlockState(target)) || world.getBlockState(target).isReplaceable())) world.breakBlock(target, true, v);
                 else village.buildStep++;
                 continue;
             }
