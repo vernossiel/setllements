@@ -628,13 +628,22 @@ public final class Workforce {
             if (eatable(s)) meal = s.split(1);
         }
         if (meal.isEmpty() && village != null) {
-            for (java.util.Iterator<ItemStack> it = village.storageBuffer.iterator(); it.hasNext(); ) {
-                ItemStack s = it.next();
+            // from the stores, paid for: the well-off take the best there is, the rest the cheapest
+            boolean best = Purse.welloff(v);
+            ItemStack pick = null;
+            for (ItemStack s : village.storageBuffer) {
                 if (!eatable(s)) continue;
-                meal = s.split(1);
-                if (s.isEmpty()) it.remove();
+                if (pick == null || (best ? Purse.price(s) > Purse.price(pick) : Purse.price(s) < Purse.price(pick))) pick = s;
+            }
+            if (pick != null && !Purse.pay(v, village, pick)) { // too deep in debt: the cheapest only
+                for (ItemStack s : village.storageBuffer) if (eatable(s) && Purse.price(s) <= 1) pick = s;
+                if (Purse.price(pick) > 1) pick = null;
+                else Purse.pay(v, village, pick);
+            }
+            if (pick != null) {
+                meal = pick.split(1);
+                village.storageBuffer.removeIf(ItemStack::isEmpty);
                 village.markDirty();
-                break;
             }
         }
         if (meal.isEmpty()) return false;

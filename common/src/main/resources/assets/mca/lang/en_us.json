@@ -4028,5 +4028,7 @@
   "settlements.news.away.hungry": "While you were away we went hungry for %s days.",
   "settlements.doing.flee.monster": "running from a monster",
   "settlements.say.flee.monster": "A monster! Guards! Help!",
-  "settlements.say.flee.monster.f": "A monster! Guards! Help!"
+  "settlements.say.flee.monster.f": "A monster! Guards! Help!",
+  "settlements.elder.poor": "(in debt)",
+  "settlements.elder.welloff": "(well-off)"
 }

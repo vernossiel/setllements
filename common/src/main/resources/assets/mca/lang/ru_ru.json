@@ -4025,5 +4025,7 @@
   "settlements.news.away.hungry": "Пока тебя не было, голодали дней: %s.",
   "settlements.doing.flee.monster": "убегает от чудища",
   "settlements.say.flee.monster": "Чудище! Стража! Помогите!",
-  "settlements.say.flee.monster.f": "Чудище! Стража! Помогите!"
+  "settlements.say.flee.monster.f": "Чудище! Стража! Помогите!",
+  "settlements.elder.poor": "(в долгах)",
+  "settlements.elder.welloff": "(живёт в достатке)"
 }

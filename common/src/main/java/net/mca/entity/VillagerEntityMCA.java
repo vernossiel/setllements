@@ -104,6 +104,8 @@ import static net.mca.client.model.CommonVillagerModel.getVillager;
 public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<VillagerEntityMCA>, NamedScreenHandlerFactory, CompassionateEntity<BreedableRelationship>, CrossbowUser {
     public int settlementsEnergy = 1000;
     public int settlementsHunger = 0;
+    /** His own money, in coins (see settlements.Purse); below nought, what he owes. */
+    public int settlementsPurse = 0;
     public boolean settlementsResting = false;
     public int settlementsEatTicks = 0;
     public long settlementsHireUntil = 0;
@@ -1514,6 +1516,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         super.readCustomDataFromNbt(nbt);
         settlementsEnergy = nbt.contains("SettlementsEnergy") ? nbt.getInt("SettlementsEnergy") : 1000;
         settlementsHunger = nbt.getInt("SettlementsHunger");
+        settlementsPurse = nbt.getInt("SettlementsPurse");
         settlementsHireUntil = nbt.getLong("SettlementsHireUntil");
         settlementsSkill = nbt.getInt("SettlementsSkill");
         settlementsMaster = nbt.containsUuid("SettlementsMaster") ? nbt.getUuid("SettlementsMaster") : null;
@@ -1551,6 +1554,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         super.writeCustomDataToNbt(nbt);
         nbt.putInt("SettlementsEnergy", settlementsEnergy);
         nbt.putInt("SettlementsHunger", settlementsHunger);
+        nbt.putInt("SettlementsPurse", settlementsPurse);
         nbt.putLong("SettlementsHireUntil", settlementsHireUntil);
         nbt.putInt("SettlementsSkill", settlementsSkill);
         if (settlementsMaster != null) nbt.putUuid("SettlementsMaster", settlementsMaster);

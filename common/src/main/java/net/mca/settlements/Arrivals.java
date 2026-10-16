@@ -50,6 +50,7 @@ public final class Arrivals {
     }
 
     private static void morning(ServerWorld world, Village v) {
+        Purse.payday(world, v); // yesterday's wages
         List<VillagerEntityMCA> folk = v.getResidents(world);
         int pop = folk.size();
         if (pop < 2) return;

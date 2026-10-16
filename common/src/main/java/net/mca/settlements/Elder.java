@@ -115,7 +115,9 @@ public final class Elder {
                     : "settlements.role." + Registries.VILLAGER_PROFESSION.getId(r.getProfession()).getPath();
             OUT.add(Text.literal("  ").append(r.getName().copy().formatted(Formatting.YELLOW))
                     .append(Text.literal(" (").formatted(Formatting.GRAY)).append(Text.translatable(trade).formatted(Formatting.GRAY))
-                    .append(Text.literal("): ").formatted(Formatting.GRAY)).append(Doing.describe(r).copy().formatted(Formatting.WHITE)));
+                    .append(Text.literal("): ").formatted(Formatting.GRAY)).append(Doing.describe(r).copy().formatted(Formatting.WHITE))
+                    .append(Purse.poor(r) ? Text.literal(" ").append(Text.translatable("settlements.elder.poor")).formatted(Formatting.DARK_GRAY)
+                            : Purse.welloff(r) ? Text.literal(" ").append(Text.translatable("settlements.elder.welloff")).formatted(Formatting.DARK_GRAY) : Text.empty()));
         }
     }
 

@@ -57,6 +57,8 @@ public class Village implements Iterable<Building> {
     public long ledgerDay = -1;
     public int[] ledgerRoles = new int[0];
     public int owedSteps, owedNewcomers, owedLeavers;
+    /** The village's coffers, in coins: wages are paid out of it, and what people pay for their bread goes back in. */
+    public int coffers = 60;
     public int groveSaplings;
     public final List<BlockPos> hallChests = new LinkedList<>();
     public final List<BlockPos> boardSigns = new LinkedList<>();
@@ -151,6 +153,7 @@ public class Village implements Iterable<Building> {
         owedSteps = v.getInt("owedSteps");
         owedNewcomers = v.getInt("owedNewcomers");
         owedLeavers = v.getInt("owedLeavers");
+        if (v.contains("coffers")) coffers = v.getInt("coffers");
         groveSaplings = v.getInt("groveSaplings");
         for (long l : v.getLongArray("hallChests")) hallChests.add(BlockPos.fromLong(l));
         for (long l : v.getLongArray("boardSigns")) boardSigns.add(BlockPos.fromLong(l));
@@ -558,6 +561,7 @@ public class Village implements Iterable<Building> {
         v.putInt("owedSteps", owedSteps);
         v.putInt("owedNewcomers", owedNewcomers);
         v.putInt("owedLeavers", owedLeavers);
+        v.putInt("coffers", coffers);
         v.putInt("groveSaplings", groveSaplings);
         v.putLongArray("hallChests", hallChests.stream().mapToLong(BlockPos::asLong).toArray());
         v.putLongArray("boardSigns", boardSigns.stream().mapToLong(BlockPos::asLong).toArray());
