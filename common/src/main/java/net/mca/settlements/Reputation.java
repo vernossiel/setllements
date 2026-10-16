@@ -230,7 +230,7 @@ public final class Reputation {
         }
     }
 
-    private static void steal(ServerPlayerEntity player, Village village, double value, Map<Item, Integer> items) {
+    static void steal(ServerPlayerEntity player, Village village, double value, Map<Item, Integer> items) {
         VillagerEntityMCA witness = null;
         double best = WITNESS_RANGE * WITNESS_RANGE;
         for (VillagerEntityMCA v : player.getWorld().getEntitiesByClass(VillagerEntityMCA.class, player.getBoundingBox().expand(WITNESS_RANGE),

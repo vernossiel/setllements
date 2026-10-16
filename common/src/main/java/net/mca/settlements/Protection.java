@@ -60,6 +60,21 @@ public final class Protection {
         return 0;
     }
 
+    /** A ripe crop on the village's own tilled ground (or a melon or pumpkin by its stalk, sweet berries in its garden). */
+    static boolean crop(ServerWorld world, Village village, BlockPos pos, BlockState state) {
+        Block b = state.getBlock();
+        // tilled ground of the village's own: its fields, or within its bounds (a player's plot out past them is his)
+        boolean field = world.getBlockState(pos.down()).isOf(Blocks.FARMLAND) && (insideStructure(village, pos) || village.isWithinBorder(pos, 0));
+        if (b instanceof net.minecraft.block.CropBlock c) return field && c.isMature(state);
+        if (b == Blocks.MELON || b == Blocks.PUMPKIN) {
+            for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL)
+                if (world.getBlockState(pos.offset(d)).getBlock() instanceof net.minecraft.block.AttachedStemBlock) return true;
+            return false;
+        }
+        if (b instanceof net.minecraft.block.SweetBerryBushBlock) return state.get(net.minecraft.block.SweetBerryBushBlock.AGE) >= 2 && insideStructure(village, pos);
+        return false;
+    }
+
     static boolean insideStructure(Village village, BlockPos pos) {
         for (Building b : village.getBuildings().values()) {
             if (b.containsPos(pos)) return true;
@@ -88,6 +103,18 @@ public final class Protection {
         if (!(player.getWorld() instanceof ServerWorld world) || player.isCreative()) return;
         Village village = Village.findNearest(player).orElse(null);
         if (village == null || !village.isWithinBorder(pos, 8)) return;
+        // the village's crop off its fields: that is theft, what he takes is what it yields
+        if (crop(world, village, pos, state)) {
+            Map<net.minecraft.item.Item, Integer> took = new HashMap<>();
+            double value = 0;
+            for (net.minecraft.item.ItemStack d : Block.getDroppedStacks(state, world, pos, null, player, player.getMainHandStack())) {
+                if (d.isOf(net.minecraft.item.Items.WHEAT_SEEDS) || d.isOf(net.minecraft.item.Items.BEETROOT_SEEDS)) continue; // the seed is nothing
+                took.merge(d.getItem(), d.getCount(), Integer::sum);
+                value += Reputation.value(d);
+            }
+            if (!took.isEmpty()) Reputation.steal(player, village, value, took);
+            return;
+        }
         double sev = severity(world, village, pos, state);
         if (sev <= 0) return;
 
