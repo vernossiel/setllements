@@ -4145,5 +4145,6 @@
   "settlements.justice.found.hall": "Склад в ратуше пуст! Кто-то вынес добро деревни! Стража!",
   "settlements.justice.found.hall.f": "Склад в ратуше пуст! Кто-то вынес добро деревни! Стража!",
   "settlements.news.crime.hall": "Обокрали склад в ратуше — добро всей деревни. Стража ищет вора.",
-  "settlements.doing.farm.hay": "несёт сено со стога в амбар"
+  "settlements.doing.farm.hay": "несёт сено со стога в амбар",
+  "settlements.news.settlers": "%s и %s ушли из деревни: тесно у нас на круче. Пошли ставить свой хутор на ровной земле."
 }

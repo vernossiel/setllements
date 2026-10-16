@@ -538,7 +538,7 @@ public final class Builder {
                     if (!s.isAir() && natural(s)) world.breakBlock(p, false);
                 }
                 // fill up to it
-                for (int y = want - 1; y >= want - 6; y--) {
+                for (int y = want - 1; y >= want - 12; y--) { // down to the ground, however far: nothing stands on air
                     BlockPos p = new BlockPos(x, y, z);
                     BlockState s = world.getBlockState(p);
                     if (!s.isAir() && !s.isReplaceable() && s.getFluidState().isEmpty()) {
@@ -646,6 +646,7 @@ public final class Builder {
         if (look) lastNoSite = null;
         if (village.buildOrigin == null && (!look || !plan(village, world))) {
             if (look && lastNoSite != null) NEXT_LOOK.put(village.getId(), world.getTime() + 600);
+            if (look && lastNoSite != null && Tiers.isHome(lastNoSite)) Expansion.noRoom(village, world); // no plot for a home: the village is hemmed in
             // nothing to start on now (no site, short of material): the roads meanwhile - buildings come first
             if (Repair.roadWork(v, village, world)) {
                 Doing.set(v, "settlements.doing.road");
@@ -1615,7 +1616,7 @@ public final class Builder {
     /** Fills the gap under a floor block down to the ground (at most six blocks) with the village's stone. */
     private static void foundation(ServerWorld world, Village village, BlockPos below) {
         Block stone = Palette.of(village).stone();
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 12; i++) {
             BlockPos p = below.down(i);
             BlockState s = world.getBlockState(p);
             if (!s.isAir() && !s.isReplaceable() && s.getFluidState().isEmpty()) return; // solid ground reached

@@ -104,7 +104,42 @@ public final class Layout {
             }
         }
         // no plot left on the streets: out on the rings beyond them
-        return ring(world, village, type, fp, Math.max(minRing, reach(village) + 2), Math.max(maxRing, reach(village) + 4));
+        Slot r = ring(world, village, type, fp, Math.max(minRing, reach(village) + 2), Math.max(maxRing, reach(village) + 4));
+        return r != null ? r : open(world, village, type, fp);
+    }
+
+    /**
+     * Rough country (a village on a ravine's lip, on a hillside): no plot on the plan's streets or rings is level. The
+     * village grows where the land lets it - the nearest level ground within a hundred blocks, on about the hall's own
+     * level first (the road out to it is laid as for any other building).
+     */
+    static Slot open(ServerWorld world, Village village, String type, int[] fp) {
+        BlockPos c = village.hallPos != null ? village.hallPos : new BlockPos(village.getCenter());
+        List<Lot> lots = new ArrayList<>();
+        for (int dx = -100; dx <= 100; dx += 6) {
+            for (int dz = -100; dz <= 100; dz += 6) {
+                double dist = Math.hypot(dx, dz);
+                if (dist < 16 || dist > 100) continue;
+                int x = c.getX() + dx, z = c.getZ() + dz;
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+                int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+                int rot = facingCenter(dx, dz); // the door towards the village, as on the rings
+                lots.add(new Lot(x, z, rot, dist + Math.abs(y - c.getY()) * 3));
+            }
+        }
+        lots.sort(Comparator.comparingDouble(Lot::score));
+        int tried = 0;
+        for (int pass = 0; pass < TOLERANCE.length; pass++) {
+            for (Lot lot : lots) {
+                int fw = (lot.rot() & 1) == 0 ? fp[0] : fp[1], fd = (lot.rot() & 1) == 0 ? fp[1] : fp[0];
+                int x = lot.x() - fw / 2, z = lot.z() - fd / 2;
+                if (!free(village, x, z, fw, fd) || !freeOfBuildings(village, x, z, fw, fd)) continue;
+                BlockPos origin = flat(world, x, z, fw, fd, pass);
+                if (origin != null) return new Slot(origin, lot.rot(), fw, fd);
+                if (++tried > 400) return null; // enough looking for one time
+            }
+        }
+        return null;
     }
 
     private static Slot grid(ServerWorld world, Village village, String type, int[] fp, String base, int r) {
@@ -262,6 +297,15 @@ public final class Layout {
             }
         }
         if (maxY - minY > TOLERANCE[Math.min(pass, TOLERANCE.length - 1)]) return null;
+        // not on the lip of a drop: the land just round the plot must not fall away more than four below its floor
+        int floorGuess = ys.isEmpty() ? maxY : ys.stream().sorted().toList().get(ys.size() / 2);
+        for (int dx = -4; dx <= w + 3; dx += 2) {
+            for (int dz = -4; dz <= d + 3; dz += 2) {
+                if (dx >= -2 && dx <= w + 1 && dz >= -2 && dz <= d + 1) continue;
+                if (!world.isChunkLoaded((x + dx) >> 4, (z + dz) >> 4)) continue;
+                if (floorGuess - world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x + dx, z + dz) > 4) return null;
+            }
+        }
         // the floor at the ground's own middle height, not on its highest bump: the builders cut the bumps and fill
         // the hollows (see Builder.levelSite), and the building never stands up on a mound of earth
         java.util.Collections.sort(ys);
