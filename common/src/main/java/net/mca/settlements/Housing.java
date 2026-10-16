@@ -91,6 +91,9 @@ public final class Housing {
         // the others into the smallest free house that fits them, the biggest households first
         unhoused.sort(Comparator.comparingInt((List<VillagerEntityMCA> h) -> h.size()).reversed());
         int homeless = 0;
+        Built hall = null;
+        for (Built b : v.built) if (Buildings.base(b.type()).equals("townhall")) hall = b;
+        boolean bedMoved = false;
         for (List<VillagerEntityMCA> h : unhoused) {
             Building best = promised(v, h, houses, taken, true);
             for (Map.Entry<Building, List<BlockPos>> e : houses.entrySet()) {
@@ -99,6 +102,19 @@ public final class Housing {
                 if (best == null || e.getValue().size() < houses.get(best).size()) best = e.getKey();
             }
             if (best == null) {
+                // no house for them: they sleep in the town hall, on a bed carried in from a house too far off to be
+                // a home (or one made from the stores' wool and planks), one bed each half minute
+                final Built hb = hall;
+                if (hb != null && h.stream().allMatch(m -> inHall(world, hb, m))) continue; // bedded down in the hall already
+                if (hb != null && !bedMoved) {
+                    VillagerEntityMCA m = h.stream().filter(x -> !inHall(world, hb, x)).findFirst().orElse(null);
+                    BlockPos nb = m == null ? null : hallBed(world, v, hb, heart);
+                    if (nb != null) {
+                        move(world, m, nb);
+                        bedMoved = true;
+                        if (h.stream().allMatch(x -> inHall(world, hb, x))) continue;
+                    }
+                }
                 homeless++;
                 // a bed far off is no home either: better the town hall's floor than a walk through the woods at night
                 for (VillagerEntityMCA m : h) {
@@ -223,6 +239,66 @@ public final class Housing {
     }
 
     /** His bed now in the household's house. */
+    /** His bed is in the town hall. */
+    private static boolean inHall(ServerWorld world, Built hall, VillagerEntityMCA m) {
+        GlobalPos g = m.getResidency().getHome().orElse(null);
+        return g != null && hall.contains(g.getPos()) && world.getBlockState(g.getPos()).getBlock() instanceof net.minecraft.block.BedBlock;
+    }
+
+    /**
+     * A bed put down on the hall's floor, out of the way of its doors: the head end's place, or null if there is no
+     * room or no bed to be had. The bed is one carried in from an empty house too far off to be lived in, or else
+     * one made from three wool and three planks out of the stores.
+     */
+    private static BlockPos hallBed(ServerWorld world, Village v, Built hall, BlockPos heart) {
+        BlockPos foot = null;
+        net.minecraft.util.math.Direction facing = null;
+        BlockPos c = v.hallPos != null ? v.hallPos : hall.point(hall.fw() / 2, 0, hall.fd() / 2);
+        search:
+        for (BlockPos q : BlockPos.iterateOutwards(c, 8, 3, 8)) {
+            if (!hall.contains(q) || !free(world, q)) continue;
+            for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+                BlockPos head = q.offset(d);
+                if (hall.contains(head) && free(world, head)) {
+                    foot = q.toImmutable();
+                    facing = d;
+                    break search;
+                }
+            }
+        }
+        if (foot == null) return null;
+        // where it comes from: an empty bed off in the woods or the valley first
+        net.minecraft.block.BlockState bed = null;
+        BlockPos far = world.getPointOfInterestStorage().getInSquare(t -> t.matchesKey(PointOfInterestTypes.HOME), heart, 96, PointOfInterestStorage.OccupationStatus.HAS_SPACE)
+                .map(net.minecraft.world.poi.PointOfInterest::getPos).filter(p -> !allowed(v, p) && !hall.contains(p)).findFirst().orElse(null);
+        if (far != null && world.getBlockState(far).getBlock() instanceof net.minecraft.block.BedBlock b) {
+            bed = b.getDefaultState();
+            world.breakBlock(far, false); // (both halves go)
+        } else if (Builder.takeItem(v, st -> st.isIn(net.minecraft.registry.tag.ItemTags.WOOL), 3)) {
+            if (!Builder.takeItem(v, st -> st.isIn(net.minecraft.registry.tag.ItemTags.PLANKS), 3)) {
+                net.mca.settlements.Workforce.addToTreasury(v, new net.minecraft.item.ItemStack(net.minecraft.item.Items.WHITE_WOOL, 3)); // (the wool back: no planks)
+                return null;
+            }
+            bed = net.minecraft.block.Blocks.WHITE_BED.getDefaultState();
+        }
+        if (bed == null) return null;
+        BlockPos head = foot.offset(facing);
+        world.setBlockState(foot, bed.with(net.minecraft.block.BedBlock.FACING, facing).with(net.minecraft.block.BedBlock.PART, net.minecraft.block.enums.BedPart.FOOT));
+        world.setBlockState(head, bed.with(net.minecraft.block.BedBlock.FACING, facing).with(net.minecraft.block.BedBlock.PART, net.minecraft.block.enums.BedPart.HEAD));
+        return head;
+    }
+
+    /** Floor to lie on, room over it, under the roof, not in a doorway. */
+    private static boolean free(ServerWorld world, BlockPos p) {
+        if (!world.getBlockState(p).isAir() || !world.getBlockState(p.up()).isAir() || world.isSkyVisible(p)) return false;
+        if (!world.getBlockState(p.down()).isSolidBlock(world, p.down())) return false;
+        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.values()) {
+            if (world.getBlockState(p.offset(d)).getBlock() instanceof net.minecraft.block.DoorBlock) return false;
+            if (world.getBlockState(p.offset(d)).getBlock() instanceof net.minecraft.block.LecternBlock) return false;
+        }
+        return true;
+    }
+
     private static void move(ServerWorld world, VillagerEntityMCA m, BlockPos bed) {
         GlobalPos now = m.getResidency().getHome().orElse(null);
         if (now != null && now.getPos().equals(bed)) return;
