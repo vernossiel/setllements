@@ -454,12 +454,26 @@ public final class Workforce {
     }
 
     /** The mill grinds the farmer's wheat and the bakery turns it into bread: three sheaves a loaf. */
+    private static final java.util.Map<Integer, long[]> BAKED = new java.util.HashMap<>(); // {day, loaves that day}
+
+    /**
+     * Bread without a mill: the grain ground at home on a hand quern and baked on the hearth - slow, wasteful work. Four
+     * wheat to a loaf, and only a few loaves a day for the whole village; the miller does far better (see Crafts).
+     */
     private static void bake(net.mca.server.world.data.Village village) {
-        for (int i = 0; i < 4; i++) {
+        long day = village.getWorld() == null ? 0 : village.getWorld().getTimeOfDay() / 24000L;
+        long[] b = BAKED.computeIfAbsent(village.getId(), k -> new long[]{day, 0});
+        if (b[0] != day) {
+            b[0] = day;
+            b[1] = 0;
+        }
+        int cap = 2 + village.getPopulation() / 3;
+        for (int i = 0; i < 2 && b[1] < cap; i++) {
             int wheat = 0;
             for (ItemStack s : village.storageBuffer) if (s.isOf(net.minecraft.item.Items.WHEAT)) wheat += s.getCount();
-            if (wheat < 3) return;
-            int need = 3;
+            if (wheat < 4) return;
+            b[1]++;
+            int need = 4;
             for (ItemStack s : village.storageBuffer) {
                 if (need > 0 && s.isOf(net.minecraft.item.Items.WHEAT)) {
                     int d = Math.min(need, s.getCount());

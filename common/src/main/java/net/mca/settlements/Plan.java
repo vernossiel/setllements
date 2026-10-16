@@ -41,7 +41,7 @@ public final class Plan {
             new Goal("charcoal", Level.HAMLET, v -> !Buildings.has(v, "charcoal") && v.getPopulation() >= 3, 12, 16, 0, 0),
             new Goal("granary", Level.HAMLET, v -> !Buildings.has(v, "granary") && v.getPopulation() >= 5, 70, 20, 0, 0),
             new Goal("mason", Level.VILLAGE, v -> !Buildings.has(v, "mason"), 50, 40, 0, 0),
-            new Goal("mill", Level.VILLAGE, v -> !Buildings.has(v, "mill") && v.farms >= 1 && v.getPopulation() >= 6, 120, 40, 0, 0),
+            new Goal("mill", Level.HAMLET, v -> !Buildings.has(v, "mill") && v.farms >= 1 && v.getPopulation() >= 4, 120, 40, 0, 0),
             new Goal("jail", Level.VILLAGE, v -> !Buildings.has(v, "jail") && v.getPopulation() >= 6, 40, 40, 0, 0),
             new Goal("barracks", Level.VILLAGE, v -> !Buildings.has(v, "barracks") && v.getPopulation() >= 8, 120, 30, 0, 0),
             new Goal("market", Level.VILLAGE, v -> !Buildings.has(v, "market") && v.getPopulation() >= 8, 80, 0, 0, 0),
@@ -104,7 +104,7 @@ public final class Plan {
             case "housing" -> pop >= beds ? 220 + 30 * (pop - beds) : 40;
             case "farm" -> v.farms == 0 ? 500 : hungry ? 260 : 70; // the first field before anything but the hall
             case "granary" -> hungry ? 150 : 40;
-            case "mill" -> hungry ? 140 : 45;
+            case "mill" -> Crafts.count(v, s -> s.isOf(net.minecraft.item.Items.WHEAT)) >= 24 ? 170 : hungry ? 140 : 45; // the grain piling up unground
             case "pen" -> hungry ? 180 : v.farms >= 1 ? 110 : 45; // meat and wool: right after the first field
             case "well" -> 160;
             case "storage" -> 90 + Math.min(80, v.storageBuffer.size() * 2);
