@@ -19,7 +19,7 @@ public abstract class MixinAdvancementRewards {
 
     @Inject(method = "apply", at = @At("HEAD"))
     private void mca$filterBooksStart(ServerPlayerEntity player, CallbackInfo ci) {
-        if (!Config.getInstance().giveAdvancementBooks) {
+        if (true) { // Settlements: no MCA guide books pushed into the player's hands, whatever the old config says
             Identifier[] loot = ((MixinAdvancementRewardsAccessor) this).getLoot();
             if (loot != null && Arrays.stream(loot).anyMatch(id -> id.toString().startsWith("mca:books/"))) {
                 mca$savedLoot.set(loot);

@@ -13,7 +13,7 @@ import java.util.UUID;
  * the client model (VillagerEntityBaseModelMCA) poses the arms by it.
  */
 public final class Anim {
-    public enum Act { NONE, CHOP, MINE, DIG, SOW, REAP, CARRY, BUILD, TALK, CLAP, WAVE, EAT, SHEAR, FEED, BEHIND }
+    public enum Act { NONE, CHOP, MINE, DIG, SOW, REAP, CARRY, BUILD, TALK, CLAP, WAVE, EAT, SHEAR, FEED, BEHIND, BEND }
 
     private static final Map<UUID, Long> UNTIL = new HashMap<>();
 
@@ -28,6 +28,8 @@ public final class Anim {
             UNTIL.merge(v.getUuid(), until, Math::max);
             return;
         }
+        // clapping, waving and talking are done with empty hands: the tool goes back in the bag
+        if (act == Act.CLAP || act == Act.WAVE || act == Act.TALK) Gear.pocket(v);
         v.setSettlementsAction(act.ordinal());
         UNTIL.put(v.getUuid(), until);
     }
@@ -43,6 +45,11 @@ public final class Anim {
         if (v.getSettlementsAction() == 0) return;
         Long until = UNTIL.get(v.getUuid());
         if (until == null || v.isSleeping() || v.getWorld().getTime() >= until) clear(v);
+    }
+
+    /** The acts done bent over: drawn crouching, as a player crouches. */
+    public static boolean bent(Act a) {
+        return a == Act.BEND || a == Act.REAP || a == Act.SOW || a == Act.SHEAR || a == Act.FEED;
     }
 
     public static Act of(int ordinal) {

@@ -193,7 +193,7 @@ public class ClientInteractionManagerImpl implements ClientInteractionManager {
 
     @Override
     public void handleJusticeScreen(JusticeScreenRequest message) {
-        client.setScreen(new JusticeScreen(message));
+        net.mca.client.gui.DialogueHud.open(message);
     }
 
     @Override
@@ -238,7 +238,8 @@ public class ClientInteractionManagerImpl implements ClientInteractionManager {
 
     @Override
     public void handleVillagerMessage(VillagerMessage message) {
-        client.getMessageHandler().onGameMessage(message.getMessage(), false);
+        // said over his head where he can be seen; only what is said out of sight goes to the chat
+        if (!net.mca.client.Bubbles.say(message.getUuid(), message.getContent())) client.getMessageHandler().onGameMessage(message.getMessage(), false);
         SpeechManager.INSTANCE.onChatMessage(message.getContent(), message.getUuid());
     }
 

@@ -454,36 +454,76 @@ public final class Builder {
     }
 
     /**
-     * The site made ready: the ground under the building and a step round it filled up to the floor's level (earth,
-     * grass on top), and the odd bump above it cut away, so nothing stands in the air on a slope.
+     * The site made ready: the ground under the building cut and filled to the floor's level, in the land's own earth
+     * (sand in the desert, grass and earth elsewhere), and round it a gentle slope down (or up) to the ground about, so
+     * that nothing stands on a box of earth and every door can be walked up to.
      */
     static void levelSite(ServerWorld world, BlockPos o, int fw, int fd) {
-        for (int x = o.getX() - 1; x <= o.getX() + fw; x++) {
-            for (int z = o.getZ() - 1; z <= o.getZ() + fd; z++) {
-                // trees standing on the site are felled (the logs fall for whoever picks them up), branches and
-                // leaves hanging over it cut back
-                for (int y = o.getY() + 20; y >= o.getY() - 2; y--) {
-                    BlockPos p = new BlockPos(x, y, z);
-                    BlockState s = world.getBlockState(p);
-                    if (s.isIn(net.minecraft.registry.tag.BlockTags.LOGS)) world.breakBlock(p, true);
-                    else if (y > o.getY() + 2 && s.isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) world.breakBlock(p, true);
+        Block top = Blocks.GRASS_BLOCK, under = Blocks.DIRT;
+        int sand = 0, red = 0, all = 0;
+        for (int x = o.getX() - 4; x <= o.getX() + fw + 3; x += 2) {
+            for (int z = o.getZ() - 4; z <= o.getZ() + fd + 3; z += 2) {
+                BlockPos g = new BlockPos(x, world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z) - 1, z);
+                BlockState s = world.getBlockState(g);
+                all++;
+                if (s.isOf(Blocks.SAND)) sand++;
+                else if (s.isOf(Blocks.RED_SAND)) red++;
+            }
+        }
+        if (sand * 2 > all) {
+            top = Blocks.SAND;
+            under = Blocks.SANDSTONE;
+        } else if (red * 2 > all) {
+            top = Blocks.RED_SAND;
+            under = Blocks.RED_SANDSTONE;
+        }
+        final int RAMP = 3;
+        for (int x = o.getX() - 1 - RAMP; x <= o.getX() + fw + RAMP; x++) {
+            for (int z = o.getZ() - 1 - RAMP; z <= o.getZ() + fd + RAMP; z++) {
+                // how far outside the footprint (and the step round it): 0 on it, then 1, 2, 3 down the slope
+                int out = Math.max(Math.max(o.getX() - 1 - x, x - (o.getX() + fw)), Math.max(o.getZ() - 1 - z, z - (o.getZ() + fd)));
+                out = Math.max(0, out);
+                if (out == 0) {
+                    // trees standing on the site are felled (the logs fall for whoever picks them up), branches and
+                    // leaves hanging over it cut back
+                    for (int y = o.getY() + 20; y >= o.getY() - 2; y--) {
+                        BlockPos p = new BlockPos(x, y, z);
+                        BlockState s = world.getBlockState(p);
+                        if (s.isIn(net.minecraft.registry.tag.BlockTags.LOGS)) world.breakBlock(p, true);
+                        else if (y > o.getY() + 2 && s.isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) world.breakBlock(p, true);
+                    }
                 }
-                for (int y = o.getY() + 2; y >= o.getY(); y--) {
+                int ground = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z); // first free block above the ground
+                // the slope keeps off whatever is built about the site (a floor, a path, a wall): only bare land is shaped
+                if (out > 0 && !natural(world.getBlockState(new BlockPos(x, ground - 1, z)))) continue;
+                // the level wanted here: the floor on the site, easing towards the ground about it on the slope
+                int want = out == 0 ? o.getY() : ground + (int) Math.round((o.getY() - ground) * (1.0 - out / (double) (RAMP + 1)));
+                // cut what natural stands above it
+                for (int y = Math.max(want, ground) + 6; y >= want; y--) {
                     BlockPos p = new BlockPos(x, y, z);
                     BlockState s = world.getBlockState(p);
-                    boolean natural = s.isIn(net.minecraft.registry.tag.BlockTags.DIRT) || s.isIn(net.minecraft.registry.tag.BlockTags.REPLACEABLE)
-                            || s.isIn(net.minecraft.registry.tag.BlockTags.BASE_STONE_OVERWORLD) || s.isIn(net.minecraft.registry.tag.BlockTags.SAND)
-                            || s.isIn(net.minecraft.registry.tag.BlockTags.FLOWERS) || s.isOf(Blocks.GRAVEL) || s.isIn(net.minecraft.registry.tag.BlockTags.LEAVES);
-                    if (!s.isAir() && natural) world.breakBlock(p, false);
+                    if (!s.isAir() && natural(s) && (out == 0 || y < want + 3)) world.breakBlock(p, false);
                 }
-                for (int y = o.getY() - 1; y >= o.getY() - 5; y--) {
+                // fill up to it
+                for (int y = want - 1; y >= want - 6; y--) {
                     BlockPos p = new BlockPos(x, y, z);
                     BlockState s = world.getBlockState(p);
-                    if (!s.isAir() && !s.isReplaceable() && s.getFluidState().isEmpty()) break;
-                    world.setBlockState(p, (y == o.getY() - 1 ? Blocks.GRASS_BLOCK : Blocks.DIRT).getDefaultState());
+                    if (!s.isAir() && !s.isReplaceable() && s.getFluidState().isEmpty()) {
+                        if (y == want - 1 && natural(s) && s.isIn(net.minecraft.registry.tag.BlockTags.DIRT)) world.setBlockState(p, top.getDefaultState());
+                        break;
+                    }
+                    if (out > 0 && !s.getFluidState().isEmpty()) break; // the slope does not run into water
+                    world.setBlockState(p, (y == want - 1 ? top : under).getDefaultState());
                 }
             }
         }
+    }
+
+    private static boolean natural(BlockState s) {
+        return s.isIn(net.minecraft.registry.tag.BlockTags.DIRT) || s.isIn(net.minecraft.registry.tag.BlockTags.REPLACEABLE)
+                || s.isIn(net.minecraft.registry.tag.BlockTags.BASE_STONE_OVERWORLD) || s.isIn(net.minecraft.registry.tag.BlockTags.SAND)
+                || s.isIn(net.minecraft.registry.tag.BlockTags.FLOWERS) || s.isOf(Blocks.GRAVEL) || s.isIn(net.minecraft.registry.tag.BlockTags.LEAVES)
+                || s.isOf(Blocks.SNOW) || s.isOf(Blocks.CACTUS) || s.isOf(Blocks.DEAD_BUSH);
     }
 
     private static boolean startAt(Village village, String type, int w, int d, int floors, Layout.Slot slot) {
@@ -529,10 +569,8 @@ public final class Builder {
             boolean ok = true;
             for (int dx = -2; dx <= w + 1 && ok; dx++) {
                 for (int dz = -2; dz <= d + 1; dz++) {
-                    int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x + dx, z + dz);
-                    BlockPos g = new BlockPos(x + dx, y - 1, z + dz);
-                    BlockState ground = world.getBlockState(g);
-                    if (!ground.isSolidBlock(world, g) || !ground.getFluidState().isEmpty()) {
+                    int y = Layout.ground(world, x + dx, z + dz);
+                    if (y == Integer.MIN_VALUE) {
                         ok = false;
                         break;
                     }
@@ -1014,9 +1052,8 @@ public final class Builder {
                             ok = false;
                             break;
                         }
-                        int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x + dx, z + dz);
-                        BlockPos g = new BlockPos(x + dx, y - 1, z + dz);
-                        if (!world.getFluidState(g).isEmpty()) {
+                        int y = Layout.ground(world, x + dx, z + dz);
+                        if (y == Integer.MIN_VALUE) {
                             ok = false;
                             break;
                         }
@@ -1048,6 +1085,7 @@ public final class Builder {
                         }
                     }
                 }
+                levelSite(world, new BlockPos(x, oy, z), fp[0], fp[1]); // the slope round it, the land's own earth
                 village.buildType = "townhall";
                 village.buildOrigin = new BlockPos(x, oy, z);
                 village.buildRot = 0;

@@ -86,6 +86,8 @@ public class ForgeBusEvents {
     public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
         if (event.getEntity() instanceof ServerPlayerEntity player) {
             net.mca.settlements.Notice.placed(player, event.getPos()); // the villagers about come and look at what he builds
+            if (event.getPlacedBlock().getBlock() instanceof net.minecraft.block.ChestBlock || event.getPlacedBlock().getBlock() instanceof net.minecraft.block.BarrelBlock)
+                net.mca.settlements.Reputation.playerChest(player, event.getPos());
         }
     }
 

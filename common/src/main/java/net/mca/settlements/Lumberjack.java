@@ -182,7 +182,7 @@ public final class Lumberjack {
         if (!reach) {
             // walk to open ground beside the trunk, not to the log itself (that path ends up in the crown);
             // a tree he cannot get to (on a cliff, in a thicket, across water) is left for another
-            BlockPos foot = footOf(world, base);
+            BlockPos foot = footOf(world, base, v.getPos());
             boolean moving = foot != null && Move.to(v, foot.getX() + 0.5, foot.getY(), foot.getZ() + 0.5, 0.6);
             if (!moving || heading(v, base, world.getTime()) > 900) {
                 UNREACHABLE.put(base.asLong(), world.getTime() + 12000);
@@ -228,7 +228,7 @@ public final class Lumberjack {
         }
         if (felling == null) {
             // nothing of it within reach from here: closer
-            BlockPos foot = footOf(world, trunk.get(0));
+            BlockPos foot = footOf(world, trunk.get(0), v.getPos());
             if (foot != null) Move.to(v, foot.getX() + 0.5, foot.getY(), foot.getZ() + 0.5, 0.6);
             return true;
         }
@@ -281,8 +281,10 @@ public final class Lumberjack {
     }
 
     /** Open ground beside a trunk where a man can stand and swing: air for his body, something solid underfoot. */
-    private static BlockPos footOf(ServerWorld world, BlockPos base) {
+    private static BlockPos footOf(ServerWorld world, BlockPos base, net.minecraft.util.math.Vec3d from) {
+        // on his own side of the trunk: the nearest good spot to where he comes from, a flat one before a step up or down
         BlockPos best = null;
+        double bestScore = Double.MAX_VALUE;
         for (int r = 1; r <= 2 && best == null; r++) {
             for (int dx = -r; dx <= r; dx++) {
                 for (int dz = -r; dz <= r; dz++) {
@@ -291,7 +293,12 @@ public final class Lumberjack {
                         BlockPos p = base.add(dx, dy, dz);
                         if (Move.passable(world, p) && Move.passable(world, p.up()) && world.getBlockState(p.down()).isSolidBlock(world, p.down())
                                 && world.getFluidState(p).isEmpty()) {
-                            if (best == null || Math.abs(dy) < Math.abs(best.getY() - base.getY())) best = p;
+                            double score = from == null ? 0 : from.squaredDistanceTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5);
+                            score += Math.abs(dy) * 6 + (dx != 0 && dz != 0 ? 2 : 0);
+                            if (score < bestScore) {
+                                bestScore = score;
+                                best = p;
+                            }
                         }
                     }
                 }

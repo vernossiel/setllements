@@ -73,6 +73,10 @@ public class VillagerEntityBaseModelMCA<T extends LivingEntity & VillagerLike<T>
         //and add our own
         limbAngle /= (0.2f + villager.getRawScaleFactor());
 
+        // bent over the work (sowing, reaping, shearing, a grave) the body is drawn crouching, as a player crouches
+        sneaking = villager instanceof net.mca.entity.VillagerEntityMCA bv && !bv.isSleeping()
+                && net.mca.settlements.Anim.bent(net.mca.settlements.Anim.of(bv.getSettlementsAction()));
+
         super.setAngles(villager, limbAngle, limbDistance, animationProgress, headYaw, headPitch);
 
         if (villager.getVillagerBrain().isPanicking()) {
@@ -93,7 +97,7 @@ public class VillagerEntityBaseModelMCA<T extends LivingEntity & VillagerLike<T>
             posePart(v, animationProgress, limbDistance);
         }
 
-        applyVillagerDimensions(villager, villager.isInSneakingPose());
+        applyVillagerDimensions(villager, sneaking);
     }
 
     /** The arms at work, by what the server says his hands are busy with (see settlements.Anim). */
@@ -107,16 +111,6 @@ public class VillagerEntityBaseModelMCA<T extends LivingEntity & VillagerLike<T>
             // a bite: the hand to the mouth, a little shake
             rightArm.pitch = -1.7f + (float)Math.sin(t * 1.2f) * 0.12f;
             rightArm.yaw = -0.45f;
-            return;
-        }
-        if (act == net.mca.settlements.Anim.Act.NONE && v.isElder() && walking < 0.1f) {
-            // the elder stands with his hands behind his back
-            rightArm.pitch = 0.45f;
-            leftArm.pitch = 0.45f;
-            rightArm.roll = 0.25f;
-            leftArm.roll = -0.25f;
-            rightArm.yaw = -0.3f;
-            leftArm.yaw = 0.3f;
             return;
         }
         switch (act) {
@@ -197,18 +191,14 @@ public class VillagerEntityBaseModelMCA<T extends LivingEntity & VillagerLike<T>
                 leftArm.pitch = -1.1f;
                 rightArm.yaw = -0.2f;
                 leftArm.yaw = 0.3f;
-                body.pitch = 0.35f;
             }
             case FEED -> { // a hand held out, low, with something in it
                 rightArm.pitch = -1.15f + s * 0.1f;
                 rightArm.yaw = -0.1f;
-                body.pitch = 0.2f;
             }
-            case BEHIND -> {
-                rightArm.pitch = 0.45f;
-                leftArm.pitch = 0.45f;
-                rightArm.roll = 0.25f;
-                leftArm.roll = -0.25f;
+            case BEND -> { // bent down, the hands low
+                rightArm.pitch = -0.6f;
+                leftArm.pitch = -0.5f;
             }
             default -> {
             }

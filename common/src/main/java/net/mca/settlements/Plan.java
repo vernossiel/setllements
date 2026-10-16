@@ -155,21 +155,25 @@ public final class Plan {
     }
 
     /** The elder tells the player in a few words where the village stands, what comes next and how he can help. */
-    static void tellPublic(VillagerEntityMCA elder, Village village, ServerWorld world, PlayerEntity player) {
-        tell(elder, village, world, player);
+    static void tellPublic(VillagerEntityMCA elder, Village village, ServerWorld world, PlayerEntity player, java.util.function.Consumer<Text> out) {
+        tell(elder, village, world, player, out);
     }
 
     private static void tell(VillagerEntityMCA elder, Village village, ServerWorld world, PlayerEntity player) {
+        tell(elder, village, world, player, t -> elder.sendChatMessage(t.copy(), player));
+    }
+
+    private static void tell(VillagerEntityMCA elder, Village village, ServerWorld world, PlayerEntity player, java.util.function.Consumer<Text> out) {
         elder.getLookControl().lookAt(player, 30f, 30f);
         elder.sendChatMessage(Text.translatable("settlements.elder.intro", village.getName(),
                 Text.translatable("settlements.level." + level(village).name().toLowerCase()), village.getPopulation()), player);
-        elder.sendChatMessage(Text.translatable("settlements.elder.pace", Prosperity.describe(village), reason(village)), player);
+        out.accept(Text.translatable("settlements.elder.pace", Prosperity.describe(village), reason(village)));
         if (village.buildOrigin != null && village.buildType != null) {
             int total = Builder.stepsOf(village);
             int pct = total > 0 ? Math.min(100, village.buildStep * 100 / total) : 0;
-            elder.sendChatMessage(Text.translatable("settlements.elder.building", Text.translatable("settlements.building." + Buildings.base(village.buildType)), pct), player);
+            out.accept(Text.translatable("settlements.elder.building", Text.translatable("settlements.building." + Buildings.base(village.buildType)), pct));
         } else {
-            elder.sendChatMessage(Text.translatable("settlements.elder.idle"), player);
+            out.accept(Text.translatable("settlements.elder.idle"));
         }
         List<Status> pending = pending(village);
         Status next = null;
@@ -179,9 +183,9 @@ public final class Plan {
                 break;
             }
         }
-        if (next != null) elder.sendChatMessage(Text.translatable("settlements.elder.next", Text.translatable("settlements.goal." + next.goal().id())), player);
+        if (next != null) out.accept(Text.translatable("settlements.elder.next", Text.translatable("settlements.goal." + next.goal().id())));
         Needs.Need need = firstBlocker(village);
-        elder.sendChatMessage(Text.translatable(need == Needs.Need.NONE ? "settlements.elder.fine" : "settlements.elder.help." + need.name().toLowerCase()), player);
+        out.accept(Text.translatable(need == Needs.Need.NONE ? "settlements.elder.fine" : "settlements.elder.help." + need.name().toLowerCase()));
     }
 
     /** The main thing holding the village back, in the elder's words. */

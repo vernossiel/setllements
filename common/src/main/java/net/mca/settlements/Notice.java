@@ -24,12 +24,14 @@ public final class Notice {
     private record Placed(BlockPos pos, long at) {
     }
 
-    private record Watch(BlockPos at, long until, boolean said) {
+    private record Watch(BlockPos at, Vec3d stand, long until, long giveUp, boolean said) {
     }
 
     private static final Map<UUID, Deque<Placed>> PLACED = new HashMap<>();
     private static final Map<UUID, Watch> WATCHING = new HashMap<>();
     private static final Map<UUID, Long> PETTED = new HashMap<>();
+    private static final Map<UUID, Long> LOOKED = new HashMap<>(); // a villager comes to look once in ten minutes
+    private static final Map<UUID, Long> DRAWN = new HashMap<>(); // a player's building draws a crowd once in three
 
     private Notice() {
     }
@@ -43,8 +45,8 @@ public final class Notice {
         Deque<Placed> q = PLACED.computeIfAbsent(player.getUuid(), k -> new ArrayDeque<>());
         q.addLast(new Placed(pos.toImmutable(), now));
         while (!q.isEmpty() && now - q.peekFirst().at() > 20 * 40) q.removeFirst();
-        if (q.size() < 8) return;
-        // a building going up: its middle, and whoever is idle about comes to look
+        if (q.size() < 8 || now < DRAWN.getOrDefault(player.getUuid(), 0L)) return;
+        // a building going up: its middle, and one or two of those with a moment to spare come to look
         int x = 0, y = 0, z = 0;
         for (Placed p : q) {
             x += p.pos().getX();
@@ -53,10 +55,22 @@ public final class Notice {
         }
         BlockPos mid = new BlockPos(x / q.size(), y / q.size(), z / q.size());
         q.clear();
+        DRAWN.put(player.getUuid(), now + 20 * 180);
+        long tod = world.getTimeOfDay();
+        int drawn = 0;
         for (VillagerEntityMCA v : world.getEntitiesByClass(VillagerEntityMCA.class, player.getBoundingBox().expand(24, 6, 24),
-                v -> v.isAlive() && !v.isSleeping() && !v.isBaby() && !Dig.busy(v) && !v.settlementsHauling && !WATCHING.containsKey(v.getUuid()))) {
-            if (world.random.nextInt(3) == 0) continue; // not everybody
-            WATCHING.put(v.getUuid(), new Watch(mid, now + 20 * (20 + world.random.nextInt(20)), false));
+                v -> v.isAlive() && !v.isSleeping() && !v.isBaby() && !v.isGuard() && !Dig.busy(v) && !v.settlementsHauling && !WATCHING.containsKey(v.getUuid()))) {
+            if (drawn >= 2 || now < LOOKED.getOrDefault(v.getUuid(), 0L)) continue;
+            if (Mind.onDuty(v, village, tod) && v.settlementsIdleWork < 30) continue; // at work: he looks up, no more
+            if (world.random.nextInt(2) == 0) continue;
+            // a place to stand on his side of it, a few steps off, on open ground
+            Vec3d c = Vec3d.ofCenter(mid), dir = v.getPos().subtract(c).multiply(1, 0, 1);
+            if (dir.lengthSquared() < 0.01) dir = new Vec3d(1, 0, 0);
+            Vec3d at = c.add(dir.normalize().multiply(7));
+            int gy = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(at.x), (int) Math.floor(at.z));
+            LOOKED.put(v.getUuid(), now + 20 * 600);
+            WATCHING.put(v.getUuid(), new Watch(mid, new Vec3d(at.x, gy, at.z), now + 20 * (24 + world.random.nextInt(10)), now + 20 * 15, false)); // some fifteen seconds to get there, ten to look
+            drawn++;
         }
     }
 
@@ -64,21 +78,27 @@ public final class Notice {
     public static boolean tick(VillagerEntityMCA v, ServerWorld world) {
         Watch w = WATCHING.get(v.getUuid());
         if (w == null) return false;
-        if (world.getTime() >= w.until()) {
+        long now = world.getTime();
+        Vec3d c = Vec3d.ofCenter(w.at());
+        boolean there = v.squaredDistanceTo(w.stand()) < 2.5 * 2.5 || v.squaredDistanceTo(c) < 9 * 9;
+        if (!there && now >= w.giveUp()) { // could not get near: let it be
+            WATCHING.remove(v.getUuid());
+            return false;
+        }
+        if (there && now >= w.until()) {
             WATCHING.remove(v.getUuid());
             return false;
         }
         Doing.set(v, "settlements.doing.notice.build");
-        Vec3d c = Vec3d.ofCenter(w.at());
-        if (v.squaredDistanceTo(c) > 7 * 7) {
-            Move.to(v, c.x, c.y, c.z, 0.5);
+        if (!there) {
+            Move.to(v, w.stand().x, w.stand().y, w.stand().z, 0.5);
             return true;
         }
         v.getNavigation().stop();
         v.getLookControl().lookAt(c.x, c.y + 1, c.z);
-        if (!w.said() && world.random.nextInt(5) == 0) {
+        if (!w.said() && world.random.nextInt(4) == 0) {
             Speech.sayAny(v, "settlements.say.notice.build", 5);
-            WATCHING.put(v.getUuid(), new Watch(w.at(), w.until(), true));
+            WATCHING.put(v.getUuid(), new Watch(w.at(), w.stand(), w.until(), w.giveUp(), true));
         }
         return true;
     }

@@ -156,7 +156,7 @@ public final class Workforce {
 
         // a meal comes first, stopping work if needed
         // a meal when hunger outweighs the work (a busy man eats late, an idle one early); past the limit, always
-        if (v.settlementsHunger >= 250 && hasMeal(v, village) && (v.settlementsHunger >= HUNGER_STOP_AT || Mind.before(v, village, time, Mind.Drive.EAT))) {
+        if (v.settlementsHunger >= 250 && hasMeal(v, village) && (v.settlementsHunger >= HUNGER_STOP_AT || v.isGuard() || Mind.before(v, village, time, Mind.Drive.EAT))) {
             if (job != Chore.NONE) v.getVillagerBrain().abandonJob();
             STAGE.put(v.getUuid(), "eat");
             if (startEating(v, village, 250)) return;

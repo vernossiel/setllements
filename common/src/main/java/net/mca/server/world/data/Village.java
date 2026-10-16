@@ -42,7 +42,7 @@ public class Village implements Iterable<Building> {
     public boolean wellBuilt, wallBuilt;
     public int palisadeR;
     public net.mca.settlements.Tavern tavern;
-    public BlockPos mineOrigin, smithyFurnace, smithyAnvil, hallPos, penCenter;
+    public BlockPos mineOrigin, smithyFurnace, smithyAnvil, hallPos, penCenter, stocksPos;
     /** What the village remembers (Settlements): the lumberjacks' grove, ore the miners have seen, how far its streets reach. */
     public final Set<BlockPos> grove = new HashSet<>(), knownOres = new HashSet<>();
     public int streets;
@@ -64,6 +64,8 @@ public class Village implements Iterable<Building> {
     public final List<BlockPos> campfires = new LinkedList<>();
     public final Map<Integer, Integer> relations = new HashMap<>();
     public final java.util.Set<BlockPos> lootChests = new java.util.HashSet<>();
+    /** Chests a player put down himself inside the village: his, not the villagers'. */
+    public final java.util.Set<BlockPos> playerChests = new java.util.HashSet<>();
     public final List<net.mca.settlements.House> houses = new LinkedList<>();
     public final List<net.mca.settlements.Built> built = new java.util.ArrayList<>();
     public boolean buildRepair;
@@ -132,6 +134,7 @@ public class Village implements Iterable<Building> {
         mineBuilt = v.getBoolean("mineBuilt");
         if (v.contains("mineOrigin")) mineOrigin = BlockPos.fromLong(v.getLong("mineOrigin"));
         if (v.contains("hallPos")) hallPos = BlockPos.fromLong(v.getLong("hallPos"));
+        if (v.contains("stocksPos")) stocksPos = BlockPos.fromLong(v.getLong("stocksPos"));
         if (v.contains("hall")) hall = net.mca.settlements.House.load(v.getCompound("hall"));
         if (v.contains("penCenter")) penCenter = BlockPos.fromLong(v.getLong("penCenter"));
         seeded = v.getBoolean("seeded");
@@ -163,6 +166,7 @@ public class Village implements Iterable<Building> {
         NbtCompound relNbt = v.getCompound("relations");
         for (String k : relNbt.getKeys()) relations.put(Integer.parseInt(k), relNbt.getInt(k));
         for (long l : v.getLongArray("lootChests")) lootChests.add(BlockPos.fromLong(l));
+        for (long l : v.getLongArray("playerChests")) playerChests.add(BlockPos.fromLong(l));
         NbtList builtList = v.getList("built", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < builtList.size(); i++) built.add(net.mca.settlements.Built.load(builtList.getCompound(i)));
         buildRepair = v.getBoolean("buildRepair");
@@ -531,6 +535,7 @@ public class Village implements Iterable<Building> {
         if (tavern != null) v.put("tavern", tavern.save());
         if (mineOrigin != null) v.putLong("mineOrigin", mineOrigin.asLong());
         if (hallPos != null) v.putLong("hallPos", hallPos.asLong());
+        if (stocksPos != null) v.putLong("stocksPos", stocksPos.asLong());
         if (hall != null) v.put("hall", hall.save());
         if (penCenter != null) v.putLong("penCenter", penCenter.asLong());
         v.putBoolean("seeded", seeded);
@@ -562,6 +567,7 @@ public class Village implements Iterable<Building> {
         relations.forEach((k, val) -> rel.putInt(String.valueOf(k), val));
         v.put("relations", rel);
         v.putLongArray("lootChests", lootChests.stream().mapToLong(BlockPos::asLong).toArray());
+        v.putLongArray("playerChests", playerChests.stream().mapToLong(BlockPos::asLong).toArray());
         v.putLongArray("campfires", campfires.stream().mapToLong(BlockPos::asLong).toArray());
         NbtList houseList = new NbtList();
         for (net.mca.settlements.House h : houses) houseList.add(h.save());

@@ -82,12 +82,34 @@ public final class Reputation {
     private record Opened(Inventory inv, BlockPos pos) {
     }
 
+    /** A chest or barrel the player has put down himself in the village: what is in it is his. */
+    public static void playerChest(net.minecraft.entity.player.PlayerEntity player, BlockPos pos) {
+        Village village = Village.findNearest(player).orElse(null);
+        if (village == null || !village.isWithinBorder(player)) return;
+        village.playerChests.add(pos.toImmutable());
+        village.markDirty();
+    }
+
+    /** Somebody's chest in the village (a house's, a workshop's): not the stores, but not the player's to take from either. */
+    private static boolean villagers(Village village, BlockPos pos) {
+        if (village.playerChests.contains(pos)) return false;
+        ServerWorld world = village.getWorld();
+        if (world == null) return false;
+        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+            if (village.playerChests.contains(pos.offset(d)) && world.getBlockState(pos.offset(d)).getBlock() instanceof net.minecraft.block.ChestBlock) return false; // the other half of his double chest
+        }
+        return village.isWithinBorder(pos, 0) || village.getBuildings().values().stream().anyMatch(b -> b.containsPos(pos));
+    }
+
     private static Opened villageChest(ScreenHandler menu, Village village, BlockPos near) {
         if (!(menu instanceof GenericContainerScreenHandler g)) return null;
         Inventory inv = g.getInventory();
         if (inv instanceof ChestBlockEntity chest) {
-            if (village.lootChests.contains(chest.getPos()) || Haul.storeChest(village, chest.getPos())) return new Opened(inv, chest.getPos());
+            if (village.lootChests.contains(chest.getPos()) || Haul.storeChest(village, chest.getPos()) || villagers(village, chest.getPos())) return new Opened(inv, chest.getPos());
             return null;
+        }
+        if (inv instanceof net.minecraft.block.entity.BarrelBlockEntity barrel) {
+            return villagers(village, barrel.getPos()) ? new Opened(inv, barrel.getPos()) : null;
         }
         if (inv instanceof net.minecraft.inventory.DoubleInventory dbl) {
             ServerWorld world = village.getWorld();
@@ -99,6 +121,11 @@ public final class Reputation {
                 }
             }
             for (BlockPos p : village.lootChests) if (world.getBlockEntity(p) instanceof ChestBlockEntity c && dbl.isPart(c)) return new Opened(inv, p);
+            if (near != null) {
+                for (BlockPos p : BlockPos.iterate(near.add(-6, -3, -6), near.add(6, 3, 6))) {
+                    if (world.getBlockEntity(p) instanceof ChestBlockEntity c && dbl.isPart(c) && villagers(village, p)) return new Opened(inv, p.toImmutable());
+                }
+            }
         }
         return null;
     }

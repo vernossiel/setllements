@@ -51,6 +51,8 @@ public final class Justice {
         int arrests;
         BlockPos hold;
         boolean shown; // the guard's demand window has been put before him
+        boolean inStocks; // held in the stocks: he does not break out of those, he is put back
+        boolean pleaded, bribed; // each tried once a case
 
         Case(UUID player) {
             this.player = player;
@@ -225,8 +227,12 @@ public final class Justice {
                         c.deadline = now + 20 * 20;
                         c.lastTalk = now;
                         guard.sendChatMessage(Text.translatable("settlements.justice.arrest", p.getName()), p);
+                        java.util.List<String> o = new java.util.ArrayList<>(List.of("surrender"));
+                        if (!c.pleaded) o.add("plead");
+                        if (!c.bribed) o.add("bribe");
+                        o.add("resist");
                         window(guard, village, p, List.of(Text.translatable("settlements.justice.arrest", p.getName()), Text.empty(),
-                                Text.translatable("settlements.justice.arrest.choice").formatted(Formatting.YELLOW)), new String[]{"surrender", "resist"}, 20);
+                                Text.translatable("settlements.justice.arrest.choice").formatted(Formatting.YELLOW)), o.toArray(new String[0]), 20);
                     }
                 }
                 case ARREST -> {
@@ -242,7 +248,10 @@ public final class Justice {
                         it.remove();
                         continue;
                     }
-                    if (c.hold != null && p.squaredDistanceTo(c.hold.getX() + 0.5, c.hold.getY(), c.hold.getZ() + 0.5) > 9) {
+                    if (c.inStocks && c.hold != null && p.squaredDistanceTo(c.hold.getX() + 0.5, c.hold.getY(), c.hold.getZ() + 0.5) > 0.6) {
+                        // the stocks hold him fast: back in, head and hands through the board
+                        p.teleport(world, c.hold.getX() + 0.5, c.hold.getY(), c.hold.getZ() + 0.5, 180f, p.getPitch());
+                    } else if (!c.inStocks && c.hold != null && p.squaredDistanceTo(c.hold.getX() + 0.5, c.hold.getY(), c.hold.getZ() + 0.5) > 9) {
                         // broke out
                         c.stage = Stage.WANTED;
                         c.since = now;
@@ -281,8 +290,12 @@ public final class Justice {
     /** Whoever speaks for the village: the guard, or else the elder, or else nobody but the message. */
     private static void talk(ServerWorld world, Village village, VillagerEntityMCA guard, ServerPlayerEntity p, String key, long now) {
         VillagerEntityMCA speaker = guard != null ? guard : Plan.elder(world, village);
-        if (speaker != null && speaker.squaredDistanceTo(p) < 48 * 48) speaker.sendChatMessage(Text.translatable(key, p.getName()), p);
-        else p.sendMessage(Text.translatable(key, p.getName()).formatted(Formatting.GOLD), false);
+        if (speaker != null && speaker.squaredDistanceTo(p) < 48 * 48) {
+            speaker.sendChatMessage(Text.translatable(key, p.getName()), p); // over his head
+            // and at the bottom of the screen, face to face, till the next words
+            net.mca.cobalt.network.NetworkHandler.sendToPlayer(new net.mca.network.s2c.JusticeScreenRequest(speaker.getId(), speaker.getName(),
+                    List.of(Text.translatable(key, p.getName())), new String[0], List.of(), 0), p);
+        } else p.sendMessage(Text.translatable(key, p.getName()).formatted(Formatting.GOLD), false);
         Case c = CASES.get(p.getUuid());
         if (c != null) c.lastTalk = now;
     }
@@ -291,21 +304,37 @@ public final class Justice {
         String key = "settlements.justice.demand." + c.crime.name().toLowerCase();
         talk(world, village, guard, p, key, world.getTime());
         Text money = !c.stolen.isEmpty() ? Text.translatable("settlements.justice.fine_or_return", fine(c)) : Text.translatable("settlements.justice.fine", fine(c));
-        String[] options = c.stolen.isEmpty() ? new String[]{"pay", "deny", "leave"} : new String[]{"return", "pay", "deny", "leave"};
+        java.util.List<String> o = new java.util.ArrayList<>();
+        if (!c.stolen.isEmpty()) o.add("return");
+        o.add("pay");
+        if (!c.pleaded) o.add("plead");
+        if (!c.bribed) o.add("bribe");
+        o.add("deny");
+        o.add("leave");
+        String[] options = o.toArray(new String[0]);
         if (!c.shown) { // face to face, the first time: a window with his words and the answers
             c.shown = true;
             window(guard, village, p, List.of(Text.translatable(key, p.getName()), Text.empty(), money.copy().formatted(Formatting.YELLOW)), options,
                     (int) Math.max(0, (c.deadline - world.getTime()) / 20));
-        } else {
-            p.sendMessage(money.copy().formatted(Formatting.GRAY), false);
-            p.sendMessage(buttons(options), false);
+        } else { // reminded: the same words and answers again, not a line more in the chat
+            window(guard, village, p, List.of(Text.translatable(key, p.getName()), Text.empty(), money.copy().formatted(Formatting.YELLOW)), options,
+                    (int) Math.max(0, (c.deadline - world.getTime()) / 20));
         }
     }
 
     /** The guard's demand or arrest, in a window of its own over the game (the chat has the same, to answer later). */
     private static void window(VillagerEntityMCA guard, Village village, ServerPlayerEntity p, List<Text> lines, String[] options, int seconds) {
         Text who = guard != null ? guard.getName() : Text.literal(village.getName());
-        net.mca.cobalt.network.NetworkHandler.sendToPlayer(new net.mca.network.s2c.JusticeScreenRequest(who, lines, options, seconds), p);
+        Case c = CASES.get(p.getUuid());
+        List<Text> labels = new java.util.ArrayList<>();
+        for (String o : options) {
+            MutableText l = Text.translatable("settlements.justice.button." + o);
+            // what an answer turns on, the way it is shown in a good story: the odds of talking him round
+            if (o.equals("plead") && c != null) l.append(Text.literal(" [" + (int) (pleadChance(p, village, c) * 100) + "%]").formatted(Formatting.GRAY));
+            if (o.equals("bribe") && c != null) l.append(Text.literal(" [" + bribeCost(c) + "§a◆§7, " + (int) (bribeChance(p, village, c) * 100) + "%]").formatted(Formatting.GRAY));
+            labels.add(l);
+        }
+        net.mca.cobalt.network.NetworkHandler.sendToPlayer(new net.mca.network.s2c.JusticeScreenRequest(guard != null ? guard.getId() : -1, who, lines, options, labels, seconds), p);
     }
 
     private static MutableText buttons(String[] which) {
@@ -431,6 +460,94 @@ public final class Justice {
         return 1;
     }
 
+    // ---------- talking one's way out ----------
+
+    private static double pleadChance(PlayerEntity p, Village village, Case c) {
+        int hearts = village.getReputation(p);
+        double ch = 0.3 + hearts / 150.0;
+        if (RECORD.getOrDefault(p.getUuid(), 0) == 0) ch += 0.15; // a first offence
+        if (c.witnessed) ch -= 0.15;
+        if (c.crime == Crime.ASSAULT || c.crime == Crime.MURDER) ch -= 0.25;
+        if (c.stage == Stage.ARREST) ch -= 0.1;
+        return Math.max(0.05, Math.min(0.85, ch));
+    }
+
+    private static int bribeCost(Case c) {
+        return Math.max(1, (fine(c) + 1) / 2);
+    }
+
+    private static double bribeChance(PlayerEntity p, Village village, Case c) {
+        double ch = 0.45 + village.getReputation(p) / 300.0 - (c.witnessed ? 0.15 : 0) - (c.crime == Crime.MURDER ? 0.4 : 0);
+        return Math.max(0.05, Math.min(0.8, ch));
+    }
+
+    /** "It was a misunderstanding...": talked round, he lets it go (or, at an arrest, back to a fine); or not, and it costs more. */
+    public static int plead(ServerPlayerEntity p) {
+        Case c = CASES.get(p.getUuid());
+        if (c == null || c.pleaded || (c.stage != Stage.DEMAND && c.stage != Stage.ARREST)) return 0;
+        ServerWorld world = p.getServerWorld();
+        Village village = VillageManager.get(world).getOrEmpty(c.villageId).orElse(null);
+        if (village == null) return 0;
+        VillagerEntityMCA guard = nearestGuard(world, p, 32);
+        c.pleaded = true;
+        if (world.random.nextDouble() < pleadChance(p, village, c)) {
+            if (c.stage == Stage.DEMAND || c.value < 6) {
+                talk(world, village, guard, p, "settlements.justice.plead.ok", world.getTime());
+                village.pushHearts(p, -2);
+                CASES.remove(p.getUuid());
+                p.sendMessage(Text.translatable("settlements.justice.settled").formatted(Formatting.GREEN), true);
+            } else {
+                talk(world, village, guard, p, "settlements.justice.plead.fine", world.getTime());
+                c.stage = Stage.DEMAND;
+                c.deadline = world.getTime() + 20 * 60;
+                c.shown = false;
+                demand(world, village, guard, p, c);
+            }
+        } else {
+            talk(world, village, guard, p, "settlements.justice.plead.no", world.getTime());
+            c.value *= 1.5;
+            c.shown = false;
+            if (c.stage == Stage.DEMAND) demand(world, village, guard, p, c);
+            else c.deadline = Math.min(c.deadline, world.getTime() + 20 * 10);
+        }
+        return 1;
+    }
+
+    /** A few emeralds for the guard himself, quietly. Taken, the matter is closed; refused, it is one more offence. */
+    public static int bribe(ServerPlayerEntity p) {
+        Case c = CASES.get(p.getUuid());
+        if (c == null || c.bribed || (c.stage != Stage.DEMAND && c.stage != Stage.ARREST)) return 0;
+        ServerWorld world = p.getServerWorld();
+        Village village = VillageManager.get(world).getOrEmpty(c.villageId).orElse(null);
+        if (village == null) return 0;
+        VillagerEntityMCA guard = nearestGuard(world, p, 32);
+        int cost = bribeCost(c);
+        if (p.getInventory().count(Items.EMERALD) < cost) {
+            p.sendMessage(Text.translatable("settlements.justice.cannot_pay", cost).formatted(Formatting.RED), true);
+            return 0;
+        }
+        c.bribed = true;
+        if (world.random.nextDouble() < bribeChance(p, village, c)) {
+            int left = cost;
+            for (int i = 0; i < p.getInventory().size() && left > 0; i++) {
+                ItemStack s = p.getInventory().getStack(i);
+                if (!s.isOf(Items.EMERALD)) continue;
+                int d = Math.min(left, s.getCount());
+                s.decrement(d);
+                left -= d;
+            }
+            talk(world, village, guard, p, "settlements.justice.bribe.ok", world.getTime());
+            CASES.remove(p.getUuid());
+        } else {
+            talk(world, village, guard, p, "settlements.justice.bribe.no", world.getTime());
+            village.pushHearts(p, -5);
+            c.value += cost * 6;
+            c.shown = false;
+            if (c.stage == Stage.DEMAND) demand(world, village, guard, p, c);
+        }
+        return 1;
+    }
+
     public static int leave(ServerPlayerEntity p) {
         Case c = CASES.get(p.getUuid());
         if (c == null) return 0;
@@ -519,9 +636,10 @@ public final class Justice {
             p.sendMessage(Text.translatable("settlements.justice.jailed", seconds).formatted(Formatting.GOLD), false);
             Life.news(village, "crime.jailed", p.getName().getString());
         } else {
-            // the stocks on the square: he cannot move until his time is up
-            BlockPos spot = stocks(world, village);
-            p.teleport(world, spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, p.getYaw(), p.getPitch());
+            // the stocks on the square, on a platform for all to see: he cannot move until his time is up
+            BlockPos spot = pillory(world, village);
+            p.teleport(world, spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, 180f, 10f); // facing the square, the board at his neck
+            c.inStocks = true;
             int ticks = seconds * 20;
             p.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, ticks, 6, false, false));
             p.addStatusEffect(new StatusEffectInstance(StatusEffects.JUMP_BOOST, ticks, 128, false, false));
@@ -561,6 +679,45 @@ public final class Justice {
             }
         }
         return world.getTopPosition(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, c);
+    }
+
+    /**
+     * The village's stocks, put up once on the square and kept: a plank platform a step high, two posts and the board
+     * across them at neck height, the prisoner's head and hands through it. Returns where he stands.
+     */
+    static BlockPos pillory(ServerWorld world, Village village) {
+        BlockPos at = village.stocksPos;
+        if (at == null || !world.getBlockState(at.down()).isOf(net.minecraft.block.Blocks.SPRUCE_PLANKS)) {
+            BlockPos ground = stocks(world, village);
+            // the platform: 3 wide, 3 deep, one block up, a step in front
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    BlockPos q = ground.add(dx, 0, dz);
+                    world.setBlockState(q, net.minecraft.block.Blocks.SPRUCE_PLANKS.getDefaultState());
+                    for (int y = 1; y <= 3; y++) if (!world.getBlockState(q.up(y)).isAir()) world.setBlockState(q.up(y), net.minecraft.block.Blocks.AIR.getDefaultState());
+                    if (world.getBlockState(q.down()).isReplaceable()) world.setBlockState(q.down(), net.minecraft.block.Blocks.DIRT.getDefaultState());
+                }
+            }
+            for (int dx = -1; dx <= 1; dx++) {
+                BlockPos step = ground.add(dx, 0, -2);
+                if (world.getBlockState(step).isReplaceable())
+                    world.setBlockState(step, net.minecraft.block.Blocks.SPRUCE_STAIRS.getDefaultState().with(net.minecraft.block.StairsBlock.FACING, net.minecraft.util.math.Direction.SOUTH));
+            }
+            at = ground.up();
+            // the posts either side of him and the board between them, at his neck, behind him the post's back plank
+            for (int dx : new int[]{-1, 1}) {
+                world.setBlockState(at.add(dx, 0, 0), net.minecraft.block.Blocks.SPRUCE_FENCE.getDefaultState());
+                world.setBlockState(at.add(dx, 1, 0), net.minecraft.block.Blocks.SPRUCE_SLAB.getDefaultState());
+            }
+            world.setBlockState(at.add(0, 0, 1), net.minecraft.block.Blocks.SPRUCE_FENCE.getDefaultState());
+            world.setBlockState(at.add(0, 1, 1), net.minecraft.block.Blocks.SPRUCE_TRAPDOOR.getDefaultState()
+                    .with(net.minecraft.block.TrapdoorBlock.FACING, net.minecraft.util.math.Direction.NORTH)
+                    .with(net.minecraft.block.TrapdoorBlock.OPEN, true)
+                    .with(net.minecraft.block.TrapdoorBlock.HALF, net.minecraft.block.enums.BlockHalf.TOP));
+            village.stocksPos = at.toImmutable();
+            village.markDirty();
+        }
+        return at;
     }
 
     private static BlockPos open(ServerWorld world, BlockPos p) {

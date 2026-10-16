@@ -41,9 +41,17 @@ public class VillagerLikeEntityMCARenderer<T extends MobEntity & VillagerLike<T>
 
     @Override
     public void render(T villager, float yaw, float tickDelta, MatrixStack matrices, net.minecraft.client.render.VertexConsumerProvider vertices, int light) {
-        // a villager crouching (to sow, to shear, hiding) is drawn crouching, as a player is
-        getModel().sneaking = villager.isInSneakingPose();
+        // a bow being drawn is held as a player holds it
+        boolean drawing = villager.isUsingItem() && villager.getActiveItem().getItem() instanceof net.minecraft.item.BowItem;
+        boolean rightHanded = villager.getMainArm() == net.minecraft.util.Arm.RIGHT;
+        boolean main = villager.getActiveHand() == net.minecraft.util.Hand.MAIN_HAND;
+        net.minecraft.client.render.entity.model.BipedEntityModel.ArmPose bow = net.minecraft.client.render.entity.model.BipedEntityModel.ArmPose.BOW_AND_ARROW;
+        net.minecraft.client.render.entity.model.BipedEntityModel.ArmPose none = net.minecraft.client.render.entity.model.BipedEntityModel.ArmPose.EMPTY;
+        getModel().rightArmPose = drawing && rightHanded == main ? bow : none;
+        getModel().leftArmPose = drawing && rightHanded != main ? bow : none;
         super.render(villager, yaw, tickDelta, matrices, vertices, light);
+        // what he says, over his head (above the name tag)
+        net.mca.client.Bubbles.render(villager, matrices, vertices, light, villager.getHeight() + (hasLabel(villager) ? 0.75f : 0.45f));
     }
 
     @Override

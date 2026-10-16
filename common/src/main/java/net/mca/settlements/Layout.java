@@ -200,12 +200,40 @@ public final class Layout {
     /** Strict: level ground, no tree on it. Then, failing that anywhere, rougher ground the builders level and trees they fell. */
     private static final int[] TOLERANCE = {2, 5};
 
+    /**
+     * The height of the bare land at x, z (the first free block above it), looking down through trees and plants;
+     * or MIN_VALUE where the top is something built (a roof, a floor, a wall) or water. A building is never set on the
+     * roof of one that stands there already.
+     */
+    public static int ground(ServerWorld world, int x, int z) {
+        int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+        while (y > world.getBottomY() + 1) {
+            BlockState below = world.getBlockState(new BlockPos(x, y - 1, z));
+            if (!below.isIn(net.minecraft.registry.tag.BlockTags.LOGS) && !below.isIn(net.minecraft.registry.tag.BlockTags.LEAVES) && !below.isReplaceable()) break;
+            y--;
+        }
+        BlockPos g = new BlockPos(x, y - 1, z);
+        BlockState s = world.getBlockState(g);
+        if (!s.getFluidState().isEmpty() || !s.isSolidBlock(world, g)) return Integer.MIN_VALUE;
+        return land(s) ? y : Integer.MIN_VALUE;
+    }
+
+    /** Land as the world made it: earth, sand, stone, gravel, snow, clay, a beaten path. */
+    public static boolean land(BlockState s) {
+        return s.isIn(net.minecraft.registry.tag.BlockTags.DIRT) || s.isIn(net.minecraft.registry.tag.BlockTags.SAND)
+                || s.isIn(net.minecraft.registry.tag.BlockTags.BASE_STONE_OVERWORLD) || s.isIn(net.minecraft.registry.tag.BlockTags.TERRACOTTA)
+                || s.isOf(net.minecraft.block.Blocks.GRAVEL) || s.isOf(net.minecraft.block.Blocks.DIRT_PATH) || s.isOf(net.minecraft.block.Blocks.SNOW_BLOCK)
+                || s.isOf(net.minecraft.block.Blocks.CLAY) || s.isOf(net.minecraft.block.Blocks.SANDSTONE) || s.isOf(net.minecraft.block.Blocks.RED_SANDSTONE)
+                || s.isOf(net.minecraft.block.Blocks.ICE) || s.isOf(net.minecraft.block.Blocks.PACKED_ICE) || s.isOf(net.minecraft.block.Blocks.FARMLAND);
+    }
+
     private static BlockPos flat(ServerWorld world, int x, int z, int w, int d) {
         return flat(world, x, z, w, d, 0);
     }
 
     private static BlockPos flat(ServerWorld world, int x, int z, int w, int d, int pass) {
         int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
+        java.util.List<Integer> ys = new java.util.ArrayList<>();
         boolean rough = pass > 0;
         for (int dx = -2; dx <= w + 1; dx++) {
             for (int dz = -2; dz <= d + 1; dz++) {
@@ -221,6 +249,7 @@ public final class Layout {
                 BlockPos g = new BlockPos(x + dx, y - 1, z + dz);
                 BlockState ground = world.getBlockState(g);
                 if (!ground.isSolidBlock(world, g) || !ground.getFluidState().isEmpty()) return null;
+                if (!land(ground)) return null; // a roof or a floor: something stands here already
                 // not under a tree: no trunk standing on the site or right beside it (the second time round, they are felled)
                 if (!rough) {
                     for (int up = 0; up <= 8; up++) {
@@ -229,9 +258,14 @@ public final class Layout {
                 }
                 minY = Math.min(minY, y);
                 maxY = Math.max(maxY, y);
+                if (dx >= 0 && dx < w && dz >= 0 && dz < d) ys.add(y);
             }
         }
-        return maxY - minY <= TOLERANCE[Math.min(pass, TOLERANCE.length - 1)] ? new BlockPos(x, maxY, z) : null; // the builders level the rest
+        if (maxY - minY > TOLERANCE[Math.min(pass, TOLERANCE.length - 1)]) return null;
+        // the floor at the ground's own middle height, not on its highest bump: the builders cut the bumps and fill
+        // the hollows (see Builder.levelSite), and the building never stands up on a mound of earth
+        java.util.Collections.sort(ys);
+        return new BlockPos(x, ys.isEmpty() ? maxY : ys.get(ys.size() / 2), z);
     }
 
     /** The plot is clear: off the streets, off other plots and off what is built already (with room between). */

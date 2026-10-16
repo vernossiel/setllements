@@ -33,6 +33,8 @@ public final class SettlementsCommand {
                 .then(CommandManager.literal("leave").executes(c -> Justice.leave(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("surrender").executes(c -> Justice.surrender(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("resist").executes(c -> Justice.resist(c.getSource().getPlayerOrThrow())))
+                .then(CommandManager.literal("plead").executes(c -> Justice.plead(c.getSource().getPlayerOrThrow())))
+                .then(CommandManager.literal("bribe").executes(c -> Justice.bribe(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("rep").executes(c -> Reputation.showStanding(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("why").executes(c -> Doing.toggle(c.getSource().getPlayerOrThrow())))
                 .then(CommandManager.literal("elder").then(CommandManager.argument("topic", StringArgumentType.word())

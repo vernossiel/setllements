@@ -137,6 +137,7 @@ public final class Haul {
         }
         Doing.set(v, "settlements.doing.haul");
         Anim.set(v, Anim.Act.CARRY, 30);
+        holdLoad(v);
         if (!reach(v, village)) return true;
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld world) openChest(world, store(v, village));
         var inv = v.getInventory();
@@ -148,6 +149,7 @@ public final class Haul {
         }
         v.swingHand(v.getDominantHand());
         Anim.clear(v);
+        if (!(v.getMainHandStack().getItem() instanceof ToolItem)) v.setStackInHand(v.getDominantHand(), ItemStack.EMPTY);
         village.markDirty();
         v.settlementsHauling = false;
         Speech.say(v, "settlements.say.haul.done");
@@ -171,5 +173,18 @@ public final class Haul {
         v.swingHand(v.getDominantHand());
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld world) openChest(world, s);
         return false;
+    }
+
+    /** In his arms, for all to see, what he carries the most of (a copy: the load itself stays in his bag). */
+    private static void holdLoad(VillagerEntityMCA v) {
+        var inv = v.getInventory();
+        java.util.Map<net.minecraft.item.Item, Integer> n = new java.util.HashMap<>();
+        for (int i = 0; i < inv.size(); i++) {
+            ItemStack s = inv.getStack(i);
+            if (!s.isEmpty() && !s.isDamageable() && !s.isFood()) n.merge(s.getItem(), s.getCount(), Integer::sum);
+        }
+        n.entrySet().stream().max(java.util.Map.Entry.comparingByValue()).ifPresent(e -> {
+            if (!v.getMainHandStack().isOf(e.getKey())) v.setStackInHand(v.getDominantHand(), new ItemStack(e.getKey()));
+        });
     }
 }

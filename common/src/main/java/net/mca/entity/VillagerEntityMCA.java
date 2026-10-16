@@ -167,6 +167,12 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         if (isElder() != elder) setTrackedValue(ELDER, elder);
     }
 
+    /** Settlements: villagers do not conjure iron golems out of thin air; the village keeps its own watch. */
+    @Override
+    public boolean canSummonGolem(long time) {
+        return false;
+    }
+
     /** What his hands are busy with, for the model (see settlements.Anim). */
     public int getSettlementsAction() {
         return getTrackedValue(ACTION);

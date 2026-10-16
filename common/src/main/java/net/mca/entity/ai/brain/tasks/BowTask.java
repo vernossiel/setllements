@@ -51,11 +51,28 @@ public class BowTask<E extends MobEntity & CrossbowUser> extends MultiTickTask<E
         entity.getMoveControl().strafeTo(backward, strafe);
         entity.lookAtEntity(target, 30.0F, 30.0F);
 
-        //shoot
-        if (entity.age - lastShot > fireInterval) {
-            entity.attack(target, 1.0F);
+        entity.getLookControl().lookAt(target, 30.0F, 30.0F);
+
+        // draw, aim, loose: like a skeleton, and only with the target in front of him and in sight
+        net.minecraft.util.Hand hand = net.minecraft.entity.projectile.ProjectileUtil.getHandPossiblyHolding(entity, Items.BOW);
+        boolean sees = entity.getVisibilityCache().canSee(target);
+        if (!entity.isUsingItem()) {
+            if (sees && entity.age - lastShot > fireInterval) entity.setCurrentHand(hand);
+        } else if (!sees) {
+            entity.clearActiveItem(); // lost sight of him: the arrow stays on the string
+        } else if (entity.getItemUseTime() >= 20 && facing(entity, target)) {
+            entity.clearActiveItem();
+            entity.attack(target, net.minecraft.item.BowItem.getPullProgress(20));
             lastShot = entity.age;
         }
+    }
+
+    /** Turned towards the target, near enough. */
+    private static boolean facing(LivingEntity e, LivingEntity target) {
+        double dx = target.getX() - e.getX(), dz = target.getZ() - e.getZ();
+        float want = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+        return Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(want - e.getHeadYaw())) < 20
+                && Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(want - e.getBodyYaw())) < 45;
     }
 
     @Override
@@ -76,5 +93,6 @@ public class BowTask<E extends MobEntity & CrossbowUser> extends MultiTickTask<E
     protected void finishRunning(ServerWorld world, E entity, long time) {
         super.finishRunning(world, entity, time);
         entity.setAttacking(false);
+        if (entity.isUsingItem()) entity.clearActiveItem();
     }
 }
