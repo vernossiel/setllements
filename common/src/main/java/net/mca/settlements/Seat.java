@@ -57,6 +57,14 @@ public final class Seat {
     }
 
     /** Kneeling (riding an unseen seat low down), held there: in the stocks, his head and hands through the board. */
+    /** The name the stocks' seat carries, so that clients draw whoever is on it bent into the stocks. */
+    public static final String STOCKS_NAME = "settlements_stocks";
+
+    /** Whether this entity is locked in the stocks (works on the client: the seat's name is synced). */
+    public static boolean inStocks(Entity e) {
+        return e != null && e.getVehicle() instanceof ArmorStandEntity a && a.hasCustomName() && STOCKS_NAME.equals(a.getCustomName().getString());
+    }
+
     public static void kneel(net.minecraft.entity.LivingEntity who, double x, double y, double z, float yaw) {
         if (!(who.getWorld() instanceof ServerWorld world)) return;
         if (who.hasVehicle()) who.stopRiding();
@@ -70,6 +78,8 @@ public final class Seat {
         stand.refreshPositionAndAngles(x, y - 0.45, z, yaw, 0);
         stand.addCommandTag(TAG);
         stand.addCommandTag("settlements_stocks");
+        stand.setCustomName(net.minecraft.text.Text.literal(STOCKS_NAME)); // (not shown) how the client knows to draw him locked in the stocks
+        stand.setCustomNameVisible(false);
         world.spawnEntity(stand);
         who.startRiding(stand, true);
         who.setYaw(yaw);
