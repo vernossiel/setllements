@@ -4125,5 +4125,6 @@
   "settlements.say.robbed": "Robbed! %s nuggets gone from my chest in the night! I'm going to the guard.",
   "settlements.say.robbed.f": "Robbed! %s nuggets gone from my chest in the night! I'm going to the guard.",
   "settlements.news.robbed": "%s's house was robbed in the night. Nobody knows who did it.",
-  "settlements.news.rogue.caught.purse": "%s was caught robbing %s and stands in the stocks now."
+  "settlements.news.rogue.caught.purse": "%s was caught robbing %s and stands in the stocks now.",
+  "settlements.news.harvest.bad": "A bad week for the fields: the harvest is poor, bread will be short."
 }

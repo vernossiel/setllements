@@ -34,7 +34,10 @@ public final class Ledger {
         long today = world.getTimeOfDay() / DAY;
         for (Village v : VillageManager.get(world)) {
             if (v.hall == null) continue;
-            if (v.ledgerDay >= 0 && v.ledgerDay < today) Fame.day(world, v); // a new day: old deeds fade, news travels
+            if (v.ledgerDay >= 0 && v.ledgerDay < today) {
+                Fame.day(world, v); // a new day: old deeds fade, news travels
+                Harvest.day(world, v); // and some of the food goes off
+            }
             if (lived(world, v)) {
                 snapshot(world, v);
                 settle(world, v);
@@ -44,7 +47,7 @@ public final class Ledger {
             }
             if (v.ledgerDay < 0) v.ledgerDay = today;
             for (int guard = 0; v.ledgerDay < today && guard < 60; guard++) {
-                day(v);
+                day(world, v);
                 v.ledgerDay++;
             }
         }
@@ -81,11 +84,11 @@ public final class Ledger {
     }
 
     /** One day of the village unseen, in figures. */
-    private static void day(Village v) {
+    private static void day(ServerWorld world, Village v) {
         int[] r = v.ledgerRoles.length == N ? v.ledgerRoles : new int[N];
         int pop = Math.max(1, Math.max(r[POP], v.getPopulation()) - v.owedLeavers + v.owedNewcomers);
         int fields = Math.min(v.farms, r[FARM] * 2);
-        int bread = fields * (r[MILL] > 0 ? 14 : 8) + r[HERD] * 4 + r[HUNT] * 4 + r[FISH] * 6;
+        int bread = (int) Math.round(fields * (r[MILL] > 0 ? 14 : 8) * Harvest.factor(world, v)) + r[HERD] * 4 + r[HUNT] * 4 + r[FISH] * 6;
         if (bread > 0) Workforce.addToTreasury(v, new ItemStack(Items.BREAD, bread));
         if (r[WOOD] > 0 && Crafts.count(v, s -> s.isIn(net.minecraft.registry.tag.ItemTags.LOGS)) < 256) Workforce.addToTreasury(v, new ItemStack(Items.OAK_LOG, r[WOOD] * 24));
         if (r[STONE] > 0 && Crafts.count(v, s -> s.isOf(Items.COBBLESTONE)) < 1200) Workforce.addToTreasury(v, new ItemStack(Items.COBBLESTONE, r[STONE] * 48));

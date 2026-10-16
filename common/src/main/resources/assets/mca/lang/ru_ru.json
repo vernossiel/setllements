@@ -4122,5 +4122,6 @@
   "settlements.say.robbed": "Обокрали! Ночью из сундука %s самородков как не бывало! Пойду к страже.",
   "settlements.say.robbed.f": "Обокрали! Ночью из сундука %s самородков как не бывало! Пойду к страже.",
   "settlements.news.robbed": "Ночью обокрали дом %s. Кто — неизвестно.",
-  "settlements.news.rogue.caught.purse": "%s попался на краже у %s и теперь стоит в колодках."
+  "settlements.news.rogue.caught.purse": "%s попался на краже у %s и теперь стоит в колодках.",
+  "settlements.news.harvest.bad": "Неделя выдалась плохая для полей: урожай скудный, хлеба будет мало."
 }

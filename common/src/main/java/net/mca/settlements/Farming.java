@@ -123,7 +123,10 @@ public final class Farming {
         BlockState s = world.getBlockState(t);
         if (what == 1 && s.getBlock() instanceof CropBlock crop) {
             // reaped into his bag (it goes to the stores with the rest), the bed sown again with the seed of it
+            double yield = Harvest.factor(world, village); // the land and the year
             for (ItemStack drop : Block.getDroppedStacks(s, world, t, null, v, v.getMainHandStack())) {
+                Harvest.scale(drop, yield, world.random);
+                if (drop.isEmpty()) continue;
                 ItemStack left = v.getInventory().addStack(drop);
                 if (!left.isEmpty()) Block.dropStack(world, t, left);
             }
