@@ -78,9 +78,14 @@ public final class Watch {
             }
             Mood.event(village, Mood.Kind.FEAR, foe.getBlockPos()); // people keep in for a while
         }
-        // he keeps his distance and keeps it in sight, calling out
-        if (v.squaredDistanceTo(foe) < 36) {
-            Vec3d away = v.getPos().subtract(foe.getPos()).normalize().multiply(6).add(v.getPos());
+        // the alarm given, he is no soldier: an archer out there, a thing after him or a wound and he runs for it; else he
+        // keeps well off and keeps it in sight, calling out (at six blocks the skeletons shot the watchmen down)
+        if (foe instanceof net.minecraft.entity.ai.RangedAttackMob || foe.getTarget() == v || v.getHealth() < v.getMaxHealth() * 0.7f) {
+            Life.fleeFrom(v, foe, world);
+            return true;
+        }
+        if (v.squaredDistanceTo(foe) < 12 * 12) {
+            Vec3d away = v.getPos().subtract(foe.getPos()).normalize().multiply(8).add(v.getPos());
             Move.to(v, away.x, away.y, away.z, 0.7);
         } else v.getNavigation().stop();
         return true;
