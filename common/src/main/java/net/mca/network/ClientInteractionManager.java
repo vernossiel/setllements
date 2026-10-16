@@ -27,6 +27,8 @@ public interface ClientInteractionManager {
 
     void handleToastMessage(ShowToastRequest message);
 
+    void handleJusticeScreen(JusticeScreenRequest message);
+
     void handleFamilyTreeUUIDResponse(FamilyTreeUUIDResponse response);
 
     void handlePlayerDataMessage(PlayerDataMessage response);

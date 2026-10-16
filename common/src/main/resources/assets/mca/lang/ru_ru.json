@@ -1992,5 +1992,9 @@
   "settlements.say.shaken.2": "За что он так?",
   "settlements.say.shaken.3": "Я пока туда не пойду.",
   "settlements.say.shaken": "Он ушёл? Скажите, что ушёл.",
-  "settlements.doing.farm.waiting": "поля в порядке: ждёт, пока поспеет урожай"
+  "settlements.doing.farm.waiting": "поля в порядке: ждёт, пока поспеет урожай",
+  "settlements.justice.title": "Стража деревни",
+  "settlements.justice.timer": "На ответ: %s с",
+  "settlements.justice.arrest.choice": "Пойдёте добровольно — или стража возьмёт вас силой.",
+  "settlements.doing.starving.search": "голодает: ищет, что бы поесть"
 }

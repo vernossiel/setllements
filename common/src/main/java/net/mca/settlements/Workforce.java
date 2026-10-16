@@ -14,7 +14,7 @@ public final class Workforce {
     private static final int WORK_DRAIN = 4;        // energy per second of work (~3.5 min of work per full bar)
     private static final int REST_GAIN = 3;         // energy per second of rest
     private static final int RESUME_AFTER_EXHAUST = 700;
-    private static final int HUNGER_RISE = 2;       // per second of work
+    private static final int HUNGER_RISE = 1;       // per second of work (a working man eats two or three loaves a day)
     private static final int HUNGER_EAT_AT = 600;   // try to eat above this
     private static final int HUNGER_STOP_AT = 900;  // refuses to work above this
     private static final int START_WORK_ENERGY = 400;
@@ -226,12 +226,21 @@ public final class Workforce {
             if (v.age % 200 == 0) {
                 craftTorches(village);
                 craftArrows(village);
-                if (Buildings.has(village, "mill")) bake(village);
+                bake(village); // bread from the wheat: by hand at home, or at the mill once there is one
                 if (!village.smithyBuilt) smelt(village);
                 if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) Reputation.restock(sw, village);
             }
         }
         STAGE.put(v.getUuid(), "offduty");
+        // starving with nothing to eat in the village: he goes and finds something, as anyone would, before anything else
+        if (v.settlementsHunger >= HUNGER_STOP_AT && !hasMeal(v, village) && village != null && !v.getVillagerBrain().isPanicking()
+                && v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw2) {
+            boolean found = v.getProfession() == VillagerProfession.FARMER && Farming.fields(v, village, sw2) || Forage.work(v, village, sw2);
+            if (found) {
+                Doing.set(v, "settlements.doing.starving.search");
+                return;
+            }
+        }
         if (!Mind.onDuty(v, village, time) && !Persona.working(v, time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
             Gear.pocket(v); // off work: the tools go back in the bag

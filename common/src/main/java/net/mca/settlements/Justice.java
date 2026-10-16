@@ -50,6 +50,7 @@ public final class Justice {
         long deadline, lastTalk, until, since; // since: wanted since
         int arrests;
         BlockPos hold;
+        boolean shown; // the guard's demand window has been put before him
 
         Case(UUID player) {
             this.player = player;
@@ -224,7 +225,8 @@ public final class Justice {
                         c.deadline = now + 20 * 20;
                         c.lastTalk = now;
                         guard.sendChatMessage(Text.translatable("settlements.justice.arrest", p.getName()), p);
-                        p.sendMessage(buttons(new String[]{"surrender", "resist"}), false);
+                        window(guard, village, p, List.of(Text.translatable("settlements.justice.arrest", p.getName()), Text.empty(),
+                                Text.translatable("settlements.justice.arrest.choice").formatted(Formatting.YELLOW)), new String[]{"surrender", "resist"}, 20);
                     }
                 }
                 case ARREST -> {
@@ -288,9 +290,22 @@ public final class Justice {
     private static void demand(ServerWorld world, Village village, VillagerEntityMCA guard, ServerPlayerEntity p, Case c) {
         String key = "settlements.justice.demand." + c.crime.name().toLowerCase();
         talk(world, village, guard, p, key, world.getTime());
-        if (!c.stolen.isEmpty()) p.sendMessage(Text.translatable("settlements.justice.fine_or_return", fine(c)).formatted(Formatting.GRAY), false);
-        else p.sendMessage(Text.translatable("settlements.justice.fine", fine(c)).formatted(Formatting.GRAY), false);
-        p.sendMessage(buttons(c.stolen.isEmpty() ? new String[]{"pay", "deny", "leave"} : new String[]{"return", "pay", "deny", "leave"}), false);
+        Text money = !c.stolen.isEmpty() ? Text.translatable("settlements.justice.fine_or_return", fine(c)) : Text.translatable("settlements.justice.fine", fine(c));
+        String[] options = c.stolen.isEmpty() ? new String[]{"pay", "deny", "leave"} : new String[]{"return", "pay", "deny", "leave"};
+        if (!c.shown) { // face to face, the first time: a window with his words and the answers
+            c.shown = true;
+            window(guard, village, p, List.of(Text.translatable(key, p.getName()), Text.empty(), money.copy().formatted(Formatting.YELLOW)), options,
+                    (int) Math.max(0, (c.deadline - world.getTime()) / 20));
+        } else {
+            p.sendMessage(money.copy().formatted(Formatting.GRAY), false);
+            p.sendMessage(buttons(options), false);
+        }
+    }
+
+    /** The guard's demand or arrest, in a window of its own over the game (the chat has the same, to answer later). */
+    private static void window(VillagerEntityMCA guard, Village village, ServerPlayerEntity p, List<Text> lines, String[] options, int seconds) {
+        Text who = guard != null ? guard.getName() : Text.literal(village.getName());
+        net.mca.cobalt.network.NetworkHandler.sendToPlayer(new net.mca.network.s2c.JusticeScreenRequest(who, lines, options, seconds), p);
     }
 
     private static MutableText buttons(String[] which) {
@@ -505,8 +520,7 @@ public final class Justice {
             Life.news(village, "crime.jailed", p.getName().getString());
         } else {
             // the stocks on the square: he cannot move until his time is up
-            BlockPos sq = village.hallPos != null ? village.hallPos : new BlockPos(village.getCenter());
-            BlockPos spot = Camp.hearth(village, world) != null ? Camp.hearth(village, world).add(0, 0, 3) : sq;
+            BlockPos spot = stocks(world, village);
             p.teleport(world, spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, p.getYaw(), p.getPitch());
             int ticks = seconds * 20;
             p.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, ticks, 6, false, false));
@@ -517,6 +531,52 @@ public final class Justice {
             p.sendMessage(Text.translatable("settlements.justice.stocks", seconds).formatted(Formatting.GOLD), false);
             Life.news(village, "crime.stocks", p.getName().getString());
         }
+    }
+
+    /**
+     * Where the stocks stand when the village has no jail: on its square, always the same place - in front of the well,
+     * or else the middle of the village on open ground - so everybody sees who did wrong.
+     */
+    static BlockPos stocks(ServerWorld world, Village village) {
+        for (Built b : village.built) {
+            if (!Buildings.base(b.type()).equals("well")) continue;
+            BlockPos q = open(world, b.point(2, 0, 5));
+            if (q != null) return q;
+        }
+        // open ground near the middle: earth, a path or stone underfoot, sky above, not inside or on top of a building
+        BlockPos c = new BlockPos(village.getCenter());
+        for (int r = 2; r <= 16; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != r) continue;
+                    BlockPos top = world.getTopPosition(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, c.add(dx, 0, dz));
+                    var ground = world.getBlockState(top.down());
+                    boolean natural = ground.isIn(net.minecraft.registry.tag.BlockTags.DIRT) || ground.isOf(net.minecraft.block.Blocks.DIRT_PATH)
+                            || ground.isOf(net.minecraft.block.Blocks.GRAVEL) || ground.isIn(net.minecraft.registry.tag.BlockTags.SAND)
+                            || ground.isIn(net.minecraft.registry.tag.BlockTags.BASE_STONE_OVERWORLD);
+                    if (!natural || inBuilding(village, top)) continue;
+                    BlockPos q = open(world, top);
+                    if (q != null) return q;
+                }
+            }
+        }
+        return world.getTopPosition(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, c);
+    }
+
+    private static BlockPos open(ServerWorld world, BlockPos p) {
+        return Move.passable(world, p) && Move.passable(world, p.up()) && world.getBlockState(p.down()).isSolidBlock(world, p.down())
+                && world.getFluidState(p).isEmpty() ? p.toImmutable() : null;
+    }
+
+    private static boolean inBuilding(Village village, BlockPos p) {
+        for (Built b : village.built) if (b.contains(p)) return true;
+        for (var b : village.getBuildings().values()) {
+            if (b.getBuildingType().grouped()) continue;
+            BlockPos a = b.getPos0(), z = b.getPos1();
+            if (p.getX() >= Math.min(a.getX(), z.getX()) - 1 && p.getX() <= Math.max(a.getX(), z.getX()) + 1
+                    && p.getZ() >= Math.min(a.getZ(), z.getZ()) - 1 && p.getZ() <= Math.max(a.getZ(), z.getZ()) + 1) return true;
+        }
+        return false;
     }
 
     private static void release(ServerWorld world, Village village, ServerPlayerEntity p, Case c) {

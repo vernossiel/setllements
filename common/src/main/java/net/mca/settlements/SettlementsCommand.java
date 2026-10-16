@@ -200,6 +200,9 @@ public final class SettlementsCommand {
                 + " mine=" + v.mineBuilt + "(level " + v.mineLevel + ") smithy=" + v.smithyBuilt + " armory=" + v.armoryBuilt
                 + " tavern=" + (v.tavern != null) + " towers=" + v.towers + " wall=" + v.wallBuilt);
         say(c, "Project: " + (v.buildOrigin == null ? "none" : v.buildType + " at " + v.buildOrigin.toShortString() + ", step " + v.buildStep));
+        java.util.Map<String, Integer> stock = new java.util.TreeMap<>();
+        for (ItemStack st : v.storageBuffer) stock.merge(Registries.ITEM.getId(st.getItem()).getPath(), st.getCount(), Integer::sum);
+        say(c, "Stores: " + stock);
         say(c, "Mine: " + (v.mineOrigin == null ? "none" : v.mineOrigin.toShortString() + " level " + v.mineLevel + " step " + v.mineStep));
         say(c, "Treasury: planks+logs*4=" + Builder.stockPlanks(v) + " cobble=" + Builder.stockCobble(v) + " iron=" + Builder.stockIron(v)
                 + " wool=" + Builder.stockWool(v) + " stacks=" + v.storageBuffer.size());

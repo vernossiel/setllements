@@ -30,6 +30,7 @@ public interface MessagesMCA {
         NetworkHandler.registerMessage(AnalysisResults.class);
         NetworkHandler.registerMessage(InteractionCloseRequest.class);
         NetworkHandler.registerMessage(ShowToastRequest.class);
+        NetworkHandler.registerMessage(JusticeScreenRequest.class);
         NetworkHandler.registerMessage(BabyNameRequest.class);
         NetworkHandler.registerMessage(BabyNameResponse.class);
         NetworkHandler.registerMessage(VillagerNameRequest.class);

@@ -1995,5 +1995,9 @@
   "settlements.say.shaken.2": "Why would anyone do that?",
   "settlements.say.shaken.3": "I'm not going back out there yet.",
   "settlements.say.shaken": "Is he gone? Tell me he's gone.",
-  "settlements.doing.farm.waiting": "the fields are tended: waiting for the crop to come on"
+  "settlements.doing.farm.waiting": "the fields are tended: waiting for the crop to come on",
+  "settlements.justice.title": "The village watch",
+  "settlements.justice.timer": "%s s to answer",
+  "settlements.justice.arrest.choice": "Come quietly, or the guards will take you by force.",
+  "settlements.doing.starving.search": "starving: out looking for anything to eat"
 }

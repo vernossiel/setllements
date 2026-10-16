@@ -192,6 +192,11 @@ public class ClientInteractionManagerImpl implements ClientInteractionManager {
     }
 
     @Override
+    public void handleJusticeScreen(JusticeScreenRequest message) {
+        client.setScreen(new JusticeScreen(message));
+    }
+
+    @Override
     public void handleToastMessage(ShowToastRequest message) {
         SystemToast.add(client.getToastManager(), SystemToast.Type.TUTORIAL_HINT, message.getTitle(), message.getMessage());
     }
