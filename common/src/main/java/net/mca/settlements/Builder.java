@@ -500,7 +500,17 @@ public final class Builder {
             top = Blocks.RED_SAND;
             under = Blocks.RED_SANDSTONE;
         }
-        final int RAMP = 3;
+        // how much higher the land rises round the site: on a hillside the slope cut back is as wide as the hill is
+        // high (up to eight blocks), so it eases down a block at a time instead of leaving the house in a pit of
+        // sheer earth walls
+        int rise = 0;
+        for (int x = o.getX() - 4; x <= o.getX() + fw + 3; x++) {
+            for (int z = o.getZ() - 4; z <= o.getZ() + fd + 3; z++) {
+                int g = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+                if (natural(world.getBlockState(new BlockPos(x, g - 1, z)))) rise = Math.max(rise, g - o.getY());
+            }
+        }
+        final int RAMP = Math.max(3, Math.min(8, rise));
         for (int x = o.getX() - 1 - RAMP; x <= o.getX() + fw + RAMP; x++) {
             for (int z = o.getZ() - 1 - RAMP; z <= o.getZ() + fd + RAMP; z++) {
                 // how far outside the footprint (and the step round it): 0 on it, then 1, 2, 3 down the slope
@@ -522,10 +532,10 @@ public final class Builder {
                 // the level wanted here: the floor on the site, easing towards the ground about it on the slope
                 int want = out == 0 ? o.getY() : ground + (int) Math.round((o.getY() - ground) * (1.0 - out / (double) (RAMP + 1)));
                 // cut what natural stands above it
-                for (int y = Math.max(want, ground) + 6; y >= want; y--) {
+                for (int y = Math.max(want, ground) + 2; y >= want; y--) {
                     BlockPos p = new BlockPos(x, y, z);
                     BlockState s = world.getBlockState(p);
-                    if (!s.isAir() && natural(s) && (out == 0 || y < want + 3)) world.breakBlock(p, false);
+                    if (!s.isAir() && natural(s)) world.breakBlock(p, false);
                 }
                 // fill up to it
                 for (int y = want - 1; y >= want - 6; y--) {

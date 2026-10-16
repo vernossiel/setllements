@@ -126,6 +126,16 @@ public final class SettlementsCommand {
                     }
                     return 1;
                 }))
+                .then(CommandManager.literal("bedcheck").then(CommandManager.argument("pos", net.minecraft.command.argument.BlockPosArgumentType.blockPos()).executes(c -> {
+                    var w = c.getSource().getWorld();
+                    var pos = net.minecraft.command.argument.BlockPosArgumentType.getBlockPos(c, "pos");
+                    var vil = net.mca.server.world.data.VillageManager.get(w).findNearestVillage(pos, 200).orElse(null);
+                    if (vil == null) return say(c, "no village");
+                    StringBuilder b = new StringBuilder("allowed=" + Housing.allowed(vil, pos) + " hall=" + vil.hallPos + " built:");
+                    for (Built x : vil.built) if (x.contains(pos)) b.append(' ').append(x.type()).append('@').append(x.origin().toShortString());
+                    vil.getBuildingAt(pos).ifPresent(bd -> b.append(" building=").append(bd.getType()).append(' ').append(bd.getPos0().toShortString()).append("..").append(bd.getPos1().toShortString()));
+                    return say(c, b.toString());
+                })))
                 .then(CommandManager.literal("makerogue").executes(c -> say(c, "Rogue now: " + Rogue.make(c.getSource().getWorld()))))
                 .then(CommandManager.literal("rich").executes(SettlementsCommand::rich))
                 .then(CommandManager.literal("warp").requires(src -> src.hasPermissionLevel(2))

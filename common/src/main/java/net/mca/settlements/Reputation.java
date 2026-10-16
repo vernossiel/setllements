@@ -332,7 +332,7 @@ public final class Reputation {
         return 1;
     }
 
-    /** Every two seconds: tell players when they enter a village and when their standing changes. */
+    /** Every two seconds: the village's name when a player comes into it (no numbers, no bars: see Fame). */
     public static void hud(ServerWorld world) {
         VillageManager vm = VillageManager.get(world);
         for (ServerPlayerEntity p : world.getPlayers()) {
@@ -344,13 +344,9 @@ public final class Reputation {
             }
             int rep = v.getReputation(p);
             if (st == null || st[0] != v.getId()) {
+                // the village's name as he comes in, nothing more: how it takes him he sees in how its people take him
                 p.sendMessage(Text.empty().append(Text.literal(v.getName() + " \u00B7 ").formatted(net.minecraft.util.Formatting.GOLD))
-                        .append(Text.translatable("settlements.level." + Plan.level(v).name().toLowerCase())).append(Text.literal(" \u00B7 "))
-                        .append(bar(rep)).append(Text.literal(" ")).append(tierName(rep)), true);
-            } else if (rep != st[1]) {
-                int d = rep - st[1];
-                p.sendMessage(Text.empty().append(Text.literal((d > 0 ? "+" : "") + d + " ").formatted(d > 0 ? net.minecraft.util.Formatting.GREEN : net.minecraft.util.Formatting.RED))
-                        .append(Text.translatable("settlements.rep.word")).append(Text.literal(": ")).append(bar(rep)).append(Text.literal(" ")).append(tierName(rep)), true);
+                        .append(Text.translatable("settlements.level." + Plan.level(v).name().toLowerCase())), true);
             }
             HUD.put(p.getUuid(), new int[]{v.getId(), rep});
         }
