@@ -58,7 +58,8 @@ public final class Housing {
             // a house the village counts but that stands off in the woods is no home: nobody walks there at nightfall.
             // Whatever the village built itself is home wherever it stands; anything else only within the village as it
             // has grown (its own houses' reach, never less than 48 blocks from the hall)
-            if (!ours(v, b) && b.getCenter().getSquaredDistance(heart) > reach * reach) continue;
+            if (!ours(v, b) && (b.getCenter().getSquaredDistance(heart) > Math.min(reach, 40) * Math.min(reach, 40)
+                    || Math.abs(b.getCenter().getY() - heart.getY()) > 10)) continue; // nor one down in the valley below
             int r = Math.max(4, b.getSize());
             List<BlockPos> beds = poi.getInSquare(t -> t.matchesKey(PointOfInterestTypes.HOME), b.getCenter(), r, PointOfInterestStorage.OccupationStatus.ANY)
                     .map(p -> p.getPos()).filter(b::containsPos).sorted(Comparator.comparingLong(BlockPos::asLong)).toList();
