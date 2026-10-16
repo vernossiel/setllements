@@ -1466,6 +1466,9 @@ public final class Builder {
             return switch (step.kind()) {
                 case GLASS, TORCH, CROP, CARPET, SHUTTER, POT, HEDGE, PATH, STEP, BELL, SMOKE, LANTERN, CHIMNEY,
                      STONECUTTER, HAY, COMPOSTER, PUMPKIN, CAULDRON, FLOWER, LOG_X, LOG_Z, WOOL, TARGET, CHAIN, CLOCK, SHELF, BANNER, FRAME, PROP, TPL_FIT -> Result.SKIPPED;
+                // a home's smoker is a comfort, not a wall: no stone for it, the house goes up without (a hamlet with no
+                // miner waited five days on it)
+                case SMOKER, BARREL, BOOKSHELF, CRAFT -> village.buildType != null && Tiers.isHome(village.buildType) ? Result.SKIPPED : Result.WAIT;
                 default -> Result.WAIT;
             };
         }
