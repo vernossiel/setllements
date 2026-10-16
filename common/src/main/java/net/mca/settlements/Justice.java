@@ -72,7 +72,7 @@ public final class Justice {
     }
 
     private static int fine(Case c) {
-        return Math.max(1, (int) Math.ceil(c.value / 6));
+        return 9 * Math.max(1, (int) Math.ceil(c.value / 6)); // in nuggets, nine to an emerald
     }
 
     public static boolean wanted(PlayerEntity p) {
@@ -515,23 +515,15 @@ public final class Justice {
         Case c = CASES.get(p.getUuid());
         if (c == null) return 0;
         int fine = fine(c);
-        int have = p.getInventory().count(Items.EMERALD);
-        if (have < fine) {
+        if (Money.count(p.getInventory()) < fine) {
             p.sendMessage(Text.translatable("settlements.justice.cannot_pay", fine).formatted(Formatting.RED), false);
             return 0;
         }
         Village village = VillageManager.get(p.getServerWorld()).getOrEmpty(c.villageId).orElse(null);
-        int left = fine;
-        for (int i = 0; i < p.getInventory().size() && left > 0; i++) {
-            ItemStack s = p.getInventory().getStack(i);
-            if (!s.isOf(Items.EMERALD)) continue;
-            int d = Math.min(left, s.getCount());
-            s.decrement(d);
-            left -= d;
-        }
+        Money.take(p.getInventory(), fine);
         if (village != null) {
             // bought off: the goods stay with him, the fine is worth more than they are, and it is not forgotten
-            Workforce.addToTreasury(village, new ItemStack(Items.EMERALD, fine));
+            Money.deposit(village, fine);
             village.pushHearts(p, -(int) Math.ceil(c.value / 2));
         }
         CASES.remove(p.getUuid());
@@ -570,7 +562,7 @@ public final class Justice {
     }
 
     private static int bribeCost(Case c) {
-        return Math.max(1, (fine(c) + 1) / 2);
+        return Math.max(9, (fine(c) + 1) / 2);
     }
 
     private static double bribeChance(PlayerEntity p, Village village, Case c) {
@@ -610,7 +602,7 @@ public final class Justice {
         return 1;
     }
 
-    /** A few emeralds for the guard himself, quietly. Taken, the matter is closed; refused, it is one more offence. */
+    /** A few nuggets for the guard himself, quietly. Taken, the matter is closed; refused, it is one more offence. */
     public static int bribe(ServerPlayerEntity p) {
         Case c = CASES.get(p.getUuid());
         if (c == null || c.bribed || (c.stage != Stage.DEMAND && c.stage != Stage.ARREST)) return 0;
@@ -619,26 +611,19 @@ public final class Justice {
         if (village == null) return 0;
         VillagerEntityMCA guard = nearestGuard(world, p, 32);
         int cost = bribeCost(c);
-        if (p.getInventory().count(Items.EMERALD) < cost) {
+        if (Money.count(p.getInventory()) < cost) {
             p.sendMessage(Text.translatable("settlements.justice.cannot_pay", cost).formatted(Formatting.RED), true);
             return 0;
         }
         c.bribed = true;
         if (world.random.nextDouble() < bribeChance(p, village, c)) {
-            int left = cost;
-            for (int i = 0; i < p.getInventory().size() && left > 0; i++) {
-                ItemStack s = p.getInventory().getStack(i);
-                if (!s.isOf(Items.EMERALD)) continue;
-                int d = Math.min(left, s.getCount());
-                s.decrement(d);
-                left -= d;
-            }
+            Money.take(p.getInventory(), cost);
             talk(world, village, guard, p, "settlements.justice.bribe.ok", world.getTime());
             CASES.remove(p.getUuid());
         } else {
             talk(world, village, guard, p, "settlements.justice.bribe.no", world.getTime());
             village.pushHearts(p, -5);
-            c.value += cost * 6;
+            c.value += cost * 6 / 9.0; // the cost is in nuggets now: the same weight as before
             c.shown = false;
             if (c.stage == Stage.DEMAND) demand(world, village, guard, p, c);
         }
@@ -1087,29 +1072,22 @@ public final class Justice {
     }
 
     private static int buyout(ServerWorld world, Case c) {
-        return Math.max(2, (int) Math.ceil((c.until - world.getTime()) / 20.0 / 30)); // an emerald for each half-minute left
+        return 9 * Math.max(2, (int) Math.ceil((c.until - world.getTime()) / 20.0 / 30)); // an emerald's worth for each half-minute left, in nuggets
     }
 
-    /** /settle buyout: emeralds for the time left. */
+    /** /settle buyout: nuggets for the time left. */
     public static int buyoutStocks(ServerPlayerEntity p) {
         Case c = CASES.get(p.getUuid());
         if (c == null || c.stage != Stage.SERVING) return 0;
         ServerWorld world = p.getServerWorld();
         Village village = VillageManager.get(world).getOrEmpty(c.villageId).orElse(null);
         int cost = buyout(world, c);
-        if (village == null || p.getInventory().count(Items.EMERALD) < cost) {
+        if (village == null || Money.count(p.getInventory()) < cost) {
             p.sendMessage(Text.translatable("settlements.justice.cannot_pay", cost).formatted(Formatting.RED), true);
             return 0;
         }
-        int left = cost;
-        for (int i = 0; i < p.getInventory().size() && left > 0; i++) {
-            ItemStack s = p.getInventory().getStack(i);
-            if (!s.isOf(Items.EMERALD)) continue;
-            int d = Math.min(left, s.getCount());
-            s.decrement(d);
-            left -= d;
-        }
-        Workforce.addToTreasury(village, new ItemStack(Items.EMERALD, cost));
+        Money.take(p.getInventory(), cost);
+        Money.deposit(village, cost);
         release(world, village, p, c);
         CASES.remove(p.getUuid());
         return 1;

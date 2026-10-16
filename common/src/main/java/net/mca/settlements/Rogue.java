@@ -369,7 +369,7 @@ public final class Rogue {
         Gaze.at(v, target, 30f, 30f);
         GOING_TO.remove(v.getUuid());
         Justice.markOffered(target);
-        int price = owes(v, target) ? 0 : 4 + Justice.secondsLeft(target) / 30; // one he owes, he lets out for nothing
+        int price = owes(v, target) ? 0 : 9 * (4 + Justice.secondsLeft(target) / 30); // in nuggets; one he owes, he lets out for nothing
         OFFERS.put(target.getUuid(), new Offer(v.getUuid(), price, world.getTime() + 20 * 30));
         List<Text> labels = List.of(
                 Text.translatable("settlements.rogue.button.accept", price),
@@ -390,19 +390,11 @@ public final class Rogue {
             Speech.sayNow(rogue, "settlements.say.rogue.refused");
             return 1;
         }
-        if (o.price() > 0 && p.getInventory().count(Items.EMERALD) < o.price()) {
+        if (o.price() > 0 && !Money.take(p.getInventory(), o.price())) {
             Speech.sayNow(rogue, "settlements.say.rogue.nomoney");
             return 0;
         }
-        int left = o.price();
-        for (int i = 0; i < p.getInventory().size() && left > 0; i++) {
-            ItemStack s = p.getInventory().getStack(i);
-            if (!s.isOf(Items.EMERALD)) continue;
-            int d = Math.min(left, s.getCount());
-            s.decrement(d);
-            left -= d;
-        }
-        if (o.price() > 0) rogue.getInventory().addStack(new ItemStack(Items.EMERALD, o.price()));
+        Money.give(rogue.getInventory(), o.price());
         double roll = world.random.nextDouble();
         if (o.price() == 0) roll = Math.max(roll, 0.15); // a friend does not cheat him
         Village village = Village.findNearest(rogue).orElse(null);
