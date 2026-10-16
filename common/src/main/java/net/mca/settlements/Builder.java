@@ -538,10 +538,12 @@ public final class Builder {
                     if (!s.isAir() && natural(s)) world.breakBlock(p, false);
                 }
                 // fill up to it
-                for (int y = want - 1; y >= want - 12; y--) { // down to the ground, however far: nothing stands on air
+                for (int y = want - 1; y >= want - (out == 0 ? 24 : 12); y--) { // down to the ground, however far: nothing stands on air
                     BlockPos p = new BlockPos(x, y, z);
                     BlockState s = world.getBlockState(p);
-                    if (!s.isAir() && !s.isReplaceable() && s.getFluidState().isEmpty()) {
+                    // leaves are no ground: earth heaped on a tree's crown is left hanging once the tree is felled and
+                    // the leaves fall, and the building on it with it
+                    if (!s.isAir() && !s.isReplaceable() && s.getFluidState().isEmpty() && !s.isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) {
                         if (y == want - 1 && natural(s) && s.isIn(net.minecraft.registry.tag.BlockTags.DIRT)) world.setBlockState(p, top.getDefaultState());
                         break;
                     }
