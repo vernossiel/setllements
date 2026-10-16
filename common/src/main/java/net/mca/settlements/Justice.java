@@ -65,6 +65,7 @@ public final class Justice {
     private static final Map<UUID, Integer> RECORD = new HashMap<>(); // serious offences so far (beatings, real thefts)
     private static final Map<UUID, Long> LAST_OFFENCE = new HashMap<>(); // when the last of them was: three quiet days and the slate is clean
     private static final Map<UUID, Long> SPARED = new HashMap<>(); // beaten and let go, until (world time)
+    private static final Map<UUID, Long> WARNED = new HashMap<>(); // let go once already: the next time no mercy, until (world time)
 
     private Justice() {
     }
@@ -700,6 +701,12 @@ public final class Justice {
         Case c = CASES.get(p.getUuid());
         if (c != null && c.stage == Stage.SERVING) return 0f;
         if (detaining(c)) return Math.min(damage, Math.max(1f, p.getHealth() - 5f));
+        // let go once and come back after all: this time the guards do not hold back
+        Long warned = WARNED.get(p.getUuid());
+        if (warned != null && p.getWorld().getTime() < warned) {
+            if (damage >= p.getHealth()) WARNED.remove(p.getUuid()); // the score settled: a fresh start after this
+            return damage;
+        }
         float hit = Math.min(damage, Math.max(0f, p.getHealth() - 2f));
         if (p.getHealth() - hit <= 4f && p.getWorld() instanceof ServerWorld w) spare(w, p);
         return hit;
@@ -709,6 +716,7 @@ public final class Justice {
     private static void spare(ServerWorld world, PlayerEntity p) {
         if (spared(p)) return;
         SPARED.put(p.getUuid(), world.getTime() + 20 * 90);
+        WARNED.put(p.getUuid(), world.getTime() + 20 * 90 + 24000L * 3); // the village remembers him for three days
         for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(64), VillagerEntityMCA::isGuard)) {
             if (g.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).orElse(null) == p) g.getBrain().forget(MemoryModuleType.ATTACK_TARGET);
         }

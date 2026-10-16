@@ -1607,7 +1607,7 @@
   "settlements.building.mansion": "mansion",
   "settlements.say.build.mansion": "Building a mansion. The village is getting rich!",
   "settlements.building.demolish:mansion": "demolishing an old building",
-  "settlements.justice.beaten": "That's enough for you, %s. Crawl off while you still can, and don't let us see you again.",
+  "settlements.justice.beaten": "That's enough for you, %s. Crawl off while you still can. Show your face here again and there'll be no mercy.",
   "settlements.building.shop": "shop",
   "settlements.say.build.shop": "Building a shop. A town needs a street of shops!",
   "settlements.building.demolish:shop": "demolishing an old building",
