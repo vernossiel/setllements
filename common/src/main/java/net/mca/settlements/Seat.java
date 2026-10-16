@@ -58,7 +58,7 @@ public final class Seat {
         v.setHeadYaw(yaw);
     }
 
-    /** Kneeling (riding an unseen seat low down), held there: in the stocks, his head and hands through the board. */
+    /** Held standing in the stocks (riding an unseen seat at his feet), his head and hands through the board. */
     /** The name the stocks' seat carries, so that clients draw whoever is on it bent into the stocks. */
     public static final String STOCKS_NAME = "settlements_stocks";
 
@@ -77,7 +77,7 @@ public final class Seat {
         n.putBoolean("NoGravity", true);
         n.putBoolean("Invulnerable", true);
         stand.readCustomDataFromNbt(n);
-        stand.refreshPositionAndAngles(x, y - 0.45, z, yaw, 0);
+        stand.refreshPositionAndAngles(x, y + 0.35, z, yaw, 0); // the rider is set 0.35 below the seat: his feet on the platform, standing
         stand.addCommandTag(TAG);
         stand.addCommandTag("settlements_stocks");
         stand.setCustomName(net.minecraft.text.Text.literal(STOCKS_NAME)); // (not shown) how the client knows to draw him locked in the stocks

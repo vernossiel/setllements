@@ -836,7 +836,7 @@ public final class Justice {
             // the stocks on the square, on a platform for all to see: he cannot move until his time is up
             BlockPos spot = pillory(world, village);
             p.teleport(world, spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, 180f, 10f); // facing the square, the board at his neck
-            Seat.kneel(p, spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, 180f); // on his knees, head and hands through the board
+            Seat.kneel(p, spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, 180f); // bent over in the stocks, head and hands through the board
             c.inStocks = true;
             int ticks = seconds * 20;
             p.addStatusEffect(new StatusEffectInstance(StatusEffects.MINING_FATIGUE, ticks, 4, false, false));

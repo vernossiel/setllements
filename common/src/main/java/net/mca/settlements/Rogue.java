@@ -70,7 +70,7 @@ public final class Rogue {
         }
         BlockPos at = Justice.pillory(world, village);
         if (v.isSleeping()) v.wakeUp();
-        if (!v.hasVehicle()) Seat.kneel(v, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 180f); // on his knees, head and hands through the board
+        if (!v.hasVehicle()) Seat.kneel(v, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 180f); // bent over in the stocks, head and hands through the board
         v.getNavigation().stop();
         Doing.set(v, "settlements.doing.rogue.stocks");
         if (world.random.nextInt(60) == 0) Speech.sayAny(v, "settlements.say.rogue.stocks", 3);

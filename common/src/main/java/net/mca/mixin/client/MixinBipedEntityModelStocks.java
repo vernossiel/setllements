@@ -12,8 +12,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Settlements: whoever is locked in the stocks - a player or a villager - is drawn kneeling, bent forward at the
- * waist, neck and both wrists through the board in front of him (head up, arms straight out), instead of sitting.
+ * Settlements: whoever is locked in the stocks - a player or a villager - is drawn standing bent forward at the waist,
+ * neck and both wrists through the board in front of him (head up, arms straight out), instead of sitting.
  */
 @Mixin(BipedEntityModel.class)
 abstract class MixinBipedEntityModelStocks<T extends LivingEntity> {
@@ -34,39 +34,41 @@ abstract class MixinBipedEntityModelStocks<T extends LivingEntity> {
             hat.pivotZ = 0;
             return;
         }
-        // bent over: the trunk tipped forward from the hips
-        body.pitch = 0.75f;
+        // standing on the platform, bent at the waist the way the game's own crouch bends a man (that pose looks
+        // right; a kneel cannot, the legs have no knees), neck and both wrists through the board before him
+        body.pitch = 0.5f;
         body.yaw = 0;
-        body.pivotY = 0;
+        body.roll = 0;
+        body.pivotY = 3.2f;
         body.pivotZ = 0;
-        // the neck through the board: the head well forward and down, the face lifted a little to look about
-        head.pivotY = 3.5f;
-        head.pivotZ = -5.5f;
-        head.pitch = -0.35f;
-        head.yaw = Math.max(-0.35f, Math.min(0.35f, head.yaw)); // the board allows only a little turning
+        // the head held in the board: forward with the shoulders, the face up to look about, a little turning allowed
+        head.pivotY = 4.2f;
+        head.pivotZ = -1.5f;
+        head.pitch = Math.max(-0.7f, Math.min(0.1f, head.pitch - 0.2f));
+        head.yaw = Math.max(-0.35f, Math.min(0.35f, head.yaw));
         head.roll = 0;
-        // both wrists through it either side of the head: arms straight out in front, a little inwards
+        // the arms straight out before him into the board, either side of the head, hanging there
         float sway = (float) Math.sin(animationProgress * 0.08f) * 0.03f;
-        rightArm.pivotY = 4.5f;
-        rightArm.pivotZ = -3.0f;
-        rightArm.pitch = -1.25f + sway;
-        rightArm.yaw = -0.25f;
+        rightArm.pivotY = 5.2f;
+        rightArm.pivotZ = -1.0f;
+        rightArm.pitch = -1.45f + sway;
+        rightArm.yaw = -0.3f;
         rightArm.roll = 0;
-        leftArm.pivotY = 4.5f;
-        leftArm.pivotZ = -3.0f;
-        leftArm.pitch = -1.25f - sway;
-        leftArm.yaw = 0.25f;
+        leftArm.pivotY = 5.2f;
+        leftArm.pivotZ = -1.0f;
+        leftArm.pitch = -1.45f - sway;
+        leftArm.yaw = 0.3f;
         leftArm.roll = 0;
-        // on his knees: the thighs down and back, under him
-        rightLeg.pivotY = 11.0f;
+        // on his feet, the legs straight under the hips
+        rightLeg.pivotY = 12.2f;
         rightLeg.pivotZ = 4.0f;
-        rightLeg.pitch = 1.2f;
-        rightLeg.yaw = 0.05f;
+        rightLeg.pitch = 0;
+        rightLeg.yaw = 0;
         rightLeg.roll = 0;
-        leftLeg.pivotY = 11.0f;
+        leftLeg.pivotY = 12.2f;
         leftLeg.pivotZ = 4.0f;
-        leftLeg.pitch = 1.2f;
-        leftLeg.yaw = -0.05f;
+        leftLeg.pitch = 0;
+        leftLeg.yaw = 0;
         leftLeg.roll = 0;
         hat.copyTransform(head);
     }
