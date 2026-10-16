@@ -523,8 +523,7 @@ public final class Builder {
                         BlockPos p = new BlockPos(x, y, z);
                         BlockState s = world.getBlockState(p);
                         if (s.isIn(net.minecraft.registry.tag.BlockTags.LOGS)) {
-                            world.breakBlock(p, false);
-                            if (village != null) Workforce.addToTreasury(village, new net.minecraft.item.ItemStack(s.getBlock().asItem()));
+                            fell(world, village, p); // the whole tree, not just what stands over the site (its top was left hanging)
                         } else if (y > o.getY() + 2 && s.isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) world.breakBlock(p, false);
                     }
                 }
@@ -554,6 +553,38 @@ public final class Builder {
                 }
             }
         }
+    }
+
+    /** Fells the tree a log belongs to: every log joined to it (up to a big tree's worth), into the village's stores. */
+    private static void fell(ServerWorld world, Village village, BlockPos start) {
+        java.util.ArrayDeque<BlockPos> open = new java.util.ArrayDeque<>();
+        java.util.Set<BlockPos> seen = new java.util.HashSet<>();
+        open.add(start);
+        seen.add(start);
+        int n = 0;
+        while (!open.isEmpty() && n < 160) {
+            BlockPos p = open.poll();
+            BlockState s = world.getBlockState(p);
+            if (!s.isIn(net.minecraft.registry.tag.BlockTags.LOGS)) continue;
+            world.breakBlock(p, false);
+            if (village != null) Workforce.addToTreasury(village, new net.minecraft.item.ItemStack(s.getBlock().asItem()));
+            n++;
+            for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++) {
+                BlockPos q = p.add(dx, dy, dz);
+                if (q.getY() < start.getY() - 1) continue; // not down into the roots (or a log house below)
+                if (seen.add(q) && world.getBlockState(q).isIn(net.minecraft.registry.tag.BlockTags.LOGS)
+                        && (dx == 0 && dz == 0 && dy == 1 || wild(world, q))) open.add(q); // up the trunk, or out along a branch in the leaves
+            }
+        }
+    }
+
+    /** A log of a tree that grew there (natural leaves about it), not a beam somebody built in. */
+    private static boolean wild(ServerWorld world, BlockPos p) {
+        for (BlockPos q : BlockPos.iterate(p.add(-2, -1, -2), p.add(2, 2, 2))) {
+            BlockState s = world.getBlockState(q);
+            if (s.getBlock() instanceof net.minecraft.block.LeavesBlock && !s.get(net.minecraft.block.LeavesBlock.PERSISTENT)) return true;
+        }
+        return false;
     }
 
     private static boolean natural(BlockState s) {
