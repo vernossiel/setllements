@@ -70,6 +70,10 @@ public final class Workforce {
         Pose.tick(v);
         Anim.tick(v);
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld lw && Arrivals.leaving(v, lw)) return; // leaving a hungry village
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld rw) {
+            net.mca.server.world.data.Village rv = net.mca.server.world.data.Village.findNearest(v).orElse(null);
+            if (Rogue.tick(v, rv, rw)) return; // a rogue about his business, or in the stocks for it
+        }
         if (v.isBaby()) {
             if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld kw && Games.tick(v, kw)) return; // at play with the others
             Life.child(v);

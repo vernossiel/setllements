@@ -53,6 +53,7 @@ public final class Justice {
         boolean shown; // the guard's demand window has been put before him
         boolean inStocks; // held in the stocks: he does not break out of those, he is put back
         boolean pleaded, bribed; // each tried once a case
+        boolean offered; // a rogue has offered to get him out
 
         Case(UUID player) {
             this.player = player;
@@ -756,6 +757,60 @@ public final class Justice {
         c.until = world.getTime() + 24000L;
         p.sendMessage(Text.translatable("settlements.justice.exiled").formatted(Formatting.DARK_RED), false);
         Life.news(village, "crime.exiled", p.getName().getString());
+    }
+
+    // ---------- for the village's rogues (see Rogue) ----------
+
+    /** The players doing their time in this village's stocks or jail. */
+    static List<ServerPlayerEntity> prisoners(ServerWorld world, Village village) {
+        List<ServerPlayerEntity> out = new java.util.ArrayList<>();
+        for (Case c : CASES.values()) {
+            if (c.stage != Stage.SERVING || c.villageId != village.getId() || c.offered) continue;
+            ServerPlayerEntity p = world.getServer().getPlayerManager().getPlayer(c.player);
+            if (p != null && p.getWorld() == world) out.add(p);
+        }
+        return out;
+    }
+
+    static void markOffered(PlayerEntity p) {
+        Case c = CASES.get(p.getUuid());
+        if (c != null) c.offered = true;
+    }
+
+    static int secondsLeft(PlayerEntity p) {
+        Case c = CASES.get(p.getUuid());
+        return c == null || c.stage != Stage.SERVING ? 0 : (int) Math.max(0, (c.until - p.getWorld().getTime()) / 20);
+    }
+
+    static boolean serving(PlayerEntity p) {
+        Case c = CASES.get(p.getUuid());
+        return c != null && c.stage == Stage.SERVING;
+    }
+
+    /** Let out on the quiet: free and clear; or seen at it, and then he is wanted again with more against him. */
+    static void broken(ServerPlayerEntity p, boolean seen) {
+        Case c = CASES.get(p.getUuid());
+        if (c == null || c.stage != Stage.SERVING) return;
+        ServerWorld world = p.getServerWorld();
+        Village village = VillageManager.get(world).getOrEmpty(c.villageId).orElse(null);
+        p.removeStatusEffect(StatusEffects.SLOWNESS);
+        p.removeStatusEffect(StatusEffects.JUMP_BOOST);
+        p.removeStatusEffect(StatusEffects.MINING_FATIGUE);
+        p.removeStatusEffect(StatusEffects.WEAKNESS);
+        if (seen) {
+            c.stage = Stage.WANTED;
+            c.since = world.getTime();
+            c.inStocks = false;
+            c.value += 12;
+            p.sendMessage(Text.translatable("settlements.justice.escaped").formatted(Formatting.RED), false);
+            if (village != null) Life.news(village, "crime.escape", p.getName().getString());
+        } else {
+            CASES.remove(p.getUuid());
+            if (village != null) {
+                village.pushHearts(p, -4);
+                Life.news(village, "crime.vanished", p.getName().getString());
+            }
+        }
     }
 
     /** For the elder's book and the board: what the village holds against this player, or null. */

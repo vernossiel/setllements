@@ -231,7 +231,8 @@ public final class Builder {
         return true;
     }
 
-    private static final Predicate<ItemStack> COBBLE = s -> s.isOf(Items.COBBLESTONE) || s.isOf(Items.COBBLED_DEEPSLATE);
+    // stone for building: cobble, and in the desert the sandstone its quarries give
+    private static final Predicate<ItemStack> COBBLE = s -> s.isOf(Items.COBBLESTONE) || s.isOf(Items.COBBLED_DEEPSLATE) || s.isOf(Items.SANDSTONE) || s.isOf(Items.RED_SANDSTONE);
     private static final Predicate<ItemStack> LOG = s -> s.isIn(ItemTags.LOGS);
     private static final Predicate<ItemStack> GLASS = s -> s.isOf(Items.GLASS_PANE) || s.isOf(Items.GLASS);
     private static final Predicate<ItemStack> WOOL = s -> s.isIn(ItemTags.WOOL);
@@ -1604,6 +1605,22 @@ public final class Builder {
                 }
                 case PATH -> { // paved paths
                     if (city && take(village, COBBLE, 1)) return pal.accent().getDefaultState();
+                }
+                default -> {
+                }
+            }
+        }
+        // the desert builds in sandstone: wood is scarce there and dear, kept for doors, beams and shutters
+        if (pal.stone() == Blocks.SANDSTONE || pal.stone() == Blocks.RED_SANDSTONE) {
+            switch (kind) {
+                case WALL -> {
+                    if (take(village, COBBLE, 1)) return (step.dy() == 0 ? pal.stone() : pal.daub()).getDefaultState();
+                }
+                case FLOOR -> {
+                    if (step.dy() > 0 && take(village, COBBLE, 1)) return pal.daub().getDefaultState();
+                }
+                case ROOF -> {
+                    if (take(village, COBBLE, 1)) return Blocks.CUT_SANDSTONE.getDefaultState();
                 }
                 default -> {
                 }
