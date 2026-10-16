@@ -119,6 +119,25 @@ public final class Templates {
         return found.get(Math.floorMod((int) (village.getId() * 31L + found.size() * 7L + (village.getWorld() == null ? 0 : village.getWorld().getTime() / 24000L)), found.size()));
     }
 
+    /** Every template there is, as "style/file" (from the index written with them), optionally of one style only. */
+    public static List<String> all(String style) {
+        List<String> out = new ArrayList<>();
+        try (InputStream in = Templates.class.getResourceAsStream(ROOT + "index.txt")) {
+            if (in == null) return out;
+            for (String line : new String(in.readAllBytes(), StandardCharsets.UTF_8).split("\\R")) {
+                line = line.trim();
+                if (!line.isEmpty() && (style == null || line.startsWith(style + "/"))) out.add(line);
+            }
+        } catch (Exception ignored) {
+        }
+        return out;
+    }
+
+    /** A concrete design name for a template file ("medievaloak/tavern1" -> "tpl-mc.medievaloak.tavern1"). */
+    public static String design(String styleFile) {
+        return "tpl-mc." + styleFile.replace('/', '.');
+    }
+
     private static synchronized Template load(String id) {
         if (CACHE.containsKey(id)) return CACHE.get(id);
         Template t = null;

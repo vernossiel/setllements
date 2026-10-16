@@ -181,6 +181,16 @@ public final class SettlementsCommand {
                                     for (String kind : Tiers.kinds()) for (String design : Tiers.row(kind, tier)) if (!list.contains(design)) list.add(design);
                                     return placeRow(c, list, "Every building of a " + t + " village");
                                 })))
+                        .then(CommandManager.literal("templates").then(CommandManager.argument("style", StringArgumentType.word())
+                                .suggests((c, b) -> net.minecraft.command.CommandSource.suggestMatching(java.util.List.of("medievaloak", "medievalbirch", "medievaldarkoak", "nordic", "sandstone"), b))
+                                .executes(c -> {
+                                    // the MineColonies buildings we carry, one style at a time (there are too many for one row)
+                                    String style = StringArgumentType.getString(c, "style");
+                                    java.util.List<String> list = new java.util.ArrayList<>();
+                                    for (String t : Templates.all(style)) list.add(Templates.design(t));
+                                    if (list.isEmpty()) return say(c, "No templates in style " + style + ". Styles: medievaloak, medievalbirch, medievaldarkoak, nordic, sandstone");
+                                    return placeRow(c, list, "MineColonies " + style + " (" + list.size() + ")");
+                                })))
                         .then(CommandManager.literal("kind").then(CommandManager.argument("kind", StringArgumentType.word())
                                 .suggests((c, b) -> net.minecraft.command.CommandSource.suggestMatching(Tiers.kinds(), b))
                                 .executes(c -> {
