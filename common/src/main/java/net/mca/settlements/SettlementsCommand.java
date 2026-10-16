@@ -94,6 +94,7 @@ public final class SettlementsCommand {
                 }))
                 .then(CommandManager.literal("fake")
                         .then(CommandManager.literal("spawn").executes(SettlementsCommand::fakeSpawn))
+                        .then(CommandManager.literal("add").then(CommandManager.argument("name", StringArgumentType.word()).executes(SettlementsCommand::fakeAdd)))
                         .then(CommandManager.literal("hit").then(CommandManager.argument("name", StringArgumentType.word()).executes(SettlementsCommand::fakeHit)))
                         .then(CommandManager.literal("remove").executes(SettlementsCommand::fakeRemove)))
                 .then(CommandManager.literal("rogues").executes(c -> say(c, "Rogues ready tonight: " + Rogue.readyTonight(c.getSource().getWorld()))))
@@ -313,21 +314,38 @@ public final class SettlementsCommand {
     private static int fakeSpawn(CommandContext<ServerCommandSource> c) {
         ServerWorld w = c.getSource().getWorld();
         if (fake != null) w.removePlayer(fake, net.minecraft.entity.Entity.RemovalReason.DISCARDED);
-        var profile = new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes("settlements-tester".getBytes()), "Tester");
-        fake = new ServerPlayerEntity(w.getServer(), w, profile) {
+        fake = standIn(w, "Tester", c.getSource().getPosition());
+        return say(c, "Tester stands at " + fake.getBlockPos().toShortString());
+    }
+
+    /** More stand-ins, one in each village under test: crops grow only near a player. */
+    private static final java.util.Map<String, ServerPlayerEntity> others = new java.util.HashMap<>();
+
+    private static int fakeAdd(CommandContext<ServerCommandSource> c) {
+        ServerWorld w = c.getSource().getWorld();
+        String name = StringArgumentType.getString(c, "name");
+        var old = others.remove(name);
+        if (old != null) ((ServerWorld) old.getWorld()).removePlayer(old, net.minecraft.entity.Entity.RemovalReason.DISCARDED);
+        var p = standIn(w, name, c.getSource().getPosition());
+        others.put(name, p);
+        return say(c, name + " stands at " + p.getBlockPos().toShortString());
+    }
+
+    private static ServerPlayerEntity standIn(ServerWorld w, String name, net.minecraft.util.math.Vec3d at) {
+        var profile = new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes(("settlements-" + name.toLowerCase()).getBytes()), name);
+        var p = new ServerPlayerEntity(w.getServer(), w, profile) {
             @Override
             public void sendMessage(Text message, boolean overlay) {
-                net.mca.MCA.LOGGER.info("[to Tester] " + message.getString()); // what a player would read, in the server log
+                net.mca.MCA.LOGGER.info("[to " + name + "] " + message.getString()); // what a player would read, in the server log
             }
         };
         var conn = new net.minecraft.network.ClientConnection(net.minecraft.network.NetworkSide.SERVERBOUND);
-        new net.minecraft.server.network.ServerPlayNetworkHandler(w.getServer(), conn, fake);
-        var at = c.getSource().getPosition();
-        fake.refreshPositionAndAngles(at.x, at.y, at.z, 0f, 0f);
-        fake.getAbilities().invulnerable = true; // a test player: the night's zombies must not take him off
-        fake.setInvulnerable(true);
-        w.onPlayerConnected(fake);
-        return say(c, "Tester stands at " + net.minecraft.util.math.BlockPos.ofFloored(at).toShortString());
+        new net.minecraft.server.network.ServerPlayNetworkHandler(w.getServer(), conn, p);
+        p.refreshPositionAndAngles(at.x, at.y, at.z, 0f, 0f);
+        p.getAbilities().invulnerable = true; // a test player: the night's zombies must not take him off
+        p.setInvulnerable(true);
+        w.onPlayerConnected(p);
+        return p;
     }
 
     /** The stand-in hits the named villager, as a player would. */
@@ -346,6 +364,8 @@ public final class SettlementsCommand {
     private static int fakeRemove(CommandContext<ServerCommandSource> c) {
         if (fake != null) c.getSource().getWorld().removePlayer(fake, net.minecraft.entity.Entity.RemovalReason.DISCARDED);
         fake = null;
+        for (var p : others.values()) ((ServerWorld) p.getWorld()).removePlayer(p, net.minecraft.entity.Entity.RemovalReason.DISCARDED);
+        others.clear();
         return say(c, "Tester gone.");
     }
 
