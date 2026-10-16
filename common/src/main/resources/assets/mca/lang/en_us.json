@@ -4121,5 +4121,9 @@
   "settlements.fame.generous.good": "You're not tight-fisted, %s - people remember that.",
   "settlements.fame.generous.good.strong": "Nobody's been as generous to us as you, %s. Kindness isn't forgotten here.",
   "settlements.fame.generous.bad": "You take more than you give here, %s.",
-  "settlements.fame.generous.bad.strong": "You're a stranger to us, %s: you only ever take."
+  "settlements.fame.generous.bad.strong": "You're a stranger to us, %s: you only ever take.",
+  "settlements.say.robbed": "Robbed! %s nuggets gone from my chest in the night! I'm going to the guard.",
+  "settlements.say.robbed.f": "Robbed! %s nuggets gone from my chest in the night! I'm going to the guard.",
+  "settlements.news.robbed": "%s's house was robbed in the night. Nobody knows who did it.",
+  "settlements.news.rogue.caught.purse": "%s was caught robbing %s and stands in the stocks now."
 }

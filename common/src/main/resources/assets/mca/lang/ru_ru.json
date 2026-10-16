@@ -4118,5 +4118,9 @@
   "settlements.fame.generous.good": "Ты, %s, не скупишься — люди это помнят.",
   "settlements.fame.generous.good.strong": "Щедрее тебя, %s, к нам никто не заглядывал. Добро у нас не забывают.",
   "settlements.fame.generous.bad": "Ты у нас всё больше берёшь, %s, а давать — не даёшь.",
-  "settlements.fame.generous.bad.strong": "Ты для нас чужой, %s: только берёшь, ничего не оставляешь."
+  "settlements.fame.generous.bad.strong": "Ты для нас чужой, %s: только берёшь, ничего не оставляешь.",
+  "settlements.say.robbed": "Обокрали! Ночью из сундука %s самородков как не бывало! Пойду к страже.",
+  "settlements.say.robbed.f": "Обокрали! Ночью из сундука %s самородков как не бывало! Пойду к страже.",
+  "settlements.news.robbed": "Ночью обокрали дом %s. Кто — неизвестно.",
+  "settlements.news.rogue.caught.purse": "%s попался на краже у %s и теперь стоит в колодках."
 }

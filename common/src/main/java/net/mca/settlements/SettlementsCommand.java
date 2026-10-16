@@ -96,6 +96,7 @@ public final class SettlementsCommand {
                         .then(CommandManager.literal("spawn").executes(SettlementsCommand::fakeSpawn))
                         .then(CommandManager.literal("hit").then(CommandManager.argument("name", StringArgumentType.word()).executes(SettlementsCommand::fakeHit)))
                         .then(CommandManager.literal("remove").executes(SettlementsCommand::fakeRemove)))
+                .then(CommandManager.literal("rogues").executes(c -> say(c, "Rogues ready tonight: " + Rogue.readyTonight(c.getSource().getWorld()))))
                 .then(CommandManager.literal("rich").executes(SettlementsCommand::rich))
                 .then(CommandManager.literal("warp").requires(src -> src.hasPermissionLevel(2))
                         .then(CommandManager.literal("on").executes(c -> { WARP = true; c.getSource().sendFeedback(() -> Text.literal("warp on"), false); return 1; }))

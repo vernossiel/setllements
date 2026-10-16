@@ -51,6 +51,7 @@ public final class Arrivals {
 
     private static void morning(ServerWorld world, Village v) {
         Purse.payday(world, v); // yesterday's wages
+        Rogue.morning(world, v); // whoever was robbed in the night finds out, and goes to complain
         List<VillagerEntityMCA> folk = v.getResidents(world);
         int pop = folk.size();
         if (pop < 2) return;

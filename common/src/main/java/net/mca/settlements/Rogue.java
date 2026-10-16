@@ -145,10 +145,125 @@ public final class Rogue {
 
     // ---------- a little something from the stores ----------
 
+    private record Mark(UUID victim, BlockPos chest) {
+    }
+
+    private record Loss(UUID victim, UUID rogue, int nuggets, int village) {
+    }
+
+    private static final Map<UUID, Mark> MARKS = new HashMap<>(); // rogue -> whose savings tonight
+    private static final java.util.List<Loss> LOSSES = new java.util.ArrayList<>(); // found out in the morning
+
+    /** Somebody's savings, in a chest in his house: who has enough put by to be worth the risk. */
+    private static Mark pickMark(VillagerEntityMCA v, Village village, ServerWorld world) {
+        java.util.List<Mark> marks = new java.util.ArrayList<>();
+        for (VillagerEntityMCA r : village.getResidents(world)) {
+            if (r == v || r.settlementsChest == null || r.settlementsChest.equals(v.settlementsChest) || is(r)) continue;
+            if (Home.savings(r) >= 6) marks.add(new Mark(r.getUuid(), r.settlementsChest));
+        }
+        return marks.isEmpty() ? null : marks.get(world.random.nextInt(marks.size()));
+    }
+
+    /** Into somebody's house by night, to the chest where he keeps his money: a third of it, no more, so it is not missed at once. */
+    private static boolean purse(VillagerEntityMCA v, Village village, ServerWorld world, Mark m, long now, long next) {
+        if (!(world.getBlockEntity(m.chest()) instanceof net.minecraft.block.entity.ChestBlockEntity chest)) {
+            MARKS.remove(v.getUuid());
+            return false;
+        }
+        if (v.squaredDistanceTo(Vec3d.ofCenter(m.chest())) > 2.5 * 2.5) {
+            creep(v, world, m.chest().getX() + 0.5, m.chest().getY(), m.chest().getZ() + 0.5);
+            if (now - next > 20 * 120) { // could not get in: another night
+                NEXT_THEFT.put(v.getUuid(), now + 24000L);
+                MARKS.remove(v.getUuid());
+            }
+            return true;
+        }
+        MARKS.remove(v.getUuid());
+        NEXT_THEFT.put(v.getUuid(), now + 24000L * (2 + world.random.nextInt(3)));
+        v.getNavigation().stop();
+        Gaze.at(v, m.chest().getX() + 0.5, m.chest().getY() + 0.5, m.chest().getZ() + 0.5);
+        Anim.set(v, Anim.Act.BEND, 40);
+        int n = Math.min(15, Money.count(chest) / 3);
+        if (n <= 0 || !Money.take(chest, n)) return true;
+        Money.give(v.getInventory(), n);
+        // a sleeper in the house may wake
+        VillagerEntityMCA woke = world.getEntitiesByClass(VillagerEntityMCA.class, new net.minecraft.util.math.Box(m.chest()).expand(6, 3, 6),
+                o -> o != v && o.isSleeping() && !o.isBaby()).stream().filter(o -> world.random.nextInt(4) == 0).findFirst().orElse(null);
+        if (woke != null) {
+            woke.wakeUp();
+            Speech.sayNow(woke, "settlements.say.rogue.caught", v.getName());
+            Money.take(v.getInventory(), n);
+            Money.give(chest, n);
+            STOCKED.put(v.getUuid(), now + 20 * 180);
+            Life.news(village, "rogue.caught.purse", v.getName().getString(), woke.getName().getString());
+            return true;
+        }
+        LOSSES.add(new Loss(m.victim(), v.getUuid(), n, village.getId()));
+        return true;
+    }
+
+    /**
+     * Morning: whoever was robbed in the night finds his chest lighter and goes to the guard (or the elder) about it.
+     * Sometimes they work out who - the one seen about at night, the one suddenly flush - and he goes to the stocks
+     * and gives it back; sometimes a stranger in the village is looked at; sometimes nobody ever knows.
+     */
+    public static void morning(ServerWorld world, Village village) {
+        for (java.util.Iterator<Loss> it = LOSSES.iterator(); it.hasNext(); ) {
+            Loss l = it.next();
+            if (l.village() != village.getId()) continue;
+            it.remove();
+            if (!(world.getEntity(l.victim()) instanceof VillagerEntityMCA victim) || !victim.isAlive()) continue;
+            VillagerEntityMCA rogue = world.getEntity(l.rogue()) instanceof VillagerEntityMCA r && r.isAlive() ? r : null;
+            Speech.sayNow(victim, "settlements.say.robbed", l.nuggets());
+            VillagerEntityMCA to = Plan.elder(world, village);
+            for (VillagerEntityMCA g : village.getResidents(world)) if (g.isGuard()) to = g;
+            if (to != null) victim.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET,
+                    new net.minecraft.entity.ai.brain.WalkTarget(to, 0.55f, 2)); // off to complain
+            boolean guards = village.getResidents(world).stream().anyMatch(VillagerEntityMCA::isGuard);
+            double found = 0.3 + (guards ? 0.25 : 0) + (Staffing.has(world, village, net.mca.ProfessionsMCA.WATCHMAN.get()) ? 0.15 : 0);
+            if (rogue != null && world.random.nextDouble() < found) {
+                int back = Math.min(l.nuggets(), Money.count(rogue.getInventory()));
+                if (back > 0 && Money.take(rogue.getInventory(), back)) Money.give(victim.getInventory(), back);
+                STOCKED.put(rogue.getUuid(), world.getTime() + 20 * 240);
+                Life.news(village, "rogue.caught.purse", rogue.getName().getString(), victim.getName().getString());
+                continue;
+            }
+            Life.news(village, "robbed", victim.getName().getString());
+            // nobody knows who: a stranger who spent the night here is the first they look at
+            net.minecraft.entity.player.PlayerEntity stranger = world.getClosestPlayer(victim.getX(), victim.getY(), victim.getZ(), 64, false);
+            if (stranger != null && (rogue == null || !owes(rogue, stranger)) && world.random.nextDouble() < Justice.suspicion(village, stranger) * 0.6) {
+                Justice.askSearch(world, village, stranger, java.util.Map.of(net.mca.item.ItemsMCA.EMERALD_NUGGET.get(), l.nuggets()), l.nuggets(), world.getTime() + 20 * 60, false);
+            }
+        }
+    }
+
+    /** For testing: every rogue in the world goes out tonight. Returns their names. */
+    public static String readyTonight(ServerWorld world) {
+        StringBuilder b = new StringBuilder();
+        for (net.minecraft.entity.Entity e : world.iterateEntities()) {
+            if (e instanceof VillagerEntityMCA v && is(v)) {
+                NEXT_THEFT.put(v.getUuid(), 0L);
+                MARKS.remove(v.getUuid());
+                b.append(v.getName().getString()).append(' ');
+            }
+        }
+        return b.length() == 0 ? "none" : b.toString().trim();
+    }
+
     private static boolean steal(VillagerEntityMCA v, Village village, ServerWorld world) {
         long now = world.getTime();
         long next = NEXT_THEFT.computeIfAbsent(v.getUuid(), k -> now + 24000L + world.random.nextInt(48000));
-        if (now < next || !dark(world) || village.storageBuffer.isEmpty()) return false;
+        if (!dark(world)) MARKS.remove(v.getUuid()); // a new night, a new choice
+        if (now < next || !dark(world)) return false;
+        // tonight: somebody's savings, or the village's stores
+        if (!MARKS.containsKey(v.getUuid())) MARKS.put(v.getUuid(), world.random.nextBoolean() ? pickMark(v, village, world) : null); // decided once a night
+        Mark mark = MARKS.get(v.getUuid());
+        if (mark != null) {
+            Doing.set(v, "settlements.doing.rogue.sneak");
+            if (v.isSleeping()) v.wakeUp();
+            return purse(v, village, world, mark, now, next);
+        }
+        if (village.storageBuffer.isEmpty()) return false;
         BlockPos store = Haul.store(v, village);
         if (store == null) return false;
         if (Watch.near(world, store)) return false; // the watchman is about: not tonight
@@ -156,10 +271,14 @@ public final class Rogue {
         if (v.isSleeping()) v.wakeUp();
         if (v.squaredDistanceTo(Vec3d.ofCenter(store)) > 9) {
             creep(v, world, store.getX() + 0.5, store.getY(), store.getZ() + 0.5);
-            if (now - next > 20 * 120) NEXT_THEFT.put(v.getUuid(), now + 24000L); // could not get there: another night
+            if (now - next > 20 * 120) { // could not get there: another night
+                NEXT_THEFT.put(v.getUuid(), now + 24000L);
+                MARKS.remove(v.getUuid());
+            }
             return true;
         }
         NEXT_THEFT.put(v.getUuid(), now + 24000L * (2 + world.random.nextInt(3)));
+        MARKS.remove(v.getUuid());
         // the best of what lies to hand: emeralds, iron, meat, bread
         ItemStack best = null;
         for (ItemStack s : village.storageBuffer) {
