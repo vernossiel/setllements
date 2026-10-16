@@ -4141,5 +4141,8 @@
   "settlements.elder.story.weowe": "We owe %s %s nuggets, and the debt weighs on us.",
   "settlements.elder.story.theyowe": "%s owes us %s nuggets. We're waiting.",
   "settlements.news.market.stone": "Bought a cartload of stone from passing traders.",
-  "settlements.news.market.wood": "Bought logs for the building from passing traders."
+  "settlements.news.market.wood": "Bought logs for the building from passing traders.",
+  "settlements.justice.search.ask.cold": "Hold it, %s. Turn out your pockets, now. And no tricks.",
+  "settlements.justice.search.clean.cold": "Clean... this time, %s. Don't think I'll take my eyes off you.",
+  "settlements.doing.guard.case": "dealing with %s"
 }

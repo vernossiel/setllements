@@ -202,7 +202,7 @@ public final class Justice {
                 it.remove();
                 continue;
             }
-            VillagerEntityMCA guard = nearestGuard(world, p, 64);
+            VillagerEntityMCA guard = c.stage == Stage.SERVING || c.stage == Stage.EXILED ? nearestGuard(world, p, 64) : onCase(world, p, 64);
             switch (c.stage) {
                 case REPORTED -> {
                     if (c.crime == Crime.HARASSMENT && strikes(p) <= 1) {
@@ -313,6 +313,45 @@ public final class Justice {
     private static int strikes(PlayerEntity p) {
         int[] s = STRIKES.get(p.getUuid());
         return s == null ? 0 : s[0];
+    }
+
+    /** guard -> {player, until}: a guard on a player's case minds nothing else (see {@link #duty}). */
+    private static final Map<UUID, Object[]> DUTY = new HashMap<>();
+
+    /** The guard on this player's case: the one already on it if he is still about, otherwise the nearest - and he is put on it. */
+    private static VillagerEntityMCA onCase(ServerWorld world, PlayerEntity p, double range) {
+        for (Map.Entry<UUID, Object[]> e : DUTY.entrySet()) {
+            if (!p.getUuid().equals(e.getValue()[0])) continue;
+            if (world.getEntity(e.getKey()) instanceof VillagerEntityMCA g && g.isAlive() && !g.isSleeping() && g.squaredDistanceTo(p) < range * range) {
+                DUTY.put(g.getUuid(), new Object[]{p.getUuid(), world.getTime() + 20 * 30});
+                return g;
+            }
+        }
+        VillagerEntityMCA g = nearestGuard(world, p, range);
+        if (g != null) DUTY.put(g.getUuid(), new Object[]{p.getUuid(), world.getTime() + 20 * 30});
+        return g;
+    }
+
+    /**
+     * Once a second for a guard: true while he is on a player's case - he goes to him and stays by him, facing him,
+     * whatever his round or his shift would have him do (a fight still comes first).
+     */
+    public static boolean duty(VillagerEntityMCA g, ServerWorld world) {
+        Object[] d = DUTY.get(g.getUuid());
+        if (d == null) return false;
+        ServerPlayerEntity p = world.getServer().getPlayerManager().getPlayer((UUID) d[0]);
+        if (p == null || p.getWorld() != world || world.getTime() > (Long) d[1] || !CASES.containsKey(p.getUuid()) && !SEARCHES.containsKey(p.getUuid())) {
+            DUTY.remove(g.getUuid());
+            return false;
+        }
+        if (g.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) return false;
+        Case c = CASES.get(p.getUuid());
+        if (c != null && (c.stage == Stage.SERVING || c.stage == Stage.EXILED)) return false;
+        Doing.set(g, "settlements.doing.guard.case", p.getName());
+        if (g.squaredDistanceTo(p) > 2.8 * 2.8) Move.to(g, p, 0.6);
+        else g.getNavigation().stop();
+        Gaze.at(g, p, 30f, 30f);
+        return true;
     }
 
     private static VillagerEntityMCA nearestGuard(ServerWorld world, PlayerEntity p, double range) {
@@ -804,6 +843,16 @@ public final class Justice {
 
     // ---------- a look in his pockets ----------
 
+    private static Village village(ServerWorld world, int id) {
+        return VillageManager.get(world).getOrEmpty(id).orElse(null);
+    }
+
+    /** One the village has no love for: a bad name for honesty or peace, or the hearts long gone. */
+    static boolean hostile(Village village, PlayerEntity p) {
+        if (village == null) return false;
+        return Reputation.tier(village.getReputation(p)) <= 2 || Fame.get(village, p, Fame.Axis.HONEST) <= -20 || Fame.get(village, p, Fame.Axis.PEACE) <= -20;
+    }
+
     /** How readily the village looks at him when something goes missing: a known thief first, an honest man hardly at all. */
     static double suspicion(Village village, PlayerEntity p) {
         int honest = Fame.get(village, p, Fame.Axis.HONEST);
@@ -839,7 +888,7 @@ public final class Justice {
                 continue;
             }
             if (p.getWorld() != world || ASKED.contains(p.getUuid()) || now < e.getValue().from() || p.isSleeping()) continue;
-            VillagerEntityMCA guard = nearestGuard(world, p, 64);
+            VillagerEntityMCA guard = onCase(world, p, 64);
             if (guard == null) continue;
             if (guard.squaredDistanceTo(p) > 16) {
                 guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(p, 0.6f, 2));
@@ -849,7 +898,8 @@ public final class Justice {
             Gaze.at(guard, p, 30f, 30f);
             List<Text> labels = List.of(Text.translatable("settlements.justice.button.search_allow"), Text.translatable("settlements.justice.button.search_refuse"));
             net.mca.cobalt.network.NetworkHandler.sendToPlayer(new net.mca.network.s2c.JusticeScreenRequest(guard.getId(), guard.getName(),
-                    List.of(Text.translatable(e.getValue().strong() ? "settlements.justice.search.ask" : "settlements.justice.search.ask.weak", p.getName())), new String[]{"search allow", "search refuse"}, labels, 30), p);
+                    List.of(Text.translatable(hostile(village(world, e.getValue().villageId()), p) ? "settlements.justice.search.ask.cold"
+                            : e.getValue().strong() ? "settlements.justice.search.ask" : "settlements.justice.search.ask.weak", p.getName())), new String[]{"search allow", "search refuse"}, labels, 30), p);
         }
     }
 
@@ -885,8 +935,10 @@ public final class Justice {
             if (have > 0) found.put(m.getKey(), Math.min(have, m.getValue()));
         }
         if (found.isEmpty()) {
-            talk(world, village, guard, p, "settlements.justice.search.clean", world.getTime());
-            village.pushHearts(p, 2); // he let them look, and was in the clear
+            boolean cold = hostile(village, p);
+            // clean: an honest man gets an apology; one the village has no love for gets a warning
+            talk(world, village, guard, p, cold ? "settlements.justice.search.clean.cold" : "settlements.justice.search.clean", world.getTime());
+            if (!cold) village.pushHearts(p, 2); // he let them look, and was in the clear
             Fame.deed(world, village, p, Fame.Deed.CLEARED, guard, 1);
             return 1;
         }
