@@ -34,6 +34,24 @@ public final class Bed {
         long now = world.getTime();
         long since = SINCE.computeIfAbsent(v.getUuid(), k -> now);
         Doing.set(v, "settlements.doing.bed");
+        // a minute and still not home - fallen down a slope, lost his way in the woods, no path to be found - and nobody
+        // about to see: he gets home all the same, the long way round, as a man does in the dark
+        if (now - since > 20 * 60 && world.getClosestPlayer(v.getX(), v.getY(), v.getZ(), 48, false) == null) {
+            if (bed != null && world.getEntitiesByClass(VillagerEntityMCA.class, new net.minecraft.util.math.Box(bed), o -> o != v && o.isSleeping()).isEmpty()) {
+                if (v.hasVehicle()) v.stopRiding();
+                v.getNavigation().stop();
+                v.requestTeleport(bed.getX() + 0.5, bed.getY() + 0.6, bed.getZ() + 0.5);
+                v.sleep(bed);
+                SINCE.remove(v.getUuid());
+                return true;
+            }
+            BlockPos hall = village != null ? village.hallPos : null;
+            if (hall != null && v.squaredDistanceTo(Vec3d.ofCenter(hall)) > 6 * 6) {
+                v.getNavigation().stop();
+                v.requestTeleport(hall.getX() + 0.5, hall.getY(), hall.getZ() + 0.5);
+                return true;
+            }
+        }
         if (bed != null && now - since < 20 * 90) {
             if (v.squaredDistanceTo(Vec3d.ofCenter(bed)) > 2.2 * 2.2) {
                 Move.to(v, bed.getX() + 0.5, bed.getY(), bed.getZ() + 0.5, 0.55);
