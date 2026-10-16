@@ -294,6 +294,33 @@ public final class Gear {
         return wear(v, inv.getStack(best).getItem().getClass());
     }
 
+    /**
+     * Nobody digs rock or earth with his bare hands: before breaking a block he takes the tool it wants in hand - the
+     * pick for stone, a shovel for earth, sand and gravel, an axe for wood - making one from the village stores if he
+     * has none (a wooden one, if the stores are bare). Leaves, plants and the like need nothing.
+     */
+    public static void toolFor(VillagerEntityMCA v, Village village, net.minecraft.block.BlockState state) {
+        Class<?> want = state.isIn(net.minecraft.registry.tag.BlockTags.PICKAXE_MINEABLE) ? PickaxeItem.class
+                : state.isIn(net.minecraft.registry.tag.BlockTags.SHOVEL_MINEABLE) ? ShovelItem.class
+                : state.isIn(net.minecraft.registry.tag.BlockTags.AXE_MINEABLE) ? AxeItem.class : null;
+        if (want == null) return;
+        if (!has(v, want) && village != null) {
+            if (want == ShovelItem.class) equipShovel(v, village);
+            else equipTool(v, village, want == PickaxeItem.class ? Chore.PROSPECT : Chore.CHOP);
+        }
+        if (!has(v, want) && want == ShovelItem.class) { // the stores bare: a wooden one, like the first of any tool
+            v.getInventory().addStack(new ItemStack(Items.WOODEN_SHOVEL));
+            Speech.say(v, "settlements.say.tool.improvise");
+        }
+        var inv = v.getInventory();
+        for (int i = 0; i < inv.size(); i++) {
+            if (want.isInstance(inv.getStack(i).getItem())) {
+                if (!want.isInstance(v.getMainHandStack().getItem())) v.setStackInHand(v.getDominantHand(), inv.getStack(i).copy());
+                return;
+            }
+        }
+    }
+
     /** A shovel for earth and gravel, made from the stores if he has none (one piece of material and a stick). */
     public static void equipShovel(VillagerEntityMCA v, Village village) {
         if (has(v, ShovelItem.class) || village == null) return;

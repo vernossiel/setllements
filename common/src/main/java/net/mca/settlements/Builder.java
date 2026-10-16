@@ -656,6 +656,9 @@ public final class Builder {
                 return worked;
             }
 
+            if ((step.kind() == Kind.CLEAR || step.kind() == Kind.DIG) && !world.getBlockState(target).isReplaceable()) {
+                Gear.toolFor(v, village, world.getBlockState(target)); // clearing the site with a spade or a pick, not by hand
+            }
             Result r = execute(world, village, step, target, village.buildRot);
             if (r == Result.WAIT) { // out of materials: go and get some instead of standing around
                 Needs.Need need = needFor(step.kind());

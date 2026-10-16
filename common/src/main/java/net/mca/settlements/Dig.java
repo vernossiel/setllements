@@ -40,6 +40,8 @@ public final class Dig {
     public static void start(VillagerEntityMCA v, BlockPos pos) {
         if (pos.equals(v.settlementsDigPos)) return;
         stop(v);
+        // the right tool in hand first: nobody breaks stone with his fists
+        Gear.toolFor(v, net.mca.server.world.data.Village.findNearest(v).or(() -> v.getResidency().getHomeVillage()).orElse(null), v.getWorld().getBlockState(pos));
         v.settlementsDigPos = pos.toImmutable();
         v.settlementsDigProgress = 0;
         v.getNavigation().stop();
