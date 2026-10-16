@@ -72,6 +72,7 @@ public final class Bed {
         long since = SINCE.computeIfAbsent(v.getUuid(), k -> now);
         Doing.set(v, "settlements.doing.bed");
         // a bed there is no way to (a shut-in house, a door that is not there): after a few tries, the hall tonight
+        if (bed != null && village != null && !Housing.allowed(village, bed)) bed = null; // a bed off in the valley is no bed tonight
         long night = world.getTimeOfDay() / 24000L;
         if (bed != null && NO_WAY.getOrDefault(v.getUuid(), -1L) == night) bed = null;
         if (bed != null && v.squaredDistanceTo(Vec3d.ofCenter(bed)) > 2.2 * 2.2 && now - since >= 20 * 8) {
@@ -108,8 +109,37 @@ public final class Bed {
         // no bed to be had or reached: the night under the town hall's roof
         BlockPos hall = refuge(village, world);
         if (hall == null) return false;
-        if (v.squaredDistanceTo(Vec3d.ofCenter(hall)) > 3 * 3) Move.to(v, hall.getX() + 0.5, hall.getY(), hall.getZ() + 0.5, 0.55);
-        else v.getNavigation().stop();
+        if (NO_HALL.getOrDefault(v.getUuid(), -1L) == night) hall = ROOF.getOrDefault(v.getUuid(), hall); // no way up to the hall: the roof he found
+        if (v.squaredDistanceTo(Vec3d.ofCenter(hall)) > 3 * 3) {
+            Move.to(v, hall.getX() + 0.5, hall.getY(), hall.getZ() + 0.5, 0.55);
+            var p = v.getNavigation().getCurrentPath();
+            if (now - since >= 20 * 16 && NO_HALL.getOrDefault(v.getUuid(), -1L) != night && (p == null || !p.reachesTarget())) {
+                BlockPos roof = roof(v, world); // the hall cannot be reached either: under the nearest roof there is
+                if (roof != null) {
+                    NO_HALL.put(v.getUuid(), night);
+                    ROOF.put(v.getUuid(), roof);
+                }
+            }
+        } else v.getNavigation().stop();
         return true;
+    }
+
+    private static final Map<UUID, Long> NO_HALL = new HashMap<>();
+    private static final Map<UUID, BlockPos> ROOF = new HashMap<>();
+
+    /** The nearest spot under a roof he can stand in, within sixteen blocks. */
+    private static BlockPos roof(VillagerEntityMCA v, ServerWorld world) {
+        BlockPos best = null;
+        double bd = Double.MAX_VALUE;
+        for (BlockPos q : BlockPos.iterateOutwards(v.getBlockPos(), 16, 4, 16)) {
+            if (world.isSkyVisible(q) || !Move.passable(world, q) || !Move.passable(world, q.up()) || !world.getBlockState(q.down()).isSolidBlock(world, q.down())) continue;
+            double d = q.getSquaredDistance(v.getBlockPos());
+            if (d < bd) {
+                bd = d;
+                best = q.toImmutable();
+                if (d < 9) break;
+            }
+        }
+        return best;
     }
 }

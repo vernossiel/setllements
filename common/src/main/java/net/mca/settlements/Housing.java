@@ -47,6 +47,14 @@ public final class Housing {
     /** Every half minute for a village in view: the households sorted into the houses. */
     public static void assign(ServerWorld world, Village v) {
         List<VillagerEntityMCA> folk = v.getResidents(world).stream().filter(VillagerEntityMCA::isAlive).toList();
+        // a bed somebody took for himself the vanilla way, off in the valley or the woods: let go of it
+        for (VillagerEntityMCA m : folk) {
+            GlobalPos home = m.getResidency().getHome().orElse(null);
+            if (home != null && !allowed(v, home.getPos())) {
+                m.releaseTicketFor(MemoryModuleType.HOME);
+                m.getBrain().forget(MemoryModuleType.HOME);
+            }
+        }
         List<List<VillagerEntityMCA>> households = households(folk);
         // the houses: buildings with beds in them
         Map<Building, List<BlockPos>> houses = new HashMap<>();
@@ -108,6 +116,16 @@ public final class Housing {
         }
         HOMELESS.put(v.getId(), homeless);
         EMPTY.put(v.getId(), (int) houses.keySet().stream().filter(b -> !taken.contains(b)).count());
+    }
+
+    /** Whether a bed here can be a home: in a house the village built, or in another one near the hall and on its level. */
+    public static boolean allowed(Village v, BlockPos bed) {
+        BlockPos heart = v.hallPos != null ? v.hallPos : new BlockPos(v.getCenter());
+        Building b = v.getBuildingAt(bed).orElse(null);
+        if (b != null && ours(v, b)) return true;
+        for (Built x : v.built) if (x.contains(bed)) return true;
+        int reach = Math.min(reach(v, heart), 40);
+        return bed.getSquaredDistance(heart) <= reach * reach && Math.abs(bed.getY() - heart.getY()) <= 10;
     }
 
     /** Built by the village itself (one of its own plots). */
