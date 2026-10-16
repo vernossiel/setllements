@@ -33,7 +33,7 @@ public final class Plan {
             new Goal("hallup", Level.HAMLET, v -> v.hall != null && v.hall.floors() < 3 && v.getPopulation() >= (v.hall.floors() == 1 ? 6 : 12), 150, 0, 0, 0),
             new Goal("well", Level.HAMLET, v -> !v.wellBuilt, 30, 0, 0, 0),
             new Goal("storage", Level.HAMLET, v -> !v.storageBuilt && v.getPopulation() >= 3, 150, 0, 0, 0),
-            new Goal("housing", Level.HAMLET, v -> v.getPopulation() >= v.getMaxPopulation(), 100, 0, 0, 3),
+            new Goal("housing", Level.HAMLET, v -> v.getPopulation() >= v.getMaxPopulation() || Housing.homeless(v) > 0, 100, 0, 0, 3),
             new Goal("farm", Level.HAMLET, v -> v.farms < Math.max(1, v.getPopulation() / (Forage.hungry(v) ? 3 : 4)), 30, 0, 0, 0),
             new Goal("pen", Level.HAMLET, v -> v.penCenter == null && v.getPopulation() >= 3, 50, 0, 0, 0),
             new Goal("rebuild", Level.HAMLET, v -> v.getPopulation() >= 3 && v.hall != null && Rebuild.candidate(v) != null, 120, 0, 0, 0),
@@ -101,7 +101,7 @@ public final class Plan {
         return switch (id) {
             case "townhall" -> 1000;
             case "board" -> 300;
-            case "housing" -> pop >= beds ? 220 + 30 * (pop - beds) : 40;
+            case "housing" -> Housing.homeless(v) > 0 ? 230 + 30 * Housing.homeless(v) : pop >= beds ? 220 + 30 * (pop - beds) : 40; // a family with no house of its own
             case "farm" -> v.farms == 0 ? 500 : hungry ? 260 : 70; // the first field before anything but the hall
             case "granary" -> hungry ? 150 : 40;
             case "mill" -> Crafts.count(v, s -> s.isOf(net.minecraft.item.Items.WHEAT)) >= 24 ? 170 : hungry ? 140 : 45; // the grain piling up unground

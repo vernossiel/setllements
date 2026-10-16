@@ -109,6 +109,7 @@ public final class Staffing {
                 .toList();
         int p = adults.size();
         if (v.hall == null) openHall(world, v);
+        Housing.assign(world, v); // a house to each household
         if (p < 2) return;
 
         // the founders' supplies: a new village starts with enough to begin, the rest it has to earn

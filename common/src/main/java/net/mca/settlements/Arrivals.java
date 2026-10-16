@@ -74,6 +74,7 @@ public final class Arrivals {
 
         // free beds, bread, peace: newcomers
         int free = v.getMaxPopulation() - pop;
+        if (Housing.empty(v) < 1) free = 0; // newcomers come where a house stands empty for them
         if (free < 1 || per < 1.5 || Prosperity.danger(v) >= 4 || Mood.afraid(v)) return;
         double chance = 0.25 + Math.min(0.35, (per - 1.5) * 0.08) + (Prosperity.factor(v) - 1.0) * 0.5;
         if (world.random.nextDouble() >= Math.max(0.05, Math.min(0.75, chance))) return;
@@ -108,7 +109,7 @@ public final class Arrivals {
     /** A newcomer (or a couple) walks in now, if the village has room: for the days caught up (see Ledger). */
     static int newcomers(ServerWorld world, Village v) {
         int free = v.getMaxPopulation() - v.getPopulation();
-        if (free < 1) return 0;
+        if (free < 1 || Housing.empty(v) < 1) return 0;
         BlockPos road = edge(world, v);
         if (road == null) return 0;
         Gender g = world.random.nextBoolean() ? Gender.MALE : Gender.FEMALE;

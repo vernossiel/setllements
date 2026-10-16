@@ -574,6 +574,7 @@ public final class Life {
      */
     public static boolean dread(VillagerEntityMCA v, Village village, ServerWorld world) {
         if (v.isGuard() || v.isSleeping() || v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get()) return false;
+        if (!world.isSkyVisible(v.getBlockPos().up())) return false; // under a roof he is safe: he stays in, he does not run out into it
         net.minecraft.entity.mob.HostileEntity foe = world.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, v.getBoundingBox().expand(10, 4, 10),
                 m -> m.isAlive() && !(m instanceof net.minecraft.entity.mob.CreeperEntity && v.squaredDistanceTo(m) > 36) && v.canSee(m)).stream()
                 .min(java.util.Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
@@ -581,7 +582,10 @@ public final class Life {
         Doing.set(v, "settlements.doing.flee.monster");
         net.minecraft.util.math.Vec3d away = v.getPos().subtract(foe.getPos()).multiply(1, 0, 1).normalize();
         net.minecraft.util.math.BlockPos safe = v.getResidency().getHome().map(net.minecraft.util.math.GlobalPos::getPos).orElse(village != null ? village.hallPos : null);
-        net.minecraft.util.math.Vec3d to = safe != null && safe.toCenterPos().subtract(v.getPos()).dotProduct(away) > 0 ? safe.toCenterPos() : v.getPos().add(away.multiply(10));
+        long tod = world.getTimeOfDay() % 24000L;
+        boolean night = tod >= 12500 && tod <= 23500;
+        // by night only indoors will do (home, or the town hall); by day, away from it, homewards if that is away
+        net.minecraft.util.math.Vec3d to = safe != null && (night || safe.toCenterPos().subtract(v.getPos()).dotProduct(away) > 0) ? safe.toCenterPos() : v.getPos().add(away.multiply(10));
         Move.to(v, to.x, to.y, to.z, 0.8);
         long now = world.getTime();
         if (now - DREAD_SAID.getOrDefault(v.getUuid(), -10000L) > 400) {
