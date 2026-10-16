@@ -107,7 +107,7 @@ public final class Persona {
 
     /** His working hours today (nobody works on the rest day). */
     public static boolean working(VillagerEntityMCA v, long time) {
-        if (Workforce.isRestDay(time)) return false;
+        if (Workforce.restsToday(v, time)) return false;
         long t = time % 24000L;
         return t >= workStart(v) && t < workEnd(v);
     }

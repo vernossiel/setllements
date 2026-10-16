@@ -48,7 +48,7 @@ public final class Mind {
     /** Within his hours, or staying on past them because the work cannot wait (and he is the kind who stays). */
     public static boolean onDuty(VillagerEntityMCA v, Village village, long time) {
         if (Persona.working(v, time)) return true;
-        if (Workforce.isRestDay(time)) return false;
+        if (Workforce.restsToday(v, time)) return false;
         long t = time % 24000L, end = Persona.workEnd(v);
         Persona.Traits tr = Persona.of(v);
         long over = (long) (urgency(v, village) * tr.diligence() * 1500); // up to an hour and a half

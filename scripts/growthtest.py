@@ -40,6 +40,9 @@ def main():
     s = daytest.connect()
     daytest.run(s, "forceload add -240 -928 -48 -736")
     daytest.run(s, "setworldspawn " + AT)
+    # a player in the village: since 1.18 crops (and all random ticks) only grow near a player, forceloaded or not
+    daytest.run(s, f"execute positioned {AT} run settlements fake spawn")
+    daytest.run(s, "gamemode creative Tester")
     daytest.run(s, "time set 0")
     rows = []
     start = time.time()

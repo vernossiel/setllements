@@ -60,6 +60,7 @@ public final class Festival {
             w = null;
         }
         if (w != null) return wedding(v, world, w);
+        if (Forage.hungry(village)) return false; // a hungry village has no time for fairs: there is food to get in
         if (service(timeOfDay) && Buildings.has(village, "chapel")) return church(v, village, world);
         if (fair(timeOfDay) && !Workforce.isRestDay(timeOfDay)) return fairDay(v, village, world);
         return false;

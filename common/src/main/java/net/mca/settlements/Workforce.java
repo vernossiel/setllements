@@ -39,6 +39,17 @@ public final class Workforce {
         return Chore.NONE;
     }
 
+    /** A rest day for him: not for those who bring in food while the village goes hungry. */
+    public static boolean restsToday(VillagerEntityMCA v, long worldTime) {
+        if (!isRestDay(worldTime)) return false;
+        VillagerProfession p = v.getProfession();
+        boolean feeds = p == VillagerProfession.FARMER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER
+                || p == VillagerProfession.LEATHERWORKER || p == VillagerProfession.FISHERMAN || p == net.mca.ProfessionsMCA.MILLER.get();
+        if (!feeds) return true;
+        net.mca.server.world.data.Village village = v.getResidency().getHomeVillage().orElse(null);
+        return village == null || !Forage.hungry(village);
+    }
+
     public static boolean isRestDay(long worldTime) {
         return (worldTime / 24000L) % REST_DAY_EVERY == REST_DAY_EVERY - 1;
     }
