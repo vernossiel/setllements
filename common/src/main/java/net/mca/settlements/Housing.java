@@ -105,7 +105,10 @@ public final class Housing {
                 // no house for them: they sleep in the town hall, on a bed carried in from a house too far off to be
                 // a home (or one made from the stores' wool and planks), one bed each half minute
                 final Built hb = hall;
-                if (hb != null && h.stream().allMatch(m -> inHall(world, hb, m))) continue; // bedded down in the hall already
+                if (hb != null && h.stream().allMatch(m -> inHall(world, hb, m))) { // bedded down in the hall already: safe, not housed
+                    homeless++; // (a bed on the hall's floor is no home: they still want a house built, see Plan)
+                    continue;
+                }
                 if (hb != null && !bedMoved && hallBeds(world, hb) < MAX_HALL_BEDS && !FAILED.contains(v.getId())) {
                     VillagerEntityMCA m = h.stream().filter(x -> !inHall(world, hb, x)).findFirst().orElse(null);
                     BlockPos nb = m == null ? null : hallBed(world, v, hb, heart);
@@ -114,7 +117,10 @@ public final class Housing {
                         bedMoved = true;
                         // the bed did not become his (the game would not give it him): no more beds put down for nothing
                         if (!inHall(world, hb, m)) FAILED.add(v.getId());
-                        if (h.stream().allMatch(x -> inHall(world, hb, x))) continue;
+                        if (h.stream().allMatch(x -> inHall(world, hb, x))) {
+                            homeless++;
+                            continue;
+                        }
                     }
                 }
                 homeless++;
