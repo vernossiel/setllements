@@ -4126,5 +4126,10 @@
   "settlements.say.robbed.f": "Robbed! %s nuggets gone from my chest in the night! I'm going to the guard.",
   "settlements.news.robbed": "%s's house was robbed in the night. Nobody knows who did it.",
   "settlements.news.rogue.caught.purse": "%s was caught robbing %s and stands in the stocks now.",
-  "settlements.news.harvest.bad": "A bad week for the fields: the harvest is poor, bread will be short."
+  "settlements.news.harvest.bad": "A bad week for the fields: the harvest is poor, bread will be short.",
+  "settlements.news.refused.food": "%s has full granaries, but wouldn't sell us bread - we've nothing to pay with. People are angry.",
+  "settlements.news.trade.gift": "%s sent us %s for nothing. We won't forget it.",
+  "settlements.news.trade.bought": "Bought from %s: %s.",
+  "settlements.news.trade.gave": "Sent %s, who are starving, %s for nothing.",
+  "settlements.news.trade.sold": "Sold our surplus to %s: %s."
 }

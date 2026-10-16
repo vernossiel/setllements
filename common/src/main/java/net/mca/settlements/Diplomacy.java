@@ -30,21 +30,23 @@ public final class Diplomacy {
     private static final int TRADE_RELATION = -20;
 
     private enum Cat {
-        WOOD(s -> s.isIn(ItemTags.LOGS), 60, 8, "wood"),
-        STONE(s -> s.isOf(Items.COBBLESTONE), 100, 10, "stone"),
-        FOOD(s -> s.isFood() && Workforce.eatable(s), 40, 6, "food"),
-        WOOL(s -> s.isIn(ItemTags.WOOL), 12, 1, "wool"),
-        IRON(s -> s.isOf(Items.IRON_INGOT), 10, 2, "iron");
+        WOOD(s -> s.isIn(ItemTags.LOGS), 60, 8, "wood", 0.125),
+        STONE(s -> s.isOf(Items.COBBLESTONE), 100, 10, "stone", 0.0625),
+        FOOD(s -> s.isFood() && Workforce.eatable(s), 40, 6, "food", 0.5),
+        WOOL(s -> s.isIn(ItemTags.WOOL), 12, 1, "wool", 1),
+        IRON(s -> s.isOf(Items.IRON_INGOT), 10, 2, "iron", 3);
 
         final Predicate<ItemStack> match;
         final int base, perVillager;
         final String key;
+        final double price; // nuggets apiece
 
-        Cat(Predicate<ItemStack> match, int base, int perVillager, String key) {
+        Cat(Predicate<ItemStack> match, int base, int perVillager, String key, double price) {
             this.match = match;
             this.base = base;
             this.perVillager = perVillager;
             this.key = key;
+            this.price = price;
         }
     }
 
@@ -99,18 +101,62 @@ public final class Diplomacy {
 
         boolean traded = false;
         boolean competing = false;
+        Village refused = null; // a hungry village turned away from a full granary
         for (Cat c : Cat.values()) {
             int sa = stock(a, c), sb = stock(b, c);
             int ta = target(a, c), tb = target(b, c);
             if (sa < ta && sb < tb) competing = true;
-            if (relation(a, b) < TRADE_RELATION) continue;
-            if (sa > ta * 1.5 && sb < tb) traded |= send(world, a, b, c, Math.min((int) (sa - ta * 1.5), tb - sb));
-            else if (sb > tb * 1.5 && sa < ta) traded |= send(world, b, a, c, Math.min((int) (sb - tb * 1.5), ta - sa));
+            if (relation(a, b) < TRADE_RELATION) {
+                if (c == Cat.FOOD && sa > ta * 1.5 && starving(b)) refused = b;
+                if (c == Cat.FOOD && sb > tb * 1.5 && starving(a)) refused = a;
+                continue;
+            }
+            int sold = 0;
+            if (sa > ta * 1.5 && sb < tb) sold = sell(world, a, b, c, Math.min((int) (sa - ta * 1.5), tb - sb));
+            else if (sb > tb * 1.5 && sa < ta) sold = sell(world, b, a, c, Math.min((int) (sb - tb * 1.5), ta - sa));
+            if (sold > 0) traded = true;
+            if (sold < 0 && c == Cat.FOOD) refused = sa > sb ? b : a;
         }
         if (traded) shift(a, b, 1);
         else if (competing) shift(a, b, -3);
+        if (refused != null) {
+            // bread there, children hungry here, and no money to buy it: that is how feuds begin
+            shift(a, b, -8);
+            Life.news(refused, "refused.food", (refused == a ? b : a).getName());
+        }
 
-        if (relation(a, b) <= RAID_RELATION) maybeRaid(world, a, b);
+        if (relation(a, b) <= RAID_RELATION) maybeRaid(world, a, b, null);
+        else if (refused != null && relation(a, b) <= -15) maybeRaid(world, a, b, refused); // hunger does not wait for a feud to ripen
+    }
+
+    /** Hardly any food for the mouths it has. */
+    static boolean starving(Village v) {
+        int food = 0;
+        for (ItemStack s : v.storageBuffer) if (s.isFood()) food += s.getCount();
+        return food < Math.max(2, v.getPopulation());
+    }
+
+    /**
+     * A caravan of surplus to a village short of it, paid for out of the buyer's coffers. What it cannot pay for, a
+     * friendly neighbour gives for half or for nothing (to a starving one); others sell only what is paid for. Returns
+     * what was sent, or -1 if the buyer could pay for nothing and got nothing.
+     */
+    private static int sell(ServerWorld world, Village from, Village to, Cat cat, int amount) {
+        amount = Math.min(amount, 64);
+        if (amount <= 0) return 0;
+        int rel = relation(from, to);
+        double price = cat.price * (rel >= 40 ? 0.5 : 1.0);
+        int coffers = Money.coffers(to);
+        int afford = price <= 0 ? amount : (int) Math.floor(coffers / price);
+        boolean gift = rel >= 20 && cat == Cat.FOOD && starving(to);
+        if (!gift) amount = Math.min(amount, afford);
+        if (amount <= 0) return -1;
+        int cost = gift ? 0 : (int) Math.ceil(amount * price);
+        if (cost > 0) Money.deposit(from, Money.take(to, cost));
+        if (!send(world, from, to, cat, amount)) return 0;
+        Life.news(to, gift ? "trade.gift" : "trade.bought", from.getName(), Text.translatable("settlements.cat." + cat.key));
+        Life.news(from, gift ? "trade.gave" : "trade.sold", to.getName(), Text.translatable("settlements.cat." + cat.key));
+        return amount;
     }
 
     private static boolean send(ServerWorld world, Village from, Village to, Cat cat, int amount) {
@@ -162,12 +208,13 @@ public final class Diplomacy {
 
     private static final List<PendingRaid> PENDING = new ArrayList<>();
 
-    private static void maybeRaid(ServerWorld world, Village a, Village b) {
-        if (world.random.nextFloat() > 0.35f) return;
+    /** {@code hungry}: a starving village that will go for its neighbour's granary even if it is the weaker. */
+    private static void maybeRaid(ServerWorld world, Village a, Village b, Village hungry) {
+        if (world.random.nextFloat() > (hungry != null ? 0.5f : 0.35f)) return;
         double ma = military(world, a), mb = military(world, b);
-        Village attacker = ma >= mb ? a : b, defender = attacker == a ? b : a;
-        double att = Math.max(ma, mb), def = Math.min(ma, mb) * 1.2;
-        if (att < def * 1.1) return; // not strong enough to risk it
+        Village attacker = hungry != null ? hungry : ma >= mb ? a : b, defender = attacker == a ? b : a;
+        double att = military(world, attacker), def = military(world, defender) * 1.2;
+        if (att < def * (hungry != null ? 0.6 : 1.1)) return; // not strong enough to risk it (the hungry risk more)
         for (PendingRaid r : PENDING) if (r.defenderId() == defender.getId()) return;
         PENDING.add(new PendingRaid(attacker.getId(), defender.getId(), world.getTime() + 3600));
         announce(world, attacker, defender, Text.translatable("settlements.raid.start", attacker.getName(), defender.getName()));

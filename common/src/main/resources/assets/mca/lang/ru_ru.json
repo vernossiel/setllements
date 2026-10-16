@@ -4123,5 +4123,10 @@
   "settlements.say.robbed.f": "Обокрали! Ночью из сундука %s самородков как не бывало! Пойду к страже.",
   "settlements.news.robbed": "Ночью обокрали дом %s. Кто — неизвестно.",
   "settlements.news.rogue.caught.purse": "%s попался на краже у %s и теперь стоит в колодках.",
-  "settlements.news.harvest.bad": "Неделя выдалась плохая для полей: урожай скудный, хлеба будет мало."
+  "settlements.news.harvest.bad": "Неделя выдалась плохая для полей: урожай скудный, хлеба будет мало.",
+  "settlements.news.refused.food": "В %s полные амбары, а нам продать хлеба не захотели — платить нечем. Люди злы.",
+  "settlements.news.trade.gift": "%s прислали нам %s задаром. Не забудем.",
+  "settlements.news.trade.bought": "Купили у %s: %s.",
+  "settlements.news.trade.gave": "Отправили в голодающий %s %s задаром.",
+  "settlements.news.trade.sold": "Продали в %s излишки: %s."
 }
