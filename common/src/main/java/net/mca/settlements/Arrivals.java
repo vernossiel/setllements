@@ -60,10 +60,11 @@ public final class Arrivals {
         // hunger that lasts drives people away
         int hungry = per < 0.5 ? HUNGRY_DAYS.merge(v.getId(), 1, Integer::sum) : 0;
         if (per >= 0.5) HUNGRY_DAYS.put(v.getId(), 0);
-        if (hungry >= 2 && pop > 3 && world.random.nextFloat() < 0.5f) {
+        if (hungry >= 3 && pop > 4 && world.random.nextFloat() < 0.5f) {
             VillagerEntityMCA who = null;
             for (VillagerEntityMCA r : folk) {
                 if (r.isBaby() || r.isElder() || r.isGuard() || !r.isAlive() || LEAVING.containsKey(r.getUuid())) continue;
+                if (keeps(r, folk)) continue; // the ones who feed the village, and its only builder, stay and see it through
                 if (r.getRelationships().getPartner().isPresent() && who != null) continue; // a single one goes first
                 who = r;
             }
@@ -93,6 +94,15 @@ public final class Arrivals {
         Life.news(v, came.size() == 2 ? "arrival.couple" : "arrival", names);
         VillagerEntityMCA elder = Plan.elder(world, v);
         if (elder != null) elder.settlementsQueue.add(Text.translatable(came.size() == 2 ? "settlements.elder.welcome.couple" : "settlements.elder.welcome", names));
+    }
+
+    /** Those a hungry village cannot do without: whoever brings in food, and the one builder it has. */
+    private static boolean keeps(VillagerEntityMCA r, List<VillagerEntityMCA> folk) {
+        var p = r.getProfession();
+        if (p == net.minecraft.village.VillagerProfession.FARMER || p == net.minecraft.village.VillagerProfession.SHEPHERD
+                || p == net.minecraft.village.VillagerProfession.BUTCHER || p == net.minecraft.village.VillagerProfession.LEATHERWORKER) return true;
+        if (p == net.minecraft.village.VillagerProfession.CARTOGRAPHER) return folk.stream().filter(o -> o.getProfession() == p).count() <= 1;
+        return false;
     }
 
     private static VillagerEntityMCA spawn(ServerWorld world, Village v, BlockPos at, Gender g) {
