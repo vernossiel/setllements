@@ -93,6 +93,13 @@ public final class Workforce {
             if (rv != null && v.isGuard() && dusk >= 11500 && dusk < 13500 && !Staffing.has(rw, rv, net.mca.ProfessionsMCA.WATCHMAN.get())
                     && v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).isEmpty() && Watch.lamps(v, rv, rw)) return;
         }
+        // deep in the night nothing gets a villager out of bed - not hunger (it waits for breakfast), not a chat, not the
+        // fright of the day: out in the dark is where the zombies get them. Only the night watch and the guard on duty walk about.
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld nw && !v.isGuard() && v.getProfession() != net.mca.ProfessionsMCA.WATCHMAN.get()) {
+            long tod = nw.getTimeOfDay() % 24000L;
+            net.mca.server.world.data.Village nv = net.mca.server.world.data.Village.findNearest(v).or(() -> v.getResidency().getHomeVillage()).orElse(null);
+            if (nv != null && tod >= 13500 && tod < 23300 && !Persona.working(v, nw.getTimeOfDay()) && Bed.tick(v, nv, nw)) return;
+        }
         if (v.isBaby()) {
             if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld kw && Games.tick(v, kw)) return; // at play with the others
             Life.child(v);

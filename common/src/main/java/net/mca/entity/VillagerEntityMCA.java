@@ -717,6 +717,16 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
                 return false;
             }
         }
+        // caught in a wall (a block set down on him, a tree grown through him): he steps out of it, up or aside
+        if (!getWorld().isClient && source.isOf(net.minecraft.entity.damage.DamageTypes.IN_WALL) && !hasVehicle()) {
+            for (BlockPos q : BlockPos.iterateOutwards(getBlockPos(), 2, 4, 2)) {
+                if (getWorld().getBlockState(q).getCollisionShape(getWorld(), q).isEmpty() && getWorld().getBlockState(q.up()).getCollisionShape(getWorld(), q.up()).isEmpty()
+                        && getWorld().getBlockState(q.down()).isSolidBlock(getWorld(), q.down())) {
+                    requestTeleport(q.getX() + 0.5, q.getY(), q.getZ() + 0.5);
+                    return false;
+                }
+            }
+        }
         // a fall bruises and lames him, but does not kill him: villagers do not die going about their work
         if (!getWorld().isClient && source.isOf(net.minecraft.entity.damage.DamageTypes.FALL) && damageAmount >= getHealth() - 1) {
             damageAmount = Math.max(0, getHealth() - 2);
