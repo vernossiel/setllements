@@ -18,6 +18,7 @@ import java.util.UUID;
  */
 public final class Bed {
     private static final Map<UUID, Long> SINCE = new HashMap<>();
+    private static final Map<UUID, Long> NO_WAY = new HashMap<>(); // villager -> the night his bed could not be reached
 
     private Bed() {
     }
@@ -70,6 +71,16 @@ public final class Bed {
         long now = world.getTime();
         long since = SINCE.computeIfAbsent(v.getUuid(), k -> now);
         Doing.set(v, "settlements.doing.bed");
+        // a bed there is no way to (a shut-in house, a door that is not there): after a few tries, the hall tonight
+        long night = world.getTimeOfDay() / 24000L;
+        if (bed != null && NO_WAY.getOrDefault(v.getUuid(), -1L) == night) bed = null;
+        if (bed != null && v.squaredDistanceTo(Vec3d.ofCenter(bed)) > 2.2 * 2.2 && now - since >= 20 * 8) {
+            var p = v.getNavigation().getCurrentPath();
+            if (p == null || !p.reachesTarget() && p.getTarget().getSquaredDistance(bed) > 4) {
+                NO_WAY.put(v.getUuid(), night);
+                bed = null;
+            }
+        }
         // a minute and still not home - fallen down a slope, lost his way in the woods, no path to be found - and nobody
         // about to see: he gets home all the same, the long way round, as a man does in the dark
         if (now - since == 20 * 30 || now - since == 20 * 120) { // for the record (and the tests): who cannot get to bed, and why
