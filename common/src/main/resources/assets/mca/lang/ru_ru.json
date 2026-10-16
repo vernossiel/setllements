@@ -4072,5 +4072,10 @@
   "settlements.say.home.chest": "Ну вот, свой сундук. Будет куда класть.",
   "settlements.say.home.chest.f": "Ну вот, свой сундук. Будет куда класть.",
   "settlements.say.home.furnish": "Вот, в дом обновка. Пусть будет по-людски.",
-  "settlements.say.home.furnish.f": "Вот, в дом обновка. Пусть будет по-людски."
+  "settlements.say.home.furnish.f": "Вот, в дом обновка. Пусть будет по-людски.",
+  "settlements.doing.fight.monster": "отбивается от чудища",
+  "settlements.say.fight.back": "А ну пошёл! Пошёл прочь!",
+  "settlements.say.fight.back.f": "А ну пошёл! Пошёл прочь!",
+  "settlements.say.fight.help": "Держись! Сейчас я его!",
+  "settlements.say.fight.help.f": "Держись! Сейчас я его!"
 }

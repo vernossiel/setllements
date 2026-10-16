@@ -27,6 +27,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * What makes a village feel inhabited: villagers notice the player and greet him according to his name in the
@@ -579,13 +580,50 @@ public final class Life {
      * A monster close by: anyone but the watch drops what he is doing and runs - away from it, towards home or the
      * town hall - shouting for the guards. True while he is getting away.
      */
+    private static final Map<UUID, net.minecraft.util.math.Vec3d> LAST_POS = new HashMap<>();
+
+    /**
+     * Driven into a corner, or the thing already on him, a grown villager does not just stand and take it: he hits back
+     * with whatever is in his hand. And one with an axe or a blade in his hand goes to the help of a neighbour the
+     * monster has got hold of. Children only ever run.
+     */
+    private static boolean fight(VillagerEntityMCA v, net.minecraft.entity.mob.HostileEntity foe, ServerWorld world, net.minecraft.util.math.Vec3d was) {
+        if (v.isBaby() || foe instanceof net.minecraft.entity.mob.CreeperEntity) return false;
+        double d = v.squaredDistanceTo(foe);
+        boolean onHim = foe.getTarget() == v && d < 2.5 * 2.5;
+        boolean hurt = v.getAttacker() == foe;
+        boolean cornered = onHim && was != null && was.squaredDistanceTo(v.getPos()) < 0.5 * 0.5; // fleeing got him nowhere
+        var held = v.getMainHandStack().getItem();
+        boolean armed = held instanceof net.minecraft.item.AxeItem || held instanceof net.minecraft.item.SwordItem;
+        boolean neighbour = armed && foe.getTarget() instanceof VillagerEntityMCA other && other != v && d < 6 * 6;
+        if (!(cornered || hurt && d < 3 * 3 || neighbour)) return false;
+        Doing.set(v, "settlements.doing.fight.monster");
+        Gaze.at(v, foe, 30f, 30f);
+        if (d > 2.2 * 2.2) {
+            Move.to(v, foe.getX(), foe.getY(), foe.getZ(), 0.75);
+            return true;
+        }
+        v.getNavigation().stop();
+        v.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+        v.tryAttack(foe);
+        long now = world.getTime();
+        if (now - DREAD_SAID.getOrDefault(v.getUuid(), -10000L) > 200) {
+            DREAD_SAID.put(v.getUuid(), now);
+            Speech.sayNow(v, neighbour ? "settlements.say.fight.help" : "settlements.say.fight.back");
+        }
+        return true;
+    }
+
     public static boolean dread(VillagerEntityMCA v, Village village, ServerWorld world) {
         if (v.isGuard() || v.isSleeping() || v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get()) return false;
-        if (!world.isSkyVisible(v.getBlockPos().up())) return false; // under a roof he is safe: he stays in, he does not run out into it
+        boolean indoors = !world.isSkyVisible(v.getBlockPos().up());
         net.minecraft.entity.mob.HostileEntity foe = world.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, v.getBoundingBox().expand(10, 4, 10),
                 m -> m.isAlive() && !(m instanceof net.minecraft.entity.mob.CreeperEntity && v.squaredDistanceTo(m) > 36) && v.canSee(m)).stream()
                 .min(java.util.Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
+        net.minecraft.util.math.Vec3d was = LAST_POS.put(v.getUuid(), v.getPos());
         if (foe == null) return false;
+        if (fight(v, foe, world, was)) return true;
+        if (indoors) return false; // under a roof he is safe: he stays in, he does not run out into it
         Doing.set(v, "settlements.doing.flee.monster");
         net.minecraft.util.math.Vec3d away = v.getPos().subtract(foe.getPos()).multiply(1, 0, 1).normalize();
         net.minecraft.util.math.BlockPos safe = v.getResidency().getHome().map(net.minecraft.util.math.GlobalPos::getPos).orElse(village != null ? village.hallPos : null);

@@ -4075,5 +4075,10 @@
   "settlements.say.home.chest": "There, a chest of my own. Somewhere to keep things.",
   "settlements.say.home.chest.f": "There, a chest of my own. Somewhere to keep things.",
   "settlements.say.home.furnish": "Something new for the house. Let it look like people live here.",
-  "settlements.say.home.furnish.f": "Something new for the house. Let it look like people live here."
+  "settlements.say.home.furnish.f": "Something new for the house. Let it look like people live here.",
+  "settlements.doing.fight.monster": "fighting off a monster",
+  "settlements.say.fight.back": "Get back! Get away from me!",
+  "settlements.say.fight.back.f": "Get back! Get away from me!",
+  "settlements.say.fight.help": "Hold on! I've got him!",
+  "settlements.say.fight.help.f": "Hold on! I've got him!"
 }

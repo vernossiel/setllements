@@ -109,6 +109,28 @@ public final class Rogue {
         return p.getUuid().equals(OWES.get(v.getUuid()));
     }
 
+    /**
+     * The way a rogue goes about his business: bent low, slow, a glance over the shoulder now and then; and whenever
+     * somebody awake could see him, he stands stock still in the shadow till they look away or go.
+     */
+    private static void creep(VillagerEntityMCA v, ServerWorld world, double x, double y, double z) {
+        Anim.set(v, Anim.Act.BEND, 30);
+        VillagerEntityMCA eyes = world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(10, 3, 10),
+                o -> o != v && o.isAlive() && !o.isSleeping() && !o.isBaby() && !is(o) && o.canSee(v)).stream().findFirst().orElse(null);
+        if (eyes != null) {
+            v.getNavigation().stop();
+            Gaze.at(v, eyes, 20f, 20f); // watching them, holding his breath
+            return;
+        }
+        if (world.random.nextInt(5) == 0) { // a look back over his shoulder
+            double a = world.random.nextDouble() * Math.PI * 2;
+            Gaze.at(v, v.getX() + Math.cos(a) * 6, v.getEyeY(), v.getZ() + Math.sin(a) * 6);
+            v.getNavigation().stop();
+            return;
+        }
+        Move.to(v, x, y, z, 0.3);
+    }
+
     // ---------- a little something from the stores ----------
 
     private static boolean steal(VillagerEntityMCA v, Village village, ServerWorld world) {
@@ -121,7 +143,7 @@ public final class Rogue {
         Doing.set(v, "settlements.doing.rogue.sneak");
         if (v.isSleeping()) v.wakeUp();
         if (v.squaredDistanceTo(Vec3d.ofCenter(store)) > 9) {
-            Move.to(v, store.getX() + 0.5, store.getY(), store.getZ() + 0.5, 0.45);
+            creep(v, world, store.getX() + 0.5, store.getY(), store.getZ() + 0.5);
             if (now - next > 20 * 120) NEXT_THEFT.put(v.getUuid(), now + 24000L); // could not get there: another night
             return true;
         }
@@ -194,7 +216,7 @@ public final class Rogue {
         if (v.isSleeping()) v.wakeUp();
         Doing.set(v, "settlements.doing.rogue.sneak");
         if (v.squaredDistanceTo(target) > 2.5 * 2.5) {
-            Move.to(v, target.getX(), target.getY(), target.getZ(), 0.45);
+            creep(v, world, target.getX(), target.getY(), target.getZ());
             return true;
         }
         v.getNavigation().stop();
