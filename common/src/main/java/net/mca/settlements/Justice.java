@@ -267,12 +267,7 @@ public final class Justice {
                         c.deadline = now + 20 * 20;
                         c.lastTalk = now;
                         guard.sendChatMessage(Text.translatable("settlements.justice.arrest", p.getName()), p);
-                        java.util.List<String> o = new java.util.ArrayList<>(List.of("surrender"));
-                        if (!c.pleaded) o.add("plead");
-                        if (!c.bribed) o.add("bribe");
-                        o.add("resist");
-                        window(guard, village, p, List.of(Text.translatable("settlements.justice.arrest", p.getName()), Text.empty(),
-                                Text.translatable("settlements.justice.arrest.choice").formatted(Formatting.YELLOW)), o.toArray(new String[0]), 20);
+                        arrestWindow(guard, village, p, c, 20);
                     }
                 }
                 case ARREST -> {
@@ -603,9 +598,28 @@ public final class Justice {
             c.value *= 1.5;
             c.shown = false;
             if (c.stage == Stage.DEMAND) demand(world, village, guard, p, c);
-            else c.deadline = Math.min(c.deadline, world.getTime() + 20 * 10);
+            else {
+                c.deadline = Math.min(c.deadline, world.getTime() + 20 * 10);
+                if (c.stage == Stage.ARREST && guard != null) // and what now: the choice again, what is left of it
+                    arrestWindow(guard, village, p, c, 10, Text.translatable("settlements.justice.plead.no", p.getName()));
+            }
         }
         return 1;
+    }
+
+    /** The arrest put before him: go along, plead, a bribe, or resist (what he has tried already is not offered again). */
+    private static void arrestWindow(VillagerEntityMCA guard, Village village, ServerPlayerEntity p, Case c, int seconds) {
+        arrestWindow(guard, village, p, c, seconds, Text.translatable("settlements.justice.arrest", p.getName()));
+    }
+
+    /** The same, after his words to what was tried (a bribe turned down, a plea not heard): {@code lead} first. */
+    private static void arrestWindow(VillagerEntityMCA guard, Village village, ServerPlayerEntity p, Case c, int seconds, Text lead) {
+        java.util.List<String> o = new java.util.ArrayList<>(List.of("surrender"));
+        if (!c.pleaded) o.add("plead");
+        if (!c.bribed) o.add("bribe");
+        o.add("resist");
+        window(guard, village, p, List.of(lead, Text.empty(),
+                Text.translatable("settlements.justice.arrest.choice").formatted(Formatting.YELLOW)), o.toArray(new String[0]), seconds);
     }
 
     /** A few nuggets for the guard himself, quietly. Taken, the matter is closed; refused, it is one more offence. */
@@ -632,6 +646,8 @@ public final class Justice {
             c.value += cost * 6 / 9.0; // the cost is in nuggets now: the same weight as before
             c.shown = false;
             if (c.stage == Stage.DEMAND) demand(world, village, guard, p, c);
+            else if (c.stage == Stage.ARREST && guard != null)
+                arrestWindow(guard, village, p, c, Math.max(5, (int) ((c.deadline - world.getTime()) / 20)), Text.translatable("settlements.justice.bribe.no", p.getName()));
         }
         return 1;
     }
