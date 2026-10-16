@@ -125,6 +125,18 @@ public final class Arrivals {
         return 1;
     }
 
+    /** Somebody left the hungry village while nobody was about: he is simply not there any more. */
+    static boolean goneWhileAway(ServerWorld world, Village v) {
+        List<VillagerEntityMCA> folk = v.getResidents(world);
+        for (VillagerEntityMCA r : folk) {
+            if (r.isBaby() || r.isElder() || r.isGuard() || !r.isAlive() || keeps(r, folk)) continue;
+            Life.news(v, "left", r.getName().getString());
+            r.discard();
+            return true;
+        }
+        return false;
+    }
+
     private static VillagerEntityMCA spawn(ServerWorld world, Village v, BlockPos at, Gender g) {
         VillagerEntityMCA n = g.getVillagerType().spawn(world, at, SpawnReason.EVENT);
         if (n == null) return null;

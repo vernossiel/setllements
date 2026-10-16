@@ -52,6 +52,11 @@ public class Village implements Iterable<Building> {
     public boolean seeded;
     /** When the village was last lived in (a player near enough for it to run); the days between are caught up (see Ledger). */
     public long lastLived;
+    /** The village's books (see settlements.Ledger): the last day reckoned; the workers as last seen; the work and
+     * the comings and goings owed to the world, to be shown when a player is near. */
+    public long ledgerDay = -1;
+    public int[] ledgerRoles = new int[0];
+    public int owedSteps, owedNewcomers, owedLeavers;
     public int groveSaplings;
     public final List<BlockPos> hallChests = new LinkedList<>();
     public final List<BlockPos> boardSigns = new LinkedList<>();
@@ -141,6 +146,11 @@ public class Village implements Iterable<Building> {
         if (v.contains("penCenter")) penCenter = BlockPos.fromLong(v.getLong("penCenter"));
         seeded = v.getBoolean("seeded");
         lastLived = v.getLong("lastLived");
+        ledgerDay = v.contains("ledgerDay") ? v.getLong("ledgerDay") : -1;
+        ledgerRoles = v.getIntArray("ledgerRoles");
+        owedSteps = v.getInt("owedSteps");
+        owedNewcomers = v.getInt("owedNewcomers");
+        owedLeavers = v.getInt("owedLeavers");
         groveSaplings = v.getInt("groveSaplings");
         for (long l : v.getLongArray("hallChests")) hallChests.add(BlockPos.fromLong(l));
         for (long l : v.getLongArray("boardSigns")) boardSigns.add(BlockPos.fromLong(l));
@@ -543,6 +553,11 @@ public class Village implements Iterable<Building> {
         if (penCenter != null) v.putLong("penCenter", penCenter.asLong());
         v.putBoolean("seeded", seeded);
         v.putLong("lastLived", lastLived);
+        v.putLong("ledgerDay", ledgerDay);
+        v.putIntArray("ledgerRoles", ledgerRoles);
+        v.putInt("owedSteps", owedSteps);
+        v.putInt("owedNewcomers", owedNewcomers);
+        v.putInt("owedLeavers", owedLeavers);
         v.putInt("groveSaplings", groveSaplings);
         v.putLongArray("hallChests", hallChests.stream().mapToLong(BlockPos::asLong).toArray());
         v.putLongArray("boardSigns", boardSigns.stream().mapToLong(BlockPos::asLong).toArray());
