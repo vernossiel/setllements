@@ -29,7 +29,8 @@ public final class Haul {
         if (best == null) best = nearestChest(v, village, "storage");
         if (best == null) best = nearestChest(v, village, "granary");
         if (best != null) return best;
-        if (!village.hallChests.isEmpty()) return village.hallChests.get(0);
+        // the hall's chest on its ground floor, not one up under the roof (they fell to their deaths going for that)
+        if (!village.hallChests.isEmpty()) return village.hallChests.stream().min(java.util.Comparator.comparingInt(BlockPos::getY)).get();
         return village.hallPos;
     }
 

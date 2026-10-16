@@ -711,6 +711,11 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
                 return false;
             }
         }
+        // a fall bruises and lames him, but does not kill him: villagers do not die going about their work
+        if (!getWorld().isClient && source.isOf(net.minecraft.entity.damage.DamageTypes.FALL) && damageAmount >= getHealth() - 1) {
+            damageAmount = Math.max(0, getHealth() - 2);
+            addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SLOWNESS, 20 * 60, 1, false, false));
+        }
         // no baby squishes
         if (getVehicle() instanceof PlayerEntity) {
             return super.damage(source, 0.0f);
