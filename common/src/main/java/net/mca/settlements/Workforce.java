@@ -67,6 +67,7 @@ public final class Workforce {
     /** Server side, once per second. */
     public static void tick(VillagerEntityMCA v) {
         if (v.isBaby()) {
+            if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld kw && Games.tick(v, kw)) return; // at play with the others
             Life.child(v);
             return;
         }
@@ -102,6 +103,10 @@ public final class Workforce {
         Move.shutBehind(v);
         Unstick.tick(v, village);
         Move.tick(v, village);
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld gw) {
+            Gaze.tick(v, gw); // eyes on what goes on about him; his work, below, takes them back
+            if (Notice.tick(v, gw)) return; // a player building something near: he stands and looks
+        }
         STAGE.put(v.getUuid(), "life");
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld lifeWorld && Life.tick(v, village, lifeWorld, time)) return;
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld watchWorld) {
@@ -112,7 +117,7 @@ public final class Workforce {
         if (v.isGuard() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld ew && Escort.guard(v, village, ew)) return; // seeing a worker safe out and back
         // a conversation: carried on, or started when he has a moment (on the guards' watch, nobody stands chatting)
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld tw && !(v.isGuard() && GuardAI.onDuty(v, time))) {
-            boolean moment = !Mind.onDuty(v, village, time) || v.settlementsBreak || v.settlementsIdleWork >= 10 || Morning.active(v, time)
+            boolean moment = !Mind.onDuty(v, village, time) || v.settlementsBreak || v.settlementsIdleWork >= 10 || Morning.active(v, time) || Festival.fair(time)
                     || Mind.before(v, village, time, Mind.Drive.TALK);
             STAGE.put(v.getUuid(), "talk");
             if (Talk.tick(v, village, tw, moment && !Dig.busy(v) && !v.settlementsHauling)) return;
@@ -159,6 +164,8 @@ public final class Workforce {
         // the morning: breakfast, a wash at the well, a word with the neighbours - then work
         STAGE.put(v.getUuid(), "morning");
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld mw && Morning.tick(v, village, mw, time)) return;
+        // a wedding, a fair morning: the village leaves its work for it
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld fw3 && Festival.tick(v, village, fw3, time)) return;
 
         // the day's rhythm: morning gathering with the elder, lunch at the hearth
         STAGE.put(v.getUuid(), "routine");
@@ -235,13 +242,18 @@ public final class Workforce {
         // starving with nothing to eat in the village: he goes and finds something, as anyone would, before anything else
         if (v.settlementsHunger >= HUNGER_STOP_AT && !hasMeal(v, village) && village != null && !v.getVillagerBrain().isPanicking()
                 && v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw2) {
-            boolean found = v.getProfession() == VillagerProfession.FARMER && Farming.fields(v, village, sw2) || Forage.work(v, village, sw2);
+            VillagerProfession fp = v.getProfession();
+            // those whose work is food go on with it, hungry or not: the hunt, the herd, the field; the rest gather
+            boolean found = (fp == VillagerProfession.BUTCHER || fp == VillagerProfession.SHEPHERD) && Butchery.work(v, village, sw2)
+                    || fp == VillagerProfession.FARMER && Farming.fields(v, village, sw2) || Forage.work(v, village, sw2);
             if (found) {
                 Doing.set(v, "settlements.doing.starving.search");
                 return;
             }
         }
-        if (!Mind.onDuty(v, village, time) && !Persona.working(v, time) || v.settlementsHunger >= HUNGER_STOP_AT || v.getVillagerBrain().isPanicking()) {
+        // hunger stops a man's work - but not the work that brings in food: the hunt, the herd, the field
+        boolean feeds = v.getProfession() == VillagerProfession.BUTCHER || v.getProfession() == VillagerProfession.SHEPHERD || v.getProfession() == VillagerProfession.FARMER;
+        if (!Mind.onDuty(v, village, time) && !Persona.working(v, time) || v.settlementsHunger >= HUNGER_STOP_AT && !feeds || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
             Gear.pocket(v); // off work: the tools go back in the bag
             Doing.set(v, v.settlementsHunger >= HUNGER_STOP_AT ? "settlements.doing.hungry" : Persona.free(v, time) ? "settlements.doing.free" : "settlements.doing.home");
@@ -249,6 +261,8 @@ public final class Workforce {
             if (!Persona.free(v, time)) Rest.end(v); // bedtime: up and off home
             if (Persona.free(v, time) && !(v.isGuard() && GuardAI.onDuty(v, time))) {
                 if (v.settlementsHunger >= 250 && hasMeal(v, village) && startEating(v, village, 250)) return;
+                if (village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld mw3 && Mood.tick(v, village, mw3, true)) return; // the village's mood
+                if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld pw3 && Notice.pet(v, pw3)) return; // a pat for the cat
                 Leisure.tick(v, village, time);
             }
             return;
@@ -263,6 +277,8 @@ public final class Workforce {
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld pw && Trade.pausing(v, village, pw)) return;
 
         VillagerProfession prof = v.getProfession();
+        // something just built: a look at it on the way, like everybody else
+        if (village != null && Mood.now(village) == Mood.Kind.JOY && v.getWorld() instanceof net.minecraft.server.world.ServerWorld jw && Mood.tick(v, village, jw, false)) return;
         if (Seat.seated(v)) Rest.end(v); // up, back to work
         STAGE.put(v.getUuid(), "custom");
         if (isCustomWorker(prof)) {
@@ -284,7 +300,8 @@ public final class Workforce {
                 worked = true; // carrying the load to the hall is work too
             } else if (village == null) worked = false; // no village (yet): no village work
             else if (prof == VillagerProfession.CARTOGRAPHER) worked = Builder.work(v, village);
-            else if (prof == VillagerProfession.BUTCHER) worked = Cooking.work(v, village);
+            else if (prof == VillagerProfession.BUTCHER && v.getWorld() instanceof net.minecraft.server.world.ServerWorld bw) worked = Butchery.work(v, village, bw);
+            else if (prof == VillagerProfession.SHEPHERD && v.getWorld() instanceof net.minecraft.server.world.ServerWorld shw) worked = Herding.work(v, village, shw);
             else if (prof == VillagerProfession.MASON && v.getWorld() instanceof net.minecraft.server.world.ServerWorld mw2) {
                 if (v.age % 400 == 0) Gear.equipShovel(v, village); // and a shovel for the earth and gravel
                 worked = Chain.mine(v, village, mw2, time); // the chain he works out: a pick, the mine, a full bag, the stores
@@ -340,7 +357,8 @@ public final class Workforce {
         }
         // the crop growing and nothing to do in the fields: he lends the builders a hand
         if (prof == VillagerProfession.FARMER && village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld hw2
-                && v.getWorld().getTime() >= v.settlementsNoWorkUntil && (Life.helpBuilders(v, village, hw2) || Planner.idle(v, village, hw2))) {
+                && v.getWorld().getTime() >= v.settlementsNoWorkUntil && (Life.helpBuilders(v, village, hw2)
+                || !Staffing.has(hw2, village, VillagerProfession.SHEPHERD) && Herding.work(v, village, hw2) || Planner.idle(v, village, hw2))) {
             v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
             v.settlementsHunger += HUNGER_RISE;
             return;
@@ -627,7 +645,8 @@ public final class Workforce {
         int food = 0;
         for (int i = 0; i < v.getInventory().size(); i++) {
             ItemStack s = v.getInventory().getStack(i);
-            if (s.isEmpty() || s.getItem() instanceof net.minecraft.item.ToolItem || s.getItem() instanceof net.minecraft.item.ArmorItem) continue;
+            // his own things stay with him: tools, shears, a bow, armour - whatever wears out with use
+            if (s.isEmpty() || s.isDamageable() || s.getItem() instanceof net.minecraft.item.ToolItem || s.getItem() instanceof net.minecraft.item.ArmorItem) continue;
             if (s.isFood()) {
                 int keep = Math.max(0, KEEP_FOOD - food);
                 food += Math.min(keep, s.getCount());

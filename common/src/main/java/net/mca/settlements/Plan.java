@@ -146,8 +146,8 @@ public final class Plan {
 
     /** The elder is the oldest-registered adult civilian of the village, chosen deterministically so it never changes. */
     public static VillagerEntityMCA elder(ServerWorld world, Village v) {
+        // always the same one (the first by id), so the office does not pass from hand to hand
         List<VillagerEntityMCA> folk = v.getResidents(world);
-        for (VillagerEntityMCA r : folk) if (r.isAlive() && r.isElder()) return r;
         return folk.stream()
                 .filter(r -> !r.isBaby() && !r.isGuard() && r.isAlive())
                 .min(Comparator.comparing(r -> r.getUuid()))

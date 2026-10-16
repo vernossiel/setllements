@@ -200,6 +200,7 @@ public final class Talk {
         }
         if (village != null && Forage.hungry(village) && r.nextBoolean()) return new String[]{"hungry"};
         // the moment: a storm, the cold, early morning, late at night, a day off, two old friends or two who hardly know each other
+        if (Festival.fair(world.getTimeOfDay()) && r.nextBoolean()) return new String[]{"fair"};
         if (world.isThundering() && r.nextBoolean()) return new String[]{"storm"};
         if (world.getBiome(v.getBlockPos()).value().isCold(v.getBlockPos()) && r.nextInt(3) == 0) return new String[]{"cold"};
         if (t < 2500 && r.nextBoolean()) return new String[]{"morning"};

@@ -33,7 +33,7 @@ public final class Move {
     private static final double PACE = 0.6;
 
     public static boolean to(VillagerEntityMCA v, double x, double y, double z, double speed) {
-        speed = Math.min(speed, PACE);
+        speed = Math.min(speed, PACE) * Gaze.pace(v); // the tired drag their feet, the keen step out
         BlockPos goal = BlockPos.ofFloored(x, y, z);
         remember(v, goal);
         // already on his way there: he keeps walking the path he has, not stopping each second to work out a new one
@@ -44,7 +44,7 @@ public final class Move {
     }
 
     public static boolean to(VillagerEntityMCA v, Entity e, double speed) {
-        speed = Math.min(speed, PACE);
+        speed = Math.min(speed, PACE) * Gaze.pace(v);
         remember(v, e.getBlockPos());
         return v.getNavigation().startMovingTo(e, speed);
     }

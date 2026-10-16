@@ -68,6 +68,16 @@ public final class SettlementsCommand {
         d.register(CommandManager.literal("settlements").requires(s -> s.hasPermissionLevel(2))
                 .then(CommandManager.literal("status").executes(SettlementsCommand::status))
                 .then(CommandManager.literal("dump").executes(SettlementsCommand::dump))
+                .then(CommandManager.literal("pen").executes(c -> { // testing: a pen here, the village's own
+                    Optional<Village> opt = village(c);
+                    if (opt.isEmpty()) return 0;
+                    var at = net.minecraft.util.math.BlockPos.ofFloored(c.getSource().getPosition());
+                    var o = at.add(-Blueprints.PEN / 2, 0, -Blueprints.PEN / 2);
+                    Builder.placeForLook(c.getSource().getWorld(), "pen", o, 0);
+                    opt.get().penCenter = o.add(Blueprints.PEN / 2, 0, Blueprints.PEN / 2);
+                    opt.get().markDirty();
+                    return say(c, "Pen at " + opt.get().penCenter.toShortString());
+                }))
                 .then(CommandManager.literal("fake")
                         .then(CommandManager.literal("spawn").executes(SettlementsCommand::fakeSpawn))
                         .then(CommandManager.literal("hit").then(CommandManager.argument("name", StringArgumentType.word()).executes(SettlementsCommand::fakeHit)))

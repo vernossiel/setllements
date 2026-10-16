@@ -50,6 +50,7 @@ public class VillageMarriageManager {
                 .findFirst().ifPresent(mate -> {
                     suitor.getRelationships().marry(mate);
                     mate.getRelationships().marry(suitor);
+                    net.mca.settlements.Festival.wedding(village, world, suitor, mate); // the village celebrates it
 
                     // tell everyone about it
                     if (Config.getInstance().villagerMarriageNotification) {

@@ -107,7 +107,7 @@ public final class Haul {
         var inv = v.getInventory();
         for (int i = 0; i < inv.size(); i++) {
             ItemStack s = inv.getStack(i);
-            if (s.isEmpty() || s.getItem() instanceof ToolItem || s.getItem() instanceof ArmorItem || s.isFood()) continue;
+            if (s.isEmpty() || s.isDamageable() || s.getItem() instanceof ToolItem || s.getItem() instanceof ArmorItem || s.isFood()) continue;
             n += s.getCount();
         }
         return n;
@@ -141,7 +141,7 @@ public final class Haul {
         var inv = v.getInventory();
         for (int i = 0; i < inv.size(); i++) {
             ItemStack s = inv.getStack(i);
-            if (s.isEmpty() || s.getItem() instanceof ToolItem || s.getItem() instanceof ArmorItem || s.isFood()) continue;
+            if (s.isEmpty() || s.isDamageable() || s.getItem() instanceof ToolItem || s.getItem() instanceof ArmorItem || s.isFood()) continue;
             Workforce.addToTreasury(village, s.copy());
             inv.setStack(i, ItemStack.EMPTY);
         }

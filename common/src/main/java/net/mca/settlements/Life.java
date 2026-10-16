@@ -85,6 +85,10 @@ public final class Life {
         }
         else news(village, "death", name);
         if (village != null) Chapel.bury(world, village, name);
+        if (village != null) { // the village mourns, at the churchyard if there is one
+            Built chapel = Buildings.find(village, "chapel");
+            Mood.event(village, Mood.Kind.GRIEF, chapel != null ? chapel.point(2, 0, 2) : village.hallPos != null ? village.hallPos : v.getBlockPos());
+        }
         for (VillagerEntityMCA o : world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(16), o -> o != v && o.isAlive() && !o.isBaby())) {
             Speech.say(o, "settlements.react.mourn", name);
         }
@@ -159,6 +163,7 @@ public final class Life {
         boolean fresh = !feared(village, attacker);
         FEAR.put(k, now + FEAR_TICKS);
         if (fresh) {
+            Mood.event(village, Mood.Kind.FEAR, null);
             news(village, "attacked", attacker.getName().getString(), victim.getName().getString());
             Remember.note(village, attacker, "struck");
             village.pushHearts(attacker, -15);

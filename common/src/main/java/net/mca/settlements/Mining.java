@@ -44,7 +44,8 @@ public final class Mining {
         if (Dig.busy(v)) return true; // still at the rock
         Dig.gather(v, 3); // what he broke goes into his pockets, then to the stores
         Orders.Order order = Orders.take(v, village, Needs.Need.COBBLE); // the builder's order for stone
-        if (village.mineLevel > MAX_LEVEL || order == null && Builder.stockCobble(village) >= STONE_QUOTA) return false;
+        // the stone wanted, or ore: the miner's real work is the ore, and he goes on after it with stone enough in the stores
+        if (village.mineLevel > MAX_LEVEL || order == null && Builder.stockCobble(village) >= STONE_QUOTA && !oreWanted(village)) return false;
         if (order != null) Doing.set(v, "settlements.doing.mine.order", order.amount(), order.forWhom());
         else Doing.set(v, "settlements.doing.mine", village.mineLevel + 1);
 
@@ -200,7 +201,7 @@ public final class Mining {
         BlockPos feet = v.getBlockPos();
         BlockPos shown = null, hidden = null;
         double sd = Double.MAX_VALUE, hd = Double.MAX_VALUE;
-        for (BlockPos p : BlockPos.iterate(feet.add(-5, -1, -5), feet.add(5, 3, 5))) {
+        for (BlockPos p : BlockPos.iterate(feet.add(-8, -1, -8), feet.add(8, 3, 8))) {
             BlockState s = world.getBlockState(p);
             if (!ore(s)) continue;
             double d = p.getSquaredDistance(feet);
@@ -307,6 +308,16 @@ public final class Mining {
         v.getMoveControl().moveTo(next.getX() + 0.5, next.getY(), next.getZ() + 0.5, 0.5);
         if (up) v.getJumpControl().setActive();
         return true;
+    }
+
+    /** The stores could do with coal or iron (for the torches, the tools, the smithy to come). */
+    static boolean oreWanted(Village village) {
+        int coal = 0, iron = 0;
+        for (net.minecraft.item.ItemStack s : village.storageBuffer) {
+            if (s.isOf(net.minecraft.item.Items.COAL)) coal += s.getCount();
+            if (s.isOf(net.minecraft.item.Items.RAW_IRON) || s.isOf(net.minecraft.item.Items.IRON_INGOT)) iron += s.getCount();
+        }
+        return coal < 64 || iron < 64;
     }
 
     public static boolean hasPick(VillagerEntityMCA v) {

@@ -293,6 +293,17 @@ conv("player_bad",
      ("И правильно. Береженого бог бережёт.", "Quite right. Better safe than sorry."),
      ("Стража в курсе, если что.", "The watch knows, if anything happens."))
 
+conv("news.wedding",
+     ("Слышишь? %s женятся!", "Have you heard? %s are getting married!"),
+     ("Давно пора. Они друг на друга весь год смотрели.", "About time. They've been making eyes at each other all year."),
+     ("Пирогов напечём, гулять будем.", "We'll bake pies and have a feast."),
+     ("И плясать. Только без меня — ноги не те.", "And dance. Leave me out of that — my legs aren't what they were."))
+conv("fair",
+     ("Ярмарка сегодня! Пойдёшь?", "Fair today! Coming?"),
+     ("А то. Мне соль нужна и нитки.", "Of course. I need salt and thread."),
+     ("А я просто поглазеть.", "I'm just going to have a look."),
+     ("Все так говорят, а потом с полными руками идут.", "Everyone says that and comes back with their arms full."))
+
 # ---------- old lines whose grammar is set right (the speaker's own gender; third persons said neutrally) ----------
 FIX = {
  "news.built.a": ("Видишь? Готово: %s!", "See that? The %s is finished!"),

@@ -1,0 +1,91 @@
+package net.mca.settlements;
+
+import net.mca.entity.VillagerEntityMCA;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.ai.brain.MemoryModuleType;
+import net.minecraft.entity.passive.AnimalEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Where a villager looks when his work does not hold his eyes: at what is going on about him, as people do. A player
+ * coming up, somebody walking past or calling out, a man at work nearby (a block cracking under a pick), a lamb, an
+ * apple rolling on the ground. He holds it a moment and goes back to his own business; walking, he only glances.
+ * The curious look about more, the shy look at people less and at the ground more.
+ */
+public final class Gaze {
+    private record Look(UUID at, long until) {
+    }
+
+    private static final Map<UUID, Look> LOOKS = new HashMap<>();
+
+    private Gaze() {
+    }
+
+    /** Once a second. */
+    public static void tick(VillagerEntityMCA v, ServerWorld world) {
+        if (v.isSleeping() || v.isBaby() && world.random.nextBoolean() || Dig.busy(v) || Talk.talking(v)
+                || v.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) return;
+        long now = world.getTime();
+        Look l = LOOKS.get(v.getUuid());
+        if (l != null && now < l.until()) {
+            Entity e = world.getEntity(l.at());
+            if (e != null && e.isAlive() && e.squaredDistanceTo(v) < 16 * 16) {
+                v.getLookControl().lookAt(e, 20f, 20f);
+                return;
+            }
+        }
+        LOOKS.remove(v.getUuid());
+        boolean walking = v.getNavigation().isFollowingPath();
+        Persona.Traits tr = Persona.of(v);
+        // how often something catches his eye: more standing about, less on the way somewhere
+        double chance = (walking ? 0.12 : 0.35) * (0.6 + 0.6 * tr.sociability());
+        var home = v.getResidency().getHomeVillage().orElse(null);
+        if (home != null && Mood.afraid(home)) chance *= 1.8; // a frightened village looks about it
+        if (world.random.nextDouble() > chance) return;
+        Entity best = null;
+        double bs = 0;
+        for (Entity e : world.getOtherEntities(v, v.getBoundingBox().expand(12, 4, 12), e -> e.isAlive() && !e.isSpectator())) {
+            double d = Math.sqrt(e.squaredDistanceTo(v));
+            if (d < 1.2) continue;
+            double s = 0;
+            if (e instanceof PlayerEntity p) {
+                s = 3.0 + (p.isSprinting() ? 1 : 0) + (p.getVelocity().horizontalLengthSquared() > 0.003 ? 0.5 : 0);
+                if (p.getRotationVec(1f).dotProduct(v.getPos().subtract(p.getEyePos()).normalize()) > 0.95) s += 2; // he is looking at me
+            } else if (e instanceof VillagerEntityMCA o) {
+                s = 1.2 + (Dig.busy(o) ? 1.2 : 0) + (o.getVelocity().horizontalLengthSquared() > 0.002 ? 0.6 : 0) + Persona.affinity(v, o);
+                if (o.isBaby()) s += 0.5;
+            } else if (e instanceof AnimalEntity a) {
+                s = a.isBaby() ? 1.6 : 0.7;
+            } else if (e instanceof ItemEntity) {
+                s = 0.9;
+            } else if (e instanceof LivingEntity) {
+                s = 0.4;
+            }
+            s = s * (0.6 + 0.8 * world.random.nextDouble()) / (1 + d * 0.25);
+            if (e instanceof PlayerEntity || e instanceof VillagerEntityMCA) s *= 0.5 + tr.sociability();
+            if (s > bs) {
+                bs = s;
+                best = e;
+            }
+        }
+        if (best == null) return;
+        long hold = walking ? 20 + world.random.nextInt(20) : 40 + world.random.nextInt(60);
+        LOOKS.put(v.getUuid(), new Look(best.getUuid(), now + hold));
+        v.getLookControl().lookAt(best, 20f, 20f);
+    }
+
+    /** How quickly he walks: slower worn out or hungry, brisker fresh and keen. */
+    public static double pace(VillagerEntityMCA v) {
+        double energy = v.settlementsEnergy / (double) Workforce.MAX, hunger = v.settlementsHunger / 1000.0;
+        double f = 0.82 + 0.25 * energy - 0.12 * Math.max(0, hunger - 0.5);
+        f *= 0.9 + 0.2 * Math.min(1.2, Persona.of(v).diligence());
+        return Math.max(0.7, Math.min(1.15, f));
+    }
+}

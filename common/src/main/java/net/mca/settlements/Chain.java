@@ -162,7 +162,7 @@ public final class Chain {
         Set<Fact> now = EnumSet.noneOf(Fact.class);
         if (Mining.hasPick(v)) now.add(Fact.HAS_PICK);
         sense(v, timeOfDay, now);
-        if (Orders.take(v, village, Needs.Need.COBBLE) != null || Builder.stockCobble(village) < Mining.QUOTA) now.add(Fact.STONE_WANTED);
+        if (Orders.take(v, village, Needs.Need.COBBLE) != null || Builder.stockCobble(village) < Mining.QUOTA || Mining.oreWanted(village)) now.add(Fact.STONE_WANTED);
         if (!now.contains(Fact.STONE_WANTED) && !now.contains(Fact.BAG_HAS)) return false;
         return follow(v, village, world, now, EnumSet.of(Fact.DELIVERED), MINE, (a, b, c) -> Mining.work(a, b));
     }

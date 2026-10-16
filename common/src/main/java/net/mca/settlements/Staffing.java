@@ -57,7 +57,13 @@ public final class Staffing {
 
     private static boolean isCore(VillagerProfession p) {
         return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH
-                || p == VillagerProfession.MASON || p == VillagerProfession.FARMER;
+                || p == VillagerProfession.MASON || p == VillagerProfession.FARMER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER;
+    }
+
+    /** Somebody in the village works at this trade. */
+    static boolean has(net.minecraft.server.world.ServerWorld world, Village village, VillagerProfession p) {
+        for (VillagerEntityMCA r : village.getResidents(world)) if (r.isAlive() && !r.isBaby() && r.getProfession() == p) return true;
+        return false;
     }
 
     /** True for jobs nobody depends on, so the person can be reassigned. */
@@ -114,7 +120,10 @@ public final class Staffing {
         int woods = forest(world, v);
         int lumber = woods >= 40 ? Math.max(1, p / 4) : woods >= 12 ? Math.max(1, p / 8) : 1;
         roles.add(new Role(VillagerProfession.FLETCHER, lumber + (woods >= 12 && short_ != null && short_.need() == Needs.Need.PLANKS ? 1 : 0)));
+        // a shepherd once there is a pen (before it, the farmer keeps what animals there are), then the miner, then the butcher
+        if (p >= 4 && v.penCenter != null) roles.add(new Role(VillagerProfession.SHEPHERD, 1));
         if (p >= 3) roles.add(new Role(VillagerProfession.MASON, Math.max(1, p / 5) + (short_ != null && short_.need() == Needs.Need.COBBLE ? 1 : 0)));
+        if (p >= 6) roles.add(new Role(VillagerProfession.BUTCHER, 1));
         // a smith only once there is a smithy to work in: tools, ingots
         boolean smithy = SMITHS && v.smithyBuilt && v.smithyFurnace != null;
         if (smithy && p >= 4) roles.add(new Role(VillagerProfession.ARMORER, 1));

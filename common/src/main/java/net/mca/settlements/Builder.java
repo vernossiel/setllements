@@ -1224,7 +1224,12 @@ public final class Builder {
         }
         ServerWorld world = village.getWorld();
         // the road to it is not laid by magic: the builders pave it a cell at a time between projects (Repair.roadWork)
-        if (!type.equals("wall") || village.wallBuilt) Life.news(village, "built", Text.translatable("settlements.building." + Buildings.base(type)));
+        if (!type.equals("wall") || village.wallBuilt) {
+            Life.news(village, "built", Text.translatable("settlements.building." + Buildings.base(type)));
+            int[] mfp = Blueprints.footprint(type, village.buildW, village.buildD);
+            int[] mid = Blueprints.rotate(mfp[0] / 2, mfp[1] / 2, mfp[0], mfp[1], rot);
+            Mood.event(village, Mood.Kind.JOY, o.add(mid[0], 0, mid[1])); // they come and have a look at it
+        }
         if (world != null) {
             int[] bfp = Blueprints.footprint(type, village.buildW, village.buildD);
             for (Step s : plan(village)) {

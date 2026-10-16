@@ -83,6 +83,13 @@ public class ForgeBusEvents {
     }
 
     @SubscribeEvent
+    public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
+        if (event.getEntity() instanceof ServerPlayerEntity player) {
+            net.mca.settlements.Notice.placed(player, event.getPos()); // the villagers about come and look at what he builds
+        }
+    }
+
+    @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
         if (event.getPlayer() instanceof ServerPlayerEntity player) {
             net.mca.settlements.Protection.onBreak(player, event.getPos(), event.getState());
