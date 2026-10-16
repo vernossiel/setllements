@@ -34,6 +34,7 @@ public class JusticeScreenRequest implements Message {
         for (int i = 0; i < labels.size(); i++) this.labels[i] = Text.Serializer.toJson(labels.get(i));
         this.seconds = seconds;
         this.entity = entity;
+        net.mca.settlements.Dialogue.hold(entity, seconds > 0 ? seconds : options.length > 0 ? 40 : 12);
     }
 
     /** The one who speaks (an entity id), or -1. */

@@ -82,6 +82,9 @@ public final class Workforce {
     public static void tick(VillagerEntityMCA v) {
         Pose.tick(v);
         Anim.tick(v);
+        // a word with a player: he stands and faces him till it is done (only fear moves him then)
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld dw && Dialogue.tick(v, dw)
+                && dw.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, v.getBoundingBox().expand(6), net.minecraft.entity.LivingEntity::isAlive).isEmpty()) return;
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld lw && Arrivals.leaving(v, lw)) return; // leaving a hungry village
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld rw) {
             net.mca.server.world.data.Village rv = net.mca.server.world.data.Village.findNearest(v).orElse(null);

@@ -62,6 +62,13 @@ public final class Bed {
     /** Once a second at bedtime; true while he is on his way to bed or in it. */
     public static boolean tick(VillagerEntityMCA v, net.mca.server.world.data.Village village, ServerWorld world) {
         if (v.isSleeping()) {
+            // asleep in a bed he took for himself off in the valley: up, and to a proper place for the night
+            BlockPos in = v.getSleepingPosition().orElse(null);
+            if (in != null && village != null && !Housing.allowed(village, in)) {
+                v.wakeUp();
+                v.getBrain().forget(net.minecraft.entity.ai.brain.MemoryModuleType.HOME);
+                return true;
+            }
             SINCE.remove(v.getUuid());
             return true;
         }

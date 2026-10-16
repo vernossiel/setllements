@@ -69,6 +69,27 @@ public final class Herding {
         return a instanceof SheepEntity || a instanceof CowEntity || a instanceof PigEntity || a instanceof ChickenEntity;
     }
 
+    /**
+     * Shut in by fences (somebody's pen, the village's or one that came with the land): fences, gates or walls close by
+     * on at least three sides. Such animals belong to someone; no hunter touches them.
+     */
+    public static boolean fenced(net.minecraft.world.World world, AnimalEntity a) {
+        BlockPos at = a.getBlockPos();
+        int sides = 0;
+        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+            for (int i = 1; i <= 10; i++) {
+                BlockPos q = at.offset(d, i);
+                net.minecraft.block.BlockState s = world.getBlockState(q), up = world.getBlockState(q.up());
+                if (s.getBlock() instanceof net.minecraft.block.FenceBlock || s.getBlock() instanceof net.minecraft.block.FenceGateBlock
+                        || s.getBlock() instanceof net.minecraft.block.WallBlock || up.getBlock() instanceof net.minecraft.block.FenceBlock) {
+                    sides++;
+                    break;
+                }
+            }
+        }
+        return sides >= 3;
+    }
+
     static boolean inPen(AnimalEntity a, BlockPos pen) {
         return pen != null && Math.abs(a.getX() - (pen.getX() + 0.5)) <= PEN_RADIUS && Math.abs(a.getZ() - (pen.getZ() + 0.5)) <= PEN_RADIUS
                 && Math.abs(a.getY() - pen.getY()) < 3;

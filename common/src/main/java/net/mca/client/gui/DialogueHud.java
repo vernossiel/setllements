@@ -98,6 +98,14 @@ public final class DialogueHud {
             close();
             return;
         }
+        // the one speaking is gone, or one of them walked off: the talk is over
+        if (current.getEntity() >= 0 && mc.player != null) {
+            Entity e = speaker(mc);
+            if (e == null || !e.isAlive() || mc.player.squaredDistanceTo(e) > 12 * 12) {
+                close();
+                return;
+            }
+        }
         TextRenderer tr = mc.textRenderer;
         int sw = ctx.getScaledWindowWidth(), sh = ctx.getScaledWindowHeight();
         List<OrderedText> lines = new ArrayList<>();
