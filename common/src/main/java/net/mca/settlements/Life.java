@@ -587,18 +587,29 @@ public final class Life {
      * with whatever is in his hand. And one with an axe or a blade in his hand goes to the help of a neighbour the
      * monster has got hold of. Children only ever run.
      */
-    private static boolean fight(VillagerEntityMCA v, net.minecraft.entity.mob.HostileEntity foe, ServerWorld world, net.minecraft.util.math.Vec3d was) {
+    private static final Map<UUID, Integer> STUCK = new HashMap<>(); // seconds running and getting nowhere, the thing on him
+
+    /**
+     * The last resort. A villager runs and shouts for the guards; he stands and hits back with whatever is in his hand
+     * only when there is nowhere left to run - the monster on him and two seconds of running have got him nowhere, or it
+     * has him inside a house with no way past it. One with an axe or a blade goes to a neighbour's help only when no
+     * guard is near enough to come. Children only ever run. As soon as he can get away again, he runs.
+     */
+    private static boolean fight(VillagerEntityMCA v, Village village, net.minecraft.entity.mob.HostileEntity foe, ServerWorld world, net.minecraft.util.math.Vec3d was, boolean indoors) {
         if (v.isBaby() || foe instanceof net.minecraft.entity.mob.CreeperEntity) return false;
         double d = v.squaredDistanceTo(foe);
         boolean onHim = foe.getTarget() == v && d < 2.5 * 2.5;
-        boolean hurt = v.getAttacker() == foe;
-        boolean cornered = onHim && was != null && was.squaredDistanceTo(v.getPos()) < 0.5 * 0.5; // fleeing got him nowhere
+        int stuck = onHim && was != null && was.squaredDistanceTo(v.getPos()) < 0.6 * 0.6 ? STUCK.merge(v.getUuid(), 1, Integer::sum) : 0;
+        if (stuck == 0) STUCK.remove(v.getUuid());
+        boolean cornered = stuck >= 2 || indoors && onHim && v.getAttacker() == foe;
+        boolean guardNear = !world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(32, 8, 32), o -> o.isGuard() && o.isAlive()).isEmpty();
         var held = v.getMainHandStack().getItem();
         boolean armed = held instanceof net.minecraft.item.AxeItem || held instanceof net.minecraft.item.SwordItem;
-        boolean neighbour = armed && foe.getTarget() instanceof VillagerEntityMCA other && other != v && d < 6 * 6;
-        if (!(cornered || hurt && d < 3 * 3 || neighbour)) return false;
+        boolean neighbour = !cornered && armed && !guardNear && foe.getTarget() instanceof VillagerEntityMCA other && other != v && !other.isGuard() && d < 6 * 6;
+        if (!cornered && !neighbour) return false;
         Doing.set(v, "settlements.doing.fight.monster");
         Gaze.at(v, foe, 30f, 30f);
+        callGuards(v, village, foe, world, neighbour ? "settlements.say.fight.help" : "settlements.say.fight.back");
         if (d > 2.2 * 2.2) {
             Move.to(v, foe.getX(), foe.getY(), foe.getZ(), 0.75);
             return true;
@@ -606,12 +617,18 @@ public final class Life {
         v.getNavigation().stop();
         v.swingHand(net.minecraft.util.Hand.MAIN_HAND);
         v.tryAttack(foe);
-        long now = world.getTime();
-        if (now - DREAD_SAID.getOrDefault(v.getUuid(), -10000L) > 200) {
-            DREAD_SAID.put(v.getUuid(), now);
-            Speech.sayNow(v, neighbour ? "settlements.say.fight.help" : "settlements.say.fight.back");
-        }
         return true;
+    }
+
+    /** A shout (now and then, not every breath), and every guard within earshot comes for the thing. */
+    private static void callGuards(VillagerEntityMCA v, Village village, net.minecraft.entity.mob.HostileEntity foe, ServerWorld world, String line) {
+        long now = world.getTime();
+        if (now - DREAD_SAID.getOrDefault(v.getUuid(), -10000L) <= 200) return;
+        DREAD_SAID.put(v.getUuid(), now);
+        Speech.sayNow(v, line);
+        if (village != null) for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(48, 12, 48), VillagerEntityMCA::isGuard)) {
+            if (g.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).isEmpty()) g.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET, foe, 300);
+        }
     }
 
     public static boolean dread(VillagerEntityMCA v, Village village, ServerWorld world) {
@@ -622,8 +639,12 @@ public final class Life {
                 .min(java.util.Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
         net.minecraft.util.math.Vec3d was = LAST_POS.put(v.getUuid(), v.getPos());
         if (foe == null) return false;
-        if (fight(v, foe, world, was)) return true;
-        if (indoors) return false; // under a roof he is safe: he stays in, he does not run out into it
+        if (fight(v, village, foe, world, was, indoors)) return true;
+        if (indoors) {
+            // under a roof he stays in (he does not run out into it), but he shouts for the guards if the thing is in there with him
+            if (foe.getTarget() == v) callGuards(v, village, foe, world, "settlements.say.flee.monster");
+            return false;
+        }
         Doing.set(v, "settlements.doing.flee.monster");
         net.minecraft.util.math.Vec3d away = v.getPos().subtract(foe.getPos()).multiply(1, 0, 1).normalize();
         net.minecraft.util.math.BlockPos safe = v.getResidency().getHome().map(net.minecraft.util.math.GlobalPos::getPos).orElse(village != null ? village.hallPos : null);
@@ -632,14 +653,7 @@ public final class Life {
         // by night only indoors will do (home, or the town hall); by day, away from it, homewards if that is away
         net.minecraft.util.math.Vec3d to = safe != null && (night || safe.toCenterPos().subtract(v.getPos()).dotProduct(away) > 0) ? safe.toCenterPos() : v.getPos().add(away.multiply(10));
         Move.to(v, to.x, to.y, to.z, 0.8);
-        long now = world.getTime();
-        if (now - DREAD_SAID.getOrDefault(v.getUuid(), -10000L) > 400) {
-            DREAD_SAID.put(v.getUuid(), now);
-            Speech.sayNow(v, "settlements.say.flee.monster");
-            if (village != null) for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(48, 12, 48), VillagerEntityMCA::isGuard)) {
-                if (g.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).isEmpty()) g.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET, foe, 300);
-            }
-        }
+        callGuards(v, village, foe, world, "settlements.say.flee.monster");
         return true;
     }
 }
