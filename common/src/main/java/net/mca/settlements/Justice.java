@@ -124,7 +124,7 @@ public final class Justice {
 
     // ---------- found out later ----------
 
-    private record Suspicion(UUID player, int villageId, Crime crime, double value, Map<Item, Integer> items, BlockPos where, boolean seen, long[] at) {
+    private record Suspicion(UUID player, int villageId, Crime crime, double value, Map<Item, Integer> items, BlockPos where, boolean seen, long[] at, boolean hall) {
     }
 
     private static final List<Suspicion> SUSPICIONS = new java.util.ArrayList<>();
@@ -137,8 +137,20 @@ public final class Justice {
         if (village == null || p.isSpectator()) return;
         boolean seen = !world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(32),
                 v -> v.isAlive() && !v.isSleeping() && v.canSee(p)).isEmpty();
-        long at = world.getTime() + 20L * (120 + world.random.nextInt(240));
-        SUSPICIONS.add(new Suspicion(p.getUuid(), village.getId(), crime, value, items == null ? Map.of() : Map.copyOf(items), where, seen, new long[]{at}));
+        // the stores in the town hall are the village's own: they are counted every day, a hole in them is soon found
+        boolean hall = village.hallPos != null && where.isWithinDistance(village.hallPos, 12);
+        long at = world.getTime() + 20L * (hall ? 40 + world.random.nextInt(60) : 120 + world.random.nextInt(240));
+        // the same hand at more chests before anybody noticed: one theft, all of it together
+        for (int i = 0; i < SUSPICIONS.size(); i++) {
+            Suspicion o = SUSPICIONS.get(i);
+            if (!o.player().equals(p.getUuid()) || o.villageId() != village.getId() || o.crime() != crime) continue;
+            Map<Item, Integer> all = new HashMap<>(o.items());
+            if (items != null) items.forEach((k, n) -> all.merge(k, n, Integer::sum));
+            SUSPICIONS.set(i, new Suspicion(o.player(), o.villageId(), crime, o.value() + value, all, hall ? where : o.where(), o.seen() || seen,
+                    new long[]{Math.min(o.at()[0], at)}, o.hall() || hall));
+            return;
+        }
+        SUSPICIONS.add(new Suspicion(p.getUuid(), village.getId(), crime, value, items == null ? Map.of() : Map.copyOf(items), where, seen, new long[]{at}, hall));
     }
 
     private static void discover(ServerWorld world) {
@@ -164,6 +176,14 @@ public final class Justice {
             if (s.seen() && p != null && s.crime() == Crime.THEFT && p.getWorld() == world) {
                 // he was seen about the place: the watch will want a look in his pockets
                 Speech.sayNow(finder, "settlements.justice.found." + what + ".seen", p.getName());
+                askSearch(world, village, p, s.items(), s.value(), now, true);
+                continue;
+            }
+            if (!s.seen() && s.hall() && p != null && s.crime() == Crime.THEFT && p.getWorld() == world
+                    && p.squaredDistanceTo(s.where().getX(), s.where().getY(), s.where().getZ()) < 96 * 96) {
+                // the village's own stores emptied, and a stranger about: the guard comes for him in earnest
+                Speech.sayNow(finder, "settlements.justice.found.hall");
+                Life.news(village, "crime.hall");
                 askSearch(world, village, p, s.items(), s.value(), now, true);
                 continue;
             }

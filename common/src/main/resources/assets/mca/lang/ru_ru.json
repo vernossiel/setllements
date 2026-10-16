@@ -4141,5 +4141,8 @@
   "settlements.news.market.wood": "Купили у проезжих торговцев брёвен на стройку.",
   "settlements.justice.search.ask.cold": "Стоять, %s. Карманы наизнанку, живо. И без фокусов.",
   "settlements.justice.search.clean.cold": "Чисто... на этот раз, %s. Не думай, что я с тебя глаз спущу.",
-  "settlements.doing.guard.case": "разбирается с %s"
+  "settlements.doing.guard.case": "разбирается с %s",
+  "settlements.justice.found.hall": "Склад в ратуше пуст! Кто-то вынес добро деревни! Стража!",
+  "settlements.justice.found.hall.f": "Склад в ратуше пуст! Кто-то вынес добро деревни! Стража!",
+  "settlements.news.crime.hall": "Обокрали склад в ратуше — добро всей деревни. Стража ищет вора."
 }

@@ -4144,5 +4144,8 @@
   "settlements.news.market.wood": "Bought logs for the building from passing traders.",
   "settlements.justice.search.ask.cold": "Hold it, %s. Turn out your pockets, now. And no tricks.",
   "settlements.justice.search.clean.cold": "Clean... this time, %s. Don't think I'll take my eyes off you.",
-  "settlements.doing.guard.case": "dealing with %s"
+  "settlements.doing.guard.case": "dealing with %s",
+  "settlements.justice.found.hall": "The stores in the hall are empty! Someone's carried off the village's goods! Guards!",
+  "settlements.justice.found.hall.f": "The stores in the hall are empty! Someone's carried off the village's goods! Guards!",
+  "settlements.news.crime.hall": "The stores in the town hall were robbed - the whole village's goods. The guard is looking for the thief."
 }
