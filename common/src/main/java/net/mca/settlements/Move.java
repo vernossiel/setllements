@@ -61,6 +61,18 @@ public final class Move {
         return v.getNavigation().startMovingTo(e, speed);
     }
 
+    /**
+     * Every tick, before the brain thinks: while he is on an errand of ours (asked for this last second), the old MCA
+     * tasks (wandering, going into a building, back to the meeting place) do not steer him somewhere else. Two minds
+     * pulling him two ways is what had him stepping to a door and back, or shuffling to and fro on a field.
+     */
+    public static void hold(VillagerEntityMCA v) {
+        if (v.settlementsGoal == null || v.getWorld().getTime() - v.settlementsGoalAt > 25) return;
+        var walk = v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET).orElse(null);
+        if (walk != null && walk.getLookTarget().getBlockPos().getSquaredDistance(v.settlementsGoal) > 3 * 3)
+            v.getBrain().forget(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET);
+    }
+
     private static void remember(VillagerEntityMCA v, BlockPos goal) {
         v.settlementsGoal = goal;
         v.settlementsGoalAt = v.getWorld().getTime();

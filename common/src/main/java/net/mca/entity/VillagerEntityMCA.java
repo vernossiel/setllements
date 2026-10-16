@@ -955,6 +955,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
 
     @Override
     public void tick() {
+        if (!getWorld().isClient) net.mca.settlements.Move.hold(this); // on an errand of ours, MCA's own wandering keeps out of his way
         super.tick();
 
         // update visual age
