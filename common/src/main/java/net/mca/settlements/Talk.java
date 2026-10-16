@@ -32,8 +32,10 @@ public final class Talk {
         final Object[] args;
         int line;
         long next;
+        final long began;
 
         Conversation(UUID a, UUID b, String topic, Object[] args, long next) {
+            this.began = next;
             this.a = a;
             this.b = b;
             this.topic = topic;
@@ -69,7 +71,14 @@ public final class Talk {
             // up to each other, then face to face
             // up to a couple of paces apart, not nose to nose
             if (v.squaredDistanceTo(other) > 9) {
+                // a quarter of a minute and still not together (the other is off at work, or there is no way round):
+                // it was not to be; the builder was seen following a neighbour about all day
+                if (c.line == 0 && now - c.began > 20 * 15) {
+                    end(c);
+                    return false;
+                }
                 v.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(other, 0.45f, 2));
+                Doing.set(v, "settlements.doing.talk", other.getName());
                 return true;
             }
             v.getBrain().forget(MemoryModuleType.WALK_TARGET);
