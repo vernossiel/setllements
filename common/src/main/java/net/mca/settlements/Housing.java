@@ -66,8 +66,8 @@ public final class Housing {
             // a house the village counts but that stands off in the woods is no home: nobody walks there at nightfall.
             // Whatever the village built itself is home wherever it stands; anything else only within the village as it
             // has grown (its own houses' reach, never less than 48 blocks from the hall)
-            if (!ours(v, b) && (b.getCenter().getSquaredDistance(heart) > Math.min(reach, 40) * Math.min(reach, 40)
-                    || Math.abs(b.getCenter().getY() - heart.getY()) > 10) && !byBell(v, b.getCenter())) continue; // nor one down in the valley below
+            if (!ours(v, b) && (b.getCenter().getSquaredDistance(heart) > Math.min(reach, 56) * Math.min(reach, 56)
+                    || Math.abs(b.getCenter().getY() - heart.getY()) > 14) && !byBell(v, b.getCenter())) continue; // nor one down in the valley below
             int r = Math.max(4, b.getSize());
             List<BlockPos> beds = poi.getInSquare(t -> t.matchesKey(PointOfInterestTypes.HOME), b.getCenter(), r, PointOfInterestStorage.OccupationStatus.ANY)
                     .map(p -> p.getPos()).filter(b::containsPos).sorted(Comparator.comparingLong(BlockPos::asLong)).toList();
@@ -124,8 +124,8 @@ public final class Housing {
         Building b = v.getBuildingAt(bed).orElse(null);
         if (b != null && ours(v, b)) return true;
         for (Built x : v.built) if (x.contains(bed)) return true;
-        int reach = Math.min(reach(v, heart), 40);
-        if (bed.getSquaredDistance(heart) <= reach * reach && Math.abs(bed.getY() - heart.getY()) <= 10) return true;
+        int reach = Math.min(reach(v, heart), 56); // (an old village is wider than forty blocks: its far houses stood empty and their people slept out)
+        if (bed.getSquaredDistance(heart) <= reach * reach && Math.abs(bed.getY() - heart.getY()) <= 14) return true;
         // the houses the village stood in before its hall was raised: the hall may have gone up well off on lower
         // ground (no level site among them), and the old houses about the bell are homes all the same
         return b != null && byBell(v, bed);
@@ -134,7 +134,7 @@ public final class Housing {
     /** Among the old houses about the village's bell, on its level. */
     private static boolean byBell(Village v, BlockPos p) {
         BlockPos bell = bell(v);
-        return bell != null && p.getSquaredDistance(bell) <= 48 * 48 && Math.abs(p.getY() - bell.getY()) <= 12;
+        return bell != null && p.getSquaredDistance(bell) <= 56 * 56 && Math.abs(p.getY() - bell.getY()) <= 14;
     }
 
     /** The village's bell (its meeting place, where it stood before there was a hall); null if it has none. */
