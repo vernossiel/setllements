@@ -52,7 +52,7 @@ public final class Plan {
             new Goal("armory", Level.VILLAGE, v -> v.smithyBuilt && !v.armoryBuilt && v.getPopulation() >= 6, 150, 0, 0, 0),
             new Goal("tower", Level.VILLAGE, v -> v.towers < (Prosperity.tier(v) >= Tiers.CITY ? 4 : 2) && v.getPopulation() >= 8, 150, 60, 0, 0),
             new Goal("shop", Level.VILLAGE, v -> Prosperity.tier(v) >= Tiers.WEALTHY && Buildings.count(v, "shop") < (Prosperity.tier(v) >= Tiers.CITY ? 1 + v.getPopulation() / 6 : 1), 140, 40, 0, 4),
-            new Goal("renovate", Level.VILLAGE, v -> v.getPopulation() >= 6 && Rebuild.renovation(v) != null, 160, 40, 0, 0),
+            new Goal("renovate", Level.HAMLET, v -> (v.getPopulation() >= 6 && Plan.level(v) != Level.HAMLET || !v.commissions.isEmpty()) && Rebuild.renovation(v) != null, 160, 40, 0, 0),
             new Goal("palisade", Level.HAMLET, v -> v.palisadeR == 0 && (v.getPopulation() >= 6 || Prosperity.danger(v) >= 3), 150, 0, 0, 0),
             new Goal("wall", Level.TOWN, v -> !v.wallBuilt && v.palisadeR > 0 && v.getPopulation() >= 10, 0, 300, 0, 0)
     );

@@ -73,6 +73,10 @@ public class Village implements Iterable<Building> {
     public final List<BlockPos> campfires = new LinkedList<>();
     public final Map<Integer, Integer> relations = new HashMap<>();
     public final java.util.Set<BlockPos> lootChests = new java.util.HashSet<>();
+    /** Houses a household has paid to have rebuilt better (origin of the old house -> the one who paid), see settlements.Home. */
+    public final java.util.Map<Long, java.util.UUID> commissions = new java.util.LinkedHashMap<>();
+    /** New houses promised to whoever paid for them (a spot inside the new house -> that villager). */
+    public final java.util.Map<Long, java.util.UUID> reserved = new java.util.HashMap<>();
     /** Chests a player put down himself inside the village: his, not the villagers'. */
     public final java.util.Set<BlockPos> playerChests = new java.util.HashSet<>();
     public final List<net.mca.settlements.House> houses = new LinkedList<>();
@@ -182,6 +186,10 @@ public class Village implements Iterable<Building> {
         NbtCompound relNbt = v.getCompound("relations");
         for (String k : relNbt.getKeys()) relations.put(Integer.parseInt(k), relNbt.getInt(k));
         for (long l : v.getLongArray("lootChests")) lootChests.add(BlockPos.fromLong(l));
+        NbtCompound comNbt = v.getCompound("commissions");
+        for (String k : comNbt.getKeys()) commissions.put(Long.parseLong(k), comNbt.getUuid(k));
+        NbtCompound resNbt = v.getCompound("reserved");
+        for (String k : resNbt.getKeys()) reserved.put(Long.parseLong(k), resNbt.getUuid(k));
         for (long l : v.getLongArray("playerChests")) playerChests.add(BlockPos.fromLong(l));
         NbtList builtList = v.getList("built", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < builtList.size(); i++) built.add(net.mca.settlements.Built.load(builtList.getCompound(i)));
@@ -590,6 +598,12 @@ public class Village implements Iterable<Building> {
         relations.forEach((k, val) -> rel.putInt(String.valueOf(k), val));
         v.put("relations", rel);
         v.putLongArray("lootChests", lootChests.stream().mapToLong(BlockPos::asLong).toArray());
+        NbtCompound com = new NbtCompound();
+        commissions.forEach((k, u) -> com.putUuid(String.valueOf(k), u));
+        v.put("commissions", com);
+        NbtCompound res = new NbtCompound();
+        reserved.forEach((k, u) -> res.putUuid(String.valueOf(k), u));
+        v.put("reserved", res);
         v.putLongArray("playerChests", playerChests.stream().mapToLong(BlockPos::asLong).toArray());
         v.putLongArray("campfires", campfires.stream().mapToLong(BlockPos::asLong).toArray());
         NbtList houseList = new NbtList();

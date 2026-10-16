@@ -33,6 +33,7 @@ public final class Home {
     private static final int POCKET = 12;   // what he keeps on him; the rest goes into the chest
     private static final int CHEST_COST = 12;
     private static final int RESERVE = 15;  // never spends his last savings on furniture
+    static final int COMMISSION = 60; // what a better house costs the household, to the village's builders
 
     private Home() {
     }
@@ -89,8 +90,37 @@ public final class Home {
                 }
             }
         }
+        // the house furnished and money still put by: they ask the elder for a better house
+        if (!did && v.settlementsFurnished >= FURNITURE.size() && v.settlementsPurse >= 0 && commission(v, village, world, chest, bed)) did = true;
         if (did) v.swingHand(net.minecraft.util.Hand.MAIN_HAND);
         return did;
+    }
+
+    /**
+     * A household that has done well pays the village to have its house pulled down and a better one built in its
+     * place (one station above the village's own); till then they sleep where they can, and the new house is theirs.
+     * What they had put by in the old chest goes into their pockets first, so the builders do not empty it into the stores.
+     */
+    private static boolean commission(VillagerEntityMCA v, Village village, ServerWorld world, Inventory chest, BlockPos bed) {
+        if (!village.commissions.isEmpty() || Money.count(chest) + Money.count(v.getInventory()) < COMMISSION + RESERVE) return false;
+        Built house = null;
+        for (Built b : village.built) if (b.contains(bed)) house = b;
+        if (house == null || !Rebuild.canCommission(village, house)) return false;
+        if (!spend(v, chest, village, COMMISSION)) return false;
+        int savings = Money.count(chest);
+        if (savings > 0 && Money.take(chest, savings)) Money.give(v.getInventory(), savings);
+        village.commissions.put(house.origin().asLong(), v.getUuid());
+        village.markDirty();
+        v.settlementsChest = null;
+        v.settlementsFurnished = 0;
+        VillagerEntityMCA partner = partner(v, world);
+        if (partner != null) {
+            partner.settlementsChest = null;
+            partner.settlementsFurnished = 0;
+        }
+        Speech.say(v, "settlements.say.home.commission");
+        Life.news(village, "commission", v.getName().getString());
+        return true;
     }
 
     /** His chest: the one he has, a free one in the house, his partner's, or a new one bought now. Null if none. */

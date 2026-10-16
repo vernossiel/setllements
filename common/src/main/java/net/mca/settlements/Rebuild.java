@@ -166,6 +166,10 @@ public final class Rebuild {
 
     /** The building most behind the village's station, or null. */
     public static Built renovation(Village village) {
+        // first what a household has paid for
+        for (Long origin : village.commissions.keySet()) {
+            for (Built b : village.built) if (b.origin().asLong() == origin && !SKIPPED.contains(renoKey(village, b))) return b;
+        }
         int tier = Prosperity.tier(village);
         Built best = null;
         int bestGap = 0;
@@ -180,15 +184,34 @@ public final class Rebuild {
         return best;
     }
 
+    /** A commission that cannot be carried out: the money goes back to whoever paid it. */
+    private static void refund(Village village, ServerWorld world, java.util.UUID payer) {
+        if (payer == null) return;
+        if (world.getEntity(payer) instanceof VillagerEntityMCA v) Money.give(v.getInventory(), Money.take(village, Home.COMMISSION));
+    }
+
+    /** The station a commissioned house is built to: one above the village's own. */
+    static int commissionTier(Village village) {
+        return Math.min(Tiers.CITY, Prosperity.tier(village) + 1);
+    }
+
+    /** Whether a house can be commissioned better: it is the village's own, and below what a commission would build. */
+    static boolean canCommission(Village village, Built b) {
+        return Tiers.isHome(b.type()) && Tiers.tierOf(b.type()) >= 0 && Tiers.tierOf(b.type()) < commissionTier(village)
+                && !SKIPPED.contains(renoKey(village, b)) && !village.commissions.containsKey(b.origin().asLong());
+    }
+
     /** Takes on the next outdated building: down it comes, and a better one goes up in its place. */
     public static boolean renovate(Village village, ServerWorld world) {
         Built old = renovation(village);
         if (old == null) return false;
-        int tier = Prosperity.tier(village);
+        java.util.UUID payer = village.commissions.remove(old.origin().asLong());
+        int tier = payer != null ? commissionTier(village) : Prosperity.tier(village); // a house paid for is built a station better than the village's
         boolean home = Tiers.isHome(old.type());
         String type = Tiers.design(home ? "home" : Buildings.base(old.type()), tier, world.random, village);
         if (Tiers.tierOf(type) <= Tiers.tierOf(old.type())) {
             SKIPPED.add(renoKey(village, old));
+            refund(village, world, payer);
             return false;
         }
         int[] dm = type.equals("house") ? new int[]{9, 8, 2} : dims(type);
@@ -209,6 +232,7 @@ public final class Rebuild {
                 }
                 if (clash) {
                     SKIPPED.add(renoKey(village, old));
+                    refund(village, world, payer);
                     return false;
                 }
             }
@@ -243,6 +267,7 @@ public final class Rebuild {
         village.buildRot = rot;
         village.buildStep = 0;
         village.plots.add(new int[]{x0, z0, fw, fd});
+        if (payer != null) village.reserved.put(new BlockPos(x0 + fw / 2, y + 1, z0 + fd / 2).asLong(), payer);
         int top = y + Math.max(1, old.f()) * Blueprints.LEVEL_HEIGHT + 12;
         OLD_BOX.put(village.getId(), new int[]{old.origin().getX() - 2, y - 1, old.origin().getZ() - 2, old.origin().getX() + old.fw() + 1, top, old.origin().getZ() + old.fd() + 1});
         PLANS.remove(village.getId());

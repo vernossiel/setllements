@@ -69,16 +69,18 @@ public final class Housing {
                 if (b == null || at != null && b != at) together = false;
                 if (at == null) at = b;
             }
-            if (together && at != null && !taken.contains(at) && houses.containsKey(at) && houses.get(at).size() >= h.size()) taken.add(at);
+            boolean moving = promised(v, h, houses, taken, false) != null; // their new house stands ready: they move
+            if (together && !moving && at != null && !taken.contains(at) && houses.containsKey(at) && houses.get(at).size() >= h.size()) taken.add(at);
             else unhoused.add(h);
         }
         // the others into the smallest free house that fits them, the biggest households first
         unhoused.sort(Comparator.comparingInt((List<VillagerEntityMCA> h) -> h.size()).reversed());
         int homeless = 0;
         for (List<VillagerEntityMCA> h : unhoused) {
-            Building best = null;
+            Building best = promised(v, h, houses, taken, true);
             for (Map.Entry<Building, List<BlockPos>> e : houses.entrySet()) {
-                if (taken.contains(e.getKey()) || e.getValue().size() < h.size()) continue;
+                if (best != null) break;
+                if (taken.contains(e.getKey()) || e.getValue().size() < h.size() || promisedToOther(v, e.getKey(), h)) continue;
                 if (best == null || e.getValue().size() < houses.get(best).size()) best = e.getKey();
             }
             if (best == null) {
@@ -91,6 +93,31 @@ public final class Housing {
         }
         HOMELESS.put(v.getId(), homeless);
         EMPTY.put(v.getId(), (int) houses.keySet().stream().filter(b -> !taken.contains(b)).count());
+    }
+
+    /** The new house this household paid for, once it stands with its beds in it. */
+    private static Building promised(Village v, List<VillagerEntityMCA> h, Map<Building, List<BlockPos>> houses, Set<Building> taken, boolean claim) {
+        for (Map.Entry<Long, UUID> r : v.reserved.entrySet()) {
+            if (h.stream().noneMatch(m -> m.getUuid().equals(r.getValue()))) continue;
+            BlockPos at = BlockPos.fromLong(r.getKey());
+            for (Map.Entry<Building, List<BlockPos>> e : houses.entrySet()) {
+                if (taken.contains(e.getKey()) || !e.getKey().containsPos(at)) continue;
+                if (e.getValue().size() < h.size()) continue;
+                if (!claim) return e.getKey();
+                v.reserved.remove(r.getKey()); // theirs now: from here on it is their house like any other
+                v.markDirty();
+                return e.getKey();
+            }
+        }
+        return null;
+    }
+
+    /** A new house somebody else paid for, not yet moved into. */
+    private static boolean promisedToOther(Village v, Building b, List<VillagerEntityMCA> h) {
+        for (Map.Entry<Long, UUID> r : v.reserved.entrySet()) {
+            if (b.containsPos(BlockPos.fromLong(r.getKey())) && h.stream().noneMatch(m -> m.getUuid().equals(r.getValue()))) return true;
+        }
+        return false;
     }
 
     /** The household each villager belongs to: a couple and their children together, everyone else on his own. */
