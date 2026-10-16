@@ -102,7 +102,7 @@ public final class Plan {
             case "townhall" -> 1000;
             case "board" -> 300;
             case "housing" -> pop >= beds ? 220 + 30 * (pop - beds) : 40;
-            case "farm" -> hungry ? 260 : 70;
+            case "farm" -> v.farms == 0 ? 500 : hungry ? 260 : 70; // the first field before anything but the hall
             case "granary" -> hungry ? 150 : 40;
             case "mill" -> hungry ? 140 : 45;
             case "pen" -> hungry ? 180 : v.farms >= 1 ? 110 : 45; // meat and wool: right after the first field

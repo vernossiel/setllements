@@ -18,7 +18,7 @@ public final class Workforce {
     private static final int HUNGER_EAT_AT = 600;   // try to eat above this
     private static final int HUNGER_STOP_AT = 900;  // refuses to work above this
     private static final int START_WORK_ENERGY = 400;
-    private static final int REST_DAY_EVERY = 4;    // every 4th day is a rest day
+    private static final int REST_DAY_EVERY = 7;    // one day in seven is a rest day
     private static final long WORK_START = 1000, WORK_END = 11500;
 
     public static final int MIN_TREES_LEFT = 6;      // lumberjacks stop when fewer trees stand nearby
@@ -62,7 +62,8 @@ public final class Workforce {
         return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER
                 || p == VillagerProfession.MASON || p == VillagerProfession.ARMORER || p == VillagerProfession.CLERIC
                 || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH || p == VillagerProfession.LEATHERWORKER
-                || p == net.mca.ProfessionsMCA.INNKEEPER.get();
+                || p == net.mca.ProfessionsMCA.INNKEEPER.get() || p == net.mca.ProfessionsMCA.MILLER.get()
+                || p == net.mca.ProfessionsMCA.COLLIER.get() || p == net.mca.ProfessionsMCA.MERCHANT.get();
     }
 
     /** Server side, once per second. */
@@ -242,7 +243,8 @@ public final class Workforce {
             if (v.age % 200 == 0) {
                 craftTorches(village);
                 craftArrows(village);
-                bake(village); // bread from the wheat: by hand at home, or at the mill once there is one
+                // bread from the wheat, by hand at home - unless there is a miller, who does it at the mill and better
+                if (!(v.getWorld() instanceof net.minecraft.server.world.ServerWorld bw && Staffing.has(bw, village, net.mca.ProfessionsMCA.MILLER.get()))) bake(village);
                 if (!village.smithyBuilt) smelt(village);
                 if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw) Reputation.restock(sw, village);
             }
@@ -321,6 +323,9 @@ public final class Workforce {
             }
             else if (prof == VillagerProfession.ARMORER) worked = Smithing.work(v, village);
             else if (prof == VillagerProfession.CLERIC) worked = Healing.work(v, village);
+            else if (prof == net.mca.ProfessionsMCA.MILLER.get() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw1) worked = Crafts.miller(v, village, cw1);
+            else if (prof == net.mca.ProfessionsMCA.COLLIER.get() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw2) worked = Crafts.collier(v, village, cw2);
+            else if (prof == net.mca.ProfessionsMCA.MERCHANT.get() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw3) worked = Crafts.merchant(v, village, cw3);
             else if ((prof == VillagerProfession.FLETCHER || prof == VillagerProfession.TOOLSMITH) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld lw2) {
                 // in a village with no mason yet, the woodman breaks stone too when the wood is in and the stone is out
                 if (quarry(v, village, lw2)) {
@@ -654,7 +659,8 @@ public final class Workforce {
             int logs = 0, stone = 0;
             for (ItemStack s : village.storageBuffer) {
                 if (s.isIn(net.minecraft.registry.tag.ItemTags.LOGS)) logs += s.getCount();
-                else if (s.isOf(net.minecraft.item.Items.COBBLESTONE)) stone += s.getCount();
+                else if (s.isIn(net.minecraft.registry.tag.ItemTags.PLANKS)) logs += s.getCount() / 4; // wood as logs' worth
+                else if (s.isOf(net.minecraft.item.Items.COBBLESTONE) || s.isOf(net.minecraft.item.Items.SANDSTONE)) stone += s.getCount();
             }
             boolean mason = Staffing.has(world, village, VillagerProfession.MASON);
             boolean was = QUARRYING.contains(v.getUuid());

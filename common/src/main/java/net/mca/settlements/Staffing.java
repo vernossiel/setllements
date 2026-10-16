@@ -27,13 +27,34 @@ public final class Staffing {
         return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.FARMER || p == VillagerProfession.FLETCHER
                 || p == VillagerProfession.TOOLSMITH || p == VillagerProfession.MASON || p == VillagerProfession.BUTCHER
                 || p == VillagerProfession.SHEPHERD || p == VillagerProfession.ARMORER || p == VillagerProfession.FISHERMAN
-                || p == VillagerProfession.LEATHERWORKER || p == VillagerProfession.CLERIC || p == ProfessionsMCA.INNKEEPER.get();
+                || p == VillagerProfession.LEATHERWORKER || p == VillagerProfession.CLERIC || p == ProfessionsMCA.INNKEEPER.get()
+                || p == ProfessionsMCA.MILLER.get() || p == ProfessionsMCA.COLLIER.get() || p == ProfessionsMCA.MERCHANT.get();
     }
 
     /** The smith's trade is switched off for now (workers make their own tools); true brings it back. */
-    static final boolean SMITHS = false;
+    static final boolean SMITHS = true;
 
     private static final java.util.Map<Integer, long[]> FOREST = new java.util.HashMap<>();
+
+    private static final java.util.Map<Integer, long[]> WATER = new java.util.HashMap<>();
+
+    /** Open water round the village (surface water in a 48 block radius, sampled every 4 blocks), looked at every ten minutes. */
+    static int water(ServerWorld world, net.mca.server.world.data.Village village) {
+        long[] w = WATER.get(village.getId());
+        if (w != null && world.getTime() - w[1] < 12000) return (int) w[0];
+        net.minecraft.util.math.BlockPos c = new net.minecraft.util.math.BlockPos(village.getCenter());
+        int n = 0;
+        for (int dx = -48; dx <= 48; dx += 4) {
+            for (int dz = -48; dz <= 48; dz += 4) {
+                int x = c.getX() + dx, z = c.getZ() + dz;
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+                int y = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING, x, z) - 1;
+                if (world.getFluidState(new net.minecraft.util.math.BlockPos(x, y, z)).isIn(net.minecraft.registry.tag.FluidTags.WATER)) n++;
+            }
+        }
+        WATER.put(village.getId(), new long[]{n, world.getTime()});
+        return n;
+    }
 
     /** Trees round the village (tree tops in a 56 block radius, sampled every 4 blocks), looked at every ten minutes. */
     static int forest(ServerWorld world, net.mca.server.world.data.Village village) {
@@ -58,7 +79,8 @@ public final class Staffing {
     private static boolean isCore(VillagerProfession p) {
         return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH
                 || p == VillagerProfession.MASON || p == VillagerProfession.FARMER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER
-                || p == VillagerProfession.LEATHERWORKER || p == ProfessionsMCA.INNKEEPER.get();
+                || p == VillagerProfession.LEATHERWORKER || p == ProfessionsMCA.INNKEEPER.get() || p == VillagerProfession.FISHERMAN
+                || p == VillagerProfession.CLERIC || p == ProfessionsMCA.MILLER.get() || p == ProfessionsMCA.COLLIER.get() || p == ProfessionsMCA.MERCHANT.get();
     }
 
     /** Somebody in the village works at this trade. */
@@ -134,6 +156,13 @@ public final class Staffing {
         // a smith only once there is a smithy to work in: tools, ingots
         boolean smithy = SMITHS && v.smithyBuilt && v.smithyFurnace != null;
         if (smithy && p >= 4) roles.add(new Role(VillagerProfession.ARMORER, 1));
+        // the workshops' own people, once the workshop stands: the miller, the collier, the merchant; the fisherman by
+        // the water; the healer once the village is big enough or has a chapel
+        if (p >= 4 && water(world, v) >= 24) roles.add(new Role(VillagerProfession.FISHERMAN, 1 + (hungry && p >= 8 ? 1 : 0)));
+        if (p >= 5 && Buildings.has(v, "mill")) roles.add(new Role(ProfessionsMCA.MILLER.get(), 1));
+        if (p >= 6 && Buildings.has(v, "charcoal")) roles.add(new Role(ProfessionsMCA.COLLIER.get(), 1));
+        if (p >= 8 && (Buildings.has(v, "chapel") || p >= 12)) roles.add(new Role(VillagerProfession.CLERIC, 1));
+        if (p >= 8 && Buildings.has(v, "market")) roles.add(new Role(ProfessionsMCA.MERCHANT.get(), 1));
 
         // trades that are switched off for now go back to the pool
         for (VillagerEntityMCA r : adults) {

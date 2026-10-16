@@ -21,6 +21,11 @@ public final class Sickness {
     private Sickness() {
     }
 
+    /** The healer has seen to him: on his feet again within a couple of hours instead of a day. */
+    public static void treat(VillagerEntityMCA v) {
+        SICK.computeIfPresent(v.getUuid(), (k, until) -> Math.min(until, v.getWorld().getTime() + 2400));
+    }
+
     public static boolean sick(VillagerEntityMCA v) {
         Long until = SICK.get(v.getUuid());
         return until != null && v.getWorld().getTime() < until;
