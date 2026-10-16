@@ -22,6 +22,34 @@ public final class Bed {
     private Bed() {
     }
 
+    /** Nobody is watching him: no player close by, and none who has him in sight. */
+    public static boolean unseen(VillagerEntityMCA v, ServerWorld world) {
+        for (net.minecraft.server.network.ServerPlayerEntity p : world.getPlayers()) {
+            if (p.isSpectator()) continue;
+            double d = p.squaredDistanceTo(v);
+            if (d < 16 * 16 || d < 96 * 96 && p.canSee(v)) return false;
+        }
+        return true;
+    }
+
+    /** Off-screen, he gets to safety the long way round: in his bed if it is free, else the town hall. True if moved. */
+    public static boolean shelter(VillagerEntityMCA v, net.mca.server.world.data.Village village, ServerWorld world) {
+        GlobalPos home = v.getResidency().getHome().orElse(null);
+        BlockPos bed = home != null && home.getDimension() == world.getRegistryKey() && world.getBlockState(home.getPos()).getBlock() instanceof BedBlock ? home.getPos() : null;
+        v.getNavigation().stop();
+        if (v.hasVehicle()) v.stopRiding();
+        if (bed != null && world.getEntitiesByClass(VillagerEntityMCA.class, new net.minecraft.util.math.Box(bed), o -> o != v && o.isSleeping()).isEmpty()) {
+            v.requestTeleport(bed.getX() + 0.5, bed.getY() + 0.6, bed.getZ() + 0.5);
+            long t = world.getTimeOfDay() % 24000L;
+            if (t >= 12800 || t < 500) v.sleep(bed);
+            return true;
+        }
+        BlockPos hall = village != null ? village.hallPos : null;
+        if (hall == null) return false;
+        v.requestTeleport(hall.getX() + 0.5, hall.getY(), hall.getZ() + 0.5);
+        return true;
+    }
+
     /** Once a second at bedtime; true while he is on his way to bed or in it. */
     public static boolean tick(VillagerEntityMCA v, net.mca.server.world.data.Village village, ServerWorld world) {
         if (v.isSleeping()) {
@@ -36,21 +64,15 @@ public final class Bed {
         Doing.set(v, "settlements.doing.bed");
         // a minute and still not home - fallen down a slope, lost his way in the woods, no path to be found - and nobody
         // about to see: he gets home all the same, the long way round, as a man does in the dark
-        if (now - since > 20 * 60 && world.getClosestPlayer(v.getX(), v.getY(), v.getZ(), 48, false) == null) {
-            if (bed != null && world.getEntitiesByClass(VillagerEntityMCA.class, new net.minecraft.util.math.Box(bed), o -> o != v && o.isSleeping()).isEmpty()) {
-                if (v.hasVehicle()) v.stopRiding();
-                v.getNavigation().stop();
-                v.requestTeleport(bed.getX() + 0.5, bed.getY() + 0.6, bed.getZ() + 0.5);
-                v.sleep(bed);
-                SINCE.remove(v.getUuid());
-                return true;
-            }
-            BlockPos hall = village != null ? village.hallPos : null;
-            if (hall != null && v.squaredDistanceTo(Vec3d.ofCenter(hall)) > 6 * 6) {
-                v.getNavigation().stop();
-                v.requestTeleport(hall.getX() + 0.5, hall.getY(), hall.getZ() + 0.5);
-                return true;
-            }
+        if (now - since == 20 * 30 || now - since == 20 * 120) { // for the record (and the tests): who cannot get to bed, and why
+            var path = v.getNavigation().getCurrentPath();
+            net.mca.MCA.LOGGER.info("[Settlements] {} not in bed after {}s at {} (bed {}, path {}, seen {})", v.getName().getString(), (now - since) / 20,
+                    v.getBlockPos().toShortString(), bed == null ? "none" : bed.toShortString(),
+                    path == null ? "none" : (path.reachesTarget() ? "reaches " : "ends short at ") + path.getTarget().toShortString(), !unseen(v, world));
+        }
+        if (now - since > 20 * 30 && unseen(v, world) && shelter(v, village, world)) {
+            SINCE.remove(v.getUuid());
+            return true;
         }
         if (bed != null && now - since < 20 * 90) {
             if (v.squaredDistanceTo(Vec3d.ofCenter(bed)) > 2.2 * 2.2) {

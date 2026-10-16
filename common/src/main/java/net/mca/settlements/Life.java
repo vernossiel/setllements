@@ -649,6 +649,8 @@ public final class Life {
             return false;
         }
         Doing.set(v, "settlements.doing.flee.monster");
+        long night0 = world.getTimeOfDay() % 24000L;
+        if ((night0 >= 12500 && night0 <= 23500) && Bed.unseen(v, world) && Bed.shelter(v, village, world)) return true; // off-screen he makes it indoors
         net.minecraft.util.math.Vec3d away = v.getPos().subtract(foe.getPos()).multiply(1, 0, 1).normalize();
         net.minecraft.util.math.BlockPos safe = v.getResidency().getHome().map(net.minecraft.util.math.GlobalPos::getPos).orElse(village != null ? village.hallPos : null);
         long tod = world.getTimeOfDay() % 24000L;
