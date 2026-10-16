@@ -83,7 +83,7 @@ public final class Watch {
     }
 
     /** At dusk: a lamp on a post at the next dark corner, while there are torches in the stores. */
-    private static boolean lamps(VillagerEntityMCA v, Village village, ServerWorld world) {
+    static boolean lamps(VillagerEntityMCA v, Village village, ServerWorld world) {
         int torches = Crafts.count(village, s -> s.isOf(Items.TORCH));
         int lanterns = Crafts.count(village, s -> s.isOf(Items.LANTERN));
         if (torches + lanterns == 0) return false;

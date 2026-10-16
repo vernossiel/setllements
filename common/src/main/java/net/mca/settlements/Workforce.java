@@ -87,6 +87,10 @@ public final class Workforce {
             net.mca.server.world.data.Village rv = net.mca.server.world.data.Village.findNearest(v).orElse(null);
             if (Rogue.tick(v, rv, rw)) return; // a rogue about his business, or in the stocks for it
             if (rv != null && v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get() && Watch.tick(v, rv, rw)) return; // the night watch
+            // no watchman yet (a small village): the guard on the evening shift puts up the lamps at dusk
+            long dusk = rw.getTimeOfDay() % 24000L;
+            if (rv != null && v.isGuard() && dusk >= 11500 && dusk < 13500 && !Staffing.has(rw, rv, net.mca.ProfessionsMCA.WATCHMAN.get())
+                    && v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).isEmpty() && Watch.lamps(v, rv, rw)) return;
         }
         if (v.isBaby()) {
             if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld kw && Games.tick(v, kw)) return; // at play with the others

@@ -277,6 +277,8 @@ public final class SettlementsCommand {
         new net.minecraft.server.network.ServerPlayNetworkHandler(w.getServer(), conn, fake);
         var at = c.getSource().getPosition();
         fake.refreshPositionAndAngles(at.x, at.y, at.z, 0f, 0f);
+        fake.getAbilities().invulnerable = true; // a test player: the night's zombies must not take him off
+        fake.setInvulnerable(true);
         w.onPlayerConnected(fake);
         return say(c, "Tester stands at " + net.minecraft.util.math.BlockPos.ofFloored(at).toShortString());
     }
