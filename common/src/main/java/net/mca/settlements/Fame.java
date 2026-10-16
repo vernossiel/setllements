@@ -61,12 +61,13 @@ public final class Fame {
     public static void deed(ServerWorld world, Village village, PlayerEntity p, Deed d, VillagerEntityMCA who, double scale) {
         if (village == null || p == null || p.isSpectator()) return;
         int rounded = (int) Math.round(d.amount * Math.max(0.25, scale));
-        final int n = rounded == 0 ? Integer.signum(d.amount) : rounded;
+        // however big the deed, one deed moves the village's view and a man's opinion only so far
+        final int n = Math.max(-25, Math.min(25, rounded == 0 ? Integer.signum(d.amount) : rounded));
         int[] f = of(village, p.getUuid());
         f[d.axis.ordinal()] = Math.max(-MAX, Math.min(MAX, f[d.axis.ordinal()] + n));
         village.markDirty();
         if (who != null) {
-            opinion(who, p, n * 3); // done to him: he feels it most
+            opinion(who, p, Math.max(-40, Math.min(40, n * 3))); // done to him: he feels it most
             who.getRelationships().getPartnerUUID().map(world::getEntity).filter(e -> e instanceof VillagerEntityMCA)
                     .ifPresent(e -> opinion((VillagerEntityMCA) e, p, n * 2));
         }

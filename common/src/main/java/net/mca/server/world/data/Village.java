@@ -495,7 +495,19 @@ public class Village implements Iterable<Building> {
     }
 
     public void pushHearts(UUID player, int rep) {
+        rep = Math.max(rep, -30); // Settlements: one wrong, however big, is one wrong - not a lifelong feud (time mends it, see mend)
         unspentHearts.put(player, unspentHearts.getOrDefault(player, 0) + rep);
+        markDirty();
+    }
+
+    /** Settlements, once a village day: a grudge against a player wears off a little (a twelfth, at least two). */
+    public void mend() {
+        java.util.Set<UUID> players = new java.util.HashSet<>(unspentHearts.keySet());
+        players.addAll(reputation.keySet());
+        for (UUID p : players) {
+            int total = reputation.getOrDefault(p, Collections.emptyMap()).values().stream().mapToInt(i -> i).sum() + unspentHearts.getOrDefault(p, 0);
+            if (total < 0) unspentHearts.put(p, unspentHearts.getOrDefault(p, 0) + Math.min(-total, Math.max(2, -total / 12)));
+        }
         markDirty();
     }
 
