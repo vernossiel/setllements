@@ -2,6 +2,7 @@ package net.mca.settlements;
 
 import net.mca.entity.VillagerEntityMCA;
 import net.mca.server.world.data.Village;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.ai.brain.MemoryModuleType;
 import net.minecraft.entity.mob.HostileEntity;
@@ -118,26 +119,82 @@ public final class Watch {
         return true;
     }
 
-    /** The darkest open spot among the houses, if any is dark enough for things to spawn in. */
+    /**
+     * Where the next lamp goes. First the darkest stretch among the houses (dark enough for things to spawn), then, close
+     * by, a sensible place for a post the way people set them: at the side of the street, not on it; not in a doorway,
+     * a yard or a field; not plugging a passage; not right beside another light.
+     */
     private static BlockPos dark(ServerWorld world, Village village) {
         BlockPos c = new BlockPos(village.getCenter());
-        BlockPos best = null;
+        BlockPos zone = null;
         int bestLight = 8; // block light below this: monsters may come
         for (int dx = -40; dx <= 40; dx += 5) {
             for (int dz = -40; dz <= 40; dz += 5) {
                 int x = c.getX() + dx, z = c.getZ() + dz;
                 if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
                 BlockPos p = new BlockPos(x, world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z), z);
-                if (!village.isWithinBorder(p, 0) || !Layout.land(world.getBlockState(p.down())) || !world.getFluidState(p).isEmpty()) continue;
-                if (world.getBlockState(p.down()).isOf(Blocks.DIRT_PATH)) continue; // not in the middle of the street
+                if (!village.isWithinBorder(p, 0) || !world.getFluidState(p).isEmpty()) continue;
+                if (!lived(world, village, p)) continue; // the empty land round the village is left dark
                 int light = world.getLightLevel(LightType.BLOCK, p);
                 if (light < bestLight) {
                     bestLight = light;
+                    zone = p;
+                }
+            }
+        }
+        if (zone == null) return null;
+        BlockPos best = null;
+        int bestScore = Integer.MIN_VALUE;
+        for (int dx = -4; dx <= 4; dx++) {
+            for (int dz = -4; dz <= 4; dz++) {
+                int x = zone.getX() + dx, z = zone.getZ() + dz;
+                BlockPos p = new BlockPos(x, world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z), z);
+                int score = post(world, village, p);
+                if (score == Integer.MIN_VALUE) continue;
+                score -= Math.abs(dx) + Math.abs(dz); // near the dark spot
+                if (score > bestScore) {
+                    bestScore = score;
                     best = p;
                 }
             }
         }
         return best;
+    }
+
+    /** Within a few blocks of a street or a building: the part of the village people walk at night. */
+    private static boolean lived(ServerWorld world, Village village, BlockPos p) {
+        for (int[] pl : village.plots) {
+            if (p.getX() >= pl[0] - 6 && p.getX() < pl[0] + pl[2] + 6 && p.getZ() >= pl[1] - 6 && p.getZ() < pl[1] + pl[3] + 6) return true;
+        }
+        for (BlockPos q : BlockPos.iterate(p.add(-5, -2, -5), p.add(5, 1, 5))) if (world.getBlockState(q).isOf(Blocks.DIRT_PATH)) return true;
+        return false;
+    }
+
+    /** How good a place for a lamp post this is (MIN_VALUE: no place for one at all). */
+    private static int post(ServerWorld world, Village village, BlockPos p) {
+        BlockState ground = world.getBlockState(p.down());
+        if (!world.getFluidState(p).isEmpty() || !world.getBlockState(p).isAir() || !world.getBlockState(p.up()).isAir()) return Integer.MIN_VALUE;
+        if (ground.isOf(Blocks.DIRT_PATH) || ground.isOf(Blocks.FARMLAND) || !Layout.land(ground) || !ground.isSideSolidFullSquare(world, p.down(), net.minecraft.util.math.Direction.UP))
+            return Integer.MIN_VALUE; // not on the street, not in a field
+        for (int[] pl : village.plots) { // not in a yard or against a wall: a pace clear of every building
+            if (p.getX() >= pl[0] - 1 && p.getX() < pl[0] + pl[2] + 1 && p.getZ() >= pl[1] - 1 && p.getZ() < pl[1] + pl[3] + 1) return Integer.MIN_VALUE;
+        }
+        int score = 0, open = 0;
+        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+            BlockPos q = p.offset(d);
+            if (world.getBlockState(q).getCollisionShape(world, q).isEmpty()) open++;
+            if (world.getBlockState(q.down()).isOf(Blocks.DIRT_PATH)) score += 4; // the side of the street: where lamps belong
+        }
+        if (open < 4) return Integer.MIN_VALUE; // never plugging a passage
+        for (BlockPos q : BlockPos.iterate(p.add(-3, -1, -3), p.add(3, 2, 3))) {
+            BlockState s = world.getBlockState(q);
+            if (s.getBlock() instanceof net.minecraft.block.DoorBlock || s.isOf(Blocks.FARMLAND)) return Integer.MIN_VALUE; // a doorway, a field
+        }
+        for (BlockPos q : BlockPos.iterate(p.add(-5, -2, -5), p.add(5, 3, 5))) {
+            BlockState s = world.getBlockState(q);
+            if (s.isOf(Blocks.LANTERN) || s.isOf(Blocks.TORCH) || s.isOf(Blocks.WALL_TORCH) || s.isOf(Blocks.CAMPFIRE)) return Integer.MIN_VALUE; // one is enough here
+        }
+        return score;
     }
 
     /** The round: the stores, the granary, the smithy, the hall, one after another, a while at each. */
