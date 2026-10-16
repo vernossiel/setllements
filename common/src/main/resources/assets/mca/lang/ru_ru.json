@@ -4165,5 +4165,9 @@
   "settlements.witness.button.refuse": "«Иди куда шёл.» [Отказать]",
   "settlements.say.trapped": "Эй! Выпустите меня отсюда!",
   "settlements.say.trapped.f": "Эй! Выпустите меня отсюда!",
-  "settlements.doing.trapped": "заперт: зовёт на помощь, пробивается наружу"
+  "settlements.doing.trapped": "заперт: зовёт на помощь, пробивается наружу",
+  "settlements.say.guard.breakin": "Не отсидишься, %s!",
+  "settlements.say.guard.breakin.f": "Не отсидишься, %s!",
+  "settlements.say.guard.comedown": "Слезай, %s! Всё равно ведь слезешь.",
+  "settlements.say.guard.comedown.f": "Слезай, %s! Всё равно ведь слезешь."
 }

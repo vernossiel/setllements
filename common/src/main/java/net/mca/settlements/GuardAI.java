@@ -47,6 +47,29 @@ public final class GuardAI {
         return night != shiftA;
     }
 
+    private static final java.util.Map<java.util.UUID, Integer> BLOCKED = new java.util.HashMap<>();
+
+    /** The first block between the guard and the man he is after, at feet or head height, that he may break: not the village's, nothing harder than stone. */
+    private static BlockPos breakThrough(ServerWorld world, Village village, VillagerEntityMCA g, PlayerEntity p) {
+        net.minecraft.util.math.Vec3d from = g.getPos(), to = p.getPos();
+        double len = from.distanceTo(to);
+        for (double t = 0.8; t < Math.min(len, 6); t += 0.5) {
+            net.minecraft.util.math.Vec3d at = from.add(to.subtract(from).multiply(t / len));
+            for (int h = 0; h <= 1; h++) {
+                BlockPos q = BlockPos.ofFloored(at.x, g.getY() + h + 0.1, at.z);
+                var st = world.getBlockState(q);
+                if (st.isAir() || st.getCollisionShape(world, q).isEmpty() || !st.getFluidState().isEmpty()) continue;
+                if (st.getBlock() instanceof net.minecraft.block.BlockWithEntity) return null;
+                float hard = st.getHardness(world, q);
+                if (hard < 0 || hard > 3.0f) return null;
+                if (Protection.severity(world, village, q, st) > 0) return null; // the village's own house: no
+                for (Built b : village.built) if (b.contains(q)) return null;
+                return q;
+            }
+        }
+        return null;
+    }
+
     public static void tick(VillagerEntityMCA g, Village village, ServerWorld world, long time) {
         if (g.getVillagerBrain().isPanicking()) return;
         BlockPos center = new BlockPos(village.getCenter());
@@ -59,6 +82,22 @@ public final class GuardAI {
                 current = null;
             } else if (p.getHealth() <= 6f && g.squaredDistanceTo(p) < 20 * 20 && g.canSee(p) && Justice.subdue(g, p)) {
                 return; // an archer does not shoot a man already down
+            }
+        }
+
+        // the one he is after has shut himself in, or gone up where there is no way: in through the barricade, a block
+        // at a time; up a tree, a shout to come down (the archers see to the rest)
+        if (current instanceof PlayerEntity p && !isArcher(g) && g.squaredDistanceTo(p) < 10 * 10) {
+            var path = g.getNavigation().getCurrentPath();
+            boolean noWay = path == null || !path.reachesTarget() && path.getEnd() != null && path.getEnd().getSquaredDistance(p.getBlockPos()) > 4;
+            int n = noWay ? BLOCKED.merge(g.getUuid(), 1, Integer::sum) : 0;
+            if (!noWay) BLOCKED.remove(g.getUuid());
+            if (n >= 4 && !Dig.busy(g)) {
+                BlockPos through = breakThrough(world, village, g, p);
+                if (through != null) {
+                    Dig.start(g, through);
+                    if (n % 10 == 4) Speech.say(g, "settlements.say.guard.breakin", p.getName());
+                } else if (n % 15 == 4) Speech.sayNow(g, "settlements.say.guard.comedown", p.getName());
             }
         }
 
