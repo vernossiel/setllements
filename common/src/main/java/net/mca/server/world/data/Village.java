@@ -50,6 +50,8 @@ public class Village implements Iterable<Building> {
     public NbtCompound orderBook = new NbtCompound();
     public net.mca.settlements.House hall;
     public boolean seeded;
+    /** When the village was last lived in (a player near enough for it to run); the days between are caught up (see Ledger). */
+    public long lastLived;
     public int groveSaplings;
     public final List<BlockPos> hallChests = new LinkedList<>();
     public final List<BlockPos> boardSigns = new LinkedList<>();
@@ -138,6 +140,7 @@ public class Village implements Iterable<Building> {
         if (v.contains("hall")) hall = net.mca.settlements.House.load(v.getCompound("hall"));
         if (v.contains("penCenter")) penCenter = BlockPos.fromLong(v.getLong("penCenter"));
         seeded = v.getBoolean("seeded");
+        lastLived = v.getLong("lastLived");
         groveSaplings = v.getInt("groveSaplings");
         for (long l : v.getLongArray("hallChests")) hallChests.add(BlockPos.fromLong(l));
         for (long l : v.getLongArray("boardSigns")) boardSigns.add(BlockPos.fromLong(l));
@@ -539,6 +542,7 @@ public class Village implements Iterable<Building> {
         if (hall != null) v.put("hall", hall.save());
         if (penCenter != null) v.putLong("penCenter", penCenter.asLong());
         v.putBoolean("seeded", seeded);
+        v.putLong("lastLived", lastLived);
         v.putInt("groveSaplings", groveSaplings);
         v.putLongArray("hallChests", hallChests.stream().mapToLong(BlockPos::asLong).toArray());
         v.putLongArray("boardSigns", boardSigns.stream().mapToLong(BlockPos::asLong).toArray());

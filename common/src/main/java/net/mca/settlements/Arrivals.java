@@ -105,6 +105,26 @@ public final class Arrivals {
         return false;
     }
 
+    /** A newcomer (or a couple) walks in now, if the village has room: for the days caught up (see Ledger). */
+    static int newcomers(ServerWorld world, Village v) {
+        int free = v.getMaxPopulation() - v.getPopulation();
+        if (free < 1) return 0;
+        BlockPos road = edge(world, v);
+        if (road == null) return 0;
+        Gender g = world.random.nextBoolean() ? Gender.MALE : Gender.FEMALE;
+        VillagerEntityMCA a = spawn(world, v, road, g);
+        if (a == null) return 0;
+        if (free >= 2 && world.random.nextFloat() < 0.4f) {
+            VillagerEntityMCA b = spawn(world, v, road.east(), g == Gender.MALE ? Gender.FEMALE : Gender.MALE);
+            if (b != null) {
+                a.getRelationships().marry(b);
+                b.getRelationships().marry(a);
+                return 2;
+            }
+        }
+        return 1;
+    }
+
     private static VillagerEntityMCA spawn(ServerWorld world, Village v, BlockPos at, Gender g) {
         VillagerEntityMCA n = g.getVillagerType().spawn(world, at, SpawnReason.EVENT);
         if (n == null) return null;

@@ -4023,5 +4023,7 @@
   "settlements.say.watch.round.1": "Midnight, and all is well!",
   "settlements.say.watch.round.1.f": "Midnight, and all is well!",
   "settlements.say.watch.round.2": "Stores locked, granary whole. On I go.",
-  "settlements.say.watch.round.2.f": "Stores locked, granary whole. On I go."
+  "settlements.say.watch.round.2.f": "Stores locked, granary whole. On I go.",
+  "settlements.news.away": "While you were away (%s days) life went on: %s parts of buildings put up, %s newcomers.",
+  "settlements.news.away.hungry": "While you were away we went hungry for %s days."
 }

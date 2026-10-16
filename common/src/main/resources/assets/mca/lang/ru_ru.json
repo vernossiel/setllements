@@ -4020,5 +4020,7 @@
   "settlements.say.watch.round.1": "Полночь, и всё спокойно!",
   "settlements.say.watch.round.1.f": "Полночь, и всё спокойно!",
   "settlements.say.watch.round.2": "Склад заперт, амбар цел. Дальше.",
-  "settlements.say.watch.round.2.f": "Склад заперт, амбар цел. Дальше."
+  "settlements.say.watch.round.2.f": "Склад заперт, амбар цел. Дальше.",
+  "settlements.news.away": "Пока тебя не было (дней: %s), шла своя жизнь: построено частей зданий: %s, новых жителей: %s.",
+  "settlements.news.away.hungry": "Пока тебя не было, голодали дней: %s."
 }

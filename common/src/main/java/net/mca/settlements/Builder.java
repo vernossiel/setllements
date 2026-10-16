@@ -1203,6 +1203,33 @@ public final class Builder {
         if (w != null && need != Needs.Need.NONE) SHORT.put(village.getId(), new Shortage(need, any, w.getTime()));
     }
 
+    /**
+     * The days nobody was about (see Ledger): up to {@code steps} of the work laid at once, paid from the stores as the
+     * builder would have paid, and the next project begun when one is done. Returns how many steps were laid.
+     */
+    public static int catchUp(ServerWorld world, Village village, int steps) {
+        int laid = 0;
+        for (int projects = 0; laid < steps && projects < 6; projects++) {
+            if (village.buildOrigin == null && !plan(village, world)) break;
+            if (village.buildOrigin == null || Rebuild.active(village)) break;
+            List<Step> st = plan(village);
+            BlockPos origin = village.buildOrigin;
+            int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
+            while (laid < steps && village.buildStep < st.size()) {
+                Step step = st.get(village.buildStep);
+                int[] rp = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], village.buildRot);
+                Result r = execute(world, village, step, origin.add(rp[0], step.dy(), rp[1]), village.buildRot);
+                if (r == Result.WAIT || r == Result.ABORT) return laid; // out of material: the rest waits for the builders
+                village.buildStep++;
+                laid++;
+            }
+            if (village.buildStep < st.size()) break;
+            finish(village);
+        }
+        village.markDirty();
+        return laid;
+    }
+
     private static void finish(Village village) {
         BlockPos o = village.buildOrigin;
         if (o == null) return;
