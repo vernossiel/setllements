@@ -4146,5 +4146,7 @@
   "settlements.justice.found.hall.f": "Склад в ратуше пуст! Кто-то вынес добро деревни! Стража!",
   "settlements.news.crime.hall": "Обокрали склад в ратуше — добро всей деревни. Стража ищет вора.",
   "settlements.doing.farm.hay": "несёт сено со стога в амбар",
-  "settlements.news.settlers": "%s и %s ушли из деревни: тесно у нас на круче. Пошли ставить свой хутор на ровной земле."
+  "settlements.news.settlers": "%s и %s ушли из деревни: тесно у нас на круче. Пошли ставить свой хутор на ровной земле.",
+  "settlements.justice.stocks.struggle": "Расшатываешь доску колодок... %s/%s",
+  "settlements.justice.stocks.struggle.caught": "А ну сиди смирно, %s! Ещё полминуты за это."
 }

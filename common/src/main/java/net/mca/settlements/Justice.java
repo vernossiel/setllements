@@ -7,6 +7,7 @@ import net.minecraft.entity.ai.brain.MemoryModuleType;
 import net.minecraft.entity.ai.brain.WalkTarget;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -703,6 +704,56 @@ public final class Justice {
         float hit = Math.min(damage, Math.max(0f, p.getHealth() - 2f));
         if (p.getHealth() - hit <= 4f && p.getWorld() instanceof ServerWorld w) spare(w, p);
         return hit;
+    }
+
+    private static final Map<UUID, int[]> STRUGGLE = new HashMap<>(); // player -> {wrenches so far, second of the last}
+    private static final int WRENCHES = 15;
+
+    /**
+     * The player tries to get off the stocks' seat (the sneak key): no getting down by accident - each press is a
+     * wrench at the board. Enough of them in a row and the pin gives: he is out, a runaway. A guard who sees him at it
+     * shouts him down and adds to his time. Returns true if he broke free (the dismount goes through).
+     */
+    public static boolean struggle(ServerPlayerEntity p) {
+        Case c = CASES.get(p.getUuid());
+        if (c == null || !c.inStocks) return true; // not ours to hold
+        ServerWorld world = p.getServerWorld();
+        long sec = world.getTime() / 20;
+        int[] s = STRUGGLE.computeIfAbsent(p.getUuid(), k -> new int[]{0, 0});
+        if (sec - s[1] > 3) s[0] = 0; // let go of it a while: the board settles back
+        s[1] = (int) sec;
+        VillagerEntityMCA guard = nearestGuard(world, p, 12);
+        if (guard != null && guard.canSee(p)) {
+            s[0] = 0;
+            c.until += 20 * 30;
+            Village village = VillageManager.get(world).getOrEmpty(c.villageId).orElse(null);
+            if (village != null && world.getTime() - c.lastTalk > 100) {
+                c.lastTalk = world.getTime();
+                talk(world, village, guard, p, "settlements.justice.stocks.struggle.caught", world.getTime());
+            }
+            return false;
+        }
+        s[0]++;
+        world.playSound(null, p.getBlockPos(), net.minecraft.sound.SoundEvents.BLOCK_WOOD_HIT, net.minecraft.sound.SoundCategory.BLOCKS, 0.7f, 0.8f + world.random.nextFloat() * 0.3f);
+        if (s[0] < WRENCHES) {
+            p.sendMessage(Text.translatable("settlements.justice.stocks.struggle", s[0], WRENCHES).formatted(Formatting.GOLD), true);
+            return false;
+        }
+        STRUGGLE.remove(p.getUuid());
+        Village village = VillageManager.get(world).getOrEmpty(c.villageId).orElse(null);
+        c.stage = Stage.WANTED;
+        c.since = world.getTime();
+        c.inStocks = false;
+        c.value += 6;
+        p.removeStatusEffect(StatusEffects.MINING_FATIGUE);
+        p.removeStatusEffect(StatusEffects.WEAKNESS);
+        p.removeStatusEffect(StatusEffects.SLOWNESS);
+        p.sendMessage(Text.translatable("settlements.justice.escaped").formatted(Formatting.RED), false);
+        if (village != null) {
+            Life.forget(village, "crime.stocks", p.getName().getString());
+            Life.news(village, "crime.escape", p.getName().getString());
+        }
+        return true; // the dismount goes through (the empty seat is cleared away with the others)
     }
 
     /** Beaten and let go: the guards stand off for a minute and a half while he gets himself away. */

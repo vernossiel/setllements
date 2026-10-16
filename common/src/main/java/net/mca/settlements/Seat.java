@@ -91,9 +91,17 @@ public final class Seat {
     public static void rise(net.minecraft.entity.LivingEntity who) {
         Entity e = who.getVehicle();
         if (!(e instanceof ArmorStandEntity) || !e.getCommandTags().contains(TAG)) return;
-        who.stopRiding();
+        RISING = true;
+        try {
+            who.stopRiding();
+        } finally {
+            RISING = false;
+        }
         e.discard();
     }
+
+    /** Set while the village itself lets somebody up: only then does getting off the stocks' seat go through. */
+    public static boolean RISING = false;
 
     /** Sits on a seat block (stair, slab), or on the ground where he stands. */
     public static void sitHere(VillagerEntityMCA v, float yaw) {

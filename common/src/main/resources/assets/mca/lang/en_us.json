@@ -4149,5 +4149,7 @@
   "settlements.justice.found.hall.f": "The stores in the hall are empty! Someone's carried off the village's goods! Guards!",
   "settlements.news.crime.hall": "The stores in the town hall were robbed - the whole village's goods. The guard is looking for the thief.",
   "settlements.doing.farm.hay": "carrying the hay from a bale to the stores",
-  "settlements.news.settlers": "%s and %s have left the village: there's no room up here. They've gone to start a hamlet of their own on level ground."
+  "settlements.news.settlers": "%s and %s have left the village: there's no room up here. They've gone to start a hamlet of their own on level ground.",
+  "settlements.justice.stocks.struggle": "Working the stocks' board loose... %s/%s",
+  "settlements.justice.stocks.struggle.caught": "Sit still, %s! Another half minute for that."
 }

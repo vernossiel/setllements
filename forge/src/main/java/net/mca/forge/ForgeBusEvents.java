@@ -85,6 +85,19 @@ public class ForgeBusEvents {
         }
     }
 
+    /** No getting off the stocks' seat by a stray key: each try is a wrench at the board (see Justice.struggle). */
+    @SubscribeEvent
+    public static void onDismount(net.minecraftforge.event.entity.EntityMountEvent event) {
+        if (!event.isDismounting() || event.getLevel().isClient || net.mca.settlements.Seat.RISING) return;
+        if (!(event.getEntityBeingMounted() instanceof net.minecraft.entity.decoration.ArmorStandEntity stand) || !stand.getCommandTags().contains("settlements_stocks")) return;
+        if (!event.getEntityMounting().isAlive()) return; // dying, changing worlds: let go
+        if (event.getEntityMounting() instanceof ServerPlayerEntity p) {
+            if (!net.mca.settlements.Justice.struggle(p)) event.setCanceled(true);
+        } else if (stand.isAlive()) {
+            event.setCanceled(true); // a villager in the stocks stays put till he is let up
+        }
+    }
+
     /** Arrows too: a guard's shot never kills a player (see Justice.blow). */
     @SubscribeEvent
     public static void onHurt(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
