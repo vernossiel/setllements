@@ -275,6 +275,8 @@ public final class Justice {
                 }
                 case ARREST -> {
                     if (guard != null && guard.squaredDistanceTo(p) > 9) guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(p, 0.6f, 1));
+                    // the time to answer runs only while the guard stands before him: no guard by, no running out of time
+                    if (guard == null || guard.squaredDistanceTo(p) > 6 * 6) c.deadline = Math.max(c.deadline, now + 20 * 10);
                     if (now >= c.deadline) resist(p);
                 }
                 case RESISTING -> {
@@ -693,10 +695,28 @@ public final class Justice {
 
     /** How hard a guard's blow lands on a player. */
     public static float blow(PlayerEntity p, float damage) {
-        // a man they are arresting is beaten down, not killed (at his last strength he is taken, see subdue);
-        // anybody else gets the full weight of the blow
-        if (!detaining(CASES.get(p.getUuid()))) return damage;
-        return Math.min(damage, Math.max(1f, p.getHealth() - 5f));
+        // the village's guards beat a man, they do not kill him: one they are arresting is beaten down and taken (see
+        // subdue); one the village only wants rid of is beaten and let crawl away; one in the stocks is not touched
+        Case c = CASES.get(p.getUuid());
+        if (c != null && c.stage == Stage.SERVING) return 0f;
+        if (detaining(c)) return Math.min(damage, Math.max(1f, p.getHealth() - 5f));
+        float hit = Math.min(damage, Math.max(0f, p.getHealth() - 2f));
+        if (p.getHealth() - hit <= 4f && p.getWorld() instanceof ServerWorld w) spare(w, p);
+        return hit;
+    }
+
+    /** Beaten and let go: the guards stand off for a minute and a half while he gets himself away. */
+    private static void spare(ServerWorld world, PlayerEntity p) {
+        if (spared(p)) return;
+        SPARED.put(p.getUuid(), world.getTime() + 20 * 90);
+        for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(64), VillagerEntityMCA::isGuard)) {
+            if (g.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).orElse(null) == p) g.getBrain().forget(MemoryModuleType.ATTACK_TARGET);
+        }
+        VillagerEntityMCA g = nearestGuard(world, p, 24);
+        if (g != null && p instanceof ServerPlayerEntity sp) {
+            Village village = VillageManager.get(world).findNearestVillage(p).orElse(null);
+            if (village != null) talk(world, village, g, sp, "settlements.justice.beaten", world.getTime());
+        }
     }
 
     // ---------- punishment ----------

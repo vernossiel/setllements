@@ -79,6 +79,15 @@ public class ForgeBusEvents {
         }
     }
 
+    /** Arrows too: a guard's shot never kills a player (see Justice.blow). */
+    @SubscribeEvent
+    public static void onHurt(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
+        if (event.getEntity() instanceof ServerPlayerEntity p && event.getSource().getAttacker() instanceof net.mca.entity.VillagerEntityMCA g && g.isGuard()
+                && !(event.getSource().getSource() instanceof net.mca.entity.VillagerEntityMCA)) { // (the melee blow is capped already)
+            event.setAmount(net.mca.settlements.Justice.blow(p, event.getAmount()));
+        }
+    }
+
     @SubscribeEvent
     public static void onRightClickBlock(net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock event) {
         if (!event.getLevel().isClient && event.getHand() == net.minecraft.util.Hand.MAIN_HAND && net.mca.settlements.Board.onUse(event.getEntity(), event.getPos())) {
