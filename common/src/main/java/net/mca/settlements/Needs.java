@@ -97,8 +97,10 @@ public final class Needs {
         }
         set(v, Need.NONE);
         int hearts = (int) Math.max(2, Math.min(15, value / 2));
-        Village.findNearest(v).ifPresent(vil -> vil.pushHearts(player, hearts));
-        player.sendMessage(Text.translatable("settlements.donate", hearts), true);
+        Village.findNearest(v).ifPresent(vil -> {
+            vil.pushHearts(player, hearts);
+            if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld gw) Fame.deed(gw, vil, player, Fame.Deed.GIFT, v, Math.max(0.5, value / 6));
+        });
         v.sendChatMessage(player, "settlements.need.thanks");
         return true;
     }

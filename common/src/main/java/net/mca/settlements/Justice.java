@@ -106,6 +106,8 @@ public final class Justice {
             }
         }
         if (fresh) Life.news(village, "crime." + crime.name().toLowerCase(), player.getName().getString());
+        if (crime == Crime.THEFT) Fame.deed(world, village, player, Fame.Deed.THEFT, null, Math.max(0.5, value / 8));
+        else if (crime == Crime.VANDALISM) Fame.deed(world, village, player, Fame.Deed.VANDALISM, null, Math.max(0.5, value / 8));
     }
 
     /** A villager struck by a player: a warning first, then a fine, then it is assault. */
@@ -166,7 +168,8 @@ public final class Justice {
                 continue;
             }
             if (!s.seen() && p != null && s.crime() == Crime.THEFT && p.getWorld() == world
-                    && p.squaredDistanceTo(s.where().getX(), s.where().getY(), s.where().getZ()) < 64 * 64 && world.random.nextBoolean()) {
+                    && p.squaredDistanceTo(s.where().getX(), s.where().getY(), s.where().getZ()) < 64 * 64
+                    && world.random.nextDouble() < suspicion(village, p)) {
                 // nobody saw a thing, but a stranger is about: the watch will want a look all the same
                 Speech.sayNow(finder, "settlements.justice.found." + what);
                 askSearch(world, village, p, s.items(), s.value(), now, false);
@@ -396,6 +399,7 @@ public final class Justice {
         if (c.stolen.isEmpty()) {
             CASES.remove(p.getUuid());
             village.pushHearts(p, 5);
+            Fame.deed(p.getServerWorld(), village, p, Fame.Deed.PAID, null, 1);
             p.sendMessage(Text.translatable("settlements.justice.settled").formatted(Formatting.GREEN), false);
         } else {
             p.sendMessage(Text.translatable("settlements.theft.partial", (int) Math.ceil(Math.max(0, c.value - returned))), false);
@@ -785,6 +789,7 @@ public final class Justice {
         p.removeStatusEffect(StatusEffects.MINING_FATIGUE);
         p.removeStatusEffect(StatusEffects.WEAKNESS);
         village.pushHearts(p, 8); // the debt is paid
+        Fame.deed(world, village, p, Fame.Deed.SERVED, null, 1);
         p.sendMessage(Text.translatable("settlements.justice.released").formatted(Formatting.GREEN), false);
     }
 
@@ -798,6 +803,12 @@ public final class Justice {
     }
 
     // ---------- a look in his pockets ----------
+
+    /** How readily the village looks at him when something goes missing: a known thief first, an honest man hardly at all. */
+    static double suspicion(Village village, PlayerEntity p) {
+        int honest = Fame.get(village, p, Fame.Axis.HONEST);
+        return Math.max(0.1, Math.min(0.9, 0.5 - honest / 80.0));
+    }
 
     /** {@code strong}: he was seen there, and a refusal is as good as a confession; otherwise only suspected. */
     private record Search(int villageId, Map<Item, Integer> items, double value, long from, long until, boolean strong) {
@@ -860,6 +871,7 @@ public final class Justice {
         if (!allow) {
             talk(world, village, guard, p, "settlements.justice.search.refused", world.getTime());
             village.pushHearts(p, -3);
+            Fame.deed(world, village, p, Fame.Deed.REFUSED_SEARCH, guard, 1);
             if (guard != null) guard.settlementsWatch = p.getUuid(); // he keeps an eye on him from now on
             Life.news(village, "search.refused", p.getName().getString());
             return 1;
@@ -875,6 +887,7 @@ public final class Justice {
         if (found.isEmpty()) {
             talk(world, village, guard, p, "settlements.justice.search.clean", world.getTime());
             village.pushHearts(p, 2); // he let them look, and was in the clear
+            Fame.deed(world, village, p, Fame.Deed.CLEARED, guard, 1);
             return 1;
         }
         talk(world, village, guard, p, "settlements.justice.search.found", world.getTime());

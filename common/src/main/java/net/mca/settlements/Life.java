@@ -82,6 +82,7 @@ public final class Life {
         if (cause.getAttacker() instanceof PlayerEntity p) {
             news(village, "murder", name, p.getName().getString());
             Justice.report(world, village, p, Justice.Crime.MURDER, 50, null, true);
+            Fame.deed(world, village, p, Fame.Deed.MURDER, v, 1);
             // a killing: everyone who saw it or heard the scream runs, and every guard within earshot comes running
             if (village != null) {
                 FEAR.put(key(village, p), world.getTime() + FEAR_TICKS);
@@ -166,7 +167,9 @@ public final class Life {
         long now = world.getTime();
         // a first or second blow is pestering: the victim protests and the guard has a word (see Justice);
         // only a third makes it an assault that frightens the village
-        if (Justice.hit(world, village, attacker) == Justice.Crime.HARASSMENT) {
+        Justice.Crime crime = Justice.hit(world, village, attacker);
+        Fame.deed(world, village, attacker, crime == Justice.Crime.HARASSMENT ? Fame.Deed.HARASS : Fame.Deed.ASSAULT, victim, 1);
+        if (crime == Justice.Crime.HARASSMENT) {
             Speech.sayNow(victim, "settlements.react.hit");
             Gaze.at(victim, attacker, 30f, 30f);
             return;

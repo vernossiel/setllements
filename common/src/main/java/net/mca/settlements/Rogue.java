@@ -98,6 +98,7 @@ public final class Rogue {
                 o -> o != v && o.isAlive() && !o.isSleeping() && !o.isBaby() && o.canSee(p)).isEmpty();
         if (seen) {
             Justice.report(world, village, p, Justice.Crime.HARASSMENT, 10, new java.util.HashMap<>(), true);
+            Fame.deed(world, village, p, Fame.Deed.FREED_ROGUE, null, 1);
             Life.news(village, "rogue.freed", v.getName().getString(), p.getName().getString());
         } else {
             Life.news(village, "rogue.vanished", v.getName().getString());
@@ -192,7 +193,7 @@ public final class Rogue {
             Life.news(village, "rogue.missing");
             // come morning, a stranger who spent the night in the village is the first one they look at
             net.minecraft.entity.player.PlayerEntity stranger = world.getClosestPlayer(store.getX(), store.getY(), store.getZ(), 48, false);
-            if (stranger != null && !owes(v, stranger) && world.random.nextInt(3) == 0) {
+            if (stranger != null && !owes(v, stranger) && world.random.nextDouble() < Justice.suspicion(village, stranger) * 0.6) {
                 long tod = world.getTimeOfDay() % 24000L;
                 long morning = now + (24000L - tod + 1500L) % 24000L;
                 Justice.askSearch(world, village, stranger, java.util.Map.of(took.getItem(), n), Reputation.value(took), morning, false);

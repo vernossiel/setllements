@@ -133,6 +133,7 @@ public final class Caravans {
             PlayerEntity p = world.getPlayerByUuid(e.getKey());
             if (p == null) continue;
             to.pushHearts(p, 10);
+            Fame.deed(world, to, p, Fame.Deed.DEFENDED, null, 1);
             if (from != null) {
                 from.pushHearts(p, 10);
                 Diplomacy.shiftRelation(from, to, 2);

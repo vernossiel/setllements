@@ -84,9 +84,27 @@ public final class Bearing {
             else if (night(world) && inHouse(village, p) && v.getResidency().getHome().map(h -> h.getPos().isWithinDistance(p.getBlockPos(), 8)).orElse(false)) {
                 Speech.sayNow(v, "settlements.say.bearing.intruder", p.getName());
                 village.pushHearts(p, -3);
+                Fame.deed(world, village, p, Fame.Deed.INTRUDE, v, 1);
                 Life.news(village, "intruder", p.getName().getString());
                 REMARKED.put(p.getUuid(), now + 20 * 60);
                 continue;
+            }
+            if (key == null && world.random.nextInt(3) == 0) {
+                // how he is known, in how they take him: a wave, a turned back, a wary step aside
+                int opinion = Fame.opinion(v, p);
+                if (Fame.get(village, p, Fame.Axis.PEACE) <= -30 || opinion <= -40) {
+                    key = "settlements.say.greet.afraid";
+                    Move.stepBack(v, p);
+                } else if (Fame.get(village, p, Fame.Axis.HONEST) <= -30) key = "settlements.say.greet.thief";
+                else if (opinion <= -15) {
+                    REMARKED.put(p.getUuid(), now + 20 * 40);
+                    Gaze.at(v, v.getX() * 2 - p.getX(), v.getEyeY(), v.getZ() * 2 - p.getZ()); // turns his back
+                    Speech.sayAny(v, "settlements.say.greet.cold", 3, p.getName());
+                    continue;
+                } else if (opinion >= 15) {
+                    key = "settlements.say.greet.friend";
+                    Anim.set(v, Anim.Act.WAVE, 30);
+                }
             }
             if (key == null) continue;
             REMARKED.put(p.getUuid(), now + 20 * 40);

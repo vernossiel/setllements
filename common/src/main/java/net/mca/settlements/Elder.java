@@ -225,6 +225,8 @@ public final class Elder {
             Life.News n = news.get(0);
             OUT.add(Text.translatable("settlements.elder.story.news", Text.translatable("settlements.news." + n.key(), n.args())));
         }
+        String known = Fame.word(village, p); // and how the village speaks of him, if it speaks of him at all
+        if (known != null) OUT.add(Text.translatable(known, p.getName()));
         OUT.add(Text.translatable(need == Needs.Need.NONE ? "settlements.elder.story.end.fine" : "settlements.elder.story.end.help." + need.name().toLowerCase()));
     }
 

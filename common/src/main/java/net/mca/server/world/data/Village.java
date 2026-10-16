@@ -79,6 +79,8 @@ public class Village implements Iterable<Building> {
     public final java.util.Map<Long, java.util.UUID> reserved = new java.util.HashMap<>();
     /** A paid-for house that would not fit where the old one stands: to be built on a new site (the one who paid). */
     public java.util.UUID commissionElsewhere = null;
+    /** How the village knows each player: honest, peaceable, open-handed (see settlements.Fame). */
+    public final java.util.Map<java.util.UUID, int[]> fame = new java.util.HashMap<>();
     /** Chests a player put down himself inside the village: his, not the villagers'. */
     public final java.util.Set<BlockPos> playerChests = new java.util.HashSet<>();
     public final List<net.mca.settlements.House> houses = new LinkedList<>();
@@ -190,6 +192,8 @@ public class Village implements Iterable<Building> {
         for (long l : v.getLongArray("lootChests")) lootChests.add(BlockPos.fromLong(l));
         NbtCompound comNbt = v.getCompound("commissions");
         for (String k : comNbt.getKeys()) commissions.put(Long.parseLong(k), comNbt.getUuid(k));
+        NbtCompound fameNbt = v.getCompound("fame");
+        for (String k : fameNbt.getKeys()) fame.put(java.util.UUID.fromString(k), fameNbt.getIntArray(k));
         commissionElsewhere = v.containsUuid("commissionElsewhere") ? v.getUuid("commissionElsewhere") : null;
         NbtCompound resNbt = v.getCompound("reserved");
         for (String k : resNbt.getKeys()) reserved.put(Long.parseLong(k), resNbt.getUuid(k));
@@ -604,6 +608,9 @@ public class Village implements Iterable<Building> {
         NbtCompound com = new NbtCompound();
         commissions.forEach((k, u) -> com.putUuid(String.valueOf(k), u));
         v.put("commissions", com);
+        NbtCompound fm = new NbtCompound();
+        fame.forEach((k, a) -> fm.putIntArray(k.toString(), a));
+        v.put("fame", fm);
         if (commissionElsewhere != null) v.putUuid("commissionElsewhere", commissionElsewhere);
         NbtCompound res = new NbtCompound();
         reserved.forEach((k, u) -> res.putUuid(String.valueOf(k), u));

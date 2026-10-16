@@ -226,6 +226,7 @@ public final class Diplomacy {
                     defender.pushHearts(p, 5);
                 } else {
                     defender.pushHearts(p, 30);
+                    Fame.deed(world, defender, p, Fame.Deed.DEFENDED, null, 3);
                     attacker.pushHearts(p, -20);
                     p.sendMessage(Text.translatable("settlements.raid.defended", defender.getName()), false);
                 }

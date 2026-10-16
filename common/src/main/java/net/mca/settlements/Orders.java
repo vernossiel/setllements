@@ -168,6 +168,7 @@ public final class Orders {
             if (left <= 0) b.remove(o.what());
             else b.put(o.what(), new Order(o.what(), left, o.forWhom(), o.taker(), o.takerName(), o.takenAt()));
             village.pushHearts(player, Math.min(10, 1 + n / 8));
+            if (player.getWorld() instanceof net.minecraft.server.world.ServerWorld ow) Fame.deed(ow, village, player, Fame.Deed.HELP, null, Math.min(2.5, 0.5 + n / 16.0));
             Remember.note(village, player, "brought");
             Life.news(village, "player_brought", player.getName().getString(), n, net.minecraft.text.Text.translatable("settlements.need.name." + o.what().name().toLowerCase()));
             VillagerEntityMCA thanker = null;

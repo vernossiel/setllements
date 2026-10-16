@@ -34,6 +34,7 @@ public final class Ledger {
         long today = world.getTimeOfDay() / DAY;
         for (Village v : VillageManager.get(world)) {
             if (v.hall == null) continue;
+            if (v.ledgerDay >= 0 && v.ledgerDay < today) Fame.day(world, v); // a new day: old deeds fade, news travels
             if (lived(world, v)) {
                 snapshot(world, v);
                 settle(world, v);
