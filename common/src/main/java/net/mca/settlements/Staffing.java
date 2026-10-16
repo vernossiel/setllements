@@ -28,7 +28,8 @@ public final class Staffing {
                 || p == VillagerProfession.TOOLSMITH || p == VillagerProfession.MASON || p == VillagerProfession.BUTCHER
                 || p == VillagerProfession.SHEPHERD || p == VillagerProfession.ARMORER || p == VillagerProfession.FISHERMAN
                 || p == VillagerProfession.LEATHERWORKER || p == VillagerProfession.CLERIC || p == ProfessionsMCA.INNKEEPER.get()
-                || p == ProfessionsMCA.MILLER.get() || p == ProfessionsMCA.COLLIER.get() || p == ProfessionsMCA.MERCHANT.get();
+                || p == ProfessionsMCA.MILLER.get() || p == ProfessionsMCA.COLLIER.get() || p == ProfessionsMCA.MERCHANT.get()
+                || p == ProfessionsMCA.GLAZIER.get() || p == ProfessionsMCA.PRIEST.get();
     }
 
     /** The smith's trade is switched off for now (workers make their own tools); true brings it back. */
@@ -80,7 +81,8 @@ public final class Staffing {
         return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH
                 || p == VillagerProfession.MASON || p == VillagerProfession.FARMER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER
                 || p == VillagerProfession.LEATHERWORKER || p == ProfessionsMCA.INNKEEPER.get() || p == VillagerProfession.FISHERMAN
-                || p == VillagerProfession.CLERIC || p == ProfessionsMCA.MILLER.get() || p == ProfessionsMCA.COLLIER.get() || p == ProfessionsMCA.MERCHANT.get();
+                || p == VillagerProfession.CLERIC || p == ProfessionsMCA.MILLER.get() || p == ProfessionsMCA.COLLIER.get() || p == ProfessionsMCA.MERCHANT.get()
+                || p == ProfessionsMCA.GLAZIER.get() || p == ProfessionsMCA.PRIEST.get();
     }
 
     /** Somebody in the village works at this trade. */
@@ -163,6 +165,8 @@ public final class Staffing {
         if (p >= 6 && Buildings.has(v, "charcoal")) roles.add(new Role(ProfessionsMCA.COLLIER.get(), 1));
         if (p >= 8 && (Buildings.has(v, "chapel") || p >= 12)) roles.add(new Role(VillagerProfession.CLERIC, 1));
         if (p >= 8 && Buildings.has(v, "market")) roles.add(new Role(ProfessionsMCA.MERCHANT.get(), 1));
+        if (p >= 10 && Buildings.has(v, "chapel")) roles.add(new Role(ProfessionsMCA.PRIEST.get(), 1));
+        if (p >= 7 && (Buildings.has(v, "mason") || v.smithyBuilt)) roles.add(new Role(ProfessionsMCA.GLAZIER.get(), 1));
 
         // trades that are switched off for now go back to the pool
         for (VillagerEntityMCA r : adults) {

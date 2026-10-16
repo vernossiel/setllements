@@ -1728,8 +1728,7 @@ public final class Builder {
             }
             case GLASS: {
                 if (take(village, GLASS, 1)) return Blocks.GLASS_PANE.getDefaultState();
-                // no glass yet: sand from the stores is melted into a pane, otherwise a wooden lattice keeps the window
-                if (take(village, s -> s.isOf(Items.SAND) || s.isOf(Items.RED_SAND), 1)) return Blocks.GLASS_PANE.getDefaultState();
+                // no glass (that is the glazier's work, or the merchant's): a wooden lattice keeps the window
                 if (!takePlanks(village, 1)) return null;
                 return pal.fence().getDefaultState();
             }

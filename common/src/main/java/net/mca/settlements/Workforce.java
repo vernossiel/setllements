@@ -63,7 +63,8 @@ public final class Workforce {
                 || p == VillagerProfession.MASON || p == VillagerProfession.ARMORER || p == VillagerProfession.CLERIC
                 || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH || p == VillagerProfession.LEATHERWORKER
                 || p == net.mca.ProfessionsMCA.INNKEEPER.get() || p == net.mca.ProfessionsMCA.MILLER.get()
-                || p == net.mca.ProfessionsMCA.COLLIER.get() || p == net.mca.ProfessionsMCA.MERCHANT.get();
+                || p == net.mca.ProfessionsMCA.COLLIER.get() || p == net.mca.ProfessionsMCA.MERCHANT.get()
+                || p == net.mca.ProfessionsMCA.GLAZIER.get() || p == net.mca.ProfessionsMCA.PRIEST.get();
     }
 
     /** Server side, once per second. */
@@ -326,6 +327,8 @@ public final class Workforce {
             else if (prof == net.mca.ProfessionsMCA.MILLER.get() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw1) worked = Crafts.miller(v, village, cw1);
             else if (prof == net.mca.ProfessionsMCA.COLLIER.get() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw2) worked = Crafts.collier(v, village, cw2);
             else if (prof == net.mca.ProfessionsMCA.MERCHANT.get() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw3) worked = Crafts.merchant(v, village, cw3);
+            else if (prof == net.mca.ProfessionsMCA.GLAZIER.get() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw4) worked = Crafts.glazier(v, village, cw4);
+            else if (prof == net.mca.ProfessionsMCA.PRIEST.get()) worked = Healing.work(v, village); // between services he tends the sick and the hurt
             else if ((prof == VillagerProfession.FLETCHER || prof == VillagerProfession.TOOLSMITH) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld lw2) {
                 // in a village with no mason yet, the woodman breaks stone too when the wood is in and the stone is out
                 if (quarry(v, village, lw2)) {

@@ -156,6 +156,81 @@ public final class Crafts {
         return true;
     }
 
+    // ---------- the glazier ----------
+
+    private static final Map<UUID, BlockPos> SAND = new HashMap<>();
+
+    /**
+     * Glass for the windows: he digs sand on the shore or the dunes, carries it to the workshop's furnace and melts it,
+     * and hands the panes in. Three sand make eight panes. A village with a glazier has real windows, not lattices.
+     */
+    public static boolean glazier(VillagerEntityMCA v, Village village, ServerWorld world) {
+        if (count(village, s -> s.isOf(Items.GLASS_PANE)) >= 96) return false; // enough in stock
+        Built shop = Buildings.find(village, "mason");
+        if (shop == null) shop = Buildings.find(village, "smithy");
+        if (shop == null) return false;
+        int sand = 0;
+        for (int i = 0; i < v.getInventory().size(); i++) if (v.getInventory().getStack(i).isIn(ItemTags.SAND)) sand += v.getInventory().getStack(i).getCount();
+        sand += count(village, s -> s.isIn(ItemTags.SAND));
+        if (sand >= 3) { // to the furnace with it
+            Doing.set(v, "settlements.doing.glazier.melt");
+            BlockPos spot = spot(world, shop);
+            if (!at(v, spot)) return true;
+            Anim.set(v, Anim.Act.FEED, 30); // the pipe in the fire, turning
+            world.spawnParticles(ParticleTypes.FLAME, spot.getX() + 0.5, spot.getY() + 1.2, spot.getZ() + 0.5, 2, 0.2, 0.1, 0.2, 0.01);
+            if (!batch(v, 12)) return true;
+            int need = 3;
+            var inv = v.getInventory();
+            for (int i = 0; i < inv.size() && need > 0; i++) {
+                ItemStack s = inv.getStack(i);
+                if (!s.isIn(ItemTags.SAND)) continue;
+                int d = Math.min(need, s.getCount());
+                s.decrement(d);
+                need -= d;
+            }
+            if (need > 0) take(village, s -> s.isIn(ItemTags.SAND), need);
+            Workforce.addToTreasury(village, new ItemStack(Items.GLASS_PANE, 8));
+            world.playSound(null, spot, SoundEvents.BLOCK_GLASS_PLACE, SoundCategory.BLOCKS, 0.6f, 1.2f);
+            if (world.random.nextInt(3) == 0) Speech.sayAny(v, "settlements.say.glazier", 3);
+            return true;
+        }
+        // out for sand: the nearest bare sand within reach
+        Doing.set(v, "settlements.doing.glazier.sand");
+        if (Dig.busy(v) || Dig.collect(v, 4)) return true; // digging, or picking up what he dug
+        BlockPos at = SAND.get(v.getUuid());
+        if (at == null || !world.getBlockState(at).isIn(net.minecraft.registry.tag.BlockTags.SAND)) {
+            at = findSand(world, v.getBlockPos());
+            if (at == null) return false;
+            SAND.put(v.getUuid(), at);
+        }
+        if (v.squaredDistanceTo(Vec3d.ofCenter(at)) > 3.5 * 3.5) {
+            Move.to(v, at.getX() + 0.5, at.getY() + 1, at.getZ() + 0.5, 0.6);
+            return true;
+        }
+        Gear.equipShovel(v, village);
+        Dig.start(v, at);
+        return true;
+    }
+
+    private static BlockPos findSand(ServerWorld world, BlockPos from) {
+        BlockPos best = null;
+        double bd = Double.MAX_VALUE;
+        for (int dx = -48; dx <= 48; dx += 2) {
+            for (int dz = -48; dz <= 48; dz += 2) {
+                int x = from.getX() + dx, z = from.getZ() + dz;
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+                BlockPos top = new BlockPos(x, world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z) - 1, z);
+                if (!world.getBlockState(top).isIn(net.minecraft.registry.tag.BlockTags.SAND) || !world.getFluidState(top.up()).isEmpty()) continue;
+                double d = top.getSquaredDistance(from);
+                if (d < bd) {
+                    bd = d;
+                    best = top;
+                }
+            }
+        }
+        return best;
+    }
+
     // ---------- the stores ----------
 
     static int count(Village village, Predicate<ItemStack> what) {

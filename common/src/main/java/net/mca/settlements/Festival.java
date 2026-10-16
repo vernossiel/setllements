@@ -60,8 +60,61 @@ public final class Festival {
             w = null;
         }
         if (w != null) return wedding(v, world, w);
+        if (service(timeOfDay) && Buildings.has(village, "chapel")) return church(v, village, world);
         if (fair(timeOfDay) && !Workforce.isRestDay(timeOfDay)) return fairDay(v, village, world);
         return false;
+    }
+
+    /** The rest day's morning: the service at the chapel. */
+    public static boolean service(long timeOfDay) {
+        long t = timeOfDay % 24000L;
+        return Workforce.isRestDay(timeOfDay) && t >= 1500 && t < 4000;
+    }
+
+    /** The priest of the village, if it has one. */
+    static VillagerEntityMCA priest(ServerWorld world, Village village) {
+        for (VillagerEntityMCA r : village.getResidents(world)) if (r.isAlive() && r.getProfession() == net.mca.ProfessionsMCA.PRIEST.get()) return r;
+        return null;
+    }
+
+    /**
+     * The service: the priest before the altar at the far end, facing them; the village on the benches before him,
+     * listening, heads bowed for the prayers, a hymn sung together. Without a priest the elder says a few words.
+     */
+    private static boolean church(VillagerEntityMCA v, Village village, ServerWorld world) {
+        Built chapel = Buildings.find(village, "chapel");
+        VillagerEntityMCA priest = priest(world, village);
+        VillagerEntityMCA leader = priest != null ? priest : Plan.elder(world, village);
+        int[] fp = chapel.footprint();
+        BlockPos altar = Crafts.spot(world, chapel); // the middle of the nave; the priest a few steps further in
+        BlockPos front = chapel.point(fp[0] / 2, 0, Math.max(1, fp[1] - 3));
+        long t = world.getTimeOfDay() % 24000L;
+        if (v == leader) {
+            Doing.set(v, "settlements.doing.fest.preach");
+            if (v.squaredDistanceTo(Vec3d.ofBottomCenter(front)) > 2) {
+                Move.to(v, front.getX() + 0.5, front.getY(), front.getZ() + 0.5, 0.5);
+                return true;
+            }
+            v.getNavigation().stop();
+            Gaze.at(v, altar.getX() + 0.5, altar.getY() + 1.4, altar.getZ() + 0.5);
+            Anim.set(v, Anim.Act.TALK, 40);
+            if (world.random.nextInt(14) == 0) Speech.sayAny(v, priest != null ? "settlements.say.fest.sermon" : "settlements.say.fest.elderword", 5);
+            return true;
+        }
+        Doing.set(v, "settlements.doing.fest.service");
+        // a place on the benches: spread over the nave by who he is
+        int seat = Math.floorMod(v.getUuid().hashCode(), 9);
+        BlockPos at = altar.add(seat % 3 - 1, 0, seat / 3 - 1);
+        if (v.squaredDistanceTo(Vec3d.ofBottomCenter(at)) > 2.5 * 2.5) {
+            Move.to(v, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 0.5);
+            return true;
+        }
+        v.getNavigation().stop();
+        if (leader != null) Gaze.at(v, leader, 30f, 30f);
+        // the prayers: heads bowed; and a hymn, all together, towards the end
+        if ((t / 400) % 3 == 1) Pose.crouch(v, 40);
+        if (t > 3300 && world.random.nextInt(25) == 0) Speech.sayAny(v, "settlements.say.fest.hymn", 3);
+        return true;
     }
 
     private static boolean wedding(VillagerEntityMCA v, ServerWorld world, Wedding w) {
@@ -79,6 +132,20 @@ public final class Festival {
             v.getNavigation().stop();
             if (world.getEntity(v.getUuid().equals(w.a()) ? w.b() : w.a()) instanceof VillagerEntityMCA other) Gaze.at(v, other, 30f, 30f);
             if (world.random.nextInt(25) == 0) Speech.sayAny(v, "settlements.say.fest.vow", 3);
+            return true;
+        }
+        if (v.getProfession() == net.mca.ProfessionsMCA.PRIEST.get()) {
+            // the priest stands before the couple and marries them
+            Doing.set(v, "settlements.doing.fest.marry");
+            Vec3d spot = c.add(0, 0, 1.8);
+            if (v.squaredDistanceTo(spot) > 1.2) {
+                Move.to(v, spot.x, spot.y, spot.z, 0.5);
+                return true;
+            }
+            v.getNavigation().stop();
+            Gaze.at(v, c.x, c.y + 1.4, c.z);
+            Anim.set(v, Anim.Act.TALK, 40);
+            if (world.random.nextInt(20) == 0) Speech.sayAny(v, "settlements.say.fest.marry", 3);
             return true;
         }
         Doing.set(v, "settlements.doing.fest.guest");
