@@ -159,6 +159,12 @@ public final class Justice {
             it.remove();
             ServerPlayerEntity p = world.getServer().getPlayerManager().getPlayer(s.player());
             String what = s.crime().name().toLowerCase();
+            if (s.seen() && p != null && s.crime() == Crime.THEFT && p.getWorld() == world) {
+                // he was seen about the place: the watch will want a look in his pockets
+                Speech.sayNow(finder, "settlements.justice.found." + what + ".seen", p.getName());
+                SEARCHES.put(p.getUuid(), new Search(village.getId(), s.items(), s.value(), now + 20 * 180));
+                continue;
+            }
             if (s.seen() && p != null) {
                 Speech.sayNow(finder, "settlements.justice.found." + what + ".seen", p.getName());
                 report(world, village, p, s.crime(), s.value(), s.items(), false);
@@ -174,6 +180,7 @@ public final class Justice {
 
     public static void tick(ServerWorld world) {
         if (!SUSPICIONS.isEmpty()) discover(world);
+        if (!SEARCHES.isEmpty()) searches(world);
         if (CASES.isEmpty()) return;
         long now = world.getTime();
         for (Iterator<Map.Entry<UUID, Case>> it = CASES.entrySet().iterator(); it.hasNext(); ) {
@@ -249,9 +256,24 @@ public final class Justice {
                         it.remove();
                         continue;
                     }
-                    if (c.inStocks && c.hold != null && p.squaredDistanceTo(c.hold.getX() + 0.5, c.hold.getY(), c.hold.getZ() + 0.5) > 0.6) {
-                        // the stocks hold him fast: back in, head and hands through the board
-                        p.teleport(world, c.hold.getX() + 0.5, c.hold.getY(), c.hold.getZ() + 0.5, 180f, p.getPitch());
+                    if (c.inStocks && c.hold != null && !p.hasVehicle()) {
+                        if (p.squaredDistanceTo(c.hold.getX() + 0.5, c.hold.getY(), c.hold.getZ() + 0.5) > 4) {
+                            // wrenched himself out of the stocks and off: a runaway now
+                            c.stage = Stage.WANTED;
+                            c.since = now;
+                            c.inStocks = false;
+                            c.value += 6;
+                            p.removeStatusEffect(StatusEffects.MINING_FATIGUE);
+                            p.removeStatusEffect(StatusEffects.WEAKNESS);
+                            p.sendMessage(Text.translatable("settlements.justice.escaped").formatted(Formatting.RED), false);
+                            Life.forget(village, "crime.stocks", p.getName().getString());
+                            Life.news(village, "crime.escape", p.getName().getString());
+                            continue;
+                        }
+                        // the board holds him: back on his knees
+                        Seat.kneel(p, c.hold.getX() + 0.5, c.hold.getY(), c.hold.getZ() + 0.5, 180f);
+                    } else if (c.inStocks) {
+                        jeers(world, village, p, c, now);
                     } else if (!c.inStocks && c.hold != null && p.squaredDistanceTo(c.hold.getX() + 0.5, c.hold.getY(), c.hold.getZ() + 0.5) > 9) {
                         // broke out
                         c.stage = Stage.WANTED;
@@ -640,15 +662,15 @@ public final class Justice {
             // the stocks on the square, on a platform for all to see: he cannot move until his time is up
             BlockPos spot = pillory(world, village);
             p.teleport(world, spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, 180f, 10f); // facing the square, the board at his neck
+            Seat.kneel(p, spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, 180f); // on his knees, head and hands through the board
             c.inStocks = true;
             int ticks = seconds * 20;
-            p.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, ticks, 6, false, false));
-            p.addStatusEffect(new StatusEffectInstance(StatusEffects.JUMP_BOOST, ticks, 128, false, false));
             p.addStatusEffect(new StatusEffectInstance(StatusEffects.MINING_FATIGUE, ticks, 4, false, false));
             p.addStatusEffect(new StatusEffectInstance(StatusEffects.WEAKNESS, ticks, 4, false, false));
             c.hold = spot;
             p.sendMessage(Text.translatable("settlements.justice.stocks", seconds).formatted(Formatting.GOLD), false);
             Life.news(village, "crime.stocks", p.getName().getString());
+            stocksWindow(world, village, p, c);
         }
     }
 
@@ -738,6 +760,8 @@ public final class Justice {
     }
 
     private static void release(ServerWorld world, Village village, ServerPlayerEntity p, Case c) {
+        Seat.rise(p);
+        Life.forget(village, "crime.stocks", p.getName().getString());
         Built jail = Buildings.find(village, "jail");
         if (jail != null && c.hold != null) {
             int[] je = Tiers.jailExit(jail.type());
@@ -757,6 +781,164 @@ public final class Justice {
         c.until = world.getTime() + 24000L;
         p.sendMessage(Text.translatable("settlements.justice.exiled").formatted(Formatting.DARK_RED), false);
         Life.news(village, "crime.exiled", p.getName().getString());
+    }
+
+    // ---------- a look in his pockets ----------
+
+    private record Search(int villageId, Map<Item, Integer> items, double value, long until) {
+    }
+
+    private static final Map<UUID, Search> SEARCHES = new HashMap<>();
+    private static final java.util.Set<UUID> ASKED = new java.util.HashSet<>();
+
+    /** A guard goes up to the suspect and asks to see what he has on him. */
+    private static void searches(ServerWorld world) {
+        long now = world.getTime();
+        for (Iterator<Map.Entry<UUID, Search>> it = SEARCHES.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<UUID, Search> e = it.next();
+            ServerPlayerEntity p = world.getServer().getPlayerManager().getPlayer(e.getKey());
+            if (p == null || now > e.getValue().until()) {
+                it.remove();
+                ASKED.remove(e.getKey());
+                continue;
+            }
+            if (p.getWorld() != world || ASKED.contains(p.getUuid())) continue;
+            VillagerEntityMCA guard = nearestGuard(world, p, 64);
+            if (guard == null) continue;
+            if (guard.squaredDistanceTo(p) > 16) {
+                guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(p, 0.6f, 2));
+                continue;
+            }
+            ASKED.add(p.getUuid());
+            Gaze.at(guard, p, 30f, 30f);
+            List<Text> labels = List.of(Text.translatable("settlements.justice.button.search_allow"), Text.translatable("settlements.justice.button.search_refuse"));
+            net.mca.cobalt.network.NetworkHandler.sendToPlayer(new net.mca.network.s2c.JusticeScreenRequest(guard.getId(), guard.getName(),
+                    List.of(Text.translatable("settlements.justice.search.ask", p.getName())), new String[]{"search allow", "search refuse"}, labels, 30), p);
+        }
+    }
+
+    /** /settle search allow|refuse */
+    public static int search(ServerPlayerEntity p, boolean allow) {
+        Search s = SEARCHES.remove(p.getUuid());
+        ASKED.remove(p.getUuid());
+        if (s == null) return 0;
+        ServerWorld world = p.getServerWorld();
+        Village village = VillageManager.get(world).getOrEmpty(s.villageId()).orElse(null);
+        VillagerEntityMCA guard = nearestGuard(world, p, 32);
+        if (village == null) return 0;
+        if (!allow) {
+            talk(world, village, guard, p, "settlements.justice.search.refused", world.getTime());
+            village.pushHearts(p, -3);
+            if (guard != null) guard.settlementsWatch = p.getUuid(); // he keeps an eye on him from now on
+            Life.news(village, "search.refused", p.getName().getString());
+            return 1;
+        }
+        // what of the missing he has on him
+        Map<Item, Integer> found = new HashMap<>();
+        for (Map.Entry<Item, Integer> m : s.items().entrySet()) {
+            int have = p.getInventory().count(m.getKey());
+            if (have > 0) found.put(m.getKey(), Math.min(have, m.getValue()));
+        }
+        if (found.isEmpty()) {
+            talk(world, village, guard, p, "settlements.justice.search.clean", world.getTime());
+            village.pushHearts(p, 2); // he let them look, and was in the clear
+            return 1;
+        }
+        talk(world, village, guard, p, "settlements.justice.search.found", world.getTime());
+        report(world, village, p, Crime.THEFT, s.value(), found, true);
+        return 1;
+    }
+
+    // ---------- the stocks: the village about him, and the ways out ----------
+
+    private static final Map<UUID, Long> JEERED = new HashMap<>();
+
+    /** The square goes by him: a look, a laugh, a word, a child's taunt - and now and then somebody kind with water. */
+    private static void jeers(ServerWorld world, Village village, ServerPlayerEntity p, Case c, long now) {
+        if (now < JEERED.getOrDefault(p.getUuid(), 0L)) return;
+        List<VillagerEntityMCA> by = world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(10, 3, 10),
+                v -> v.isAlive() && !v.isSleeping() && v.canSee(p) && !v.isGuard());
+        if (by.isEmpty()) return;
+        JEERED.put(p.getUuid(), now + 20 * (15 + world.random.nextInt(20)));
+        VillagerEntityMCA v = by.get(world.random.nextInt(by.size()));
+        Gaze.at(v, p, 30f, 30f);
+        int hearts = village.getReputation(p);
+        String key = v.isBaby() ? "settlements.say.stocks.child" : hearts > 20 && world.random.nextBoolean() ? "settlements.say.stocks.kind" : "settlements.say.stocks.jeer";
+        Speech.sayAny(v, key, 3, p.getName());
+        if (key.endsWith("kind") && world.random.nextInt(3) == 0) {
+            p.getHungerManager().add(2, 0.3f); // a drink of water, a crust
+            Anim.set(v, Anim.Act.FEED, 30);
+        }
+    }
+
+    /** In the stocks: the answers he has (the time to serve, a fine to buy his way out, a plea for mercy). */
+    private static void stocksWindow(ServerWorld world, Village village, ServerPlayerEntity p, Case c) {
+        java.util.List<String> o = new java.util.ArrayList<>(List.of("serve", "buyout"));
+        if (!c.pleaded) o.add("mercy");
+        List<Text> labels = new java.util.ArrayList<>();
+        for (String s : o) {
+            MutableText l = Text.translatable("settlements.justice.button." + s);
+            if (s.equals("buyout")) l.append(Text.literal(" [" + buyout(world, c) + "◆]").formatted(Formatting.GRAY));
+            if (s.equals("mercy")) l.append(Text.literal(" [" + (int) (pleadChance(p, village, c) * 100) + "%]").formatted(Formatting.GRAY));
+            labels.add(l);
+        }
+        VillagerEntityMCA guard = nearestGuard(world, p, 32);
+        net.mca.cobalt.network.NetworkHandler.sendToPlayer(new net.mca.network.s2c.JusticeScreenRequest(guard != null ? guard.getId() : -1,
+                guard != null ? guard.getName() : Text.literal(village.getName()),
+                List.of(Text.translatable("settlements.justice.stocks.talk", p.getName(), (int) Math.max(0, (c.until - world.getTime()) / 20))),
+                o.toArray(new String[0]), labels, 0), p);
+    }
+
+    private static int buyout(ServerWorld world, Case c) {
+        return Math.max(2, (int) Math.ceil((c.until - world.getTime()) / 20.0 / 30)); // an emerald for each half-minute left
+    }
+
+    /** /settle buyout: emeralds for the time left. */
+    public static int buyoutStocks(ServerPlayerEntity p) {
+        Case c = CASES.get(p.getUuid());
+        if (c == null || c.stage != Stage.SERVING) return 0;
+        ServerWorld world = p.getServerWorld();
+        Village village = VillageManager.get(world).getOrEmpty(c.villageId).orElse(null);
+        int cost = buyout(world, c);
+        if (village == null || p.getInventory().count(Items.EMERALD) < cost) {
+            p.sendMessage(Text.translatable("settlements.justice.cannot_pay", cost).formatted(Formatting.RED), true);
+            return 0;
+        }
+        int left = cost;
+        for (int i = 0; i < p.getInventory().size() && left > 0; i++) {
+            ItemStack s = p.getInventory().getStack(i);
+            if (!s.isOf(Items.EMERALD)) continue;
+            int d = Math.min(left, s.getCount());
+            s.decrement(d);
+            left -= d;
+        }
+        Workforce.addToTreasury(village, new ItemStack(Items.EMERALD, cost));
+        release(world, village, p, c);
+        CASES.remove(p.getUuid());
+        return 1;
+    }
+
+    /** /settle mercy: a plea from the stocks; the village that thinks well of him lets him off early. */
+    public static int mercy(ServerPlayerEntity p) {
+        Case c = CASES.get(p.getUuid());
+        if (c == null || c.stage != Stage.SERVING || c.pleaded) return 0;
+        ServerWorld world = p.getServerWorld();
+        Village village = VillageManager.get(world).getOrEmpty(c.villageId).orElse(null);
+        if (village == null) return 0;
+        c.pleaded = true;
+        VillagerEntityMCA guard = nearestGuard(world, p, 32);
+        if (world.random.nextDouble() < pleadChance(p, village, c)) {
+            c.until = world.getTime() + (c.until - world.getTime()) / 3;
+            talk(world, village, guard, p, "settlements.justice.mercy.ok", world.getTime());
+        } else {
+            talk(world, village, guard, p, "settlements.justice.mercy.no", world.getTime());
+        }
+        return 1;
+    }
+
+    /** /settle serve: he takes it. */
+    public static int serve(ServerPlayerEntity p) {
+        return 1;
     }
 
     // ---------- for the village's rogues (see Rogue) ----------
@@ -793,6 +975,8 @@ public final class Justice {
         if (c == null || c.stage != Stage.SERVING) return;
         ServerWorld world = p.getServerWorld();
         Village village = VillageManager.get(world).getOrEmpty(c.villageId).orElse(null);
+        Seat.rise(p);
+        if (village != null) Life.forget(village, "crime.stocks", p.getName().getString());
         p.removeStatusEffect(StatusEffects.SLOWNESS);
         p.removeStatusEffect(StatusEffects.JUMP_BOOST);
         p.removeStatusEffect(StatusEffects.MINING_FATIGUE);

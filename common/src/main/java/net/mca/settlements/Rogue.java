@@ -58,19 +58,60 @@ public final class Rogue {
 
     // ---------- in the stocks himself ----------
 
+    private static final Map<UUID, Integer> PICKING = new HashMap<>(); // seconds a player has been working the board loose
+
     private static boolean stocks(VillagerEntityMCA v, Village village, ServerWorld world, long until) {
         if (world.getTime() >= until) {
             STOCKED.remove(v.getUuid());
+            Seat.rise(v);
             Speech.sayNow(v, "settlements.say.rogue.released");
             return false;
         }
         BlockPos at = Justice.pillory(world, village);
-        if (v.squaredDistanceTo(Vec3d.ofBottomCenter(at)) > 1) v.refreshPositionAndAngles(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 180f, 0f);
-        v.getNavigation().stop();
         if (v.isSleeping()) v.wakeUp();
+        if (!v.hasVehicle()) Seat.kneel(v, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 180f); // on his knees, head and hands through the board
+        v.getNavigation().stop();
         Doing.set(v, "settlements.doing.rogue.stocks");
+        // a player crouched by the board, working at the pin (a few seconds): he is let out
+        net.minecraft.server.network.ServerPlayerEntity helper = (net.minecraft.server.network.ServerPlayerEntity) world.getClosestPlayer(v, 2.5);
+        if (helper != null && helper.isSneaking() && !helper.isSpectator()) {
+            int t = PICKING.merge(v.getUuid(), 1, Integer::sum);
+            if (t == 1) Speech.sayNow(v, "settlements.say.rogue.freeing");
+            if (t >= 3) {
+                PICKING.remove(v.getUuid());
+                freedBy(v, village, world, helper);
+                return false;
+            }
+        } else PICKING.remove(v.getUuid());
         if (world.random.nextInt(60) == 0) Speech.sayAny(v, "settlements.say.rogue.stocks", 3);
         return true;
+    }
+
+    private static final Map<UUID, UUID> OWES = new HashMap<>(); // rogue -> the player who let him out
+
+    /** Let out of the stocks by a player: off he goes, owing him; if anyone saw it, the player answers for it. */
+    private static void freedBy(VillagerEntityMCA v, Village village, ServerWorld world, net.minecraft.server.network.ServerPlayerEntity p) {
+        STOCKED.remove(v.getUuid());
+        Seat.rise(v);
+        OWES.put(v.getUuid(), p.getUuid());
+        Speech.sayNow(v, "settlements.say.rogue.thanks", p.getName());
+        // a little of what he had put by, for his saviour
+        int coins = Math.max(0, v.settlementsPurse / 2);
+        if (coins >= 10) p.giveItemStack(new ItemStack(Items.EMERALD, coins / 10));
+        v.settlementsPurse -= coins;
+        boolean seen = !world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(14, 4, 14),
+                o -> o != v && o.isAlive() && !o.isSleeping() && !o.isBaby() && o.canSee(p)).isEmpty();
+        if (seen) {
+            Justice.report(world, village, p, Justice.Crime.HARASSMENT, 10, new java.util.HashMap<>(), true);
+            Life.news(village, "rogue.freed", v.getName().getString(), p.getName().getString());
+        } else {
+            Life.news(village, "rogue.vanished", v.getName().getString());
+        }
+    }
+
+    /** The rogue a player let out of the stocks owes him: he tips him off (see Talk) and offers him a hand. */
+    public static boolean owes(VillagerEntityMCA v, net.minecraft.entity.player.PlayerEntity p) {
+        return p.getUuid().equals(OWES.get(v.getUuid()));
     }
 
     // ---------- a little something from the stores ----------
@@ -158,7 +199,7 @@ public final class Rogue {
         Gaze.at(v, target, 30f, 30f);
         GOING_TO.remove(v.getUuid());
         Justice.markOffered(target);
-        int price = 4 + Justice.secondsLeft(target) / 30;
+        int price = owes(v, target) ? 0 : 4 + Justice.secondsLeft(target) / 30; // one he owes, he lets out for nothing
         OFFERS.put(target.getUuid(), new Offer(v.getUuid(), price, world.getTime() + 20 * 30));
         List<Text> labels = List.of(
                 Text.translatable("settlements.rogue.button.accept", price),
@@ -179,7 +220,7 @@ public final class Rogue {
             Speech.sayNow(rogue, "settlements.say.rogue.refused");
             return 1;
         }
-        if (p.getInventory().count(Items.EMERALD) < o.price()) {
+        if (o.price() > 0 && p.getInventory().count(Items.EMERALD) < o.price()) {
             Speech.sayNow(rogue, "settlements.say.rogue.nomoney");
             return 0;
         }
@@ -191,8 +232,9 @@ public final class Rogue {
             s.decrement(d);
             left -= d;
         }
-        rogue.getInventory().addStack(new ItemStack(Items.EMERALD, o.price()));
+        if (o.price() > 0) rogue.getInventory().addStack(new ItemStack(Items.EMERALD, o.price()));
         double roll = world.random.nextDouble();
+        if (o.price() == 0) roll = Math.max(roll, 0.15); // a friend does not cheat him
         Village village = Village.findNearest(rogue).orElse(null);
         if (roll < 0.15) { // took the money and laughed
             Speech.sayNow(rogue, "settlements.say.rogue.cheat");

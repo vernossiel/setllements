@@ -56,6 +56,35 @@ public final class Seat {
         v.setHeadYaw(yaw);
     }
 
+    /** Kneeling (riding an unseen seat low down), held there: in the stocks, his head and hands through the board. */
+    public static void kneel(net.minecraft.entity.LivingEntity who, double x, double y, double z, float yaw) {
+        if (!(who.getWorld() instanceof ServerWorld world)) return;
+        if (who.hasVehicle()) who.stopRiding();
+        ArmorStandEntity stand = new ArmorStandEntity(EntityType.ARMOR_STAND, world);
+        NbtCompound n = new NbtCompound();
+        n.putBoolean("Marker", true);
+        n.putBoolean("Invisible", true);
+        n.putBoolean("NoGravity", true);
+        n.putBoolean("Invulnerable", true);
+        stand.readCustomDataFromNbt(n);
+        stand.refreshPositionAndAngles(x, y - 0.45, z, yaw, 0);
+        stand.addCommandTag(TAG);
+        stand.addCommandTag("settlements_stocks");
+        world.spawnEntity(stand);
+        who.startRiding(stand, true);
+        who.setYaw(yaw);
+        who.setBodyYaw(yaw);
+        who.setHeadYaw(yaw);
+    }
+
+    /** Up from the stocks' seat (and the seat gone). */
+    public static void rise(net.minecraft.entity.LivingEntity who) {
+        Entity e = who.getVehicle();
+        if (!(e instanceof ArmorStandEntity) || !e.getCommandTags().contains(TAG)) return;
+        who.stopRiding();
+        e.discard();
+    }
+
     /** Sits on a seat block (stair, slab), or on the ground where he stands. */
     public static void sitHere(VillagerEntityMCA v, float yaw) {
         if (!(v.getWorld() instanceof ServerWorld world)) return;

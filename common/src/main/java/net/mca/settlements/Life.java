@@ -55,6 +55,13 @@ public final class Life {
         while (q.size() > 8) q.removeLast();
     }
 
+    /** A piece of news that is no longer true (he is out of the stocks): forgotten. */
+    public static void forget(Village village, String key, String arg) {
+        if (village == null) return;
+        Deque<News> q = NEWS.get(village.getId());
+        if (q != null) q.removeIf(n -> n.key().equals(key) && n.args().length > 0 && arg.equals(String.valueOf(n.args()[0])));
+    }
+
     public static List<News> news(Village village) {
         Deque<News> q = NEWS.get(village.getId());
         if (q == null) return List.of();
