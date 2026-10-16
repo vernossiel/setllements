@@ -27,7 +27,13 @@ abstract class MixinBipedEntityModelStocks<T extends LivingEntity> {
 
     @Inject(method = "setAngles(Lnet/minecraft/entity/LivingEntity;FFFFF)V", at = @At("TAIL"))
     private void settlements$stocks(T entity, float limbAngle, float limbDistance, float animationProgress, float headYaw, float headPitch, CallbackInfo ci) {
-        if (!Seat.inStocks(entity)) return;
+        if (!Seat.inStocks(entity)) {
+            // the model is shared by everyone drawn with it, and the game itself never moves the head back from the
+            // board: after the stocks the head (his, and the next one's) stayed thrust forward
+            head.pivotZ = 0;
+            hat.pivotZ = 0;
+            return;
+        }
         // bent over: the trunk tipped forward from the hips
         body.pitch = 0.75f;
         body.yaw = 0;

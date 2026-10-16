@@ -73,6 +73,11 @@ public final class Move {
             v.getBrain().forget(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET);
     }
 
+    /** Standing where he is on an errand of ours (see hold): nothing else walks him off. */
+    public static void stay(VillagerEntityMCA v) {
+        remember(v, v.getBlockPos());
+    }
+
     private static void remember(VillagerEntityMCA v, BlockPos goal) {
         v.settlementsGoal = goal;
         v.settlementsGoalAt = v.getWorld().getTime();

@@ -373,7 +373,13 @@ public final class Justice {
         if (c != null && (c.stage == Stage.SERVING || c.stage == Stage.EXILED)) return false;
         Doing.set(g, "settlements.doing.guard.case", p.getName());
         if (g.squaredDistanceTo(p) > 2.8 * 2.8) Move.to(g, p, 0.6);
-        else g.getNavigation().stop();
+        else {
+            // stood before him, he stays there: the old patrol and wandering tasks led him off a step and he came running
+            // back, to and fro, all through the arrest
+            g.getNavigation().stop();
+            g.getBrain().forget(MemoryModuleType.WALK_TARGET);
+            Move.stay(g);
+        }
         Gaze.at(g, p, 30f, 30f);
         return true;
     }
