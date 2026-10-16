@@ -3,9 +3,7 @@ package net.mca.settlements;
 import net.mca.entity.VillagerEntityMCA;
 import net.mca.server.world.data.Village;
 import net.mca.server.world.data.VillageManager;
-import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.mob.HostileEntity;
-import net.minecraft.item.ArmorItem;
 import net.minecraft.item.AxeItem;
 import net.minecraft.item.BowItem;
 import net.minecraft.item.CrossbowItem;
@@ -23,8 +21,8 @@ import java.util.UUID;
 /**
  * How the player carries himself in the village, and how the village takes it. A drawn weapon in the street with no
  * danger about makes people stare and step back, and a guard comes over and tells him to put it away (and remembers if
- * he does not). Blood on him (badly hurt) - they ask after him, or keep their distance. Clanking through the lanes in
- * full armour - a remark. Running full tilt between the houses - a look and a word. In somebody's house at night -
+ * he does not). Badly hurt - they ask after him and send him to the healer. Running full tilt between the houses - a
+ * look and a word. In somebody's house at night -
  * the household wakes and shouts, and the village hears of it.
  */
 public final class Bearing {
@@ -83,7 +81,6 @@ public final class Bearing {
             String key = null;
             if (p.getHealth() < p.getMaxHealth() * 0.4f) key = "settlements.say.bearing.hurt";
             else if (p.isSprinting() && world.random.nextInt(4) == 0) key = "settlements.say.bearing.running";
-            else if (armoured(p) && world.random.nextInt(8) == 0) key = "settlements.say.bearing.armour";
             else if (night(world) && inHouse(village, p) && v.getResidency().getHome().map(h -> h.getPos().isWithinDistance(p.getBlockPos(), 8)).orElse(false)) {
                 Speech.sayNow(v, "settlements.say.bearing.intruder", p.getName());
                 village.pushHearts(p, -3);
@@ -96,13 +93,6 @@ public final class Bearing {
             Gaze.at(v, p, 30f, 30f);
             Speech.sayAny(v, key, 3, p.getName());
         }
-    }
-
-    private static boolean armoured(ServerPlayerEntity p) {
-        int pieces = 0;
-        for (EquipmentSlot s : new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET})
-            if (p.getEquippedStack(s).getItem() instanceof ArmorItem) pieces++;
-        return pieces >= 3;
     }
 
     private static boolean night(ServerWorld world) {
