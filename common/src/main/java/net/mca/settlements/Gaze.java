@@ -93,6 +93,10 @@ public final class Gaze {
         for (Entity e : world.getOtherEntities(v, v.getBoundingBox().expand(12, 4, 12), e -> e.isAlive() && !e.isSpectator())) {
             double d = Math.sqrt(e.squaredDistanceTo(v));
             if (d < 1.2) continue;
+            // only what he can see, before him: nobody looks through a wall, or twists his neck round to his back
+            double off = Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(
+                    Math.toDegrees(Math.atan2(e.getZ() - v.getZ(), e.getX() - v.getX())) - 90 - v.getBodyYaw()));
+            if (off > (walking ? 60 : 100) || !v.canSee(e)) continue;
             double s = 0;
             if (e instanceof PlayerEntity p) {
                 s = 3.0 + (p.isSprinting() ? 1 : 0) + (p.getVelocity().horizontalLengthSquared() > 0.003 ? 0.5 : 0);

@@ -327,6 +327,9 @@ public final class Mining {
 
     /** An already dug cell next to the next block to dig. */
     private static BlockPos standFor(ServerWorld world, BlockPos o, List<Step> steps, Village village) {
+        // the shed over the shaft and the first cut, on the surface: from the mouth of the mine (the cells behind him
+        // are all posts and walls then, and he would be sent to stand inside the last wall he put up)
+        if (village.mineLevel == 0 && village.mineStep < steps.size() && steps.get(village.mineStep).dy() >= 0) return o;
         if (village.mineStep > 0) {
             // the last cell behind the face that is open air with a floor, not a support beam or a torch
             for (int i = Math.min(village.mineStep, steps.size()) - 1; i >= Math.max(0, village.mineStep - 40); i--) {
