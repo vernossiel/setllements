@@ -21,6 +21,9 @@ import java.util.Optional;
 
 /** Debug and test commands, operators only: /settlements status | rich | give | fast | staff | daily | cancel | relation. */
 public final class SettlementsCommand {
+    /** Testing: the server ticks as fast as it can (see MixinMinecraftServerWarp). */
+    public static volatile boolean WARP = Boolean.getBoolean("settlements.warp");
+
     private SettlementsCommand() {
     }
 
@@ -88,6 +91,9 @@ public final class SettlementsCommand {
                         .then(CommandManager.literal("hit").then(CommandManager.argument("name", StringArgumentType.word()).executes(SettlementsCommand::fakeHit)))
                         .then(CommandManager.literal("remove").executes(SettlementsCommand::fakeRemove)))
                 .then(CommandManager.literal("rich").executes(SettlementsCommand::rich))
+                .then(CommandManager.literal("warp").requires(src -> src.hasPermissionLevel(2))
+                        .then(CommandManager.literal("on").executes(c -> { WARP = true; c.getSource().sendFeedback(() -> Text.literal("warp on"), false); return 1; }))
+                        .then(CommandManager.literal("off").executes(c -> { WARP = false; c.getSource().sendFeedback(() -> Text.literal("warp off"), false); return 1; })))
                 .then(CommandManager.literal("give")
                         .then(CommandManager.argument("item", StringArgumentType.string())
                                 .then(CommandManager.argument("count", IntegerArgumentType.integer(1, 4096)).executes(SettlementsCommand::give))))

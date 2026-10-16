@@ -4,7 +4,7 @@ Several days in the life of a village, on a server nobody plays on: does it live
 Every minute the village is looked at (/settlements dump and status): people and their trades, what is built, the
 stores (food, wool, wood, stone), hunger, who stands about. At the end a day-by-day summary, and the troubles found:
 a village going hungry, a day with nothing built, workers standing about, nobody growing in number.
-Usage: python3 scripts/growthtest.py <days> (the server must be running with RCON on 25575, password "test").
+Usage: python3 scripts/growthtest.py <days> [seconds between looks, default 60; 5 with /settlements warp on] (the server must be running with RCON on 25575, password "test").
 """
 import collections
 import re
@@ -36,6 +36,7 @@ def stores(status):
 
 def main():
     days = int(sys.argv[1]) if len(sys.argv) > 1 else 5
+    every = float(sys.argv[2]) if len(sys.argv) > 2 else 60
     s = daytest.connect()
     daytest.run(s, "forceload add -240 -928 -48 -736")
     daytest.run(s, "setworldspawn " + AT)
@@ -47,7 +48,7 @@ def main():
         status = daytest.run(s, f"execute positioned {AT} run settlements status")
         tm = re.search(r"time (\d+) day (\d+)", dump)
         if not tm:
-            time.sleep(60)
+            time.sleep(every)
             continue
         t, day = int(tm.group(1)), int(tm.group(2))
         people = re.findall(r"\] (\S+) \[([a-z_]+)\] .*? h=(\d+) .*?stage=(\w+) :: (.*)", dump)
@@ -78,7 +79,7 @@ def main():
               f"cobble={row['cobble']} project={row['project']} trades={dict(row['trades'])}", flush=True)
         if day >= days:
             break
-        time.sleep(60)
+        time.sleep(every)
     print("\n=== by day")
     troubles = []
     by_day = collections.OrderedDict()

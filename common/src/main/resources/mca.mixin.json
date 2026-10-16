@@ -18,6 +18,7 @@
     "MixinIronGolem",
     "MixinMemoryModuleType",
     "MixinMilkBucketItem",
+    "MixinMinecraftServerWarp",
     "MixinPlayerEntity",
     "MixinPlayerInventory",
     "MixinProtoChunk",
