@@ -4081,5 +4081,6 @@
   "settlements.say.home.commission": "Хватит ютиться. Заплачу старосте, пусть строители поставят нам дом получше.",
   "settlements.say.home.commission.f": "Хватит ютиться. Заплачу старосте, пусть строители поставят нам дом получше.",
   "settlements.news.commission": "%s разбогатели и заказали строителям новый дом на месте старого.",
-  "settlements.building.newhome": "заказной дом"
+  "settlements.building.newhome": "заказной дом",
+  "settlements.justice.exiled.long": "За такое у нас не прощают. Три дня чтобы духу твоего в деревне не было — вернёшься раньше, стража не пощадит."
 }

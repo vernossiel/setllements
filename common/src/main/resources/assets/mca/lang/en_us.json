@@ -4084,5 +4084,6 @@
   "settlements.say.home.commission": "Enough of making do. I'll pay the elder and have the builders put us up a better house.",
   "settlements.say.home.commission.f": "Enough of making do. I'll pay the elder and have the builders put us up a better house.",
   "settlements.news.commission": "%s has done well and paid the builders for a new house in place of the old one.",
-  "settlements.building.newhome": "commissioned house"
+  "settlements.building.newhome": "commissioned house",
+  "settlements.justice.exiled.long": "There's no forgiving that here. Three days you stay out of this village - come back sooner and the guards won't spare you."
 }

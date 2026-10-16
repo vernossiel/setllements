@@ -62,7 +62,8 @@ public final class Justice {
 
     private static final Map<UUID, Case> CASES = new HashMap<>();
     private static final Map<UUID, int[]> STRIKES = new HashMap<>(); // {strikes, last tick / 20}
-    private static final Map<UUID, Integer> RECORD = new HashMap<>(); // arrests so far
+    private static final Map<UUID, Integer> RECORD = new HashMap<>(); // serious offences so far (beatings, real thefts)
+    private static final Map<UUID, Long> LAST_OFFENCE = new HashMap<>(); // when the last of them was: three quiet days and the slate is clean
     private static final Map<UUID, Long> SPARED = new HashMap<>(); // beaten and let go, until (world time)
 
     private Justice() {
@@ -96,8 +97,7 @@ public final class Justice {
         c.witnessed |= witnessed;
         if (items != null) items.forEach((k, n) -> c.stolen.merge(k, n, Integer::sum));
         if (crime == Crime.MURDER) {
-            c.stage = Stage.EXILED;
-            c.until = world.getTime() + 24000L * 3;
+            if (player instanceof ServerPlayerEntity sp && c.stage != Stage.EXILED) exile(world, village, sp, c, 3);
         } else if (crime == Crime.ASSAULT && c.stage.ordinal() < Stage.RESISTING.ordinal()) {
             // a villager is being beaten: the guards step in at once, to beat him down and arrest him
             c.stage = Stage.RESISTING;
@@ -643,15 +643,20 @@ public final class Justice {
         for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(64), VillagerEntityMCA::isGuard)) {
             if (g.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).orElse(null) == p) g.getBrain().forget(MemoryModuleType.ATTACK_TARGET);
         }
-        int record = RECORD.merge(p.getUuid(), 1, Integer::sum);
+        long nowT = world.getTime();
+        if (nowT - LAST_OFFENCE.getOrDefault(p.getUuid(), nowT) > 24000L * 3) RECORD.remove(p.getUuid());
+        // a fine for a shove or a loaf is not a record; a beating or a real theft is
+        boolean serious = c.crime == Crime.ASSAULT || c.crime == Crime.THEFT && c.value >= 8;
+        int record = serious ? RECORD.merge(p.getUuid(), 1, Integer::sum) : RECORD.getOrDefault(p.getUuid(), 0);
+        if (serious) LAST_OFFENCE.put(p.getUuid(), nowT);
         if (village != null) Life.forgive(village, p);
         if (village == null) {
             CASES.remove(p.getUuid());
             return;
         }
         if (!c.stolen.isEmpty()) takeBack(p, c, village); // confiscated
-        if (record >= 3) { // a known criminal: out of the village
-            exile(world, village, p, c);
+        if (serious && record >= 3) { // the third serious offence in a few days: out of the village
+            exile(world, village, p, c, 1);
             return;
         }
         int seconds = (int) Math.max(60, Math.min(300, 60 + c.value * 4 + (c.crime == Crime.ASSAULT ? 120 : 0)));
@@ -783,10 +788,12 @@ public final class Justice {
         p.sendMessage(Text.translatable("settlements.justice.released").formatted(Formatting.GREEN), false);
     }
 
-    private static void exile(ServerWorld world, Village village, ServerPlayerEntity p, Case c) {
+    /** Out of the village for {@code days}: told to his face by a guard (or the elder), and the village hears of it. */
+    private static void exile(ServerWorld world, Village village, ServerPlayerEntity p, Case c, int days) {
         c.stage = Stage.EXILED;
-        c.until = world.getTime() + 24000L;
-        p.sendMessage(Text.translatable("settlements.justice.exiled").formatted(Formatting.DARK_RED), false);
+        c.until = world.getTime() + 24000L * days;
+        c.lastTalk = world.getTime();
+        talk(world, village, nearestGuard(world, p, 48), p, days > 1 ? "settlements.justice.exiled.long" : "settlements.justice.exiled", world.getTime());
         Life.news(village, "crime.exiled", p.getName().getString());
     }
 
