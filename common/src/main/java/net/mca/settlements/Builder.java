@@ -481,7 +481,7 @@ public final class Builder {
      * (sand in the desert, grass and earth elsewhere), and round it a gentle slope down (or up) to the ground about, so
      * that nothing stands on a box of earth and every door can be walked up to.
      */
-    static void levelSite(ServerWorld world, BlockPos o, int fw, int fd) {
+    static void levelSite(ServerWorld world, Village village, BlockPos o, int fw, int fd) {
         Block top = Blocks.GRASS_BLOCK, under = Blocks.DIRT;
         int sand = 0, red = 0, all = 0;
         for (int x = o.getX() - 4; x <= o.getX() + fw + 3; x += 2) {
@@ -517,13 +517,15 @@ public final class Builder {
                 int out = Math.max(Math.max(o.getX() - 1 - x, x - (o.getX() + fw)), Math.max(o.getZ() - 1 - z, z - (o.getZ() + fd)));
                 out = Math.max(0, out);
                 if (out == 0) {
-                    // trees standing on the site are felled (the logs fall for whoever picks them up), branches and
-                    // leaves hanging over it cut back
+                    // trees standing on the site are felled and the logs go to the village's stores (left lying on
+                    // the grass, nobody ever came for them), branches and leaves hanging over it cut back
                     for (int y = o.getY() + 20; y >= o.getY() - 2; y--) {
                         BlockPos p = new BlockPos(x, y, z);
                         BlockState s = world.getBlockState(p);
-                        if (s.isIn(net.minecraft.registry.tag.BlockTags.LOGS)) world.breakBlock(p, true);
-                        else if (y > o.getY() + 2 && s.isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) world.breakBlock(p, true);
+                        if (s.isIn(net.minecraft.registry.tag.BlockTags.LOGS)) {
+                            world.breakBlock(p, false);
+                            if (village != null) Workforce.addToTreasury(village, new net.minecraft.item.ItemStack(s.getBlock().asItem()));
+                        } else if (y > o.getY() + 2 && s.isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) world.breakBlock(p, false);
                     }
                 }
                 int ground = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z); // first free block above the ground
@@ -562,7 +564,7 @@ public final class Builder {
     }
 
     private static boolean startAt(Village village, String type, int w, int d, int floors, Layout.Slot slot) {
-        if (village.getWorld() != null) levelSite(village.getWorld(), slot.origin(), slot.fw(), slot.fd());
+        if (village.getWorld() != null) levelSite(village.getWorld(), village, slot.origin(), slot.fw(), slot.fd());
         village.buildType = type;
         village.buildOrigin = slot.origin();
         village.buildRot = slot.rot();
@@ -581,7 +583,7 @@ public final class Builder {
         BlockPos site = findSite(world, village, w, d);
         if (site == null) return false;
         int[] sfp = Blueprints.footprint(type, w, d);
-        levelSite(world, site, sfp[0], sfp[1]); // the ground made level, as for any other site
+        levelSite(world, village, site, sfp[0], sfp[1]); // the ground made level, as for any other site
         village.buildType = type;
         village.buildOrigin = site;
         village.buildRot = 0;
@@ -693,6 +695,12 @@ public final class Builder {
         int checks = 0;
         int budget = Prosperity.ops(v, village, opsPerSecond); // tired builders and struggling villages build slower
         if (budget == 0) return true; // working, just slowly
+        // a man lays one block at a time: two going up in the same instant looked like a machine (what is left over is
+        // kept for the next beat, up to a block or two)
+        if (budget > 1) {
+            v.settlementsPace = Math.min(2.0, v.settlementsPace + budget - 1);
+            budget = 1;
+        }
         while (ops < budget && skips < MAX_TRIVIAL_SKIPS && village.buildOrigin != null && village.buildStep < steps.size()) {
             if (ahead(village).remove(village.buildStep)) { // a helper laid this one already
                 village.buildStep++;
@@ -1135,7 +1143,7 @@ public final class Builder {
                         }
                     }
                 }
-                levelSite(world, new BlockPos(x, oy, z), fp[0], fp[1]); // the slope round it, the land's own earth
+                levelSite(world, village, new BlockPos(x, oy, z), fp[0], fp[1]); // the slope round it, the land's own earth
                 village.buildType = "townhall";
                 village.buildOrigin = new BlockPos(x, oy, z);
                 village.buildRot = 0;
@@ -1633,7 +1641,14 @@ public final class Builder {
                     }
                 }
                 village.storageBuffer.removeIf(ItemStack::isEmpty);
-                world.setBlockState(p, paid ? stone.getDefaultState() : Blocks.DIRT.getDefaultState());
+                // unpaid, earth will do where it is hidden in the ground; where it shows (a footing on a slope) it
+                // is laid in stone all the same, so that no house stands on a stack of dirt
+                boolean hidden = true;
+                for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+                    BlockState n = world.getBlockState(p.offset(d));
+                    if (n.isAir() || n.isReplaceable()) hidden = false;
+                }
+                world.setBlockState(p, paid || !hidden ? stone.getDefaultState() : Blocks.DIRT.getDefaultState());
                 continue;
             }
             world.setBlockState(p, stone.getDefaultState());

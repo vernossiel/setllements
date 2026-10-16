@@ -635,7 +635,7 @@ public final class Blueprints {
                 l.add(new Step(x, -i - 1, i, Kind.DIG));
                 l.add(new Step(x, -i - 1, i, Kind.STAIRS_N));
             }
-            if (i % 5 == 4) shaftFrame(l, i);
+            if (i % 5 == 4 && i >= 9) shaftFrame(l, i); // (the first frame, at four steps down, had its beam at ground level behind the shed)
         }
         int floor = -depth, bottom = floor + 1;
         for (int x = -1; x <= 3; x++) {

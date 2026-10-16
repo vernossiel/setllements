@@ -182,6 +182,15 @@ public final class Roads {
         int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
         BlockPos p = new BlockPos(x, y, z);
         if (!world.getBlockState(p).isAir() || !world.getBlockState(p.down()).isSolidBlock(world, p.down())) return;
+        // beside the street, never on it: where two roads cross or bend the spot two blocks off one is on the other
+        BlockState under = world.getBlockState(p.down());
+        if (under.isOf(Blocks.DIRT_PATH) || under.isOf(Blocks.FARMLAND) || !Layout.land(under)) return;
+        for (BlockPos q : BlockPos.iterate(p.add(-5, -2, -5), p.add(5, 2, 5))) { // and not one lamp right by another
+            BlockState s = world.getBlockState(q);
+            if (s.isOf(Blocks.TORCH) || s.isOf(Blocks.LANTERN)) {
+                if (world.getBlockState(q.down()).isIn(net.minecraft.registry.tag.BlockTags.FENCES)) return;
+            }
+        }
         if (!Builder.takeItem(village, s -> s.isOf(Items.TORCH), 1)) return;
         world.setBlockState(p, Blocks.OAK_FENCE.getDefaultState());
         boolean lantern = village.getId() >= 0 && Prosperity.tier(village) >= Tiers.WEALTHY

@@ -50,7 +50,13 @@ public final class Gaze {
      */
     public static void head(VillagerEntityMCA v) {
         Hold h = HOLD.get(v.getUuid());
-        if (h == null || v.settlementsDigPos != null) return; // at the block he is breaking (see Dig)
+        if (h == null) {
+            // the brain's own idle glances: none up into the sky (at a bat, a bird in a crown), nobody stares at the clouds
+            var lt = v.getBrain().getOptionalMemory(MemoryModuleType.LOOK_TARGET).orElse(null);
+            if (lt != null && lt.getPos().y - v.getEyeY() > 2.5) v.getBrain().forget(MemoryModuleType.LOOK_TARGET);
+            return;
+        }
+        if (v.settlementsDigPos != null) return; // at the block he is breaking (see Dig)
         if (v.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) { // in a fight, eyes on the foe (the fight looks after that)
             HOLD.remove(v.getUuid());
             return;
@@ -96,7 +102,7 @@ public final class Gaze {
             // only what he can see, before him: nobody looks through a wall, or twists his neck round to his back
             double off = Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(
                     Math.toDegrees(Math.atan2(e.getZ() - v.getZ(), e.getX() - v.getX())) - 90 - v.getBodyYaw()));
-            if (off > (walking ? 60 : 100) || !v.canSee(e)) continue;
+            if (off > (walking ? 60 : 100) || e.getEyeY() - v.getEyeY() > 2.5 || !v.canSee(e)) continue;
             double s = 0;
             if (e instanceof PlayerEntity p) {
                 s = 3.0 + (p.isSprinting() ? 1 : 0) + (p.getVelocity().horizontalLengthSquared() > 0.003 ? 0.5 : 0);
