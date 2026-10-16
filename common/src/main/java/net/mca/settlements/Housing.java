@@ -93,6 +93,7 @@ public final class Housing {
         int homeless = 0;
         Built hall = null;
         for (Built b : v.built) if (Buildings.base(b.type()).equals("townhall")) hall = b;
+        if (hall != null) HALL_OF.put(hall, v);
         boolean bedMoved = false;
         for (List<VillagerEntityMCA> h : unhoused) {
             Building best = promised(v, h, houses, taken, true);
@@ -260,10 +261,12 @@ public final class Housing {
 
     private static int hallBeds(ServerWorld world, Built hall) {
         int n = 0;
-        BlockPos o = hall.origin();
-        for (BlockPos q : BlockPos.iterate(o.add(-2, -1, -2), o.add(Math.max(hall.fw(), hall.fd()) + 2, 12, Math.max(hall.fw(), hall.fd()) + 2))) {
+        Village v = HALL_OF.get(hall);
+        BlockPos o = v != null && v.hallPos != null ? v.hallPos : hall.origin();
+        int r = Math.max(10, Math.max(hall.fw(), hall.fd()) + 2);
+        for (BlockPos q : BlockPos.iterate(o.add(-r, -4, -r), o.add(r, 12, r))) {
             var st = world.getBlockState(q);
-            if (st.getBlock() instanceof net.minecraft.block.BedBlock && st.get(net.minecraft.block.BedBlock.PART) == net.minecraft.block.enums.BedPart.HEAD && hall.contains(q)) n++;
+            if (st.getBlock() instanceof net.minecraft.block.BedBlock && st.get(net.minecraft.block.BedBlock.PART) == net.minecraft.block.enums.BedPart.HEAD && hallArea(world, hall, q)) n++;
         }
         return n;
     }
@@ -271,8 +274,20 @@ public final class Housing {
     /** His bed is in the town hall. */
     private static boolean inHall(ServerWorld world, Built hall, VillagerEntityMCA m) {
         GlobalPos g = m.getResidency().getHome().orElse(null);
-        return g != null && hall.contains(g.getPos()) && world.getBlockState(g.getPos()).getBlock() instanceof net.minecraft.block.BedBlock;
+        return g != null && hallArea(world, hall, g.getPos()) && world.getBlockState(g.getPos()).getBlock() instanceof net.minecraft.block.BedBlock;
     }
+
+    /**
+     * Within the hall: its plot, or under a roof close by its lectern. (The plot is not to be trusted alone: a turned
+     * template's plot can miss the very room it stands for, and every spot on its floor was refused.)
+     */
+    private static boolean hallArea(ServerWorld world, Built hall, BlockPos p) {
+        if (hall.contains(p)) return true;
+        Village v = HALL_OF.get(hall);
+        return v != null && v.hallPos != null && p.isWithinDistance(v.hallPos, 8) && Math.abs(p.getY() - v.hallPos.getY()) <= 3 && !world.isSkyVisible(p);
+    }
+
+    private static final Map<Built, Village> HALL_OF = new HashMap<>();
 
     /**
      * A bed put down on the hall's floor, out of the way of its doors: the head end's place, or null if there is no
@@ -285,10 +300,10 @@ public final class Housing {
         BlockPos c = v.hallPos != null ? v.hallPos : hall.point(hall.fw() / 2, 0, hall.fd() / 2);
         search:
         for (BlockPos q : BlockPos.iterateOutwards(c, 8, 3, 8)) {
-            if (!hall.contains(q) || !free(world, q)) continue;
+            if (!hallArea(world, hall, q) || !free(world, q)) continue;
             for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
                 BlockPos head = q.offset(d);
-                if (hall.contains(head) && free(world, head)) {
+                if (hallArea(world, hall, head) && free(world, head)) {
                     foot = q.toImmutable();
                     facing = d;
                     break search;
@@ -302,7 +317,7 @@ public final class Housing {
         // where it comes from: an empty bed off in the woods or the valley first
         net.minecraft.block.BlockState bed = null;
         BlockPos far = world.getPointOfInterestStorage().getInSquare(t -> t.matchesKey(PointOfInterestTypes.HOME), heart, 96, PointOfInterestStorage.OccupationStatus.HAS_SPACE)
-                .map(net.minecraft.world.poi.PointOfInterest::getPos).filter(p -> !allowed(v, p) && !hall.contains(p)).findFirst().orElse(null);
+                .map(net.minecraft.world.poi.PointOfInterest::getPos).filter(p -> !allowed(v, p) && !hallArea(world, hall, p)).findFirst().orElse(null);
         if (far != null && world.getBlockState(far).getBlock() instanceof net.minecraft.block.BedBlock b) {
             bed = b.getDefaultState();
             world.breakBlock(far, false); // (both halves go)
