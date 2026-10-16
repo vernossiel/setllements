@@ -606,7 +606,8 @@ public final class Life {
         if (stuck == 0) STUCK.remove(v.getUuid());
         boolean guardNear = !world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(32, 8, 32), o -> o.isGuard() && o.isAlive()).isEmpty();
         // no guard to come (a hamlet has none): once the thing has struck him, he stands and fights - badly, but he fights
-        boolean cornered = stuck >= 2 || indoors && onHim && v.getAttacker() == foe || !guardNear && v.getAttacker() == foe && d < 3 * 3;
+        // in his own house there is nowhere to run: the thing coming at him there he meets with what he has
+        boolean cornered = stuck >= 2 || indoors && foe.getTarget() == v && d < 4 * 4 || !guardNear && v.getAttacker() == foe && d < 3 * 3;
         var held = v.getMainHandStack().getItem();
         boolean armed = held instanceof net.minecraft.item.AxeItem || held instanceof net.minecraft.item.SwordItem;
         boolean neighbour = !cornered && armed && !guardNear && foe.getTarget() instanceof VillagerEntityMCA other && other != v && !other.isGuard() && d < 6 * 6;
@@ -636,6 +637,11 @@ public final class Life {
     }
 
     public static boolean dread(VillagerEntityMCA v, Village village, ServerWorld world) {
+        if (v.isSleeping() && !v.isBaby()) { // a thing in the room with him wakes him
+            boolean inRoom = !world.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, v.getBoundingBox().expand(4, 2, 4),
+                    m -> m.isAlive() && m.getTarget() == v).isEmpty();
+            if (inRoom) v.wakeUp();
+        }
         if (v.isGuard() || v.isSleeping() || v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get()) return false;
         boolean indoors = !world.isSkyVisible(v.getBlockPos().up());
         net.minecraft.entity.mob.HostileEntity foe = world.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, v.getBoundingBox().expand(10, 4, 10),
