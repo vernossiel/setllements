@@ -262,6 +262,15 @@ public final class Layout {
             }
         }
         if (maxY - minY > TOLERANCE[Math.min(pass, TOLERANCE.length - 1)]) return null;
+        // not on the lip of a drop: the land just round the plot must not fall away more than four below its floor
+        int floorGuess = ys.isEmpty() ? maxY : ys.stream().sorted().toList().get(ys.size() / 2);
+        for (int dx = -4; dx <= w + 3; dx += 2) {
+            for (int dz = -4; dz <= d + 3; dz += 2) {
+                if (dx >= -2 && dx <= w + 1 && dz >= -2 && dz <= d + 1) continue;
+                if (!world.isChunkLoaded((x + dx) >> 4, (z + dz) >> 4)) continue;
+                if (floorGuess - world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x + dx, z + dz) > 4) return null;
+            }
+        }
         // the floor at the ground's own middle height, not on its highest bump: the builders cut the bumps and fill
         // the hollows (see Builder.levelSite), and the building never stands up on a mound of earth
         java.util.Collections.sort(ys);

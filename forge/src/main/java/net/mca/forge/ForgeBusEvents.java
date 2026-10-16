@@ -72,6 +72,12 @@ public class ForgeBusEvents {
 
     @SubscribeEvent
     public static void OnEntityJoinWorldEvent(EntityJoinLevelEvent event) {
+        // no iron golems standing about the villages (the ones that come with a generated village too): their guards
+        // keep them; a golem a player builds stays
+        if (!event.getEntity().getWorld().isClient && event.getEntity() instanceof net.minecraft.entity.passive.IronGolemEntity golem && !golem.isPlayerCreated()) {
+            event.setCanceled(true);
+            return;
+        }
         if (event.getEntity().getWorld().isClient) {
             if (MinecraftClient.getInstance().player == null || event.getEntity().getUuid().equals(MinecraftClient.getInstance().player.getUuid())) {
                 MCAClient.onLogin();

@@ -538,7 +538,7 @@ public final class Builder {
                     if (!s.isAir() && natural(s)) world.breakBlock(p, false);
                 }
                 // fill up to it
-                for (int y = want - 1; y >= want - 6; y--) {
+                for (int y = want - 1; y >= want - 12; y--) { // down to the ground, however far: nothing stands on air
                     BlockPos p = new BlockPos(x, y, z);
                     BlockState s = world.getBlockState(p);
                     if (!s.isAir() && !s.isReplaceable() && s.getFluidState().isEmpty()) {
@@ -1615,7 +1615,7 @@ public final class Builder {
     /** Fills the gap under a floor block down to the ground (at most six blocks) with the village's stone. */
     private static void foundation(ServerWorld world, Village village, BlockPos below) {
         Block stone = Palette.of(village).stone();
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 12; i++) {
             BlockPos p = below.down(i);
             BlockState s = world.getBlockState(p);
             if (!s.isAir() && !s.isReplaceable() && s.getFluidState().isEmpty()) return; // solid ground reached
