@@ -4136,5 +4136,7 @@
   "settlements.elder.story.cold": "С %s отношения натянутые. Косо на нас смотрят.",
   "settlements.elder.story.enemy": "А с %s у нас настоящая вражда. Того и гляди, придут к нам с топорами.",
   "settlements.elder.story.weowe": "Мы должны %s %s самородков, и долг этот давит.",
-  "settlements.elder.story.theyowe": "%s задолжали нам %s самородков. Ждём."
+  "settlements.elder.story.theyowe": "%s задолжали нам %s самородков. Ждём.",
+  "settlements.news.market.stone": "Купили воз камня у проезжих торговцев.",
+  "settlements.news.market.wood": "Купили у проезжих торговцев брёвен на стройку."
 }

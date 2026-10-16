@@ -689,7 +689,7 @@ public final class Builder {
             int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
             int[] rp = Blueprints.rotate(step.dx(), step.dz(), fp[0], fp[1], village.buildRot);
             BlockPos target = origin.add(rp[0], step.dy(), rp[1]);
-            if (village.buildRepair && !Repair.missing(world, step, target)) { // repairs only put back what is gone
+            if (village.buildRepair && !Repair.missing(world, village, step, target)) { // repairs only put back what is gone
                 village.buildStep++;
                 if (++checks > 4000) break;
                 continue;

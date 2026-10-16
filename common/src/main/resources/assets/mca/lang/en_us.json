@@ -4139,5 +4139,7 @@
   "settlements.elder.story.cold": "Things are strained with %s. They look at us askance.",
   "settlements.elder.story.enemy": "And with %s it's a real feud. Any day now they'll come at us with axes.",
   "settlements.elder.story.weowe": "We owe %s %s nuggets, and the debt weighs on us.",
-  "settlements.elder.story.theyowe": "%s owes us %s nuggets. We're waiting."
+  "settlements.elder.story.theyowe": "%s owes us %s nuggets. We're waiting.",
+  "settlements.news.market.stone": "Bought a cartload of stone from passing traders.",
+  "settlements.news.market.wood": "Bought logs for the building from passing traders."
 }

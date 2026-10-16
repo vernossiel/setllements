@@ -32,14 +32,29 @@ public final class Repair {
     static boolean structural(Kind k) {
         return switch (k) {
             case FLOOR, WALL, PILLAR, ROOF, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, STONE, ACCENT, BEAM_X, BEAM_Z, DOOR, FENCE,
-                 SLAB, GATE, BARS, LADDER, CHEST, HALL_CHEST, BED_FOOT, BED_HEAD, CRAFT, BARREL, LECTERN, BOOKSHELF, SEAT_W, SEAT_E, PEW, THATCH, DAUB, RSTAIR_S, RSTAIR_N -> true;
+                 SLAB, GATE, BARS, LADDER, CHEST, HALL_CHEST, BED_FOOT, BED_HEAD, LECTERN, SEAT_W, SEAT_E, PEW, THATCH, DAUB, RSTAIR_S, RSTAIR_N -> true;
             default -> false;
         };
     }
 
+    /** The fittings a house may have gone up without (no stone, no boards to spare): put in once the stores can pay. */
+    static boolean fitting(Kind k) {
+        return k == Kind.SMOKER || k == Kind.CRAFT || k == Kind.BARREL || k == Kind.BOOKSHELF;
+    }
+
+    static boolean affordable(Village village, Kind k) {
+        int planks = Builder.stockPlanks(village);
+        return k == Kind.SMOKER ? Builder.stockCobble(village) >= 8 && planks >= 4 : planks >= 8;
+    }
+
     /** True when the block this step puts there is gone (air, plants, water). */
     public static boolean missing(ServerWorld world, Step step, BlockPos target) {
-        if (!structural(step.kind())) return false;
+        return missing(world, null, step, target);
+    }
+
+    /** As above; with the village, also a fitting left out before that the stores can pay for now. */
+    public static boolean missing(ServerWorld world, Village village, Step step, BlockPos target) {
+        if (!structural(step.kind()) && !(village != null && fitting(step.kind()) && affordable(village, step.kind()))) return false;
         if (!world.isChunkLoaded(target.getX() >> 4, target.getZ() >> 4)) return false;
         BlockState s = world.getBlockState(target);
         return s.isAir() || s.isReplaceable() || !s.getFluidState().isEmpty();
@@ -64,7 +79,10 @@ public final class Repair {
             List<Step> steps = b.steps();
             int missing = 0;
             for (Step s : steps) {
-                if (missing(world, s, b.point(s.dx(), s.dy(), s.dz())) && ++missing >= 3) break;
+                if (missing(world, village, s, b.point(s.dx(), s.dy(), s.dz()))) {
+                    missing += fitting(s.kind()) ? 3 : 1; // one fitting to put in is reason enough to come round
+                    if (missing >= 3) break;
+                }
             }
             if (missing >= (Buildings.base(b.type()).equals("townhall") ? 1 : 3)) PENDING.put(village.getId(), b);
 

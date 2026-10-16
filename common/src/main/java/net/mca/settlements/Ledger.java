@@ -37,6 +37,7 @@ public final class Ledger {
             if (v.ledgerDay >= 0 && v.ledgerDay < today) {
                 Fame.day(world, v); // a new day: old deeds fade, news travels
                 Harvest.day(world, v); // and some of the food goes off
+                Market.day(world, v); // short of stone or timber: a cartload from the traders on the road
             }
             if (lived(world, v)) {
                 snapshot(world, v);
