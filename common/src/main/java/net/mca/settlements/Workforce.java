@@ -75,7 +75,7 @@ public final class Workforce {
                 || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH || p == VillagerProfession.LEATHERWORKER
                 || p == net.mca.ProfessionsMCA.INNKEEPER.get() || p == net.mca.ProfessionsMCA.MILLER.get()
                 || p == net.mca.ProfessionsMCA.COLLIER.get() || p == net.mca.ProfessionsMCA.MERCHANT.get()
-                || p == net.mca.ProfessionsMCA.GLAZIER.get() || p == net.mca.ProfessionsMCA.PRIEST.get();
+                || p == net.mca.ProfessionsMCA.GLAZIER.get() || p == net.mca.ProfessionsMCA.PRIEST.get() || p == net.mca.ProfessionsMCA.WATCHMAN.get();
     }
 
     /** Server side, once per second. */
@@ -86,6 +86,7 @@ public final class Workforce {
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld rw) {
             net.mca.server.world.data.Village rv = net.mca.server.world.data.Village.findNearest(v).orElse(null);
             if (Rogue.tick(v, rv, rw)) return; // a rogue about his business, or in the stocks for it
+            if (rv != null && v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get() && Watch.tick(v, rv, rw)) return; // the night watch
         }
         if (v.isBaby()) {
             if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld kw && Games.tick(v, kw)) return; // at play with the others

@@ -81,6 +81,7 @@ public final class Rogue {
         if (now < next || !dark(world) || village.storageBuffer.isEmpty()) return false;
         BlockPos store = Haul.store(v, village);
         if (store == null) return false;
+        if (Watch.near(world, store)) return false; // the watchman is about: not tonight
         Doing.set(v, "settlements.doing.rogue.sneak");
         if (v.isSleeping()) v.wakeUp();
         if (v.squaredDistanceTo(Vec3d.ofCenter(store)) > 9) {

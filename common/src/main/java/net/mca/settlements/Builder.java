@@ -430,6 +430,8 @@ public final class Builder {
 
     private static final java.util.Map<Integer, Long> NEXT_LOOK = new java.util.HashMap<>();
 
+    private static final java.util.Map<Integer, long[]> STEP_AT = new java.util.HashMap<>(); // {step, since}
+
     /** The last building no site was found for (said in /settle why). */
     private static String lastNoSite;
 
@@ -546,6 +548,8 @@ public final class Builder {
     private static boolean start(Village village, ServerWorld world, String type, int w, int d, int floors) {
         BlockPos site = findSite(world, village, w, d);
         if (site == null) return false;
+        int[] sfp = Blueprints.footprint(type, w, d);
+        levelSite(world, site, sfp[0], sfp[1]); // the ground made level, as for any other site
         village.buildType = type;
         village.buildOrigin = site;
         village.buildRot = 0;
@@ -689,6 +693,18 @@ public final class Builder {
                 Built site = new Built(village.buildType, origin, village.buildW, village.buildD, Math.max(1, village.buildF), village.buildRot);
                 if (Scaffold.approach(v, village, world, target, site)) return worked;
                 far = bx * bx + bz * bz > Scaffold.REACH * Scaffold.REACH; // no way up: he does what he can from below
+            }
+            // stuck on one step for two hours with the spot right by him: the ground in the way is dug out, or else
+            // the step is passed over - a building is never held up for days by one block
+            long[] st = STEP_AT.computeIfAbsent(village.getId(), k -> new long[]{-1, 0});
+            if (st[0] != village.buildStep) {
+                st[0] = village.buildStep;
+                st[1] = world.getTime();
+            } else if (world.getTime() - st[1] > 2400 && v.squaredDistanceTo(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5) < 36) {
+                st[1] = world.getTime();
+                if (Layout.land(world.getBlockState(target)) || world.getBlockState(target).isReplaceable()) world.breakBlock(target, true, v);
+                else village.buildStep++;
+                continue;
             }
             if (far) {
                 Move.to(v, (mine ? origin : target).getX() + 0.5, mine || border ? target.getY() : origin.getY(), (mine ? origin : target).getZ() + 0.5, 0.6);
