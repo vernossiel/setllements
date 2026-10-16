@@ -29,6 +29,7 @@ public interface ProfessionsMCA {
     RegistrySupplier<VillagerProfession> ARCHER = register("archer", false, true, false, PointOfInterestType.NONE, VillagerProfession.IS_ACQUIRABLE_JOB_SITE, SoundEvents.ENTITY_VILLAGER_WORK_FLETCHER);
     RegistrySupplier<VillagerProfession> ADVENTURER = register("adventurer", true, true, true, PointOfInterestType.NONE, VillagerProfession.IS_ACQUIRABLE_JOB_SITE, SoundEvents.ENTITY_VILLAGER_WORK_FLETCHER);
     RegistrySupplier<VillagerProfession> MERCENARY = register("mercenary", false, true, true, PointOfInterestType.NONE, VillagerProfession.IS_ACQUIRABLE_JOB_SITE, SoundEvents.ENTITY_VILLAGER_WORK_FLETCHER);
+    RegistrySupplier<VillagerProfession> INNKEEPER = register("innkeeper", true, true, false, PointOfInterestType.NONE, VillagerProfession.IS_ACQUIRABLE_JOB_SITE, SoundEvents.ENTITY_VILLAGER_WORK_BUTCHER);
     RegistrySupplier<VillagerProfession> CULTIST = register("cultist", true, true, true, PointOfInterestType.NONE, VillagerProfession.IS_ACQUIRABLE_JOB_SITE, SoundEvents.ENTITY_VILLAGER_WORK_FLETCHER);
     // VillagerProfession JEWELER = register("jeweler", PointOfInterestTypeMCA.JEWELER, SoundEvents.ENTITY_VILLAGER_WORK_ARMORER);
 

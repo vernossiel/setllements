@@ -40,6 +40,13 @@ public class VillagerLikeEntityMCARenderer<T extends MobEntity & VillagerLike<T>
     }
 
     @Override
+    public void render(T villager, float yaw, float tickDelta, MatrixStack matrices, net.minecraft.client.render.VertexConsumerProvider vertices, int light) {
+        // a villager crouching (to sow, to shear, hiding) is drawn crouching, as a player is
+        getModel().sneaking = villager.isInSneakingPose();
+        super.render(villager, yaw, tickDelta, matrices, vertices, light);
+    }
+
+    @Override
     protected void scale(T villager, MatrixStack matrices, float tickDelta) {
         float height = villager.getRawScaleFactor();
         float width = villager.getHorizontalScaleFactor();

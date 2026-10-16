@@ -27,7 +27,7 @@ public final class Staffing {
         return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.FARMER || p == VillagerProfession.FLETCHER
                 || p == VillagerProfession.TOOLSMITH || p == VillagerProfession.MASON || p == VillagerProfession.BUTCHER
                 || p == VillagerProfession.SHEPHERD || p == VillagerProfession.ARMORER || p == VillagerProfession.FISHERMAN
-                || p == VillagerProfession.LEATHERWORKER || p == VillagerProfession.CLERIC;
+                || p == VillagerProfession.LEATHERWORKER || p == VillagerProfession.CLERIC || p == ProfessionsMCA.INNKEEPER.get();
     }
 
     /** The smith's trade is switched off for now (workers make their own tools); true brings it back. */
@@ -57,7 +57,8 @@ public final class Staffing {
 
     private static boolean isCore(VillagerProfession p) {
         return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH
-                || p == VillagerProfession.MASON || p == VillagerProfession.FARMER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER;
+                || p == VillagerProfession.MASON || p == VillagerProfession.FARMER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER
+                || p == VillagerProfession.LEATHERWORKER || p == ProfessionsMCA.INNKEEPER.get();
     }
 
     /** Somebody in the village works at this trade. */
@@ -123,7 +124,11 @@ public final class Staffing {
         // a shepherd once there is a pen (before it, the farmer keeps what animals there are), then the miner, then the butcher
         if (p >= 4 && v.penCenter != null) roles.add(new Role(VillagerProfession.SHEPHERD, 1));
         if (p >= 3) roles.add(new Role(VillagerProfession.MASON, Math.max(1, p / 5) + (short_ != null && short_.need() == Needs.Need.COBBLE ? 1 : 0)));
-        if (p >= 6) roles.add(new Role(VillagerProfession.BUTCHER, 1));
+        // the hunter when the larder runs low or the village is big enough to keep one; the butcher once there is a herd
+        // to take from; the innkeeper once there is a tavern to keep
+        if (p >= 5 && (hungry || p >= 8)) roles.add(new Role(VillagerProfession.LEATHERWORKER, 1));
+        if (p >= 6 && v.penCenter != null) roles.add(new Role(VillagerProfession.BUTCHER, 1));
+        if (p >= 6 && v.tavern != null) roles.add(new Role(ProfessionsMCA.INNKEEPER.get(), 1));
         // a smith only once there is a smithy to work in: tools, ingots
         boolean smithy = SMITHS && v.smithyBuilt && v.smithyFurnace != null;
         if (smithy && p >= 4) roles.add(new Role(VillagerProfession.ARMORER, 1));

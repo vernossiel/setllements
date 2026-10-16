@@ -99,6 +99,7 @@ public final class Mood {
                     }
                     v.getNavigation().stop();
                     v.getLookControl().lookAt(s.at().getX() + 0.5, s.at().getY(), s.at().getZ() + 0.5);
+                    if (world.random.nextInt(8) == 0) Pose.crouch(v, 60); // bent over the grave a while
                     if (world.random.nextInt(30) == 0) {
                         Speech.sayAny(v, "settlements.say.mood.mourn", 4);
                         came.add(v.getUuid()); // said his piece: he may go

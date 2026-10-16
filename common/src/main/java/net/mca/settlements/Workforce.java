@@ -61,11 +61,13 @@ public final class Workforce {
     private static boolean isCustomWorker(VillagerProfession p) {
         return p == VillagerProfession.CARTOGRAPHER || p == VillagerProfession.SHEPHERD || p == VillagerProfession.BUTCHER
                 || p == VillagerProfession.MASON || p == VillagerProfession.ARMORER || p == VillagerProfession.CLERIC
-                || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH;
+                || p == VillagerProfession.FLETCHER || p == VillagerProfession.TOOLSMITH || p == VillagerProfession.LEATHERWORKER
+                || p == net.mca.ProfessionsMCA.INNKEEPER.get();
     }
 
     /** Server side, once per second. */
     public static void tick(VillagerEntityMCA v) {
+        Pose.tick(v);
         if (v.isBaby()) {
             if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld kw && Games.tick(v, kw)) return; // at play with the others
             Life.child(v);
@@ -115,6 +117,7 @@ public final class Workforce {
         }
         STAGE.put(v.getUuid(), "escort");
         if (v.isGuard() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld ew && Escort.guard(v, village, ew)) return; // seeing a worker safe out and back
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld skw && Sickness.tick(v, skw)) return; // ill: in bed at home today
         // a conversation: carried on, or started when he has a moment (on the guards' watch, nobody stands chatting)
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld tw && !(v.isGuard() && GuardAI.onDuty(v, time))) {
             boolean moment = !Mind.onDuty(v, village, time) || v.settlementsBreak || v.settlementsIdleWork >= 10 || Morning.active(v, time) || Festival.fair(time)
@@ -141,7 +144,7 @@ public final class Workforce {
 
         // hungry villagers eat in the tavern when there is one with food on the shelf
         if (village != null && village.tavern != null && v.settlementsHunger >= 250 && (v.settlementsHunger >= HUNGER_STOP_AT || Mind.before(v, village, time, Mind.Drive.EAT))
-                && v.getProfession() != VillagerProfession.BUTCHER) {
+                && v.getProfession() != net.mca.ProfessionsMCA.INNKEEPER.get()) {
             if (job != Chore.NONE) v.getVillagerBrain().abandonJob();
             STAGE.put(v.getUuid(), "tavern");
             if (Tavern.visit(v, village)) {
@@ -244,7 +247,8 @@ public final class Workforce {
                 && v.getWorld() instanceof net.minecraft.server.world.ServerWorld sw2) {
             VillagerProfession fp = v.getProfession();
             // those whose work is food go on with it, hungry or not: the hunt, the herd, the field; the rest gather
-            boolean found = (fp == VillagerProfession.BUTCHER || fp == VillagerProfession.SHEPHERD) && Butchery.work(v, village, sw2)
+            boolean found = fp == VillagerProfession.LEATHERWORKER && Butchery.hunt(v, village, sw2)
+                    || (fp == VillagerProfession.BUTCHER || fp == VillagerProfession.SHEPHERD) && Butchery.work(v, village, sw2)
                     || fp == VillagerProfession.FARMER && Farming.fields(v, village, sw2) || Forage.work(v, village, sw2);
             if (found) {
                 Doing.set(v, "settlements.doing.starving.search");
@@ -252,7 +256,8 @@ public final class Workforce {
             }
         }
         // hunger stops a man's work - but not the work that brings in food: the hunt, the herd, the field
-        boolean feeds = v.getProfession() == VillagerProfession.BUTCHER || v.getProfession() == VillagerProfession.SHEPHERD || v.getProfession() == VillagerProfession.FARMER;
+        boolean feeds = v.getProfession() == VillagerProfession.BUTCHER || v.getProfession() == VillagerProfession.SHEPHERD || v.getProfession() == VillagerProfession.FARMER
+                || v.getProfession() == VillagerProfession.LEATHERWORKER || v.getProfession() == net.mca.ProfessionsMCA.INNKEEPER.get();
         if (!Mind.onDuty(v, village, time) && !Persona.working(v, time) || v.settlementsHunger >= HUNGER_STOP_AT && !feeds || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
             Gear.pocket(v); // off work: the tools go back in the bag
@@ -302,6 +307,8 @@ public final class Workforce {
             else if (prof == VillagerProfession.CARTOGRAPHER) worked = Builder.work(v, village);
             else if (prof == VillagerProfession.BUTCHER && v.getWorld() instanceof net.minecraft.server.world.ServerWorld bw) worked = Butchery.work(v, village, bw);
             else if (prof == VillagerProfession.SHEPHERD && v.getWorld() instanceof net.minecraft.server.world.ServerWorld shw) worked = Herding.work(v, village, shw);
+            else if (prof == VillagerProfession.LEATHERWORKER && v.getWorld() instanceof net.minecraft.server.world.ServerWorld huw) worked = Butchery.hunt(v, village, huw);
+            else if (prof == net.mca.ProfessionsMCA.INNKEEPER.get()) worked = Cooking.work(v, village);
             else if (prof == VillagerProfession.MASON && v.getWorld() instanceof net.minecraft.server.world.ServerWorld mw2) {
                 if (v.age % 400 == 0) Gear.equipShovel(v, village); // and a shovel for the earth and gravel
                 worked = Chain.mine(v, village, mw2, time); // the chain he works out: a pick, the mine, a full bag, the stores

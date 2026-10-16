@@ -92,6 +92,7 @@ public final class Festival {
         v.getNavigation().stop();
         v.getLookControl().lookAt(c.x, c.y + 1.4, c.z);
         if (world.random.nextInt(12) == 0) v.swingHand(v.getDominantHand()); // clapping
+        if (world.random.nextInt(14) == 0) Pose.jump(v); // and a jump for joy
         if (world.random.nextInt(30) == 0) Speech.sayAny(v, "settlements.say.fest.cheer", 4);
         return true;
     }

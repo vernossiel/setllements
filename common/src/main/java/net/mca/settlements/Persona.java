@@ -301,6 +301,23 @@ public final class Persona {
     private static void choose(VillagerEntityMCA v, Village village, ServerWorld world) {
         Traits t = of(v);
         VillagerEntityMCA friend = friend(v, village, world);
+        // a friend laid up ill is looked in on
+        if (friend != null && Sickness.sick(friend) && world.random.nextBoolean()) {
+            v.settlementsPastime = VISIT;
+            v.settlementsPastimeWith = friend.getUuid();
+            v.settlementsPastimeUntil = world.getTime() + 600;
+            return;
+        }
+        // husband and wife spend the evening together more often than not
+        if (v.getRelationships().getPartnerUUID().isPresent() && world.getEntity(v.getRelationships().getPartnerUUID().get()) instanceof VillagerEntityMCA spouse
+                && spouse.isAlive() && !spouse.isSleeping() && free(spouse, world.getTimeOfDay()) && spouse.squaredDistanceTo(v) < 64 * 64 && world.random.nextInt(3) > 0) {
+            friend = spouse;
+            if (v.settlementsPastime == FIRE && Seat.seated(v)) Rest.end(v);
+            v.settlementsPastime = VISIT;
+            v.settlementsPastimeWith = spouse.getUuid();
+            v.settlementsPastimeUntil = world.getTime() + 900 + world.random.nextInt(1200);
+            return;
+        }
         boolean tired = v.settlementsEnergy < 500;
         double[] w = {
                 0.3 + t.sociability() * 0.8 + (tired ? 0.6 : 0),                       // the fire

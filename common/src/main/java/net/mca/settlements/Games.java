@@ -115,6 +115,7 @@ public final class Games {
             if (bd < 2.2) { // caught: now he is it, and the catcher runs
                 g.it = prey.getUuid();
                 v.swingHand(v.getDominantHand());
+                Pose.jump(v);
                 Speech.sayNow(v, "settlements.kid.tag." + world.random.nextInt(3));
                 run(v, prey, world);
                 return true;
@@ -205,6 +206,7 @@ public final class Games {
         if (spot != null && v.squaredDistanceTo(Vec3d.ofBottomCenter(spot)) > 2) v.getNavigation().startMovingTo(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, 0.65);
         else {
             v.getNavigation().stop();
+            Pose.crouch(v, 40); // squatting down out of sight
             if (seeker.squaredDistanceTo(v) < 36 && world.random.nextInt(4) == 0) v.getLookControl().lookAt(seeker, 30f, 30f); // peeking
         }
         return true;

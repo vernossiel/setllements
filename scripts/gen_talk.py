@@ -304,6 +304,12 @@ conv("fair",
      ("А я просто поглазеть.", "I'm just going to have a look."),
      ("Все так говорят, а потом с полными руками идут.", "Everyone says that and comes back with their arms full."))
 
+conv("news.sick",
+     ("Слышишь? %s болеет, лежит дома.", "Have you heard? %s is laid up ill."),
+     ("Бедняга. Надо бы навестить, отвара принести.", "Poor thing. We should look in, bring some broth."),
+     ("Я вечером зайду.", "I'll drop by this evening."),
+     ("И от меня привет передай. Пусть поправляется.", "Give them my best. Get well soon."))
+
 # ---------- old lines whose grammar is set right (the speaker's own gender; third persons said neutrally) ----------
 FIX = {
  "news.built.a": ("Видишь? Готово: %s!", "See that? The %s is finished!"),

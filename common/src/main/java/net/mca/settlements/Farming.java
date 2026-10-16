@@ -128,6 +128,7 @@ public final class Farming {
                 if (!left.isEmpty()) Block.dropStack(world, t, left);
             }
             world.setBlockState(t, crop.withAge(0));
+            Pose.crouch(v, 24); // down to the bed
             world.playSound(null, t, SoundEvents.BLOCK_CROP_BREAK, SoundCategory.BLOCKS, 1f, 1f);
             Doing.set(v, "settlements.doing.farm.reap");
         } else if (what == 2) {
@@ -139,6 +140,7 @@ public final class Farming {
             }
             world.setBlockState(t, crop.getDefaultState());
             world.playSound(null, t, SoundEvents.ITEM_CROP_PLANT, SoundCategory.BLOCKS, 1f, 1f);
+            Pose.crouch(v, 24);
             Doing.set(v, "settlements.doing.farm.sow");
         } else if (what == 4) {
             // a new bed hoed beside the old ones (by hand if there is no hoe), to be sown next

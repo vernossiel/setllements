@@ -35,6 +35,32 @@ public final class Butchery {
     private Butchery() {
     }
 
+    /** One hunter second: wild game round the village, brought down and carried home. True while at it. */
+    public static boolean hunt(VillagerEntityMCA v, Village village, ServerWorld world) {
+        if (village == null) return false;
+        if (collect(v, village, world)) return true;
+        int people = Math.max(1, village.getPopulation());
+        // the bag full, or the larder well stocked: the game goes to the stores (the butcher dresses and roasts it)
+        if (Haul.carry(v, village, Haul.load(v) > 0 && (Haul.load(v) >= 16 || food(village) >= people * 10))) return true;
+        if (food(village) >= people * 10) {
+            Doing.set(v, "settlements.doing.hunter.enough");
+            return false;
+        }
+        BlockPos home = new BlockPos(village.getCenter());
+        int range = food(village) == 0 ? 112 : 80;
+        AnimalEntity game = world.getEntitiesByClass(AnimalEntity.class, new Box(home).expand(range, 24, range),
+                        a -> a.isAlive() && !a.isBaby() && !Herding.herd(a, village) && !a.isLeashed()
+                                && (a instanceof RabbitEntity || Herding.kind(a)) && !Herding.inPen(a, village.penCenter))
+                .stream().min(Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
+        if (game == null) {
+            Doing.set(v, "settlements.doing.hunter.none");
+            return false;
+        }
+        Doing.set(v, "settlements.doing.hunter.hunt");
+        if (game.squaredDistanceTo(home.getX(), game.getY(), home.getZ()) > 56 * 56) Escort.ask(v, village, 20 * 120); // far out: a guard along
+        return kill(v, village, world, game);
+    }
+
     static int food(Village village) {
         int n = 0;
         for (ItemStack s : village.storageBuffer) if (s.isFood() && Workforce.eatable(s)) n += s.getCount();
@@ -66,8 +92,8 @@ public final class Butchery {
                 return kill(v, village, world, take);
             }
         }
-        // 2. short of food: a hunt for wild game round the village
-        if (shortOfFood) {
+        // 2. short of food, and no hunter in the village: he goes after wild game himself
+        if (shortOfFood && !Staffing.has(world, village, net.minecraft.village.VillagerProfession.LEATHERWORKER)) {
             BlockPos home = new BlockPos(village.getCenter());
             int range = food(village) == 0 ? 96 : 56; // nothing at all in the larder: he goes further out after game
             AnimalEntity game = world.getEntitiesByClass(AnimalEntity.class, new Box(home).expand(range, 24, range),
@@ -79,8 +105,8 @@ public final class Butchery {
                 return kill(v, village, world, game);
             }
         }
-        // 3. what was brought in is cooked
-        if (village.tavern != null) {
+        // 3. what was brought in is cooked (the tavern's kitchen is the innkeeper's, when there is one)
+        if (village.tavern != null && !Staffing.has(world, village, net.mca.ProfessionsMCA.INNKEEPER.get())) {
             boolean cooked = Cooking.work(v, village);
             if (cooked) return true;
         }
