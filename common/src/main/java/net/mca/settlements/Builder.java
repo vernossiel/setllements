@@ -1542,7 +1542,11 @@ public final class Builder {
         }
         // panes, fences, bars and stairs join up with what is around them, like when a player places them
         switch (step.kind()) {
-            case GLASS, FENCE, BARS, GATE, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, RSTAIR_S, RSTAIR_N, PEW, SEAT_W, SEAT_E, STEP, CHAIN, LOG_X, LOG_Z, TPL, TPL_FIT -> state = Block.postProcessState(state, world, target);
+            // (never a door: shaped against its neighbours before its other half is there, it turns to air - which is how
+            // every building from a template lost its doors and let the night in)
+            case GLASS, FENCE, BARS, GATE, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, RSTAIR_S, RSTAIR_N, PEW, SEAT_W, SEAT_E, STEP, CHAIN, LOG_X, LOG_Z, TPL, TPL_FIT -> {
+                if (!(state.getBlock() instanceof DoorBlock)) state = Block.postProcessState(state, world, target);
+            }
             default -> {
             }
         }
@@ -1562,8 +1566,8 @@ public final class Builder {
             village.boardSigns.add(target.toImmutable());
             Board.refresh(world, village);
         }
-        if (step.kind() == Kind.DOOR) {
-            world.setBlockState(target.up(), state.with(DoorBlock.HALF, DoubleBlockHalf.UPPER));
+        if (step.kind() == Kind.DOOR || state.getBlock() instanceof DoorBlock && state.get(DoorBlock.HALF) == DoubleBlockHalf.LOWER) {
+            world.setBlockState(target.up(), state.with(DoorBlock.HALF, DoubleBlockHalf.UPPER), Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
         }
         world.playSound(null, target, state.getSoundGroup().getPlaceSound(), SoundCategory.BLOCKS, 0.8f, 1.0f);
         return Result.PLACED;

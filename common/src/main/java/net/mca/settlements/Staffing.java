@@ -234,7 +234,10 @@ public final class Staffing {
                     for (Role other : roles) {
                         if (other == role) continue;
                         List<VillagerEntityMCA> in = adults.stream().filter(r -> r.getProfession() == other.profession() && !r.isElder() && !r.isGuard()).toList();
-                        if (in.size() > other.target() && (firsts || roles.indexOf(other) > roles.indexOf(role))) {
+                        boolean lesser = roles.indexOf(other) > roles.indexOf(role);
+                        // a trade with hands to spare gives one up; and in the first round a more important trade with
+                        // nobody at all (the builder, the farmer) takes the hand of a less important one
+                        if ((in.size() > other.target() || firsts && lesser && !in.isEmpty()) && (firsts || lesser)) {
                             who = in.get(in.size() - 1);
                             break;
                         }
