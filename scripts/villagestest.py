@@ -102,7 +102,7 @@ def main():
             print(f"{k}: none found", flush=True)
     daytest.run(s, "save-off")  # saving the chunks costs a fair part of every tick; nothing here needs it
     for k, (x, z) in places.items():
-        daytest.run(s, f"forceload add {x - 64} {z - 64} {x + 64} {z + 64}")
+        daytest.run(s, f"forceload add {x - 96} {z - 96} {x + 96} {z + 96}")  # (at 64 the woodsmen walked out of it and stood frozen)
     time.sleep(20)  # the chunks load, MCA finds the bells and beds
     for k, (x, z) in places.items():
         print(daytest.run(s, f"execute positioned {x} 0 {z} positioned over world_surface run settlements fake add T_{k}").strip(), flush=True)
