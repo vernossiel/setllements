@@ -4083,5 +4083,6 @@
   "settlements.say.fight.help.f": "Hold on! I've got him!",
   "settlements.say.home.commission": "Enough of making do. I'll pay the elder and have the builders put us up a better house.",
   "settlements.say.home.commission.f": "Enough of making do. I'll pay the elder and have the builders put us up a better house.",
-  "settlements.news.commission": "%s has done well and paid the builders for a new house in place of the old one."
+  "settlements.news.commission": "%s has done well and paid the builders for a new house in place of the old one.",
+  "settlements.building.newhome": "commissioned house"
 }

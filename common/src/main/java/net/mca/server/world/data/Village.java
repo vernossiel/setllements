@@ -77,6 +77,8 @@ public class Village implements Iterable<Building> {
     public final java.util.Map<Long, java.util.UUID> commissions = new java.util.LinkedHashMap<>();
     /** New houses promised to whoever paid for them (a spot inside the new house -> that villager). */
     public final java.util.Map<Long, java.util.UUID> reserved = new java.util.HashMap<>();
+    /** A paid-for house that would not fit where the old one stands: to be built on a new site (the one who paid). */
+    public java.util.UUID commissionElsewhere = null;
     /** Chests a player put down himself inside the village: his, not the villagers'. */
     public final java.util.Set<BlockPos> playerChests = new java.util.HashSet<>();
     public final List<net.mca.settlements.House> houses = new LinkedList<>();
@@ -188,6 +190,7 @@ public class Village implements Iterable<Building> {
         for (long l : v.getLongArray("lootChests")) lootChests.add(BlockPos.fromLong(l));
         NbtCompound comNbt = v.getCompound("commissions");
         for (String k : comNbt.getKeys()) commissions.put(Long.parseLong(k), comNbt.getUuid(k));
+        commissionElsewhere = v.containsUuid("commissionElsewhere") ? v.getUuid("commissionElsewhere") : null;
         NbtCompound resNbt = v.getCompound("reserved");
         for (String k : resNbt.getKeys()) reserved.put(Long.parseLong(k), resNbt.getUuid(k));
         for (long l : v.getLongArray("playerChests")) playerChests.add(BlockPos.fromLong(l));
@@ -601,6 +604,7 @@ public class Village implements Iterable<Building> {
         NbtCompound com = new NbtCompound();
         commissions.forEach((k, u) -> com.putUuid(String.valueOf(k), u));
         v.put("commissions", com);
+        if (commissionElsewhere != null) v.putUuid("commissionElsewhere", commissionElsewhere);
         NbtCompound res = new NbtCompound();
         reserved.forEach((k, u) -> res.putUuid(String.valueOf(k), u));
         v.put("reserved", res);

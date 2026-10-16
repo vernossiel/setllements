@@ -398,6 +398,25 @@ public final class Builder {
                 case "renovate" -> {
                     if (Rebuild.renovate(village, world)) return true;
                 }
+                case "newhome" -> {
+                    // the house a household paid for, on a site of its own (the old one had no room for it)
+                    String kind = Tiers.design("home", Rebuild.commissionTier(village), rand, null);
+                    int[] dm = kind.equals("house") ? new int[]{8, 8, 2} : SHOWCASE.getOrDefault(kind, new int[]{0, 0, 1});
+                    java.util.UUID payer = village.commissionElsewhere;
+                    if (startRing(village, world, kind, dm[0], dm[1], dm[2], 0, 5)) {
+                        int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
+                        int fw = (village.buildRot & 1) == 0 ? fp[0] : fp[1], fd = (village.buildRot & 1) == 0 ? fp[1] : fp[0];
+                        village.reserved.put(village.buildOrigin.add(fw / 2, 1, fd / 2).asLong(), payer);
+                        village.commissionElsewhere = null;
+                        NEWHOME_TRIES.remove(village.getId());
+                        return true;
+                    }
+                    if (NEWHOME_TRIES.merge(village.getId(), 1, Integer::sum) >= 20) { // no site to be had at all: the money back
+                        NEWHOME_TRIES.remove(village.getId());
+                        village.commissionElsewhere = null;
+                        Rebuild.refund(village, world, payer);
+                    }
+                }
                 case "shop" -> {
                     if (startRing(village, world, "shop", 0, 0, 0, 0, 3)) return true;
                 }
@@ -429,6 +448,7 @@ public final class Builder {
     }
 
     private static final java.util.Map<Integer, Long> NEXT_LOOK = new java.util.HashMap<>();
+    private static final java.util.Map<Integer, Integer> NEWHOME_TRIES = new java.util.HashMap<>();
 
     private static final java.util.Map<Integer, long[]> STEP_AT = new java.util.HashMap<>(); // {step, since}
 

@@ -102,7 +102,7 @@ public final class Home {
      * What they had put by in the old chest goes into their pockets first, so the builders do not empty it into the stores.
      */
     private static boolean commission(VillagerEntityMCA v, Village village, ServerWorld world, Inventory chest, BlockPos bed) {
-        if (!village.commissions.isEmpty() || Money.count(chest) + Money.count(v.getInventory()) < COMMISSION + RESERVE) return false;
+        if (!village.commissions.isEmpty() || village.commissionElsewhere != null || village.reserved.containsValue(v.getUuid()) || Money.count(chest) + Money.count(v.getInventory()) < COMMISSION + RESERVE) return false;
         Built house = null;
         for (Built b : village.built) if (b.contains(bed)) house = b;
         if (house == null || !Rebuild.canCommission(village, house)) return false;

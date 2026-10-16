@@ -185,7 +185,7 @@ public final class Rebuild {
     }
 
     /** A commission that cannot be carried out: the money goes back to whoever paid it. */
-    private static void refund(Village village, ServerWorld world, java.util.UUID payer) {
+    static void refund(Village village, ServerWorld world, java.util.UUID payer) {
         if (payer == null) return;
         if (world.getEntity(payer) instanceof VillagerEntityMCA v) Money.give(v.getInventory(), Money.take(village, Home.COMMISSION));
     }
@@ -232,7 +232,8 @@ public final class Rebuild {
                 }
                 if (clash) {
                     SKIPPED.add(renoKey(village, old));
-                    refund(village, world, payer);
+                    if (payer != null) village.commissionElsewhere = payer; // no room here: a new house on a new site, and they move
+                    payer = null;
                     return false;
                 }
             }
