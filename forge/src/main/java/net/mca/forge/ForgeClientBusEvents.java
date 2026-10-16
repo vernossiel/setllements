@@ -16,6 +16,16 @@ public class ForgeClientBusEvents {
         DialogueHud.render(event.getGuiGraphics());
     }
 
+    /** In the stocks there is no getting down: the game's 'press shift to dismount' line is kept off the screen. */
+    @SubscribeEvent
+    public static void onClientTick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
+        net.minecraft.client.MinecraftClient mc = net.minecraft.client.MinecraftClient.getInstance();
+        if (mc.player != null && net.mca.settlements.Seat.inStocks(mc.player) && mc.player.age % 5 == 0) {
+            mc.inGameHud.setOverlayMessage(net.minecraft.text.Text.empty(), false);
+        }
+    }
+
     @SubscribeEvent
     public static void onScroll(InputEvent.MouseScrollingEvent event) {
         if (DialogueHud.scroll(event.getScrollDelta())) event.setCanceled(true);
