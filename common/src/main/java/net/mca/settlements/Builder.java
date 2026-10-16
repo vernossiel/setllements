@@ -786,6 +786,16 @@ public final class Builder {
             if ((step.kind() == Kind.CLEAR || step.kind() == Kind.DIG) && !world.getBlockState(target).isReplaceable()) {
                 Gear.toolFor(v, village, world.getBlockState(target)); // clearing the site with a spade or a pick, not by hand
             }
+            // turned to the spot first, then the block goes in: not facing it, this beat he only turns (the head
+            // leads, the body follows), and lays it on the next
+            float want = (float) (net.minecraft.util.math.MathHelper.atan2(target.getZ() + 0.5 - v.getZ(), target.getX() + 0.5 - v.getX()) * (180 / Math.PI)) - 90f;
+            if (Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(want - v.getBodyYaw())) > 35 && !FREE) {
+                v.getNavigation().stop();
+                Gaze.at(v, target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
+                v.setBodyYaw(v.getBodyYaw() + net.minecraft.util.math.MathHelper.clamp(net.minecraft.util.math.MathHelper.wrapDegrees(want - v.getBodyYaw()), -90f, 90f));
+                return true;
+            }
+            Gear.face(v, target);
             Result r = execute(world, village, step, target, village.buildRot);
             if (r == Result.WAIT) { // out of materials: go and get some instead of standing around
                 Needs.Need need = needFor(step.kind());
@@ -814,8 +824,7 @@ public final class Builder {
                 v.settlementsCarry--;
                 ops++;
                 worked = true;
-                // the block in hand, facing the spot, like a player laying it
-                Gear.face(v, target);
+                // the block in hand, like a player laying it
                 Item held = world.getBlockState(target).getBlock().asItem();
                 if (held != Items.AIR) v.setStackInHand(v.getDominantHand(), new ItemStack(held));
                 v.swingHand(v.getDominantHand());
