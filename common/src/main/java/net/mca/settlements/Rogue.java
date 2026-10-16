@@ -36,8 +36,11 @@ public final class Rogue {
     }
 
     /** One in eight grown villagers, always the same ones; never the elder or a guard. */
+    private static final java.util.Set<UUID> FORCED = new java.util.HashSet<>(); // made rogues for testing
+
     public static boolean is(VillagerEntityMCA v) {
         if (v.isBaby() || v.isElder() || v.isGuard()) return false;
+        if (FORCED.contains(v.getUuid())) return true;
         return Math.floorMod(v.getUuid().getLeastSignificantBits() ^ 0x5DEECE66DL, 8L) == 0;
     }
 
@@ -235,6 +238,18 @@ public final class Rogue {
                 Justice.askSearch(world, village, stranger, java.util.Map.of(net.mca.item.ItemsMCA.EMERALD_NUGGET.get(), l.nuggets()), l.nuggets(), world.getTime() + 20 * 60, false);
             }
         }
+    }
+
+    /** For testing: one grown villager (not the elder, not a guard, not the builder) becomes a rogue. */
+    public static String make(ServerWorld world) {
+        for (net.minecraft.entity.Entity e : world.iterateEntities()) {
+            if (e instanceof VillagerEntityMCA v && !v.isBaby() && !v.isElder() && !v.isGuard() && !is(v)
+                    && v.getProfession() != net.minecraft.village.VillagerProfession.CARTOGRAPHER) {
+                FORCED.add(v.getUuid());
+                return v.getName().getString();
+            }
+        }
+        return "none";
     }
 
     /** For testing: every rogue in the world goes out tonight. Returns their names. */
