@@ -67,6 +67,10 @@ public final class Life {
         if (!(v.getWorld() instanceof ServerWorld world)) return;
         Village village = Village.findNearest(v).orElse(null);
         String name = v.getName().getString();
+        // for the record (and the tests): when, where and at what he died
+        net.mca.MCA.LOGGER.info("[Settlements] {} died at {} (time {}, sky light {}, in {}): {}", name, v.getBlockPos().toShortString(),
+                world.getTimeOfDay() % 24000L, world.getLightLevel(net.minecraft.world.LightType.SKY, v.getBlockPos()),
+                v.getResidency().getHome().isPresent() ? "a village with a home" : "no home", Doing.describe(v).getString());
         if (cause.getAttacker() instanceof PlayerEntity p) {
             news(village, "murder", name, p.getName().getString());
             Justice.report(world, village, p, Justice.Crime.MURDER, 50, null, true);
