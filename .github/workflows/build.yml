@@ -46,3 +46,25 @@ jobs:
             !forge/build/libs/*-dev-shadow.jar
             !forge/build/libs/*-sources.jar
           if-no-files-found: error
+
+      - name: Day test (a village through a working day on a server)
+        timeout-minutes: 25
+        run: |
+          mkdir -p forge/run
+          echo "eula=true" > forge/run/eula.txt
+          printf 'online-mode=false\nlevel-name=daytest\nlevel-seed=12345\nspawn-protection=0\nview-distance=6\nsimulation-distance=6\nenable-rcon=true\nrcon.port=25575\nrcon.password=test\nmax-tick-time=-1\n' > forge/run/server.properties
+          (./gradlew :forge:runServer --args=nogui --console=plain > server.log 2>&1 &)
+          python3 scripts/daytest.py 24 | tee daytest.log
+          sleep 10
+          grep -a -i "exception" server.log | grep -v -i "authlib\|yggdrasil\|minecraftservices\|UnknownHost" | head -20 || true
+
+      - name: Upload day test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daytest-log
+          path: |
+            daytest.log
+            server.log
+          if-no-files-found: ignore
+
