@@ -150,7 +150,6 @@ public final class Crafts {
             if (count(village, w.what()) < keep + w.lot()) continue;
             take(village, w.what(), w.lot());
             Workforce.addToTreasury(village, new ItemStack(Items.EMERALD, w.price()));
-            village.coffers += 10 * w.price(); // the sale's money, into the coffers for the wages
             Anim.set(v, Anim.Act.FEED, 30); // handing it over
             return true;
         }

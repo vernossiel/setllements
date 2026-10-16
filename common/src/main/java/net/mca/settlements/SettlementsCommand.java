@@ -231,7 +231,7 @@ public final class SettlementsCommand {
         for (ItemStack st : v.storageBuffer) stock.merge(Registries.ITEM.getId(st.getItem()).getPath(), st.getCount(), Integer::sum);
         say(c, "Stores: " + stock);
         say(c, "Mine: " + (v.mineOrigin == null ? "none" : v.mineOrigin.toShortString() + " level " + v.mineLevel + " step " + v.mineStep));
-        say(c, "Coffers: " + v.coffers + " coins. Treasury: planks+logs*4=" + Builder.stockPlanks(v) + " cobble=" + Builder.stockCobble(v) + " iron=" + Builder.stockIron(v)
+        say(c, "Coffers: " + Money.coffers(v) + " nuggets. Treasury: planks+logs*4=" + Builder.stockPlanks(v) + " cobble=" + Builder.stockCobble(v) + " iron=" + Builder.stockIron(v)
                 + " wool=" + Builder.stockWool(v) + " stacks=" + v.storageBuffer.size());
         for (Plan.Status s : Plan.pending(v)) {
             say(c, " goal " + s.goal().id() + (s.ready() ? ": ready" : ": missing planks " + s.missPlanks() + ", cobble " + s.missCobble()
@@ -252,7 +252,7 @@ public final class SettlementsCommand {
         for (var v : w.getEntitiesByClass(net.mca.entity.VillagerEntityMCA.class, box, x -> x.isAlive())) {
             String prof = v.isBaby() ? "child" : v.isGuard() ? "guard" : v.isElder() ? "elder" : Registries.VILLAGER_PROFESSION.getId(v.getProfession()).getPath();
             Village vil = Village.findNearest(v).or(() -> v.getResidency().getHomeVillage()).orElse(null);
-            say(c, v.getName().getString() + " [" + prof + "] @" + v.getBlockPos().toShortString() + " e=" + v.settlementsEnergy + " h=" + v.settlementsHunger + " $=" + v.settlementsPurse + " home=" + v.getResidency().getHome().map(h -> h.getPos().toShortString()).orElse("-")
+            say(c, v.getName().getString() + " [" + prof + "] @" + v.getBlockPos().toShortString() + " e=" + v.settlementsEnergy + " h=" + v.settlementsHunger + " $=" + Purse.money(v) + (v.settlementsPurse < 0 ? "(owes " + (-v.settlementsPurse) + ")" : "") + " home=" + v.getResidency().getHome().map(h -> h.getPos().toShortString()).orElse("-")
                     + " idle=" + v.settlementsIdleWork + " job=" + v.getVillagerBrain().getCurrentJob() + " vil=" + (vil == null ? "-" : vil.getId())
                     + " load=" + Haul.load(v) + (v.settlementsHauling ? "(hauling)" : "") + " store=" + (vil == null || Haul.store(v, vil) == null ? "-" : Haul.store(v, vil).toShortString())
                     + " hand=" + Registries.ITEM.getId(v.getMainHandStack().getItem()).getPath() + " goal=" + (Move.goal(v) == null ? "-" : Move.goal(v).toShortString())

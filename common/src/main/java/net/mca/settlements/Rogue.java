@@ -96,9 +96,8 @@ public final class Rogue {
         OWES.put(v.getUuid(), p.getUuid());
         Speech.sayNow(v, "settlements.say.rogue.thanks", p.getName());
         // a little of what he had put by, for his saviour
-        int coins = Math.max(0, v.settlementsPurse / 2);
-        if (coins >= 10) p.giveItemStack(new ItemStack(Items.EMERALD, coins / 10));
-        v.settlementsPurse -= coins;
+        int coins = Money.count(v.getInventory()) / 2;
+        if (coins > 0 && Money.take(v.getInventory(), coins)) p.giveItemStack(new ItemStack(net.mca.item.ItemsMCA.EMERALD_NUGGET.get(), coins));
         boolean seen = !world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(14, 4, 14),
                 o -> o != v && o.isAlive() && !o.isSleeping() && !o.isBaby() && o.canSee(p)).isEmpty();
         if (seen) {

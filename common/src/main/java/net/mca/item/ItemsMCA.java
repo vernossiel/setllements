@@ -175,6 +175,8 @@ public interface ItemsMCA {
 
     RegistrySupplier<Item> DIVORCE_PAPERS = register("divorce_papers", () -> new TooltippedItem(baseProps()));
 
+    // the small money of the villages (see settlements.Money): nine to an emerald
+    RegistrySupplier<Item> EMERALD_NUGGET = register("emerald_nugget", () -> new Item(baseProps()));
     RegistrySupplier<Item> ROSE_GOLD_DUST = register("rose_gold_dust", () -> new Item(baseProps()));
     RegistrySupplier<Item> ROSE_GOLD_INGOT = register("rose_gold_ingot", () -> new Item(baseProps()));
 

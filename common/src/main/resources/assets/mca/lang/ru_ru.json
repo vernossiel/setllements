@@ -4065,5 +4065,6 @@
   "settlements.say.stocks.kind.1": "Ничего, %s, все ошибаются.",
   "settlements.say.stocks.kind.1.f": "Ничего, %s, все ошибаются.",
   "settlements.say.stocks.kind.2": "Скоро отпустят, потерпи.",
-  "settlements.say.stocks.kind.2.f": "Скоро отпустят, потерпи."
+  "settlements.say.stocks.kind.2.f": "Скоро отпустят, потерпи.",
+  "item.mca.emerald_nugget": "Изумрудный самородок"
 }

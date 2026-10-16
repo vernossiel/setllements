@@ -743,7 +743,7 @@ public final class Workforce {
         for (int i = 0; i < v.getInventory().size(); i++) {
             ItemStack s = v.getInventory().getStack(i);
             // his own things stay with him: tools, shears, a bow, armour - whatever wears out with use
-            if (s.isEmpty() || s.isDamageable() || s.getItem() instanceof net.minecraft.item.ToolItem || s.getItem() instanceof net.minecraft.item.ArmorItem) continue;
+            if (s.isEmpty() || s.isDamageable() || s.getItem() instanceof net.minecraft.item.ToolItem || s.getItem() instanceof net.minecraft.item.ArmorItem || Money.is(s)) continue; // his own money stays his
             if (s.isFood()) {
                 int keep = Math.max(0, KEEP_FOOD - food);
                 food += Math.min(keep, s.getCount());

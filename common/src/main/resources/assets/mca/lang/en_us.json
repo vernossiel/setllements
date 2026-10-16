@@ -4068,5 +4068,6 @@
   "settlements.say.stocks.kind.1": "Never mind, %s, we all make mistakes.",
   "settlements.say.stocks.kind.1.f": "Never mind, %s, we all make mistakes.",
   "settlements.say.stocks.kind.2": "They'll let you go soon, hold on.",
-  "settlements.say.stocks.kind.2.f": "They'll let you go soon, hold on."
+  "settlements.say.stocks.kind.2.f": "They'll let you go soon, hold on.",
+  "item.mca.emerald_nugget": "Emerald Nugget"
 }
