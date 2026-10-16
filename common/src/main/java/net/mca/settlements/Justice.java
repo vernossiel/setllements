@@ -708,6 +708,8 @@ public final class Justice {
         // subdue); one the village only wants rid of is beaten and let crawl away; one in the stocks is not touched
         Case c = CASES.get(p.getUuid());
         if (c != null && c.stage == Stage.SERVING) return 0f;
+        // blood on his hands: one who has killed the village's people is fought to the death, no crawling off
+        if (c != null && c.crime == Crime.MURDER) return damage;
         if (detaining(c)) return Math.min(damage, Math.max(1f, p.getHealth() - 5f));
         // let go once and come back after all: this time the guards do not hold back
         Long warned = WARNED.get(p.getUuid());
