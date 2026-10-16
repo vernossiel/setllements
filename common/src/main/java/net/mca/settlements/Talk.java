@@ -79,7 +79,7 @@ public final class Talk {
             Doing.set(v, "settlements.doing.talk", other.getName());
             if (c.a.equals(v.getUuid()) && now >= c.next) {
                 VillagerEntityMCA speaker = c.line % 2 == 0 ? v : other;
-                say(speaker, "settlements.talk." + c.topic + "." + "abcd".charAt(c.line), c.args);
+                say(speaker, speaker == v ? other : v, "settlements.talk." + c.topic + "." + "abcd".charAt(c.line), c.args);
                 if (speaker.getRandom().nextInt(2) == 0) speaker.swingHand(speaker.getDominantHand()); // a gesture
                 c.line++;
                 c.next = now + 50 + world.random.nextInt(30);
@@ -111,6 +111,7 @@ public final class Talk {
         }
         if (partner == null) return false;
         String[] t = topic(v, partner, village, world);
+        t[0] = variant(t[0], world.random); // one of the several ways the same talk goes
         Conversation conv = new Conversation(v.getUuid(), partner.getUuid(), t[0], t.length > 1 ? new Object[]{t[1]} : new Object[0], now + 20);
         TALKING.put(v.getUuid(), conv);
         TALKING.put(partner.getUuid(), conv);
@@ -130,12 +131,36 @@ public final class Talk {
         return topic.startsWith("hello") ? 2 : 4;
     }
 
-    private static void say(VillagerEntityMCA v, String key, Object[] args) {
-        net.minecraft.text.MutableText line = Text.translatable(key, args).formatted(Formatting.WHITE);
+    private static void say(VillagerEntityMCA v, VillagerEntityMCA to, String key, Object[] args) {
+        // in the speaker's own grammar, and in the grammar of the one he speaks to ("did you sleep well" changes with her)
+        String k = Speech.voiced(v, key) + (to.getGenetics().getGender() == net.mca.entity.ai.relationship.Gender.FEMALE ? ".lf" : "");
+        net.minecraft.text.MutableText line = Text.translatable(k, args).formatted(Formatting.WHITE);
         for (PlayerEntity p : v.getWorld().getPlayers()) {
             if (p.squaredDistanceTo(v) <= HEAR * HEAR) v.sendChatMessage(line, p);
         }
         v.settlementsLastSay = v.getWorld().getTime();
+    }
+
+    private static Map<String, Integer> VARIANTS;
+
+    /** How many more ways each talk can go (assets/mca/settlements/talk_variants.json, written with the lines). */
+    private static synchronized Map<String, Integer> variants() {
+        if (VARIANTS != null) return VARIANTS;
+        VARIANTS = new HashMap<>();
+        try (var in = Talk.class.getResourceAsStream("/assets/mca/settlements/talk_variants.json")) {
+            if (in != null) {
+                var j = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+                for (var e : j.entrySet()) VARIANTS.put(e.getKey(), e.getValue().getAsInt());
+            }
+        } catch (Exception ignored) {
+        }
+        return VARIANTS;
+    }
+
+    private static String variant(String topic, net.minecraft.util.math.random.Random r) {
+        int n = variants().getOrDefault(topic, 0);
+        int k = r.nextInt(n + 1);
+        return k == 0 ? topic : topic + ".v" + k;
     }
 
     /** What the two talk about. */
@@ -174,6 +199,15 @@ public final class Talk {
             }
         }
         if (village != null && Forage.hungry(village) && r.nextBoolean()) return new String[]{"hungry"};
+        // the moment: a storm, the cold, early morning, late at night, a day off, two old friends or two who hardly know each other
+        if (world.isThundering() && r.nextBoolean()) return new String[]{"storm"};
+        if (world.getBiome(v.getBlockPos()).value().isCold(v.getBlockPos()) && r.nextInt(3) == 0) return new String[]{"cold"};
+        if (t < 2500 && r.nextBoolean()) return new String[]{"morning"};
+        if (t >= 12500 && r.nextBoolean()) return new String[]{"night"};
+        if (Workforce.isRestDay(world.getTimeOfDay()) && r.nextInt(3) == 0) return new String[]{"restday"};
+        double bond = Persona.affinity(v, w);
+        if (bond > 0.6 && r.nextInt(3) == 0) return new String[]{"friends"};
+        if (bond < 0.15 && r.nextInt(4) == 0) return new String[]{"acquaint"};
         if (world.isRaining() && r.nextBoolean()) return new String[]{"rain"};
         if (t >= 11000 && t < 13500 && r.nextBoolean()) return new String[]{"evening"};
         if (village != null && r.nextBoolean()) {
@@ -183,6 +217,6 @@ public final class Talk {
         String prof = v.isGuard() ? "guard" : v.isElder() ? "elder" : Registries.VILLAGER_PROFESSION.getId(v.getProfession()).getPath();
         if (r.nextBoolean() && java.util.Set.of("guard", "elder", "cartographer", "mason", "fletcher", "toolsmith", "farmer", "shepherd", "butcher",
                 "armorer", "cleric", "fisherman").contains(prof)) return new String[]{"work." + prof};
-        return new String[]{"small." + r.nextInt(8)};
+        return new String[]{"small." + r.nextInt(12)};
     }
 }

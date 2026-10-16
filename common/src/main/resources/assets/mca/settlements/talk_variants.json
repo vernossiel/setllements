@@ -1,0 +1,17 @@
+{
+ "acquaint": 1,
+ "cold": 1,
+ "evening": 2,
+ "friends": 2,
+ "hungry": 1,
+ "morning": 2,
+ "night": 1,
+ "rain": 2,
+ "restday": 1,
+ "storm": 1,
+ "work.cartographer": 2,
+ "work.farmer": 2,
+ "work.fletcher": 1,
+ "work.guard": 1,
+ "work.mason": 1
+}

@@ -19,6 +19,12 @@ public final class Speech {
     private Speech() {
     }
 
+    /** The line in the speaker's own grammar: a woman's lines are kept under the same key with ".f" (Russian verbs change). */
+    static String voiced(VillagerEntityMCA v, String key) {
+        if (!key.startsWith("settlements.say.") && !key.startsWith("settlements.talk.") && !key.startsWith("settlements.react.")) return key;
+        return v.getGenetics().getGender() == net.mca.entity.ai.relationship.Gender.FEMALE ? key + ".f" : key;
+    }
+
     public static void say(VillagerEntityMCA v, String key, Object... args) {
         if (v.getWorld().isClient) return;
         long now = v.getWorld().getTime();
@@ -28,7 +34,7 @@ public final class Speech {
         if (p == null) return;
         v.settlementsLastSay = now;
         v.settlementsLastKey = key;
-        v.sendChatMessage(Text.translatable(key, args).formatted(Formatting.WHITE), p);
+        v.sendChatMessage(Text.translatable(voiced(v, key), args).formatted(Formatting.WHITE), p);
     }
 
     /** One of several ways to say the same thing: the base key or base.1 .. base.(n-1). */
@@ -44,7 +50,7 @@ public final class Speech {
         if (p == null) return;
         v.settlementsLastSay = v.getWorld().getTime();
         v.settlementsLastKey = key;
-        v.sendChatMessage(Text.translatable(key, args == null ? new Object[0] : args).formatted(Formatting.WHITE), p);
+        v.sendChatMessage(Text.translatable(voiced(v, key), args == null ? new Object[0] : args).formatted(Formatting.WHITE), p);
     }
 
     public static void sayText(VillagerEntityMCA v, Text text) {
