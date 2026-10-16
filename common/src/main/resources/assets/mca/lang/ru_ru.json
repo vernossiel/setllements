@@ -3745,5 +3745,8 @@
   "settlements.talk.news.sick.d": "И от меня привет передай. Пусть поправляется.",
   "settlements.talk.news.sick.d.lf": "И от меня привет передай. Пусть поправляется.",
   "settlements.talk.news.sick.d.f": "И от меня привет передай. Пусть поправляется.",
-  "settlements.talk.news.sick.d.f.lf": "И от меня привет передай. Пусть поправляется."
+  "settlements.talk.news.sick.d.f.lf": "И от меня привет передай. Пусть поправляется.",
+  "settlements.say.quarry": "Дерева хватит, а камня нет. Пойду наломаю.",
+  "settlements.say.quarry.f": "Дерева хватит, а камня нет. Пойду наломаю.",
+  "settlements.doing.quarry": "ломает камень (каменщика пока нет)"
 }

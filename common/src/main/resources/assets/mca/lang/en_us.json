@@ -3748,5 +3748,8 @@
   "settlements.talk.news.sick.d": "Give them my best. Get well soon.",
   "settlements.talk.news.sick.d.lf": "Give them my best. Get well soon.",
   "settlements.talk.news.sick.d.f": "Give them my best. Get well soon.",
-  "settlements.talk.news.sick.d.f.lf": "Give them my best. Get well soon."
+  "settlements.talk.news.sick.d.f.lf": "Give them my best. Get well soon.",
+  "settlements.say.quarry": "Wood enough, and no stone. I'll go and break some.",
+  "settlements.say.quarry.f": "Wood enough, and no stone. I'll go and break some.",
+  "settlements.doing.quarry": "breaking stone (no mason yet)"
 }

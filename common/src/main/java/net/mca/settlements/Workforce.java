@@ -317,8 +317,14 @@ public final class Workforce {
             else if (prof == VillagerProfession.ARMORER) worked = Smithing.work(v, village);
             else if (prof == VillagerProfession.CLERIC) worked = Healing.work(v, village);
             else if ((prof == VillagerProfession.FLETCHER || prof == VillagerProfession.TOOLSMITH) && v.getWorld() instanceof net.minecraft.server.world.ServerWorld lw2) {
-                if (v.age % 400 == 0) Gear.equipTool(v, village, Chore.CHOP); // a better axe, when there is one to be had
-                worked = Chain.lumber(v, village, lw2, time); // an axe, a tree (the grove, the woods), a full bag, the stores
+                // in a village with no mason yet, the woodman breaks stone too when the wood is in and the stone is out
+                if (quarry(v, village, lw2)) {
+                    Doing.set(v, "settlements.doing.quarry");
+                    worked = Chain.mine(v, village, lw2, time);
+                } else {
+                    if (v.age % 400 == 0) Gear.equipTool(v, village, Chore.CHOP); // a better axe, when there is one to be had
+                    worked = Chain.lumber(v, village, lw2, time); // an axe, a tree (the grove, the woods), a full bag, the stores
+                }
             }
             else worked = Husbandry.work(v, village);
             if (!helping && !foraging) v.settlementsIdleWork = worked || Move.goal(v) != null ? 0 : v.settlementsIdleWork + 1; // walking to work is not idling
@@ -632,6 +638,30 @@ public final class Workforce {
 
     private static int nutrition(ItemStack s) {
         return s.getItem().getFoodComponent().getHunger() * 120;
+    }
+
+    private static final java.util.Set<java.util.UUID> QUARRYING = new java.util.HashSet<>();
+
+    /** The lumberjack takes up the pick while there is no mason, wood enough in the stores and too little stone; and puts it down again. */
+    private static boolean quarry(VillagerEntityMCA v, net.mca.server.world.data.Village village, net.minecraft.server.world.ServerWorld world) {
+        if (village == null) return false;
+        if (v.age % 200 == 0 || !QUARRYING.contains(v.getUuid()) && v.age % 20 == 0) {
+            int logs = 0, stone = 0;
+            for (ItemStack s : village.storageBuffer) {
+                if (s.isIn(net.minecraft.registry.tag.ItemTags.LOGS)) logs += s.getCount();
+                else if (s.isOf(net.minecraft.item.Items.COBBLESTONE)) stone += s.getCount();
+            }
+            boolean mason = Staffing.has(world, village, VillagerProfession.MASON);
+            boolean was = QUARRYING.contains(v.getUuid());
+            boolean now = !mason && (was ? stone < 128 && logs >= 16 : stone < 48 && logs >= 48);
+            if (now && !was) {
+                QUARRYING.add(v.getUuid());
+                Speech.say(v, "settlements.say.quarry");
+            } else if (!now && was) {
+                QUARRYING.remove(v.getUuid());
+            }
+        }
+        return QUARRYING.contains(v.getUuid());
     }
 
     private static boolean quotaAllows(net.mca.server.world.data.Village village, Chore chore) {
