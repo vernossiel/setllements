@@ -112,6 +112,20 @@ public final class SettlementsCommand {
                     Watch.lightUp(w, vil, 8);
                     return say(c, "lamps placed: " + (before - Crafts.count(vil, st -> st.isOf(net.minecraft.item.Items.TORCH))));
                 }))
+                .then(CommandManager.literal("villages").executes(c -> {
+                    // every village side by side: to compare how they live
+                    var w = c.getSource().getWorld();
+                    for (var vil : net.mca.server.world.data.VillageManager.get(w)) {
+                        int food = 0;
+                        for (var st : vil.storageBuffer) if (st.isFood()) food += st.getCount();
+                        int pop = vil.getPopulation();
+                        say(c, vil.getName() + " @" + new net.minecraft.util.math.BlockPos(vil.getCenter()).toShortString() + " pop=" + pop
+                                + " food=" + food + " (" + (pop > 0 ? food / pop : 0) + "/head) coffers=" + Money.coffers(vil)
+                                + " land=" + String.format("%.2f", Harvest.fertility(w, vil)) + " week=" + String.format("%.2f", Harvest.luck(vil, w.getTimeOfDay() / 24000L))
+                                + " level=" + Plan.level(vil) + " planks=" + Builder.stockPlanks(vil) + " cobble=" + Builder.stockCobble(vil));
+                    }
+                    return 1;
+                }))
                 .then(CommandManager.literal("makerogue").executes(c -> say(c, "Rogue now: " + Rogue.make(c.getSource().getWorld()))))
                 .then(CommandManager.literal("rich").executes(SettlementsCommand::rich))
                 .then(CommandManager.literal("warp").requires(src -> src.hasPermissionLevel(2))

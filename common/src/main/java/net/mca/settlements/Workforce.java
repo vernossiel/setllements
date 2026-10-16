@@ -718,7 +718,7 @@ public final class Workforce {
     }
 
     private static int nutrition(ItemStack s) {
-        return s.getItem().getFoodComponent().getHunger() * 120;
+        return s.getItem().getFoodComponent().getHunger() * 90; // a carrot (3) takes off 270 of a thousand: a working man eats three or four a day
     }
 
     private static final java.util.Set<java.util.UUID> QUARRYING = new java.util.HashSet<>();
