@@ -604,8 +604,9 @@ public final class Life {
         boolean onHim = foe.getTarget() == v && d < 2.5 * 2.5;
         int stuck = onHim && was != null && was.squaredDistanceTo(v.getPos()) < 0.6 * 0.6 ? STUCK.merge(v.getUuid(), 1, Integer::sum) : 0;
         if (stuck == 0) STUCK.remove(v.getUuid());
-        boolean cornered = stuck >= 2 || indoors && onHim && v.getAttacker() == foe;
         boolean guardNear = !world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(32, 8, 32), o -> o.isGuard() && o.isAlive()).isEmpty();
+        // no guard to come (a hamlet has none): once the thing has struck him, he stands and fights - badly, but he fights
+        boolean cornered = stuck >= 2 || indoors && onHim && v.getAttacker() == foe || !guardNear && v.getAttacker() == foe && d < 3 * 3;
         var held = v.getMainHandStack().getItem();
         boolean armed = held instanceof net.minecraft.item.AxeItem || held instanceof net.minecraft.item.SwordItem;
         boolean neighbour = !cornered && armed && !guardNear && foe.getTarget() instanceof VillagerEntityMCA other && other != v && !other.isGuard() && d < 6 * 6;
