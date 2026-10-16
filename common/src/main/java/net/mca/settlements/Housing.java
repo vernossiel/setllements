@@ -52,10 +52,13 @@ public final class Housing {
         Map<Building, List<BlockPos>> houses = new HashMap<>();
         PointOfInterestStorage poi = world.getPointOfInterestStorage();
         BlockPos heart = v.hallPos != null ? v.hallPos : new BlockPos(v.getCenter());
+        int reach = reach(v, heart);
         for (Building b : v.getBuildings().values()) {
             if (b.getBuildingType().grouped()) continue;
-            // a house the village counts but that stands off in the woods is no home: nobody walks there at nightfall
-            if (b.getCenter().getSquaredDistance(heart) > 48 * 48) continue;
+            // a house the village counts but that stands off in the woods is no home: nobody walks there at nightfall.
+            // Whatever the village built itself is home wherever it stands; anything else only within the village as it
+            // has grown (its own houses' reach, never less than 48 blocks from the hall)
+            if (!ours(v, b) && b.getCenter().getSquaredDistance(heart) > reach * reach) continue;
             int r = Math.max(4, b.getSize());
             List<BlockPos> beds = poi.getInSquare(t -> t.matchesKey(PointOfInterestTypes.HOME), b.getCenter(), r, PointOfInterestStorage.OccupationStatus.ANY)
                     .map(p -> p.getPos()).filter(b::containsPos).sorted(Comparator.comparingLong(BlockPos::asLong)).toList();
@@ -91,7 +94,7 @@ public final class Housing {
                 // a bed far off is no home either: better the town hall's floor than a walk through the woods at night
                 for (VillagerEntityMCA m : h) {
                     GlobalPos home = m.getResidency().getHome().orElse(null);
-                    if (home != null && home.getPos().getSquaredDistance(heart) > 48 * 48) {
+                    if (home != null && home.getPos().getSquaredDistance(heart) > reach * reach && v.getBuildingAt(home.getPos()).map(b -> !ours(v, b)).orElse(true)) {
                         m.releaseTicketFor(MemoryModuleType.HOME);
                         m.getBrain().forget(MemoryModuleType.HOME);
                     }
@@ -104,6 +107,19 @@ public final class Housing {
         }
         HOMELESS.put(v.getId(), homeless);
         EMPTY.put(v.getId(), (int) houses.keySet().stream().filter(b -> !taken.contains(b)).count());
+    }
+
+    /** Built by the village itself (one of its own plots). */
+    private static boolean ours(Village v, Building b) {
+        for (Built x : v.built) if (x.contains(b.getCenter())) return true;
+        return false;
+    }
+
+    /** How far the village reaches from its hall: its farthest own building and a little more, at least 48 blocks. */
+    private static int reach(Village v, BlockPos heart) {
+        double far = 48;
+        for (Built x : v.built) far = Math.max(far, Math.sqrt(x.origin().getSquaredDistance(heart)) + 12);
+        return (int) Math.min(160, far);
     }
 
     /** The new house this household paid for, once it stands with its beds in it. */
