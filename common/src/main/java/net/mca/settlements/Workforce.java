@@ -423,6 +423,7 @@ public final class Workforce {
         // the crop growing and nothing to do in the fields: he lends the builders a hand
         if (prof == VillagerProfession.FARMER && village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld hw2
                 && v.getWorld().getTime() >= v.settlementsNoWorkUntil && (Life.helpBuilders(v, village, hw2)
+                || Hay.fetch(v, village, hw2) // the bales the village came with, into the stores when wheat runs short
                 || !Staffing.has(hw2, village, VillagerProfession.SHEPHERD) && Herding.work(v, village, hw2) || Planner.idle(v, village, hw2))) {
             v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
             hunger(v, HUNGER_RISE);

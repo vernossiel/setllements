@@ -4147,5 +4147,6 @@
   "settlements.doing.guard.case": "dealing with %s",
   "settlements.justice.found.hall": "The stores in the hall are empty! Someone's carried off the village's goods! Guards!",
   "settlements.justice.found.hall.f": "The stores in the hall are empty! Someone's carried off the village's goods! Guards!",
-  "settlements.news.crime.hall": "The stores in the town hall were robbed - the whole village's goods. The guard is looking for the thief."
+  "settlements.news.crime.hall": "The stores in the town hall were robbed - the whole village's goods. The guard is looking for the thief.",
+  "settlements.doing.farm.hay": "carrying the hay from a bale to the stores"
 }
