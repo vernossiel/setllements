@@ -63,7 +63,7 @@ public final class Remember {
         if (what == null) return;
         GREETED.put(key, day);
         if (GREETED.size() > 2000) GREETED.clear();
-        v.getLookControl().lookAt(p, 30f, 30f);
+        Gaze.at(v, p, 30f, 30f);
         Speech.say(v, "settlements.recall." + what + "." + v.getRandom().nextInt(3), p.getName());
     }
 }

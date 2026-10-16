@@ -67,7 +67,7 @@ public final class Escort {
         if (g.squaredDistanceTo(who) > 36) Move.to(g, who.getX(), who.getY(), who.getZ(), 0.6);
         else {
             g.getNavigation().stop();
-            g.getLookControl().lookAt(who, 20f, 20f);
+            Gaze.at(g, who, 20f, 20f);
         }
         return true;
     }

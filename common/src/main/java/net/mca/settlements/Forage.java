@@ -94,7 +94,7 @@ public final class Forage {
                 int age = s.get(SweetBerryBushBlock.AGE);
                 Workforce.addToTreasury(village, new ItemStack(Items.SWEET_BERRIES, 1 + world.random.nextInt(2) + (age == 3 ? 1 : 0)));
                 world.setBlockState(bush, s.with(SweetBerryBushBlock.AGE, 1), 2);
-                v.getLookControl().lookAt(bush.getX() + 0.5, bush.getY() + 0.5, bush.getZ() + 0.5);
+                Gaze.at(v, bush.getX() + 0.5, bush.getY() + 0.5, bush.getZ() + 0.5);
                 v.swingHand(v.getDominantHand());
                 Speech.sayAny(v, "settlements.say.forage.berries", 3);
                 BUSH.remove(v.getUuid());
@@ -122,7 +122,7 @@ public final class Forage {
             Move.to(v, prey, 0.62);
             if (pd < 200) Speech.sayAny(v, "settlements.say.forage.hunt", 3);
         } else {
-            v.getLookControl().lookAt(prey, 30f, 30f);
+            Gaze.at(v, prey, 30f, 30f);
             v.swingHand(v.getDominantHand());
             prey.damage(world.getDamageSources().mobAttack(v), 6f);
         }

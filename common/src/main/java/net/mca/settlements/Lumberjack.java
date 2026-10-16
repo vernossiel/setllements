@@ -197,7 +197,7 @@ public final class Lumberjack {
             v.lumberTarget = null;
             return false;
         }
-        v.getLookControl().lookAt(base.getX() + 0.5, base.getY() + 1.5, base.getZ() + 0.5);
+        Gaze.at(v, base.getX() + 0.5, base.getY() + 1.5, base.getZ() + 0.5);
         for (int i = 0; i < v.getInventory().size(); i++) {
             if (v.getInventory().getStack(i).getItem() instanceof net.minecraft.item.AxeItem) {
                 v.setStackInHand(v.getDominantHand(), v.getInventory().getStack(i).copy()); // shown in hand only while chopping

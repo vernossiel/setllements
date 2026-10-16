@@ -875,6 +875,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
             net.mca.settlements.Climb.tick(this);
             net.mca.settlements.Dig.tick(this);
             if (age % 20 == 0) net.mca.settlements.Workforce.tick(this);
+            net.mca.settlements.Gaze.head(this); // eyes held on what he is looking at, the head turning to it smoothly
 
             // pop a item from the desaturation queue
             if (age % Config.getInstance().giftDesaturationReset == 0) {

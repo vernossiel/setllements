@@ -181,7 +181,7 @@ public final class Orders {
                 }
             }
             if (thanker != null) {
-                thanker.getLookControl().lookAt(player, 30f, 30f);
+                Gaze.at(thanker, player, 30f, 30f);
                 Speech.sayNow(thanker, "settlements.say.thanks.brought", player.getName(), n);
             }
         }

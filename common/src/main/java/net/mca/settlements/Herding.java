@@ -179,7 +179,7 @@ public final class Herding {
                 if (v.squaredDistanceTo(f.pasture.getX() + 0.5, f.pasture.getY(), f.pasture.getZ() + 0.5) > 25) {
                     Move.to(v, f.pasture.getX() + 0.5, f.pasture.getY(), f.pasture.getZ() + 0.5, 0.4);
                 } else if (world.random.nextInt(12) == 0 && !out.isEmpty()) {
-                    v.getLookControl().lookAt(out.get(world.random.nextInt(out.size())), 30f, 30f);
+                    Gaze.at(v, out.get(world.random.nextInt(out.size())), 30f, 30f);
                 }
                 return true;
             }
@@ -231,7 +231,7 @@ public final class Herding {
         for (UUID id : f.led) {
             if (world.getEntity(id) instanceof AnimalEntity a && a.squaredDistanceTo(v) > 36) {
                 v.getNavigation().stop();
-                v.getLookControl().lookAt(a, 30f, 30f);
+                Gaze.at(v, a, 30f, 30f);
                 a.getNavigation().startMovingTo(v, 1.1);
                 return true;
             }
@@ -272,7 +272,7 @@ public final class Herding {
         if (!Staffing.has(world, village, net.minecraft.village.VillagerProfession.BUTCHER) && Butchery.work(v, village, world)) return true;
         // nothing to do: he leans on the fence and watches them
         if (v.squaredDistanceTo(pen.getX() + 0.5, pen.getY(), pen.getZ() + 0.5) > 64) Move.to(v, pen.getX() + 0.5, pen.getY(), pen.getZ() + 0.5, 0.45);
-        else if (!inside.isEmpty() && world.random.nextInt(10) == 0) v.getLookControl().lookAt(inside.get(world.random.nextInt(inside.size())), 30f, 30f);
+        else if (!inside.isEmpty() && world.random.nextInt(10) == 0) Gaze.at(v, inside.get(world.random.nextInt(inside.size())), 30f, 30f);
         Doing.set(v, "settlements.doing.herd.watch");
         return true;
     }
@@ -351,7 +351,7 @@ public final class Herding {
             village.markDirty();
             a.lovePlayer(null);
             Anim.set(v, Anim.Act.FEED, 40);
-            v.getLookControl().lookAt(a, 30f, 30f);
+            Gaze.at(v, a, 30f, 30f);
             v.swingHand(v.getDominantHand());
             Speech.say(v, "settlements.say.pen.feed");
             return true;

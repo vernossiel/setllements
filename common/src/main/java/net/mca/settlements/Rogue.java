@@ -154,7 +154,7 @@ public final class Rogue {
             return true;
         }
         v.getNavigation().stop();
-        v.getLookControl().lookAt(target, 30f, 30f);
+        Gaze.at(v, target, 30f, 30f);
         GOING_TO.remove(v.getUuid());
         Justice.markOffered(target);
         int price = 4 + Justice.secondsLeft(target) / 30;

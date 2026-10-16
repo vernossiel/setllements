@@ -187,7 +187,7 @@ public final class Planner {
                 public boolean run(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
                     PlayerEntity p = world.getClosestPlayer(v, 12);
                     if (p == null) return false;
-                    v.getLookControl().lookAt(p, 30f, 30f);
+                    Gaze.at(v, p, 30f, 30f);
                     Needs.set(v, need); // handing it to him counts (Needs)
                     if (world.random.nextInt(30) == 0) Speech.sayNow(v, "settlements.plan.ask", p.getName(),
                             Text.translatable("settlements.need.name." + need.name().toLowerCase()));

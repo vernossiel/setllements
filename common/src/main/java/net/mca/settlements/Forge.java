@@ -109,7 +109,7 @@ public final class Forge {
         else {
             v.getNavigation().stop();
             VillagerEntityMCA smith = smith(village);
-            if (smith != null) v.getLookControl().lookAt(smith, 30f, 30f);
+            if (smith != null) Gaze.at(v, smith, 30f, 30f);
         }
         return true;
     }
@@ -131,7 +131,7 @@ public final class Forge {
             Move.to(smith, anvil.getX() + 0.5, anvil.getY(), anvil.getZ() + 0.5, 0.6);
             return true;
         }
-        smith.getLookControl().lookAt(anvil.getX() + 0.5, anvil.getY() + 0.5, anvil.getZ() + 0.5);
+        Gaze.at(smith, anvil.getX() + 0.5, anvil.getY() + 0.5, anvil.getZ() + 0.5);
         smith.swingHand(smith.getDominantHand());
         if (smith.age % 40 == 0) world.playSound(null, anvil, SoundEvents.BLOCK_ANVIL_USE, SoundCategory.BLOCKS, 0.6f, 1.1f);
         if (++j.done < HAMMER_SECONDS) return true;
@@ -151,7 +151,7 @@ public final class Forge {
         Gear.give(who, j.chore, new ItemStack(tool));
         Speech.sayNow(smith, "settlements.say.forge.done", j.name, new ItemStack(tool).getName());
         if (who.squaredDistanceTo(smith) < 64) {
-            smith.getLookControl().lookAt(who, 30f, 30f);
+            Gaze.at(smith, who, 30f, 30f);
             who.swingHand(who.getDominantHand());
             Speech.say(who, "settlements.say.forge.thanks", smith.getName());
         }

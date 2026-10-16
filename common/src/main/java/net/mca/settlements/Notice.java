@@ -95,7 +95,7 @@ public final class Notice {
             return true;
         }
         v.getNavigation().stop();
-        v.getLookControl().lookAt(c.x, c.y + 1, c.z);
+        Gaze.at(v, c.x, c.y + 1, c.z);
         if (!w.said() && world.random.nextInt(4) == 0) {
             Speech.sayAny(v, "settlements.say.notice.build", 5);
             WATCHING.put(v.getUuid(), new Watch(w.at(), w.stand(), w.until(), w.giveUp(), true));
@@ -121,7 +121,7 @@ public final class Notice {
             return true;
         }
         v.getNavigation().stop();
-        v.getLookControl().lookAt(pet, 30f, 60f);
+        Gaze.at(v, pet, 30f, 60f);
         pet.getLookControl().lookAt(v, 30f, 30f);
         v.swingHand(v.getDominantHand());
         world.spawnParticles(net.minecraft.particle.ParticleTypes.HEART, pet.getX(), pet.getY() + 0.8, pet.getZ(), 1, 0.2, 0.2, 0.2, 0);

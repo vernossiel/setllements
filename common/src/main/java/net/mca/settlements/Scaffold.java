@@ -101,7 +101,7 @@ public final class Scaffold {
         }
         int feet = target.getY() - 1, at = (int) Math.floor(v.getY() + 0.01);
         v.getNavigation().stop();
-        v.getLookControl().lookAt(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
+        Gaze.at(v, target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
         if (at < feet) {
             // up a block: the scaffolding under his feet, and he steps up onto it
             BlockPos under = new BlockPos(col.getX(), at, col.getZ());

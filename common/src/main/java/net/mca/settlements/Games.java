@@ -149,7 +149,7 @@ public final class Games {
             if (counting) {
                 Doing.set(v, "settlements.doing.kid.count");
                 v.getNavigation().stop();
-                v.getLookControl().lookAt(v.getX() + 0.0, v.getY() - 2, v.getZ() + 0.1); // eyes shut, face down
+                Gaze.at(v, v.getX() + 0.0, v.getY() - 2, v.getZ() + 0.1); // eyes shut, face down
                 if ((now - g.start) % 60 == 0) Speech.sayNow(v, "settlements.kid.count." + Math.min(3, (now - g.start) / 60));
                 return true;
             }
@@ -207,7 +207,7 @@ public final class Games {
         else {
             v.getNavigation().stop();
             Pose.crouch(v, 40); // squatting down out of sight
-            if (seeker.squaredDistanceTo(v) < 36 && world.random.nextInt(4) == 0) v.getLookControl().lookAt(seeker, 30f, 30f); // peeking
+            if (seeker.squaredDistanceTo(v) < 36 && world.random.nextInt(4) == 0) Gaze.at(v, seeker, 30f, 30f); // peeking
         }
         return true;
     }

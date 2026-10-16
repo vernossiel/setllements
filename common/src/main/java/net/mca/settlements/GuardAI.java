@@ -81,7 +81,7 @@ public final class GuardAI {
         if (watched != null && watched.squaredDistanceTo(g) < 40 * 40 && Reputation.tier(village.getReputation(watched)) <= 2) {
             if (g.squaredDistanceTo(watched) > 16) brain.remember(MemoryModuleType.WALK_TARGET, new WalkTarget(watched, 0.6f, 3));
             else {
-                g.getLookControl().lookAt(watched, 30f, 30f);
+                Gaze.at(g, watched, 30f, 30f);
                 if (world.getTime() - g.settlementsWarned > 1200) {
                     g.settlementsWarned = world.getTime();
                     g.sendChatMessage(net.minecraft.text.Text.translatable("settlements.say.guard.warn", watched.getName()), watched);

@@ -189,7 +189,7 @@ public final class Persona {
             Entity o = v.settlementsChatWith == null ? null : world.getEntity(v.settlementsChatWith);
             if (o instanceof VillagerEntityMCA other && other.isAlive() && other.squaredDistanceTo(v) < 36) {
                 v.getNavigation().stop();
-                v.getLookControl().lookAt(other, 30f, 30f);
+                Gaze.at(v, other, 30f, 30f);
                 if (now % 120 < 20) Life.exchange(v, other, village, world);
                 return true;
             }
@@ -246,8 +246,8 @@ public final class Persona {
                 if (v.squaredDistanceTo(friend) > 9) {
                     v.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(friend, 0.45f, 2));
                 } else {
-                    v.getLookControl().lookAt(friend, 30f, 30f);
-                    friend.getLookControl().lookAt(v, 30f, 30f);
+                    Gaze.at(v, friend, 30f, 30f);
+                    Gaze.at(friend, v, 30f, 30f);
                     // the friend, if he has nothing better to do, stays to talk
                     if (friend.settlementsPastime != VISIT && free(friend, world.getTimeOfDay())) {
                         friend.settlementsPastime = VISIT;

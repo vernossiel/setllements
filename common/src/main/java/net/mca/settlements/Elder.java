@@ -85,7 +85,7 @@ public final class Elder {
 
     private static void face(VillagerEntityMCA elder, PlayerEntity p) {
         elder.getNavigation().stop();
-        elder.getLookControl().lookAt(p, 30f, 30f);
+        Gaze.at(elder, p, 30f, 30f);
         elder.swingHand(elder.getDominantHand());
     }
 

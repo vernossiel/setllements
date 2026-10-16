@@ -123,7 +123,7 @@ public final class Butchery {
             Move.to(v, prey.getX(), prey.getY(), prey.getZ(), 0.6);
             return true;
         }
-        v.getLookControl().lookAt(prey, 30f, 30f);
+        Gaze.at(v, prey, 30f, 30f);
         v.swingHand(v.getDominantHand());
         Anim.set(v, Anim.Act.CHOP, 20);
         prey.damage(world.getDamageSources().mobAttack(v), 7f);
@@ -159,7 +159,7 @@ public final class Butchery {
             Move.to(v, fire.getX() + 0.5, fire.getY(), fire.getZ() + 0.5, 0.5);
             return true;
         }
-        if (fire != null) v.getLookControl().lookAt(fire.getX() + 0.5, fire.getY() + 0.5, fire.getZ() + 0.5);
+        if (fire != null) Gaze.at(v, fire.getX() + 0.5, fire.getY() + 0.5, fire.getZ() + 0.5);
         v.getNavigation().stop();
         int t = TURNING.merge(v.getUuid(), 1, Integer::sum);
         Anim.set(v, Anim.Act.FEED, 30); // turning the meat over the fire

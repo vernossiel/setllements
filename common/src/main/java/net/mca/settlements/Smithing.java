@@ -92,7 +92,7 @@ public final class Smithing {
             Move.to(v, anvil.getX() + 0.5, anvil.getY(), anvil.getZ() + 0.5, 0.6);
             return false;
         }
-        v.getLookControl().lookAt(anvil.getX() + 0.5, anvil.getY() + 0.5, anvil.getZ() + 0.5);
+        Gaze.at(v, anvil.getX() + 0.5, anvil.getY() + 0.5, anvil.getZ() + 0.5);
         v.swingHand(v.getDominantHand());
         if (v.age % 60 == 0) world.playSound(null, anvil, SoundEvents.BLOCK_ANVIL_USE, SoundCategory.BLOCKS, 0.5f, 1.2f);
         return true;

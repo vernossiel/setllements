@@ -164,7 +164,7 @@ public final class Plan {
     }
 
     private static void tell(VillagerEntityMCA elder, Village village, ServerWorld world, PlayerEntity player, java.util.function.Consumer<Text> out) {
-        elder.getLookControl().lookAt(player, 30f, 30f);
+        Gaze.at(elder, player, 30f, 30f);
         elder.sendChatMessage(Text.translatable("settlements.elder.intro", village.getName(),
                 Text.translatable("settlements.level." + level(village).name().toLowerCase()), village.getPopulation()), player);
         out.accept(Text.translatable("settlements.elder.pace", Prosperity.describe(village), reason(village)));

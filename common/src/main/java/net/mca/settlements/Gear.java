@@ -241,7 +241,7 @@ public final class Gear {
         v.setYaw(yaw);
         v.setBodyYaw(yaw);
         v.setHeadYaw(yaw);
-        v.getLookControl().lookAt(p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5);
+        Gaze.at(v, p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5);
     }
 
     /**

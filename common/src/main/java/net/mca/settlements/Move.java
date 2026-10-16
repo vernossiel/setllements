@@ -98,7 +98,7 @@ public final class Move {
         BlockState s = world.getBlockState(p);
         for (ItemStack drop : Block.getDroppedStacks(s, world, p, world.getBlockEntity(p))) v.getInventory().addStack(drop);
         world.breakBlock(p, false, v);
-        v.getLookControl().lookAt(p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5);
+        Gaze.at(v, p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5);
         v.swingHand(v.getDominantHand());
     }
 

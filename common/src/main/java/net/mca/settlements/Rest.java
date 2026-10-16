@@ -63,7 +63,7 @@ public final class Rest {
                     Move.to(v, mate, 0.5);
                     return false;
                 }
-                v.getLookControl().lookAt(mate, 30f, 30f);
+                Gaze.at(v, mate, 30f, 30f);
                 return sitDown(v, world);
             }
         }

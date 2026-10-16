@@ -98,7 +98,7 @@ public final class Haul {
             return false;
         }
         v.getNavigation().stop();
-        v.getLookControl().lookAt(s.getX() + 0.5, s.getY() + 0.5, s.getZ() + 0.5);
+        Gaze.at(v, s.getX() + 0.5, s.getY() + 0.5, s.getZ() + 0.5);
         return true;
     }
 

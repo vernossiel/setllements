@@ -133,7 +133,7 @@ public final class Husbandry {
             Move.to(v, prey, 0.7);
             return false;
         }
-        v.getLookControl().lookAt(prey, 30f, 30f);
+        Gaze.at(v, prey, 30f, 30f);
         v.swingHand(v.getDominantHand());
         prey.damage(world.getDamageSources().mobAttack(v), 6f);
         v.settlementsKillPos = prey.getBlockPos();

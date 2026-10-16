@@ -426,7 +426,7 @@ public final class Workforce {
         if (v.squaredDistanceTo(master) > 16) Move.to(v, master.getX(), master.getY(), master.getZ(), 0.5);
         else {
             v.getNavigation().stop();
-            v.getLookControl().lookAt(master, 30f, 30f);
+            Gaze.at(v, master, 30f, 30f);
             Dig.gather(v, 3); // picks up what falls, as a lad at the elbow does
             if (Dig.busy(master) && world.random.nextInt(3) == 0) v.swingHand(v.getDominantHand());
             Trade.practise(v);

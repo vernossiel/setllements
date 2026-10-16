@@ -156,7 +156,7 @@ public final class Life {
         // only a third makes it an assault that frightens the village
         if (Justice.hit(world, village, attacker) == Justice.Crime.HARASSMENT) {
             Speech.sayNow(victim, "settlements.react.hit");
-            victim.getLookControl().lookAt(attacker, 30f, 30f);
+            Gaze.at(victim, attacker, 30f, 30f);
             return;
         }
         String k = key(village, attacker);
@@ -305,7 +305,7 @@ public final class Life {
         int rep = village == null ? 0 : village.getReputation(p);
         int tier = Reputation.tier(rep);
         double d = v.squaredDistanceTo(p);
-        if (v.getNavigation().isIdle() && d < 25) v.getLookControl().lookAt(p, 30f, 30f);
+        if (v.getNavigation().isIdle() && d < 25) Gaze.at(v, p, 30f, 30f);
 
         // a bad name: nobody runs yet, but the guard is fetched to keep an eye on him
         if (tier == 2 && !v.isGuard() && village != null) callGuards(world, village, v, p, false);
@@ -380,7 +380,7 @@ public final class Life {
         }
         o.getInventory().addStack(inv.getStack(slot).split(1));
         v.swingHand(v.getDominantHand());
-        v.getLookControl().lookAt(o, 30f, 30f);
+        Gaze.at(v, o, 30f, 30f);
         Needs.set(o, Needs.Need.NONE);
         Speech.sayNow(v, "settlements.react.share");
         o.settlementsReplyKey = "settlements.react.thanks";
@@ -427,7 +427,7 @@ public final class Life {
         if (other == null) return;
         v.settlementsHelloAfter = now + 2400 + v.getRandom().nextInt(2400);
         other.settlementsHelloAfter = v.settlementsHelloAfter;
-        v.getLookControl().lookAt(other, 30f, 30f);
+        Gaze.at(v, other, 30f, 30f);
         Anim.set(v, Anim.Act.WAVE, 30);
         Speech.say(v, "settlements.talk.hello." + v.getRandom().nextInt(4), other.getName());
         other.settlementsReplyKey = "settlements.talk.hello_back." + v.getRandom().nextInt(4);
@@ -459,8 +459,8 @@ public final class Life {
         String[] topic = topic(v, village, world);
         if (topic == null) return;
         Object[] args = topic.length > 1 ? new Object[]{topic[1]} : new Object[0];
-        v.getLookControl().lookAt(other, 30f, 30f);
-        other.getLookControl().lookAt(v, 30f, 30f);
+        Gaze.at(v, other, 30f, 30f);
+        Gaze.at(other, v, 30f, 30f);
         Speech.sayNow(v, "settlements.talk." + topic[0] + ".a", args);
         other.settlementsReplyKey = "settlements.talk." + topic[0] + ".b";
         other.settlementsReplyArgs = args;
@@ -514,7 +514,7 @@ public final class Life {
                 if (v.squaredDistanceTo(parent) > 12) v.getNavigation().startMovingTo(parent, 0.55);
                 else {
                     v.getNavigation().stop();
-                    v.getLookControl().lookAt(parent, 30f, 30f);
+                    Gaze.at(v, parent, 30f, 30f);
                     if (world.random.nextInt(4) == 0) v.swingHand(v.getDominantHand()); // doing it too, after a fashion
                     if (world.random.nextInt(20) == 0) {
                         Speech.say(v, "settlements.kid.watch." + world.random.nextInt(3), parent.getName());

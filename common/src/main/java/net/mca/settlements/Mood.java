@@ -81,7 +81,7 @@ public final class Mood {
                     return true;
                 }
                 v.getNavigation().stop();
-                v.getLookControl().lookAt(s.at().getX() + 0.5, s.at().getY() + 2, s.at().getZ() + 0.5);
+                Gaze.at(v, s.at().getX() + 0.5, s.at().getY() + 2, s.at().getZ() + 0.5);
                 if (world.random.nextInt(4) == 0) {
                     Speech.sayAny(v, "settlements.say.mood.built", 4);
                     came.add(v.getUuid());
@@ -98,7 +98,7 @@ public final class Mood {
                         return true;
                     }
                     v.getNavigation().stop();
-                    v.getLookControl().lookAt(s.at().getX() + 0.5, s.at().getY(), s.at().getZ() + 0.5);
+                    Gaze.at(v, s.at().getX() + 0.5, s.at().getY(), s.at().getZ() + 0.5);
                     if (world.random.nextInt(8) == 0) Pose.crouch(v, 60); // bent over the grave a while
                     if (world.random.nextInt(30) == 0) {
                         Speech.sayAny(v, "settlements.say.mood.mourn", 4);

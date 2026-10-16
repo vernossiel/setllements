@@ -55,7 +55,7 @@ public final class Trade {
                 // looking round, at the sky, at the ground, at the work
                 float yaw = v.getYaw() + (v.getRandom().nextFloat() - 0.5f) * 160f;
                 double dx = -Math.sin(Math.toRadians(yaw)) * 4, dz = Math.cos(Math.toRadians(yaw)) * 4;
-                v.getLookControl().lookAt(v.getX() + dx, v.getEyeY() + (v.getRandom().nextFloat() - 0.6f) * 3, v.getZ() + dz);
+                Gaze.at(v, v.getX() + dx, v.getEyeY() + (v.getRandom().nextFloat() - 0.6f) * 3, v.getZ() + dz);
             }
             return true;
         }

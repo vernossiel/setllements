@@ -77,7 +77,7 @@ public final class Festival {
                 return true;
             }
             v.getNavigation().stop();
-            if (world.getEntity(v.getUuid().equals(w.a()) ? w.b() : w.a()) instanceof VillagerEntityMCA other) v.getLookControl().lookAt(other, 30f, 30f);
+            if (world.getEntity(v.getUuid().equals(w.a()) ? w.b() : w.a()) instanceof VillagerEntityMCA other) Gaze.at(v, other, 30f, 30f);
             if (world.random.nextInt(25) == 0) Speech.sayAny(v, "settlements.say.fest.vow", 3);
             return true;
         }
@@ -90,7 +90,7 @@ public final class Festival {
             return true;
         }
         v.getNavigation().stop();
-        v.getLookControl().lookAt(c.x, c.y + 1.4, c.z);
+        Gaze.at(v, c.x, c.y + 1.4, c.z);
         if (world.random.nextInt(4) == 0) Anim.set(v, Anim.Act.CLAP, 60); // clapping
         if (world.random.nextInt(14) == 0) Pose.jump(v); // and a jump for joy
         if (world.random.nextInt(30) == 0) Speech.sayAny(v, "settlements.say.fest.cheer", 4);

@@ -44,6 +44,6 @@ public final class Leisure {
         List<VillagerEntityMCA> near = v.getWorld().getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(4), o -> o != v && !o.isSleeping());
         if (near.isEmpty()) return;
         VillagerEntityMCA other = near.get(0);
-        v.getLookControl().lookAt(other, 30f, 30f);
+        Gaze.at(v, other, 30f, 30f);
     }
 }

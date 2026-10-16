@@ -141,7 +141,7 @@ public final class Camp {
             return false;
         }
         v.getNavigation().stop();
-        v.getLookControl().lookAt(fire.getX() + 0.5, fire.getY() + 0.5, fire.getZ() + 0.5);
+        Gaze.at(v, fire.getX() + 0.5, fire.getY() + 0.5, fire.getZ() + 0.5);
         if (!Seat.seated(v)) { // sit down at his place, facing the fire
             double dx = fire.getX() - place.getX(), dz = fire.getZ() - place.getZ();
             float yaw = (float) (Math.atan2(dz, dx) * (180 / Math.PI)) - 90f;

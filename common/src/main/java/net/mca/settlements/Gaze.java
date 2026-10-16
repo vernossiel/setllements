@@ -25,6 +25,41 @@ public final class Gaze {
 
     private static final Map<UUID, Look> LOOKS = new HashMap<>();
 
+    /** What his eyes are on right now: an entity, or a spot; kept for a moment and turned to smoothly every tick. */
+    private record Hold(Entity at, net.minecraft.util.math.Vec3d spot, long until) {
+    }
+
+    private static final Map<UUID, Hold> HOLD = new HashMap<>();
+    /** How far the head turns in a tick, in degrees: a man turns his head, he does not snap it round. */
+    private static final float TURN = 9f;
+
+    /** Eyes on {@code e} (the speeds are the old look-control ones and are not used: the head turns at its own pace). */
+    public static void at(VillagerEntityMCA v, Entity e, float yawSpeed, float pitchSpeed) {
+        if (e == null) return;
+        HOLD.put(v.getUuid(), new Hold(e, null, v.getWorld().getTime() + 30));
+    }
+
+    /** Eyes on a spot. */
+    public static void at(VillagerEntityMCA v, double x, double y, double z) {
+        HOLD.put(v.getUuid(), new Hold(null, new net.minecraft.util.math.Vec3d(x, y, z), v.getWorld().getTime() + 30));
+    }
+
+    /**
+     * Every tick: the head turns towards what he is looking at, a little each tick, and stays on it; the brain's own
+     * idle looking about does not pull it away meanwhile. With nothing to look at, the head follows the body.
+     */
+    public static void head(VillagerEntityMCA v) {
+        Hold h = HOLD.get(v.getUuid());
+        if (h == null || v.settlementsDigPos != null) return; // at the block he is breaking (see Dig)
+        if (v.getWorld().getTime() > h.until() || v.isSleeping() || h.at() != null && (!h.at().isAlive() || h.at().getWorld() != v.getWorld())) {
+            HOLD.remove(v.getUuid());
+            return;
+        }
+        v.getBrain().forget(MemoryModuleType.LOOK_TARGET);
+        if (h.at() != null) v.getLookControl().lookAt(h.at(), TURN, TURN);
+        else v.getLookControl().lookAt(h.spot().x, h.spot().y, h.spot().z, TURN, TURN);
+    }
+
     private Gaze() {
     }
 
@@ -37,7 +72,7 @@ public final class Gaze {
         if (l != null && now < l.until()) {
             Entity e = world.getEntity(l.at());
             if (e != null && e.isAlive() && e.squaredDistanceTo(v) < 16 * 16) {
-                v.getLookControl().lookAt(e, 20f, 20f);
+                at(v, e, 20f, 20f);
                 return;
             }
         }
@@ -78,7 +113,7 @@ public final class Gaze {
         if (best == null) return;
         long hold = walking ? 20 + world.random.nextInt(20) : 40 + world.random.nextInt(60);
         LOOKS.put(v.getUuid(), new Look(best.getUuid(), now + hold));
-        v.getLookControl().lookAt(best, 20f, 20f);
+        Gaze.at(v, best, 20f, 20f);
     }
 
     /** How quickly he walks: slower worn out or hungry, brisker fresh and keen. */
