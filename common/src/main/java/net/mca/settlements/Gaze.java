@@ -51,6 +51,10 @@ public final class Gaze {
     public static void head(VillagerEntityMCA v) {
         Hold h = HOLD.get(v.getUuid());
         if (h == null || v.settlementsDigPos != null) return; // at the block he is breaking (see Dig)
+        if (v.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) { // in a fight, eyes on the foe (the fight looks after that)
+            HOLD.remove(v.getUuid());
+            return;
+        }
         if (v.getWorld().getTime() > h.until() || v.isSleeping() || h.at() != null && (!h.at().isAlive() || h.at().getWorld() != v.getWorld())) {
             HOLD.remove(v.getUuid());
             return;
@@ -66,7 +70,7 @@ public final class Gaze {
     /** Once a second. */
     public static void tick(VillagerEntityMCA v, ServerWorld world) {
         if (v.isSleeping() || v.isBaby() && world.random.nextBoolean() || Dig.busy(v) || Talk.talking(v)
-                || v.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) return;
+                || v.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).isPresent() || busy(v)) return;
         long now = world.getTime();
         Look l = LOOKS.get(v.getUuid());
         if (l != null && now < l.until()) {
@@ -114,6 +118,12 @@ public final class Gaze {
         long hold = walking ? 20 + world.random.nextInt(20) : 40 + world.random.nextInt(60);
         LOOKS.put(v.getUuid(), new Look(best.getUuid(), now + hold));
         Gaze.at(v, best, 20f, 20f);
+    }
+
+    /** At a piece of work with his hands: his eyes stay on it, nothing about him draws them away. */
+    private static boolean busy(VillagerEntityMCA v) {
+        Anim.Act a = Anim.of(v.getSettlementsAction());
+        return a != Anim.Act.NONE && a != Anim.Act.CARRY && a != Anim.Act.WAVE && a != Anim.Act.CLAP && a != Anim.Act.BEHIND;
     }
 
     /** How quickly he walks: slower worn out or hungry, brisker fresh and keen. */

@@ -110,10 +110,21 @@ public final class Rogue {
     }
 
     /**
-     * The way a rogue goes about his business: bent low, slow, a glance over the shoulder now and then; and whenever
-     * somebody awake could see him, he stands stock still in the shadow till they look away or go.
+     * The way a rogue goes about his business: like anybody till he is near his mark; then bent low and slow, stopping to
+     * look about him; and whenever somebody awake could see him, he stands stock still in the shadow till they look away or go.
      */
     private static void creep(VillagerEntityMCA v, ServerWorld world, double x, double y, double z) {
+        double far = v.squaredDistanceTo(x, y, z);
+        if (far > 14 * 14) {
+            // still a way off: he strolls along like anyone out late, only a look about him now and then
+            if (world.random.nextInt(8) == 0) {
+                double a = world.random.nextDouble() * Math.PI * 2;
+                Gaze.at(v, v.getX() + Math.cos(a) * 8, v.getEyeY(), v.getZ() + Math.sin(a) * 8);
+            }
+            Move.to(v, x, y, z, 0.45);
+            return;
+        }
+        // close now: down low, and every few steps he stops and looks round
         Anim.set(v, Anim.Act.BEND, 30);
         VillagerEntityMCA eyes = world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(10, 3, 10),
                 o -> o != v && o.isAlive() && !o.isSleeping() && !o.isBaby() && !is(o) && o.canSee(v)).stream().findFirst().orElse(null);
@@ -122,7 +133,7 @@ public final class Rogue {
             Gaze.at(v, eyes, 20f, 20f); // watching them, holding his breath
             return;
         }
-        if (world.random.nextInt(5) == 0) { // a look back over his shoulder
+        if (world.random.nextInt(3) == 0) { // a look back over his shoulder, a pause
             double a = world.random.nextDouble() * Math.PI * 2;
             Gaze.at(v, v.getX() + Math.cos(a) * 6, v.getEyeY(), v.getZ() + Math.sin(a) * 6);
             v.getNavigation().stop();
