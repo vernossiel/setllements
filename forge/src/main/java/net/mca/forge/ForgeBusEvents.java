@@ -49,6 +49,7 @@ public class ForgeBusEvents {
             if (event.level.getTime() % 600 == 300) net.mca.settlements.Arrivals.tick((ServerWorld)event.level);
             if (event.level.getTime() % 600 == 450) net.mca.settlements.Ledger.tick((ServerWorld)event.level);
             if (event.level.getTime() % 20 == 10) net.mca.settlements.Bearing.tick((ServerWorld)event.level);
+            if (event.level.getTime() % 20 == 15) net.mca.settlements.Move.clearScaffold((ServerWorld)event.level);
             if (event.level.getTime() % 200 == 0) net.mca.settlements.Board.tick((ServerWorld)event.level);
             if (event.level.getTime() % 40 == 0) net.mca.settlements.Staffing.foundHalls((ServerWorld)event.level);
             if (event.level.getTime() % 600 == 300) net.mca.settlements.Repair.tick((ServerWorld)event.level);

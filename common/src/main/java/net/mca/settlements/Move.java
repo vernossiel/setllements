@@ -317,7 +317,34 @@ public final class Move {
         return true;
     }
 
+    /** Blocks put under his feet to climb out of somewhere: taken down again once nobody needs them. */
+    private record Scaffold(BlockPos pos, long at, int village) {
+    }
+
+    private static final java.util.List<Scaffold> SCAFFOLD = new java.util.ArrayList<>();
+
+    /** Once a second per world: a climbing column left standing a minute, with nobody on it, comes down; the block back to the stores. */
+    public static void clearScaffold(ServerWorld world) {
+        if (SCAFFOLD.isEmpty()) return;
+        long now = world.getTime();
+        for (java.util.Iterator<Scaffold> it = SCAFFOLD.iterator(); it.hasNext(); ) {
+            Scaffold sc = it.next();
+            if (now - sc.at() < 20 * 60) continue;
+            BlockPos p = sc.pos();
+            if (!world.isChunkLoaded(p)) continue;
+            if (!world.getEntitiesByClass(net.minecraft.entity.LivingEntity.class, new net.minecraft.util.math.Box(p.up()).expand(0.3, 1, 0.3), e -> true).isEmpty()) continue;
+            it.remove();
+            BlockState st = world.getBlockState(p);
+            if (st.isAir()) continue;
+            world.setBlockState(p, Blocks.AIR.getDefaultState());
+            Village vil = net.mca.server.world.data.VillageManager.get(world).getOrEmpty(sc.village()).orElse(null);
+            if (vil != null && st.getBlock().asItem() != net.minecraft.item.Items.AIR) Workforce.addToTreasury(vil, new ItemStack(st.getBlock().asItem()));
+        }
+    }
+
     private static boolean pillar(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos feet) {
+        // in his own mine he takes the stairs, he does not build himself a column out of it
+        if (village != null && village.mineOrigin != null && Mining.inShaft(v, village.mineOrigin) && Mining.shaftWalk(v, village.mineOrigin, true)) return true;
         if (!passable(world, feet.up(2))) {
             if (diggable(world, village, feet.up(2))) {
                 dig(v, world, feet.up(2));
@@ -326,7 +353,10 @@ public final class Move {
             return false;
         }
         v.refreshPositionAndAngles(v.getX(), feet.getY() + 1.05, v.getZ(), v.getYaw(), v.getPitch());
-        if (place(v, village, world, feet)) return true;
+        if (place(v, village, world, feet)) {
+            if (village != null) SCAFFOLD.add(new Scaffold(feet.toImmutable(), world.getTime(), village.getId()));
+            return true;
+        }
         v.refreshPositionAndAngles(v.getX(), feet.getY(), v.getZ(), v.getYaw(), v.getPitch()); // nothing to stand on
         return false;
     }
