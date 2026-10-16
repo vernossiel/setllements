@@ -428,7 +428,7 @@ public final class Life {
         v.settlementsHelloAfter = now + 2400 + v.getRandom().nextInt(2400);
         other.settlementsHelloAfter = v.settlementsHelloAfter;
         v.getLookControl().lookAt(other, 30f, 30f);
-        v.swingHand(v.getDominantHand());
+        Anim.set(v, Anim.Act.WAVE, 30);
         Speech.say(v, "settlements.talk.hello." + v.getRandom().nextInt(4), other.getName());
         other.settlementsReplyKey = "settlements.talk.hello_back." + v.getRandom().nextInt(4);
         other.settlementsReplyArgs = new Object[]{v.getName()};

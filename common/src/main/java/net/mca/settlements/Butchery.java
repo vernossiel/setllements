@@ -125,6 +125,7 @@ public final class Butchery {
         }
         v.getLookControl().lookAt(prey, 30f, 30f);
         v.swingHand(v.getDominantHand());
+        Anim.set(v, Anim.Act.CHOP, 20);
         prey.damage(world.getDamageSources().mobAttack(v), 7f);
         v.settlementsKillPos = prey.getBlockPos();
         v.settlementsKillUntil = world.getTime() + 400;
@@ -161,7 +162,7 @@ public final class Butchery {
         if (fire != null) v.getLookControl().lookAt(fire.getX() + 0.5, fire.getY() + 0.5, fire.getZ() + 0.5);
         v.getNavigation().stop();
         int t = TURNING.merge(v.getUuid(), 1, Integer::sum);
-        if (t % 4 == 0) v.swingHand(v.getDominantHand());
+        Anim.set(v, Anim.Act.FEED, 30); // turning the meat over the fire
         if (t < 10) return true; // ten seconds a batch
         TURNING.remove(v.getUuid());
         ItemStack cooked = ItemStack.EMPTY;

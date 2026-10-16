@@ -68,6 +68,7 @@ public final class Workforce {
     /** Server side, once per second. */
     public static void tick(VillagerEntityMCA v) {
         Pose.tick(v);
+        Anim.tick(v);
         if (v.isBaby()) {
             if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld kw && Games.tick(v, kw)) return; // at play with the others
             Life.child(v);

@@ -167,6 +167,15 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         if (isElder() != elder) setTrackedValue(ELDER, elder);
     }
 
+    /** What his hands are busy with, for the model (see settlements.Anim). */
+    public int getSettlementsAction() {
+        return getTrackedValue(ACTION);
+    }
+
+    public void setSettlementsAction(int action) {
+        if (getSettlementsAction() != action) setTrackedValue(ACTION, action);
+    }
+
     /** The role shown to the player: the elder, one of the village jobs, or the plain profession name. */
     public Text settlementsRoleText() {
         if (isElder()) return Text.translatable("settlements.role.elder").formatted(Formatting.GOLD);
@@ -193,6 +202,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     private static final CDataParameter<Float> INFECTION_PROGRESS = CParameter.create("infectionProgress", 0.0f);
     private static final CDataParameter<Integer> GROWTH_AMOUNT = CParameter.create("growthAmount", -AgeState.getMaxAge());
     private static final CDataParameter<Boolean> ELDER = CParameter.create("settlementsElder", false);
+    private static final CDataParameter<Integer> ACTION = CParameter.create("settlementsAction", 0);
     private static final CDataManager<VillagerEntityMCA> DATA = createTrackedData(VillagerEntityMCA.class).build();
 
     public final ConversationManager conversationManager = new ConversationManager(this);
@@ -218,7 +228,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     private static final int RECALCULATE_DIMENSIONS_EVERY_N_TICKS = 100;
 
     public static <E extends Entity> CDataManager.Builder<E> createTrackedData(Class<E> type) {
-        return VillagerLike.createTrackedData(type).addAll(INFECTION_PROGRESS, GROWTH_AMOUNT, ELDER)
+        return VillagerLike.createTrackedData(type).addAll(INFECTION_PROGRESS, GROWTH_AMOUNT, ELDER, ACTION)
                 .add(Residency::createTrackedData)
                 .add(BreedableRelationship::createTrackedData);
     }

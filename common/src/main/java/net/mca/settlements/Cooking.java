@@ -62,6 +62,7 @@ public final class Cooking {
             smoker.setStack(2, rest);
             Speech.say(v, "settlements.say.cook.ready");
             v.swingHand(v.getDominantHand());
+            Anim.set(v, Anim.Act.BUILD, 40);
             return true;
         }
         if (Tavern.mealsIn(barrel) >= BARREL_TARGET) return false;
@@ -90,6 +91,7 @@ public final class Cooking {
             smoker.setStack(0, raw);
             LOADED_AT.put(t.smoker(), world.getTime());
             v.swingHand(v.getDominantHand());
+            Anim.set(v, Anim.Act.BUILD, 40);
             return true;
         }
 
@@ -97,6 +99,7 @@ public final class Cooking {
         if (Builder.takeItem(village, s -> s.isOf(Items.WHEAT), 3)) {
             Tavern.insert(barrel, new ItemStack(Items.BREAD));
             v.swingHand(v.getDominantHand());
+            Anim.set(v, Anim.Act.BUILD, 40);
             return true;
         }
         // nothing to cook at all: ask for it

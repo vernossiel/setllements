@@ -136,6 +136,7 @@ public final class Haul {
             }
         }
         Doing.set(v, "settlements.doing.haul");
+        Anim.set(v, Anim.Act.CARRY, 30);
         if (!reach(v, village)) return true;
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld world) openChest(world, store(v, village));
         var inv = v.getInventory();
@@ -146,6 +147,7 @@ public final class Haul {
             inv.setStack(i, ItemStack.EMPTY);
         }
         v.swingHand(v.getDominantHand());
+        Anim.clear(v);
         village.markDirty();
         v.settlementsHauling = false;
         Speech.say(v, "settlements.say.haul.done");

@@ -80,7 +80,7 @@ public final class Talk {
             if (c.a.equals(v.getUuid()) && now >= c.next) {
                 VillagerEntityMCA speaker = c.line % 2 == 0 ? v : other;
                 say(speaker, speaker == v ? other : v, "settlements.talk." + c.topic + "." + "abcd".charAt(c.line), c.args);
-                if (speaker.getRandom().nextInt(2) == 0) speaker.swingHand(speaker.getDominantHand()); // a gesture
+                Anim.set(speaker, Anim.Act.TALK, 50); // hands that talk too
                 c.line++;
                 c.next = now + 50 + world.random.nextInt(30);
                 if (c.line >= lines(c.topic)) {

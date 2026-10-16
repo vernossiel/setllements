@@ -692,6 +692,7 @@ public final class Builder {
                 Item held = world.getBlockState(target).getBlock().asItem();
                 if (held != Items.AIR) v.setStackInHand(v.getDominantHand(), new ItemStack(held));
                 v.swingHand(v.getDominantHand());
+                Anim.set(v, Anim.Act.BUILD, 30);
                 BlockState placed = world.getBlockState(target);
                 world.playSound(null, target, placed.getSoundGroup().getPlaceSound(), net.minecraft.sound.SoundCategory.BLOCKS, 0.8f, 0.9f);
             } else {
@@ -776,6 +777,7 @@ public final class Builder {
                 Item held = world.getBlockState(t).getBlock().asItem();
                 if (held != Items.AIR) v.setStackInHand(v.getDominantHand(), new ItemStack(held));
                 v.swingHand(v.getDominantHand());
+                Anim.set(v, Anim.Act.BUILD, 30);
                 village.markDirty();
             }
             return true;

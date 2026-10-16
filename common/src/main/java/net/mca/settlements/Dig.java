@@ -71,6 +71,8 @@ public final class Dig {
         delta *= (float) Math.max(0.6, Math.min(1.6, Trade.pace(v)));
         v.settlementsDigProgress += delta;
         v.getLookControl().lookAt(p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5);
+        if (v.age % 10 == 0) Anim.set(v, s.isIn(net.minecraft.registry.tag.BlockTags.AXE_MINEABLE) ? Anim.Act.CHOP
+                : s.isIn(net.minecraft.registry.tag.BlockTags.PICKAXE_MINEABLE) ? Anim.Act.MINE : Anim.Act.DIG, 15);
         if (v.age % 5 == 0) {
             v.swingHand(v.getDominantHand());
             world.playSound(null, p, s.getSoundGroup().getHitSound(), SoundCategory.BLOCKS, 0.25f, 0.5f);

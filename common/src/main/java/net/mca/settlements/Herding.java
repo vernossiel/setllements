@@ -320,6 +320,7 @@ public final class Herding {
         Gear.face(v, sheep.getBlockPos());
         sheep.setSheared(true);
         Pose.crouch(v, 30);
+        Anim.set(v, Anim.Act.SHEAR, 40);
         int n = 1 + world.random.nextInt(3);
         Workforce.addToTreasury(village, new ItemStack(Registries.ITEM.get(new Identifier(sheep.getColor().getName() + "_wool")), n));
         world.playSoundFromEntity(null, sheep, SoundEvents.ENTITY_SHEEP_SHEAR, SoundCategory.NEUTRAL, 1f, 1f);
@@ -349,6 +350,7 @@ public final class Herding {
             village.storageBuffer.removeIf(ItemStack::isEmpty);
             village.markDirty();
             a.lovePlayer(null);
+            Anim.set(v, Anim.Act.FEED, 40);
             v.getLookControl().lookAt(a, 30f, 30f);
             v.swingHand(v.getDominantHand());
             Speech.say(v, "settlements.say.pen.feed");

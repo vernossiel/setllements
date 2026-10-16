@@ -129,6 +129,7 @@ public final class Farming {
             }
             world.setBlockState(t, crop.withAge(0));
             Pose.crouch(v, 24); // down to the bed
+            Anim.set(v, Anim.Act.REAP, 30);
             world.playSound(null, t, SoundEvents.BLOCK_CROP_BREAK, SoundCategory.BLOCKS, 1f, 1f);
             Doing.set(v, "settlements.doing.farm.reap");
         } else if (what == 2) {
@@ -141,6 +142,7 @@ public final class Farming {
             world.setBlockState(t, crop.getDefaultState());
             world.playSound(null, t, SoundEvents.ITEM_CROP_PLANT, SoundCategory.BLOCKS, 1f, 1f);
             Pose.crouch(v, 24);
+            Anim.set(v, Anim.Act.SOW, 30);
             Doing.set(v, "settlements.doing.farm.sow");
         } else if (what == 4) {
             // a new bed hoed beside the old ones (by hand if there is no hoe), to be sown next
@@ -148,10 +150,12 @@ public final class Farming {
             if (Gear.has(v, HoeItem.class)) Gear.wear(v, HoeItem.class);
             world.setBlockState(t.down(), Blocks.FARMLAND.getDefaultState());
             world.playSound(null, t, SoundEvents.ITEM_HOE_TILL, SoundCategory.BLOCKS, 1f, 1f);
+            Anim.set(v, Anim.Act.DIG, 30);
             Doing.set(v, "settlements.doing.farm.till");
         } else if (what == 3 && s.getBlock() instanceof CropBlock crop && (take(village, Items.BONE_MEAL, 1) || compost(village))) {
             crop.applyGrowth(world, t, s);
             world.syncWorldEvent(1505, t, 15);
+            Anim.set(v, Anim.Act.SOW, 30);
             Doing.set(v, "settlements.doing.farm.feed");
         } else {
             TARGET.remove(id);

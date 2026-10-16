@@ -89,7 +89,130 @@ public class VillagerEntityBaseModelMCA<T extends LivingEntity & VillagerLike<T>
             this.rightArm.roll = waveSideways;
         }
 
+        if (villager instanceof net.mca.entity.VillagerEntityMCA v && !villager.isSleeping() && !villager.getVillagerBrain().isPanicking()) {
+            posePart(v, animationProgress, limbDistance);
+        }
+
         applyVillagerDimensions(villager, villager.isInSneakingPose());
+    }
+
+    /** The arms at work, by what the server says his hands are busy with (see settlements.Anim). */
+    private void posePart(net.mca.entity.VillagerEntityMCA v, float t, float walking) {
+        net.mca.settlements.Anim.Act act = net.mca.settlements.Anim.of(v.getSettlementsAction());
+        float s = (float)Math.sin(t * 0.45f), c = (float)Math.cos(t * 0.45f);
+        // a strike: up slowly, down fast
+        float phase = (t * 0.11f) % 1f;
+        float strike = phase < 0.7f ? phase / 0.7f : 1f - (phase - 0.7f) / 0.3f;
+        if (act == net.mca.settlements.Anim.Act.NONE && v.isUsingItem() && v.getActiveItem().isFood()) {
+            // a bite: the hand to the mouth, a little shake
+            rightArm.pitch = -1.7f + (float)Math.sin(t * 1.2f) * 0.12f;
+            rightArm.yaw = -0.45f;
+            return;
+        }
+        if (act == net.mca.settlements.Anim.Act.NONE && v.isElder() && walking < 0.1f) {
+            // the elder stands with his hands behind his back
+            rightArm.pitch = 0.45f;
+            leftArm.pitch = 0.45f;
+            rightArm.roll = 0.25f;
+            leftArm.roll = -0.25f;
+            rightArm.yaw = -0.3f;
+            leftArm.yaw = 0.3f;
+            return;
+        }
+        switch (act) {
+            case CHOP -> { // both hands on the haft, from over the shoulder into the trunk
+                float a = -2.6f + strike * 2.0f;
+                rightArm.pitch = a;
+                leftArm.pitch = a;
+                rightArm.yaw = -0.35f;
+                leftArm.yaw = 0.35f;
+                body.yaw = 0.15f - strike * 0.3f;
+            }
+            case MINE -> { // the pick brought down hard, one hand leading
+                float fast = (t * 0.16f) % 1f;
+                float st = fast < 0.6f ? fast / 0.6f : 1f - (fast - 0.6f) / 0.4f;
+                rightArm.pitch = -2.8f + st * 2.2f;
+                leftArm.pitch = -2.4f + st * 1.9f;
+                rightArm.yaw = -0.2f;
+                leftArm.yaw = 0.45f;
+                body.pitch = st * 0.2f;
+            }
+            case DIG -> { // the spade pushed down into the ground and levered up
+                rightArm.pitch = -0.9f + s * 0.35f;
+                leftArm.pitch = -0.7f + s * 0.35f;
+                rightArm.yaw = -0.15f;
+                leftArm.yaw = 0.3f;
+                body.pitch = 0.25f + s * 0.1f;
+            }
+            case SOW -> { // a hand low, scattering
+                rightArm.pitch = -0.7f + s * 0.4f;
+                rightArm.yaw = c * 0.5f;
+                leftArm.pitch = -0.3f;
+            }
+            case REAP -> { // both hands low, sweeping across
+                rightArm.pitch = -0.9f;
+                leftArm.pitch = -0.9f;
+                rightArm.yaw = s * 0.6f;
+                leftArm.yaw = s * 0.6f;
+                body.yaw = s * 0.25f;
+            }
+            case CARRY -> { // both arms round the load in front of him
+                rightArm.pitch = -1.05f;
+                leftArm.pitch = -1.05f;
+                rightArm.yaw = -0.3f;
+                leftArm.yaw = 0.3f;
+                rightArm.roll = 0f;
+                leftArm.roll = 0f;
+            }
+            case BUILD -> { // the hammer at the wall, the other hand holding
+                rightArm.pitch = -1.9f + strike * 1.0f;
+                rightArm.yaw = -0.1f;
+                leftArm.pitch = -1.2f;
+                leftArm.yaw = 0.25f;
+            }
+            case TALK -> { // hands that talk
+                rightArm.pitch = -0.55f + (float)Math.sin(t * 0.21f) * 0.3f;
+                rightArm.yaw = (float)Math.sin(t * 0.13f) * 0.35f;
+                leftArm.pitch = -0.3f + (float)Math.sin(t * 0.17f + 1f) * 0.25f;
+                leftArm.roll = -0.15f;
+            }
+            case CLAP -> { // hands together in front, clapping
+                float clap = Math.abs((float)Math.sin(t * 0.9f));
+                rightArm.pitch = -1.3f;
+                leftArm.pitch = -1.3f;
+                rightArm.yaw = -0.15f - clap * 0.45f;
+                leftArm.yaw = 0.15f + clap * 0.45f;
+            }
+            case WAVE -> { // a hand raised, waving
+                rightArm.pitch = -2.9f;
+                rightArm.roll = 0.25f + s * 0.35f;
+                rightArm.yaw = 0f;
+            }
+            case EAT -> {
+                rightArm.pitch = -1.7f + (float)Math.sin(t * 1.2f) * 0.12f;
+                rightArm.yaw = -0.45f;
+            }
+            case SHEAR -> { // down at the fleece, both hands, snipping
+                rightArm.pitch = -1.0f + (float)Math.sin(t * 1.1f) * 0.12f;
+                leftArm.pitch = -1.1f;
+                rightArm.yaw = -0.2f;
+                leftArm.yaw = 0.3f;
+                body.pitch = 0.35f;
+            }
+            case FEED -> { // a hand held out, low, with something in it
+                rightArm.pitch = -1.15f + s * 0.1f;
+                rightArm.yaw = -0.1f;
+                body.pitch = 0.2f;
+            }
+            case BEHIND -> {
+                rightArm.pitch = 0.45f;
+                leftArm.pitch = 0.45f;
+                rightArm.roll = 0.25f;
+                leftArm.roll = -0.25f;
+            }
+            default -> {
+            }
+        }
     }
 
     @Override
