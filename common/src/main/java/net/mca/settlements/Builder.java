@@ -950,12 +950,14 @@ public final class Builder {
         BlockPos o = village.buildOrigin;
         int st = village.buildStep, w = village.buildW, d = village.buildD, f = village.buildF, r = village.buildRot;
         boolean started = startRing(village, world, "townhall", 0, 0, 0, 0, 3);
+        // hills and forest: the founders level a site among the houses rather than go off to level ground (the hall
+        // went up 40 to 55 blocks off, and with it the night's shelter; the village's people walked out to it and died)
+        if (!started) started = roughSite(village, world);
         if (!started) {
             Layout.Slot hs = Layout.center(world, village, "townhall");
             started = hs != null && startAt(village, "townhall", 0, 0, 0, hs);
         }
         if (!started) started = start(village, world, "townhall", Blueprints.HALL_W, Blueprints.HALL_D, 0);
-        if (!started) started = roughSite(village, world); // hills and forest: the founders level a site
         if (!started) return false;
         announceProject = null;
         List<Step> steps = plan(village);
