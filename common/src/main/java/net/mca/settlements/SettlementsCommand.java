@@ -97,6 +97,21 @@ public final class SettlementsCommand {
                         .then(CommandManager.literal("hit").then(CommandManager.argument("name", StringArgumentType.word()).executes(SettlementsCommand::fakeHit)))
                         .then(CommandManager.literal("remove").executes(SettlementsCommand::fakeRemove)))
                 .then(CommandManager.literal("rogues").executes(c -> say(c, "Rogues ready tonight: " + Rogue.readyTonight(c.getSource().getWorld()))))
+                .then(CommandManager.literal("lampspot").executes(c -> {
+                    var w = c.getSource().getWorld();
+                    var vil = net.mca.server.world.data.VillageManager.get(w).findNearestVillage(net.minecraft.util.math.BlockPos.ofFloored(c.getSource().getPosition()), 200).orElse(null);
+                    if (vil == null) return say(c, "no village");
+                    var spot = Watch.dark(w, vil);
+                    return say(c, "lamp spot: " + (spot == null ? "none" : spot.toShortString()) + " plots=" + vil.plots.size() + " " + Watch.debug(w, vil));
+                }))
+                .then(CommandManager.literal("lightup").executes(c -> {
+                    var w = c.getSource().getWorld();
+                    var vil = net.mca.server.world.data.VillageManager.get(w).findNearestVillage(net.minecraft.util.math.BlockPos.ofFloored(c.getSource().getPosition()), 200).orElse(null);
+                    if (vil == null) return say(c, "no village");
+                    int before = Crafts.count(vil, st -> st.isOf(net.minecraft.item.Items.TORCH));
+                    Watch.lightUp(w, vil, 8);
+                    return say(c, "lamps placed: " + (before - Crafts.count(vil, st -> st.isOf(net.minecraft.item.Items.TORCH))));
+                }))
                 .then(CommandManager.literal("makerogue").executes(c -> say(c, "Rogue now: " + Rogue.make(c.getSource().getWorld()))))
                 .then(CommandManager.literal("rich").executes(SettlementsCommand::rich))
                 .then(CommandManager.literal("warp").requires(src -> src.hasPermissionLevel(2))

@@ -20,6 +20,8 @@ public final class Staffing {
     private record Role(VillagerProfession profession, int target) {
     }
 
+    private static final java.util.Set<Integer> LIT = new java.util.HashSet<>();
+
     private Staffing() {
     }
 
@@ -111,6 +113,9 @@ public final class Staffing {
         if (v.hall == null) openHall(world, v);
         Housing.assign(world, v); // a house to each household
         if (p < 2) return;
+
+        // once the hall stands, lamps round it straight away: the first nights are the deadliest
+        if (v.hallPos != null && LIT.add(v.getId())) Watch.lightUp(world, v, 8);
 
         // the founders' supplies: a new village starts with enough to begin, the rest it has to earn
         if (!v.seeded) {

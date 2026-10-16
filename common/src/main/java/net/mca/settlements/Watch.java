@@ -30,6 +30,9 @@ import java.util.UUID;
 public final class Watch {
     private static final Map<UUID, Integer> ROUND = new HashMap<>();
     private static final Map<UUID, BlockPos> LAMP = new HashMap<>();
+    private static final Map<UUID, Long> LAMP_SINCE = new HashMap<>();
+    private static final java.util.Set<Long> NO_LAMP = new java.util.HashSet<>(); // spots that could not be reached today
+    private static long noLampDay = -1;
     private static final Map<Integer, Long> ALARM = new HashMap<>();
 
     private Watch() {
@@ -88,14 +91,25 @@ public final class Watch {
         int torches = Crafts.count(village, s -> s.isOf(Items.TORCH));
         int lanterns = Crafts.count(village, s -> s.isOf(Items.LANTERN));
         if (torches + lanterns == 0) return false;
+        long day = world.getTimeOfDay() / 24000L;
+        if (day != noLampDay) {
+            noLampDay = day;
+            NO_LAMP.clear();
+        }
         BlockPos at = LAMP.get(v.getUuid());
         if (at == null || world.getBlockState(at).isOf(Blocks.OAK_FENCE)) {
             at = dark(world, village);
             if (at == null) return false;
             LAMP.put(v.getUuid(), at);
+            LAMP_SINCE.put(v.getUuid(), world.getTime());
         }
         Doing.set(v, "settlements.doing.watch.lamps");
         if (v.squaredDistanceTo(Vec3d.ofBottomCenter(at)) > 3 * 3) {
+            if (world.getTime() - LAMP_SINCE.getOrDefault(v.getUuid(), world.getTime()) > 20 * 30) { // no way there: another spot
+                NO_LAMP.add(at.asLong());
+                LAMP.remove(v.getUuid());
+                return true;
+            }
             Move.to(v, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 0.6);
             return true;
         }
@@ -124,41 +138,71 @@ public final class Watch {
      * by, a sensible place for a post the way people set them: at the side of the street, not on it; not in a doorway,
      * a yard or a field; not plugging a passage; not right beside another light.
      */
-    private static BlockPos dark(ServerWorld world, Village village) {
-        BlockPos c = new BlockPos(village.getCenter());
-        BlockPos zone = null;
-        int bestLight = 8; // block light below this: monsters may come
+    static BlockPos dark(ServerWorld world, Village village) {
+        BlockPos c = village.hallPos != null ? village.hallPos : new BlockPos(village.getCenter());
+        // the dark stretches, darkest and nearest the heart of the village first
+        List<BlockPos> zones = new ArrayList<>();
+        Map<BlockPos, Double> scores = new HashMap<>();
         for (int dx = -40; dx <= 40; dx += 5) {
             for (int dz = -40; dz <= 40; dz += 5) {
                 int x = c.getX() + dx, z = c.getZ() + dz;
                 if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
                 BlockPos p = new BlockPos(x, world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z), z);
-                if (!village.isWithinBorder(p, 0) || !world.getFluidState(p).isEmpty()) continue;
+                if (dx * dx + dz * dz > 40 * 40 || !world.getFluidState(p).isEmpty()) continue; // a hamlet's border is tighter than where it lives
                 if (!lived(world, village, p)) continue; // the empty land round the village is left dark
+                if (Math.abs(p.getY() - c.getY()) > 10) continue; // the village's own level, not the valley below
                 int light = world.getLightLevel(LightType.BLOCK, p);
-                if (light < bestLight) {
-                    bestLight = light;
-                    zone = p;
-                }
+                if (light >= 8) continue; // light enough: monsters will not come
+                zones.add(p);
+                scores.put(p, (8 - light) * 10 - Math.sqrt(p.getSquaredDistance(c)) / 2);
             }
         }
-        if (zone == null) return null;
-        BlockPos best = null;
-        int bestScore = Integer.MIN_VALUE;
-        for (int dx = -4; dx <= 4; dx++) {
-            for (int dz = -4; dz <= 4; dz++) {
-                int x = zone.getX() + dx, z = zone.getZ() + dz;
+        zones.sort((p, q) -> Double.compare(scores.get(q), scores.get(p)));
+        // in the first of them with a fit place for a post, the best place
+        for (BlockPos zone : zones) {
+            BlockPos best = null;
+            int bestScore = Integer.MIN_VALUE;
+            for (int dx = -4; dx <= 4; dx++) {
+                for (int dz = -4; dz <= 4; dz++) {
+                    int x = zone.getX() + dx, z = zone.getZ() + dz;
+                    BlockPos p = new BlockPos(x, world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z), z);
+                    int score = post(world, village, p);
+                    if (score == Integer.MIN_VALUE || NO_LAMP.contains(p.asLong())) continue;
+                    score -= Math.abs(dx) + Math.abs(dz); // near the dark spot
+                    if (score > bestScore) {
+                        bestScore = score;
+                        best = p;
+                    }
+                }
+            }
+            if (best != null) return best;
+        }
+        return null;
+    }
+
+    /** For /settlements lampspot: how many grid points pass each test. */
+    static String debug(ServerWorld world, Village village) {
+        BlockPos c = village.hallPos != null ? village.hallPos : new BlockPos(village.getCenter());
+        int all = 0, border = 0, lived = 0, level = 0, darkN = 0;
+        StringBuilder lights = new StringBuilder();
+        for (int dx = -40; dx <= 40; dx += 5) {
+            for (int dz = -40; dz <= 40; dz += 5) {
+                int x = c.getX() + dx, z = c.getZ() + dz;
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+                all++;
                 BlockPos p = new BlockPos(x, world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z), z);
-                int score = post(world, village, p);
-                if (score == Integer.MIN_VALUE) continue;
-                score -= Math.abs(dx) + Math.abs(dz); // near the dark spot
-                if (score > bestScore) {
-                    bestScore = score;
-                    best = p;
-                }
+                if (dx * dx + dz * dz > 40 * 40 || !world.getFluidState(p).isEmpty()) continue;
+                border++;
+                if (!lived(world, village, p)) continue;
+                lived++;
+                if (Math.abs(p.getY() - c.getY()) > 10) continue;
+                level++;
+                int light = world.getLightLevel(LightType.BLOCK, p);
+                if (lights.length() < 80) lights.append(light).append(',');
+                if (light < 8) darkN++;
             }
         }
-        return best;
+        return "all=" + all + " border=" + border + " lived=" + lived + " level=" + level + " dark=" + darkN + " lights=" + lights + " hall=" + c.toShortString();
     }
 
     /** Within a few blocks of a street or a building: the part of the village people walk at night. */
@@ -195,6 +239,18 @@ public final class Watch {
             if (s.isOf(Blocks.LANTERN) || s.isOf(Blocks.TORCH) || s.isOf(Blocks.WALL_TORCH) || s.isOf(Blocks.CAMPFIRE)) return Integer.MIN_VALUE; // one is enough here
         }
         return score;
+    }
+
+    /** The founders set up lamps on the spot (from the stores' torches), so the first nights are not pitch dark. */
+    public static void lightUp(ServerWorld world, Village village, int n) {
+        for (int i = 0; i < n; i++) {
+            if (Crafts.count(village, s -> s.isOf(Items.TORCH)) == 0) return;
+            BlockPos at = dark(world, village);
+            if (at == null) return;
+            Crafts.take(village, s -> s.isOf(Items.TORCH), 1);
+            world.setBlockState(at, Blocks.OAK_FENCE.getDefaultState());
+            world.setBlockState(at.up(), Blocks.TORCH.getDefaultState());
+        }
     }
 
     /** The round: the stores, the granary, the smithy, the hall, one after another, a while at each. */
