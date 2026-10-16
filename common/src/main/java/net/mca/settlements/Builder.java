@@ -1048,6 +1048,7 @@ public final class Builder {
             }
         }
         Village scratch = new Village(-1, world); // a throwaway village: bookkeeping goes nowhere
+        scratch.buildType = type; // a template's blocks are looked up by the building under way (without it only the earth pad went down)
         String biome = world.getBiome(origin).getKey().map(k -> k.getValue().getPath()).orElse("plains");
         Palette.OVERRIDE = Palette.forBiome(biome);
         FREE = true;
