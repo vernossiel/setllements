@@ -4162,5 +4162,8 @@
   "settlements.say.witness.toguard.f": "Ну, как знаешь, %s. Стража!",
   "settlements.witness.button.return": "«Ладно, ладно, вот. Всё верну.» [Вернуть]",
   "settlements.witness.button.pay": "«Может, ты ничего не видел?» [Заплатить %s◆, %s%%]",
-  "settlements.witness.button.refuse": "«Иди куда шёл.» [Отказать]"
+  "settlements.witness.button.refuse": "«Иди куда шёл.» [Отказать]",
+  "settlements.say.trapped": "Эй! Выпустите меня отсюда!",
+  "settlements.say.trapped.f": "Эй! Выпустите меня отсюда!",
+  "settlements.doing.trapped": "заперт: зовёт на помощь, пробивается наружу"
 }

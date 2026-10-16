@@ -36,6 +36,55 @@ public final class Unstick {
         return village == null || Protection.severity(world, village, pos, state) == 0;
     }
 
+    /** Shut in: the open ground he can walk to from where he stands is a few cells only, and no sky over it. */
+    private static boolean trapped(ServerWorld world, Village village, VillagerEntityMCA v) {
+        BlockPos start = v.getBlockPos();
+        if (village != null && village.mineOrigin != null && start.isWithinDistance(village.mineOrigin, 48)) return false; // a miner in his gallery is not shut in
+        java.util.ArrayDeque<BlockPos> open = new java.util.ArrayDeque<>();
+        java.util.Set<BlockPos> seen = new java.util.HashSet<>();
+        open.add(start);
+        seen.add(start);
+        while (!open.isEmpty()) {
+            BlockPos p = open.poll();
+            if (world.isSkyVisible(p) && p.getY() >= start.getY() - 1 && !world.getBlockState(p.down()).isAir() && seen.size() > 1) {
+                // under the open sky: out in the open, unless it is the bottom of a pit
+                if (Math.abs(p.getX() - start.getX()) + Math.abs(p.getZ() - start.getZ()) > 3) return false;
+            }
+            if (seen.size() > 40) return false;
+            for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    BlockPos q = p.offset(d).up(dy);
+                    if (seen.contains(q) || Math.abs(q.getY() - start.getY()) > 2) continue;
+                    if (Move.passable(world, q) && Move.passable(world, q.up()) && !world.getBlockState(q.down()).isAir()
+                            || world.getBlockState(q).getBlock() instanceof net.minecraft.block.DoorBlock) {
+                        seen.add(q);
+                        open.add(q);
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    /** The block of the wall to break through: before him at feet or head height, not the village's, nothing hard. */
+    private static BlockPos wallBlock(ServerWorld world, Village village, VillagerEntityMCA v) {
+        BlockPos feet = v.getBlockPos();
+        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+            for (int h = 0; h <= 1; h++) {
+                BlockPos q = feet.offset(d).up(h);
+                BlockState st = world.getBlockState(q);
+                if (st.isAir() || !st.getFluidState().isEmpty() || st.getBlock() instanceof net.minecraft.block.BlockWithEntity) continue;
+                float hard = st.getHardness(world, q);
+                if (hard < 0 || hard > 3.0f) continue; // no obsidian, no iron
+                if (village != null && Protection.severity(world, village, q, st) > 0) continue; // the village's own
+                if (village != null) for (Built b : village.built) if (b.contains(q)) { st = null; break; }
+                if (st == null) continue;
+                return q;
+            }
+        }
+        return null;
+    }
+
     private static Optional<BlockPos> target(VillagerEntityMCA v) {
         Optional<BlockPos> walk = v.getBrain().getOptionalMemory(MemoryModuleType.WALK_TARGET).map(w -> w.getLookTarget().getBlockPos());
         if (walk.isPresent()) return walk;
@@ -59,6 +108,19 @@ public final class Unstick {
             return;
         }
 
+        // walled in (somebody shut him in a box of his own blocks): a shout for help, then he breaks his way out
+        // through what is not the village's, a crack at a time, instead of pillaring up and running round in it
+        if (trapped(world, village, v)) {
+            v.settlementsTrappedSec++;
+            if (v.settlementsTrappedSec == 2 || v.settlementsTrappedSec % 30 == 0) Speech.sayNow(v, "settlements.say.trapped");
+            Doing.set(v, "settlements.doing.trapped");
+            if (v.settlementsTrappedSec >= 20 && !Dig.busy(v)) {
+                BlockPos out = wallBlock(world, village, v);
+                if (out != null) Dig.start(v, out);
+            }
+            return;
+        }
+        v.settlementsTrappedSec = 0;
         if (Move.goal(v) != null) return; // errands are walked by Move, which works its way by hand
         Optional<BlockPos> goal = target(v);
         Vec3d pos = v.getPos();

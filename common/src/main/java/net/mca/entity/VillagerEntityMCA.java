@@ -120,6 +120,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public net.minecraft.util.math.BlockPos scavengeTarget;
     public int scavengeSec;
     public net.minecraft.util.math.BlockPos settlementsGoal;
+    public int settlementsTrappedSec; // seconds walled in (see settlements.Unstick)
     public long settlementsGoalAt;
     public int settlementsHandSec, settlementsSidestep;
     public net.minecraft.util.math.Vec3d settlementsHandLast;

@@ -4165,5 +4165,8 @@
   "settlements.say.witness.toguard.f": "Have it your way, %s. Guards!",
   "settlements.witness.button.return": "\"All right, all right, here. All of it.\" [Give back]",
   "settlements.witness.button.pay": "\"Maybe you didn't see anything?\" [Pay %s◆, %s%%]",
-  "settlements.witness.button.refuse": "\"Mind your own business.\" [Refuse]"
+  "settlements.witness.button.refuse": "\"Mind your own business.\" [Refuse]",
+  "settlements.say.trapped": "Hey! Somebody let me out of here!",
+  "settlements.say.trapped.f": "Hey! Somebody let me out of here!",
+  "settlements.doing.trapped": "shut in: calling for help, breaking his way out"
 }
