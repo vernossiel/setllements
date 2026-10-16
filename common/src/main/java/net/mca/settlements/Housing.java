@@ -109,12 +109,17 @@ public final class Housing {
                     homeless++; // (a bed on the hall's floor is no home: they still want a house built, see Plan)
                     continue;
                 }
+                if (hb == null && !bedMoved) {
+                    bedMoved = true;
+                    net.mca.MCA.LOGGER.info("[Settlements] {}: {} homeless and no town hall of its own to bed them in", v.getName(), h.size());
+                }
                 if (hb != null && !bedMoved && hallBeds(world, hb) < MAX_HALL_BEDS && !FAILED.contains(v.getId())) {
                     VillagerEntityMCA m = h.stream().filter(x -> !inHall(world, hb, x)).findFirst().orElse(null);
                     BlockPos nb = m == null ? null : hallBed(world, v, hb, heart);
+                    if (m != null) net.mca.MCA.LOGGER.info("[Settlements] {}: hall bed for {}: {}", v.getName(), m.getName().getString(), nb == null ? "none (" + LAST_NO + ")" : nb.toShortString());
+                    bedMoved = true;
                     if (nb != null) {
                         move(world, m, nb);
-                        bedMoved = true;
                         // the bed did not become his (the game would not give it him): no more beds put down for nothing
                         if (!inHall(world, hb, m)) FAILED.add(v.getId());
                         if (h.stream().allMatch(x -> inHall(world, hb, x))) {
@@ -251,6 +256,7 @@ public final class Housing {
     private static final int MAX_HALL_BEDS = 8;
     /** Villages where a bed put down in the hall did not become anybody's (till the server restarts). */
     private static final Set<Integer> FAILED = new HashSet<>();
+    private static String LAST_NO = "";
 
     private static int hallBeds(ServerWorld world, Built hall) {
         int n = 0;
@@ -289,7 +295,10 @@ public final class Housing {
                 }
             }
         }
-        if (foot == null) return null;
+        if (foot == null) {
+            LAST_NO = "no room on the floor";
+            return null;
+        }
         // where it comes from: an empty bed off in the woods or the valley first
         net.minecraft.block.BlockState bed = null;
         BlockPos far = world.getPointOfInterestStorage().getInSquare(t -> t.matchesKey(PointOfInterestTypes.HOME), heart, 96, PointOfInterestStorage.OccupationStatus.HAS_SPACE)
@@ -304,7 +313,10 @@ public final class Housing {
             }
             bed = net.minecraft.block.Blocks.WHITE_BED.getDefaultState();
         }
-        if (bed == null) return null;
+        if (bed == null) {
+            LAST_NO = "no empty bed far off, no wool and planks";
+            return null;
+        }
         BlockPos head = foot.offset(facing);
         world.setBlockState(foot, bed.with(net.minecraft.block.BedBlock.FACING, facing).with(net.minecraft.block.BedBlock.PART, net.minecraft.block.enums.BedPart.FOOT));
         world.setBlockState(head, bed.with(net.minecraft.block.BedBlock.FACING, facing).with(net.minecraft.block.BedBlock.PART, net.minecraft.block.enums.BedPart.HEAD));
