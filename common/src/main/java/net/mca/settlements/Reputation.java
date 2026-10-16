@@ -246,6 +246,7 @@ public final class Reputation {
             Justice.suspect(sw, village, player, Justice.Crime.THEFT, value, items, player.getBlockPos());
             return;
         }
+        if (!witness.isGuard() && Witness.confront(sw, village, witness, player, value, items)) return; // he has it out with him first
         if (!witness.isGuard()) {
             Speech.say(witness, "settlements.say.report.thief");
             GuardIntel.alertNearestGuard(sw, witness, player);
@@ -261,6 +262,7 @@ public final class Reputation {
     /** Once per second per world: the village's justice takes its course. */
     public static void tick(ServerWorld world) {
         Justice.tick(world);
+        Witness.tick(world);
         Doing.tick(world);
     }
 

@@ -4151,5 +4151,19 @@
   "settlements.doing.farm.hay": "carrying the hay from a bale to the stores",
   "settlements.news.settlers": "%s and %s have left the village: there's no room up here. They've gone to start a hamlet of their own on level ground.",
   "settlements.justice.stocks.struggle": "Working the stocks' board loose... %s/%s",
-  "settlements.justice.stocks.struggle.caught": "Sit still, %s! Another half minute for that."
+  "settlements.justice.stocks.struggle.caught": "Sit still, %s! Another half minute for that.",
+  "settlements.doing.witness": "having it out with %s",
+  "settlements.say.witness.caught": "Hey, %s! I saw that. Put it back - or I call the guards.",
+  "settlements.say.witness.caught.f": "Hey, %s! I saw that. Put it back - or I call the guards.",
+  "settlements.say.witness.thanks": "That's better. I've got my eye on you, %s.",
+  "settlements.say.witness.thanks.f": "That's better. I've got my eye on you, %s.",
+  "settlements.say.witness.hush": "...I saw nothing. But don't let me catch you twice, %s.",
+  "settlements.say.witness.hush.f": "...I saw nothing. But don't let me catch you twice, %s.",
+  "settlements.say.witness.nohush": "You think you can buy me too, %s? Guards!",
+  "settlements.say.witness.nohush.f": "You think you can buy me too, %s? Guards!",
+  "settlements.say.witness.toguard": "Have it your way, %s. Guards!",
+  "settlements.say.witness.toguard.f": "Have it your way, %s. Guards!",
+  "settlements.witness.button.return": "\"All right, all right, here. All of it.\" [Give back]",
+  "settlements.witness.button.pay": "\"Maybe you didn't see anything?\" [Pay %s◆, %s%%]",
+  "settlements.witness.button.refuse": "\"Mind your own business.\" [Refuse]"
 }

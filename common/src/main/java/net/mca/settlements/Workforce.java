@@ -84,6 +84,7 @@ public final class Workforce {
         Anim.tick(v);
         // a guard on a player's case: he goes to him and stays by him, nothing else (a fight aside)
         if (v.isGuard() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld jw && Justice.duty(v, jw)) return;
+        if (Witness.busy(v)) return; // having it out with a thief he caught (see Witness)
         // a word with a player: he stands and faces him till it is done (only fear moves him then)
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld dw && Dialogue.tick(v, dw)
                 && dw.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, v.getBoundingBox().expand(6), net.minecraft.entity.LivingEntity::isAlive).isEmpty()) return;

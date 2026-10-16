@@ -4148,5 +4148,19 @@
   "settlements.doing.farm.hay": "несёт сено со стога в амбар",
   "settlements.news.settlers": "%s и %s ушли из деревни: тесно у нас на круче. Пошли ставить свой хутор на ровной земле.",
   "settlements.justice.stocks.struggle": "Расшатываешь доску колодок... %s/%s",
-  "settlements.justice.stocks.struggle.caught": "А ну сиди смирно, %s! Ещё полминуты за это."
+  "settlements.justice.stocks.struggle.caught": "А ну сиди смирно, %s! Ещё полминуты за это.",
+  "settlements.doing.witness": "разбирается с %s",
+  "settlements.say.witness.caught": "Эй, %s! Я всё видел. Положи на место — или зову стражу.",
+  "settlements.say.witness.caught.f": "Эй, %s! Я всё видела. Положи на место — или зову стражу.",
+  "settlements.say.witness.thanks": "Вот так-то лучше. Я за тобой присмотрю, %s.",
+  "settlements.say.witness.thanks.f": "Вот так-то лучше. Я за тобой присмотрю, %s.",
+  "settlements.say.witness.hush": "...Ничего я не видел. Но второй раз не попадайся, %s.",
+  "settlements.say.witness.hush.f": "...Ничего я не видела. Но второй раз не попадайся, %s.",
+  "settlements.say.witness.nohush": "Ты меня ещё и купить решил, %s? Стража!",
+  "settlements.say.witness.nohush.f": "Ты меня ещё и купить решил, %s? Стража!",
+  "settlements.say.witness.toguard": "Ну, как знаешь, %s. Стража!",
+  "settlements.say.witness.toguard.f": "Ну, как знаешь, %s. Стража!",
+  "settlements.witness.button.return": "«Ладно, ладно, вот. Всё верну.» [Вернуть]",
+  "settlements.witness.button.pay": "«Может, ты ничего не видел?» [Заплатить %s◆, %s%%]",
+  "settlements.witness.button.refuse": "«Иди куда шёл.» [Отказать]"
 }

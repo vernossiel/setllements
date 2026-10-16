@@ -716,7 +716,10 @@ public final class Justice {
             return damage;
         }
         float hit = Math.min(damage, Math.max(0f, p.getHealth() - 2f));
-        if (p.getHealth() - hit <= 4f && p.getWorld() instanceof ServerWorld w) spare(w, p);
+        if (p.getHealth() - hit <= 4f && p.getWorld() instanceof ServerWorld w) {
+            spare(w, p);
+            standOff(w, p); // (spared already, he kept swinging at him for nothing: nobody goes on hitting a man who is down)
+        }
         return hit;
     }
 
@@ -768,6 +771,14 @@ public final class Justice {
             Life.news(village, "crime.escape", p.getName().getString());
         }
         return true; // the dismount goes through (the empty seat is cleared away with the others)
+    }
+
+    /** Every guard on him lets him be. */
+    private static void standOff(ServerWorld world, PlayerEntity p) {
+        for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(64), VillagerEntityMCA::isGuard)) {
+            if (g.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).orElse(null) == p) g.getBrain().forget(MemoryModuleType.ATTACK_TARGET);
+            if (g.getTarget() == p) g.setTarget(null);
+        }
     }
 
     /** Beaten and let go: the guards stand off for a minute and a half while he gets himself away. */

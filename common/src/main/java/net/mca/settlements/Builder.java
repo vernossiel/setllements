@@ -973,6 +973,11 @@ public final class Builder {
         }
         village.buildStep = steps.size();
         finish(village);
+        // the stocks stand on the square from the first day, as the village's own: not put up the moment somebody is caught
+        try {
+            Justice.pillory(world, village);
+        } catch (RuntimeException ignored) {
+        }
         // tell everyone around where the hall stands
         BlockPos hp = village.hallPos != null ? village.hallPos : origin;
         for (var pl : world.getPlayers()) {
