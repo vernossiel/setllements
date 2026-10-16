@@ -63,7 +63,7 @@ public final class Builder {
     public static List<Step> stepsFor(String type, int w, int d, int f) {
         String key = type + "|" + w + "|" + d + "|" + f;
         return CACHE.computeIfAbsent(key, k -> ordered(type.equals("mine") ? null : type,
-                type.equals("mine") || Templates.isTemplate(type) ? rawSteps(type, w, d, f) : Decor.dress(type, rawSteps(type, w, d, f))));
+                type.equals("mine") ? rawSteps(type, w, d, f) : Templates.isTemplate(type) ? Decor.dressTemplate(type, rawSteps(type, w, d, f)) : Decor.dress(type, rawSteps(type, w, d, f))));
     }
 
     /** Fittings go in once the shell stands: furniture, light, decoration. */

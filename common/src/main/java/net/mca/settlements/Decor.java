@@ -41,6 +41,49 @@ public final class Decor {
         return ((long) x & 0x1FFFFF) << 42 | ((long) y & 0x1FFFFF) << 21 | ((long) z & 0x1FFFFF);
     }
 
+    /**
+     * A MineColonies building dressed the same way: its blocks read as floor, wall, way in or thing in use from what
+     * they are, the rooms dressed on that reading, and only the new things added to the template (its first-level huts
+     * come all but empty: a chest and a lectern in a bare hall).
+     */
+    public static List<Step> dressTemplate(String type, List<Step> raw) {
+        Templates.Template t = Templates.of(type);
+        if (t == null || raw.isEmpty()) return raw;
+        Set<Long> solid = new HashSet<>();
+        for (Step s : raw) {
+            if (s.kind() != Kind.TPL && s.kind() != Kind.TPL_FIT || s.face() < 0 || s.face() >= t.palette().length) continue;
+            net.minecraft.block.BlockState b = t.palette()[s.face()];
+            if (b.isOpaque() && b.isFullCube(net.minecraft.world.EmptyBlockView.INSTANCE, net.minecraft.util.math.BlockPos.ORIGIN)) solid.add(key(s.dx(), s.dy(), s.dz()));
+        }
+        List<Step> shadow = new ArrayList<>(raw.size());
+        for (Step s : raw) {
+            if (s.kind() != Kind.TPL && s.kind() != Kind.TPL_FIT || s.face() < 0 || s.face() >= t.palette().length) {
+                shadow.add(s);
+                continue;
+            }
+            net.minecraft.block.BlockState b = t.palette()[s.face()];
+            net.minecraft.block.Block bl = b.getBlock();
+            Kind k;
+            if (b.isAir()) continue;
+            if (bl instanceof net.minecraft.block.DoorBlock || bl instanceof net.minecraft.block.FenceGateBlock || bl instanceof net.minecraft.block.TrapdoorBlock) k = Kind.DOOR;
+            else if (bl instanceof net.minecraft.block.LadderBlock) k = Kind.LADDER;
+            else if (bl instanceof net.minecraft.block.StairsBlock) k = Kind.STAIRS_N;
+            else if (bl instanceof net.minecraft.block.BedBlock) k = Kind.BED_FOOT;
+            else if (bl instanceof net.minecraft.block.BlockWithEntity || bl instanceof net.minecraft.block.CraftingTableBlock) k = Kind.CHEST;
+            else if (bl instanceof net.minecraft.block.TorchBlock || bl instanceof net.minecraft.block.LanternBlock) k = Kind.TORCH;
+            else if (bl instanceof net.minecraft.block.FenceBlock || bl instanceof net.minecraft.block.WallBlock || bl instanceof net.minecraft.block.PaneBlock) k = Kind.FENCE;
+            else if (bl instanceof net.minecraft.block.SlabBlock) k = Kind.SLAB;
+            else if (solid.contains(key(s.dx(), s.dy(), s.dz()))) k = solid.contains(key(s.dx(), s.dy() + 1, s.dz())) ? Kind.WALL : Kind.FLOOR;
+            else k = Kind.PLATE; // something small that stands there: kept clear
+            shadow.add(new Step(s.dx(), s.dy(), s.dz(), k, s.face()));
+        }
+        List<Step> dressed = dress(type, shadow);
+        if (dressed.size() <= shadow.size()) return raw;
+        List<Step> out = new ArrayList<>(raw);
+        out.addAll(dressed.subList(shadow.size(), dressed.size()));
+        return out;
+    }
+
     /** The plan with its rooms dressed. */
     public static List<Step> dress(String type, List<Step> raw) {
         if (type == null || raw.isEmpty()) return raw;
