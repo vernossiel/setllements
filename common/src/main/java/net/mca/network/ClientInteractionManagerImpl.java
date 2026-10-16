@@ -240,6 +240,7 @@ public class ClientInteractionManagerImpl implements ClientInteractionManager {
     public void handleVillagerMessage(VillagerMessage message) {
         // said over his head where he can be seen; only what is said out of sight goes to the chat
         if (!net.mca.client.Bubbles.say(message.getUuid(), message.getContent())) client.getMessageHandler().onGameMessage(message.getMessage(), false);
+        net.mca.client.gui.DialogueHud.hear(message.getUuid(), message.getContent()); // said to him: at the bottom of the screen too
         SpeechManager.INSTANCE.onChatMessage(message.getContent(), message.getUuid());
     }
 

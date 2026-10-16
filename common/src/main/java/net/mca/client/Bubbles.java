@@ -62,12 +62,12 @@ public final class Bubbles {
         matrices.push();
         matrices.translate(0, above + rows.size() * 0.25f, 0);
         matrices.multiply(mc.getEntityRenderDispatcher().getRotation());
-        matrices.scale(-0.022f, -0.022f, 0.022f);
+        matrices.scale(-0.026f, -0.026f, 0.026f); // (a little bigger than a name tag, to be read from a few steps off)
         Matrix4f m = matrices.peek().getPositionMatrix();
         int y = 0;
         for (OrderedText row : rows) {
             float x = -tr.getWidth(row) / 2f;
-            tr.draw(row, x, y, (alpha << 24) | 0xFFFFFF, false, m, vertices, TextRenderer.TextLayerType.NORMAL, bg, light);
+            tr.draw(row, x, y, (alpha << 24) | 0xFFFFFF, false, m, vertices, TextRenderer.TextLayerType.NORMAL, bg, 0xF000F0); // lit full: readable at night and in the shade
             y += 10;
         }
         matrices.pop();

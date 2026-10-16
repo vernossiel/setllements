@@ -34,6 +34,31 @@ public final class DialogueHud {
         selected = 0;
     }
 
+    /**
+     * A villager's words, as they arrive. Said to the player himself (his name in it, or said close by while facing
+     * him) they also come up here at the bottom of the screen for a few seconds, where they cannot be missed: the
+     * bubble over a head is lost at a distance, at night or behind a crowd, and the chat fills up. A talk with answers
+     * open is not covered over.
+     */
+    public static void hear(java.util.UUID from, Text words) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.world == null || mc.player == null || current != null && current.getOptions().length > 0) return;
+        Entity e = null;
+        for (Entity x : mc.world.getEntities()) {
+            if (x.getUuid().equals(from)) {
+                e = x;
+                break;
+            }
+        }
+        if (e == null) return;
+        double d = mc.player.squaredDistanceTo(e);
+        boolean named = words.getString().contains(mc.player.getName().getString());
+        Vec3d to = mc.player.getEyePos().subtract(e.getEyePos()).normalize();
+        boolean facing = e.getRotationVec(1f).dotProduct(to) > 0.8;
+        if (!(named && d < 24 * 24 || d < 6 * 6 && facing)) return;
+        open(new JusticeScreenRequest(e.getId(), e.getDisplayName(), List.of(words), new String[0], List.of(), 0));
+    }
+
     public static void close() {
         current = null;
     }
