@@ -46,7 +46,9 @@ public final class Seat {
         n.putBoolean("NoGravity", true);
         n.putBoolean("Invulnerable", true);
         stand.readCustomDataFromNbt(n);
-        stand.refreshPositionAndAngles(x, surfaceY - 0.55, z, yaw, 0);
+        // the rider is set 0.35 below his seat (VillagerEntityMCA.getHeightOffset) and his hips are 0.75 above his feet:
+        // the seat a little under the surface puts them on it (at -0.55 he sat sunk into the block to the waist)
+        stand.refreshPositionAndAngles(x, surfaceY - 0.28, z, yaw, 0);
         stand.addCommandTag(TAG);
         world.spawnEntity(stand);
         v.getNavigation().stop();
