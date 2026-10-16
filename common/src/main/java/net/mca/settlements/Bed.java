@@ -24,8 +24,50 @@ public final class Bed {
     }
 
     /** Where the homeless spend the night: the town hall, or before there is one, by the fire at the heart of the village. */
+    private static final Map<Integer, BlockPos> SHUT_IN = new HashMap<>(); // village -> the most enclosed spot inside its hall
+    private static final Map<Integer, Long> SHUT_IN_AT = new HashMap<>();
+
+    /**
+     * The most shut-in place inside the town hall to spend the night: under its roof, as little open sky about as can
+     * be found (a template's lectern may stand in an open gallery the zombies walk into). Looked for once a day.
+     */
+    private static BlockPos inside(net.mca.server.world.data.Village village, ServerWorld world) {
+        long day = world.getTimeOfDay() / 24000L;
+        if (SHUT_IN_AT.getOrDefault(village.getId(), -1L) == day) return SHUT_IN.get(village.getId());
+        SHUT_IN_AT.put(village.getId(), day);
+        Built hall = null;
+        for (Built b : village.built) if (Buildings.base(b.type()).equals("townhall")) hall = b;
+        BlockPos best = null;
+        int bestSky = 16;
+        double bestD = Double.MAX_VALUE;
+        if (hall != null) {
+            int[] fp = hall.footprint();
+            for (int dx = 0; dx < fp[0]; dx++) {
+                for (int dz = 0; dz < fp[1]; dz++) {
+                    for (int dy = 0; dy < 12; dy++) {
+                        BlockPos q = hall.point(dx, dy, dz);
+                        if (!Move.passable(world, q) || !Move.passable(world, q.up()) || !world.getBlockState(q.down()).isSolidBlock(world, q.down())) continue;
+                        if (world.isSkyVisible(q)) continue;
+                        int sky = world.getLightLevel(net.minecraft.world.LightType.SKY, q);
+                        double d = village.hallPos != null ? q.getSquaredDistance(village.hallPos) : 0;
+                        if (sky < bestSky || sky == bestSky && d < bestD) {
+                            bestSky = sky;
+                            bestD = d;
+                            best = q.toImmutable();
+                        }
+                    }
+                }
+            }
+        }
+        if (best == null) SHUT_IN.remove(village.getId());
+        else SHUT_IN.put(village.getId(), best);
+        return best;
+    }
+
     private static BlockPos refuge(net.mca.server.world.data.Village village, ServerWorld world) {
         if (village == null) return null;
+        BlockPos in = inside(village, world);
+        if (in != null) return in;
         if (village.hallPos != null) return village.hallPos;
         BlockPos c = new BlockPos(village.getCenter());
         return new BlockPos(c.getX(), world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, c.getX(), c.getZ()), c.getZ());
