@@ -53,7 +53,9 @@ def look(s, x, z):
     project = re.search(r"Project: (.*)", status)
     st = stores(status)
     grown = [p for p in people if p[1] != "child"]
+    doing = collections.Counter(" ".join(re.sub(r"[^a-z ]", " ", p[4].lower()).split()[:3]) for p in grown)  # the first words of what each is doing
     return {
+        "doing": doing, "dump": dump,
         "residents": int(res.group(1)) if res else 0,
         "beds": int(res.group(2)) if res else 0,
         "level": level.group(0) if level else "-",
@@ -106,6 +108,8 @@ def main():
         daytest.run(s, f"gamemode creative T_{k}")
     daytest.run(s, "time set 0")
     rows = collections.defaultdict(list)
+    os.makedirs("villages", exist_ok=True)
+    journals = {k: open(os.path.join("villages", f"{k}.log"), "w", encoding="utf-8") for k in places}
     start = time.time()
     while True:
         tm = re.search(r"day (\d+)", daytest.run(s, "settlements dump"))
@@ -114,6 +118,9 @@ def main():
             r = look(s, x, z)
             r["day"] = day
             rows[k].append(r)
+            # everyone, what he is doing and why: the journal to read afterwards
+            journals[k].write(f"=== day {day}\n" + r.pop("dump") + "\n")
+            journals[k].flush()
         line = " | ".join(f"{k} {rows[k][-1]['residents']}/{rows[k][-1]['beds']} f{rows[k][-1]['food']} h{rows[k][-1]['hunger']:.0f} "
                           f"{rows[k][-1]['project']}" for k in places)
         print(f"day {day}: {line}", flush=True)
@@ -140,6 +147,11 @@ def main():
         print(f"  food {first['food']} -> {last['food']} ({food_head:.1f}/head), hungry looks {hungry}/{len(rs)}, idle {idle}/{work}, "
               f"planks {last['planks']}, cobble {last['cobble']}")
         print(f"  trades {dict(last['trades'])}")
+        doing = collections.Counter()
+        for r in rs:
+            doing.update(r["doing"])
+        total = max(1, sum(doing.values()))
+        print("  time spent: " + ", ".join(f"{d} {100 * n // total}%" for d, n in doing.most_common(8)))
         print(f"  projects {projects}")
         print(f"  built: {last['built']}")
         print(f"  deaths {len(died[k])}, nights out of bed {nights[k]}")
