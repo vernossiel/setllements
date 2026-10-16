@@ -243,6 +243,9 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         super(type, w);
         inventory.addListener(this::onInvChange);
         genetics.setGender(gender);
+        // paths never lead over a fire
+        setPathfindingPenalty(net.minecraft.entity.ai.pathing.PathNodeType.DAMAGE_FIRE, -1f);
+        setPathfindingPenalty(net.minecraft.entity.ai.pathing.PathNodeType.DANGER_FIRE, 16f);
     }
 
     @Override
@@ -683,6 +686,29 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
 
     @Override
     public final boolean damage(DamageSource source, float damageAmount) {
+        // Settlements: the village's own fire does not kill its people. Stepped onto a campfire, a villager jumps off
+        // it and the flames on his clothes are beaten out, instead of standing in it till he is dead.
+        if (!getWorld().isClient && (source.isOf(net.minecraft.entity.damage.DamageTypes.IN_FIRE) || source.isOf(net.minecraft.entity.damage.DamageTypes.ON_FIRE))) {
+            BlockPos fire = null;
+            for (BlockPos q : BlockPos.iterate(getBlockPos().add(-1, -1, -1), getBlockPos().add(1, 1, 1))) {
+                if (getWorld().getBlockState(q).getBlock() instanceof net.minecraft.block.CampfireBlock) {
+                    fire = q.toImmutable();
+                    break;
+                }
+            }
+            if (fire != null) {
+                setFireTicks(0);
+                for (BlockPos q : BlockPos.iterateOutwards(getBlockPos(), 3, 1, 3)) {
+                    if (q.getSquaredDistance(fire) < 4) continue;
+                    if (getWorld().getBlockState(q).isAir() && getWorld().getBlockState(q.up()).isAir() && getWorld().getBlockState(q.down()).isSolidBlock(getWorld(), q.down())) {
+                        stopRiding();
+                        requestTeleport(q.getX() + 0.5, q.getY(), q.getZ() + 0.5);
+                        break;
+                    }
+                }
+                return false;
+            }
+        }
         // no baby squishes
         if (getVehicle() instanceof PlayerEntity) {
             return super.damage(source, 0.0f);
