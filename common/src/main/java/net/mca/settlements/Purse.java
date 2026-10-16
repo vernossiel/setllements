@@ -34,9 +34,9 @@ public final class Purse {
         return 3;
     }
 
-    /** His money, in nuggets. */
+    /** His money, in nuggets: on him and put by at home. */
     public static int money(VillagerEntityMCA v) {
-        return Money.count(v.getInventory());
+        return Money.count(v.getInventory()) + Home.savings(v);
     }
 
     /** The morning's wages, out of the coffers (shared out by what is there when it runs short); debts come off first. */

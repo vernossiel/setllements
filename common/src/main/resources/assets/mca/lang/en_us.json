@@ -4071,5 +4071,9 @@
   "settlements.say.stocks.kind.2.f": "They'll let you go soon, hold on.",
   "item.mca.emerald_nugget": "Emerald Nugget",
   "settlements.justice.search.ask.weak": "%s, things went missing from the stores last night. There aren't many strangers about... No offence, but let's see what you're carrying.",
-  "settlements.justice.search.refused.strong": "You were seen at that chest, %s, and you won't turn out your pockets? Then we'll talk differently."
+  "settlements.justice.search.refused.strong": "You were seen at that chest, %s, and you won't turn out your pockets? Then we'll talk differently.",
+  "settlements.say.home.chest": "There, a chest of my own. Somewhere to keep things.",
+  "settlements.say.home.chest.f": "There, a chest of my own. Somewhere to keep things.",
+  "settlements.say.home.furnish": "Something new for the house. Let it look like people live here.",
+  "settlements.say.home.furnish.f": "Something new for the house. Let it look like people live here."
 }

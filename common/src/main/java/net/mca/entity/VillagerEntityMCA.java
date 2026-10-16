@@ -106,6 +106,10 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
     public int settlementsHunger = 0;
     /** His own money, in coins (see settlements.Purse); below nought, what he owes. */
     public int settlementsPurse = 0;
+    /** His own chest at home, with his savings (see settlements.Home); null till he has one. */
+    public net.minecraft.util.math.BlockPos settlementsChest = null;
+    /** How far he has furnished his house: one more thing each time he can afford it. */
+    public int settlementsFurnished = 0;
     public boolean settlementsResting = false;
     public int settlementsEatTicks = 0;
     public long settlementsHireUntil = 0;
@@ -1524,6 +1528,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         settlementsEnergy = nbt.contains("SettlementsEnergy") ? nbt.getInt("SettlementsEnergy") : 1000;
         settlementsHunger = nbt.getInt("SettlementsHunger");
         settlementsPurse = nbt.getInt("SettlementsPurse");
+        settlementsChest = nbt.contains("SettlementsChest") ? net.minecraft.util.math.BlockPos.fromLong(nbt.getLong("SettlementsChest")) : null;
+        settlementsFurnished = nbt.getInt("SettlementsFurnished");
         settlementsHireUntil = nbt.getLong("SettlementsHireUntil");
         settlementsSkill = nbt.getInt("SettlementsSkill");
         settlementsMaster = nbt.containsUuid("SettlementsMaster") ? nbt.getUuid("SettlementsMaster") : null;
@@ -1562,6 +1568,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         nbt.putInt("SettlementsEnergy", settlementsEnergy);
         nbt.putInt("SettlementsHunger", settlementsHunger);
         nbt.putInt("SettlementsPurse", settlementsPurse);
+        if (settlementsChest != null) nbt.putLong("SettlementsChest", settlementsChest.asLong());
+        nbt.putInt("SettlementsFurnished", settlementsFurnished);
         nbt.putLong("SettlementsHireUntil", settlementsHireUntil);
         nbt.putInt("SettlementsSkill", settlementsSkill);
         if (settlementsMaster != null) nbt.putUuid("SettlementsMaster", settlementsMaster);

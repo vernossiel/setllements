@@ -39,6 +39,7 @@ public final class Bed {
                 Move.to(v, bed.getX() + 0.5, bed.getY(), bed.getZ() + 0.5, 0.55);
                 return true;
             }
+            if (Home.evening(v, village, world, bed)) return true; // first he sees to his house: his savings, something new for it
             if (world.getEntitiesByClass(VillagerEntityMCA.class, new net.minecraft.util.math.Box(bed), o -> o != v && o.isSleeping()).isEmpty()) {
                 v.sleep(bed);
                 SINCE.remove(v.getUuid());

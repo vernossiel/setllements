@@ -4068,5 +4068,9 @@
   "settlements.say.stocks.kind.2.f": "Скоро отпустят, потерпи.",
   "item.mca.emerald_nugget": "Изумрудный самородок",
   "settlements.justice.search.ask.weak": "%s, у нас ночью пропало добро со склада. Чужих в деревне немного... Не обессудь, покажи, что при тебе.",
-  "settlements.justice.search.refused.strong": "Тебя видели у сундука, %s, а карманы показать не хочешь? Тогда разговор другой."
+  "settlements.justice.search.refused.strong": "Тебя видели у сундука, %s, а карманы показать не хочешь? Тогда разговор другой.",
+  "settlements.say.home.chest": "Ну вот, свой сундук. Будет куда класть.",
+  "settlements.say.home.chest.f": "Ну вот, свой сундук. Будет куда класть.",
+  "settlements.say.home.furnish": "Вот, в дом обновка. Пусть будет по-людски.",
+  "settlements.say.home.furnish.f": "Вот, в дом обновка. Пусть будет по-людски."
 }

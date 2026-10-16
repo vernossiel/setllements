@@ -59,6 +59,7 @@ public final class Money {
                 if (change > 0) give(inv, change);
             }
         }
+        inv.markDirty();
         return true;
     }
 
@@ -91,11 +92,22 @@ public final class Money {
     public static void give(Inventory inv, int n) {
         if (n <= 0) return;
         ItemStack rest = new ItemStack(ItemsMCA.EMERALD_NUGGET.get(), n);
-        if (inv instanceof net.minecraft.inventory.SimpleInventory si) rest = si.addStack(rest);
-        else for (int i = 0; i < inv.size() && !rest.isEmpty(); i++) if (inv.getStack(i).isEmpty()) {
+        if (inv instanceof net.minecraft.inventory.SimpleInventory si) {
+            si.addStack(rest);
+            return;
+        }
+        for (int i = 0; i < inv.size() && !rest.isEmpty(); i++) { // onto the nuggets already there first
+            ItemStack s = inv.getStack(i);
+            if (!s.isOf(ItemsMCA.EMERALD_NUGGET.get()) || s.getCount() >= s.getMaxCount()) continue;
+            int d = Math.min(rest.getCount(), s.getMaxCount() - s.getCount());
+            s.increment(d);
+            rest.decrement(d);
+        }
+        for (int i = 0; i < inv.size() && !rest.isEmpty(); i++) if (inv.getStack(i).isEmpty()) {
             inv.setStack(i, rest);
             rest = ItemStack.EMPTY;
         }
+        inv.markDirty();
     }
 
     /** Into the stores. */
