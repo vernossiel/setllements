@@ -4022,5 +4022,8 @@
   "settlements.say.watch.round.2": "Склад заперт, амбар цел. Дальше.",
   "settlements.say.watch.round.2.f": "Склад заперт, амбар цел. Дальше.",
   "settlements.news.away": "Пока тебя не было, жизнь шла своим чередом: построено частей зданий: %s, пришло новых жителей: %s, ушло: %s.",
-  "settlements.news.away.hungry": "Пока тебя не было, голодали дней: %s."
+  "settlements.news.away.hungry": "Пока тебя не было, голодали дней: %s.",
+  "settlements.doing.flee.monster": "убегает от чудища",
+  "settlements.say.flee.monster": "Чудище! Стража! Помогите!",
+  "settlements.say.flee.monster.f": "Чудище! Стража! Помогите!"
 }

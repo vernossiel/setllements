@@ -561,4 +561,32 @@ public final class Life {
     static boolean isProfession(VillagerEntityMCA v, VillagerProfession p) {
         return v.getProfession() == p;
     }
+
+    private static final Map<java.util.UUID, Long> DREAD_SAID = new HashMap<>();
+
+    /**
+     * A monster close by: anyone but the watch drops what he is doing and runs - away from it, towards home or the
+     * town hall - shouting for the guards. True while he is getting away.
+     */
+    public static boolean dread(VillagerEntityMCA v, Village village, ServerWorld world) {
+        if (v.isGuard() || v.isSleeping() || v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get()) return false;
+        net.minecraft.entity.mob.HostileEntity foe = world.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, v.getBoundingBox().expand(10, 4, 10),
+                m -> m.isAlive() && !(m instanceof net.minecraft.entity.mob.CreeperEntity && v.squaredDistanceTo(m) > 36) && v.canSee(m)).stream()
+                .min(java.util.Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
+        if (foe == null) return false;
+        Doing.set(v, "settlements.doing.flee.monster");
+        net.minecraft.util.math.Vec3d away = v.getPos().subtract(foe.getPos()).multiply(1, 0, 1).normalize();
+        net.minecraft.util.math.BlockPos safe = v.getResidency().getHome().map(net.minecraft.util.math.GlobalPos::getPos).orElse(village != null ? village.hallPos : null);
+        net.minecraft.util.math.Vec3d to = safe != null && safe.toCenterPos().subtract(v.getPos()).dotProduct(away) > 0 ? safe.toCenterPos() : v.getPos().add(away.multiply(10));
+        Move.to(v, to.x, to.y, to.z, 0.8);
+        long now = world.getTime();
+        if (now - DREAD_SAID.getOrDefault(v.getUuid(), -10000L) > 400) {
+            DREAD_SAID.put(v.getUuid(), now);
+            Speech.sayNow(v, "settlements.say.flee.monster");
+            if (village != null) for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(48, 12, 48), VillagerEntityMCA::isGuard)) {
+                if (g.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).isEmpty()) g.getBrain().remember(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET, foe, 300);
+            }
+        }
+        return true;
+    }
 }

@@ -85,6 +85,7 @@ public final class Workforce {
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld lw && Arrivals.leaving(v, lw)) return; // leaving a hungry village
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld rw) {
             net.mca.server.world.data.Village rv = net.mca.server.world.data.Village.findNearest(v).orElse(null);
+            if (Life.dread(v, rv, rw)) return; // a monster close by: away from it, shouting for the guards
             if (Rogue.tick(v, rv, rw)) return; // a rogue about his business, or in the stocks for it
             if (rv != null && v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get() && Watch.tick(v, rv, rw)) return; // the night watch
             // no watchman yet (a small village): the guard on the evening shift puts up the lamps at dusk

@@ -188,16 +188,26 @@ public final class Staffing {
             }
         }
 
-        List<VillagerEntityMCA> pool = new ArrayList<>();
-        for (VillagerEntityMCA r : adults) {
-            if (!r.isGuard() && !r.isElder() && isFree(r.getProfession())) pool.add(r);
-        }
-
         // guards when the village is big enough to need them (more with barracks, more when it is attacked often)
         int guards = (int) adults.stream().filter(VillagerEntityMCA::isGuard).count();
         int guardTarget = p >= 5 ? Math.max(1, p / 7) : 0;
         if (Buildings.has(v, "barracks")) guardTarget = Math.max(2, p / 4);
         if (p >= 4 && Prosperity.danger(v) >= 4) guardTarget++;
+        // more guards than a village this size needs (it has lost people): the extra ones go back to work
+        if (guards > guardTarget) {
+            for (VillagerEntityMCA r : adults) {
+                if (guards <= guardTarget) break;
+                if (!r.isGuard() || r.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).isPresent()) continue;
+                r.setProfession(VillagerProfession.NONE);
+                r.reinitializeBrain(world);
+                guards--;
+            }
+        }
+
+        List<VillagerEntityMCA> pool = new ArrayList<>();
+        for (VillagerEntityMCA r : adults) {
+            if (!r.isGuard() && !r.isElder() && isFree(r.getProfession())) pool.add(r);
+        }
         while (guards < guardTarget && !pool.isEmpty()) {
             announce(elder, assign(world, pool.remove(world.random.nextInt(pool.size())), ProfessionsMCA.GUARD.get()), ProfessionsMCA.GUARD.get());
             guards++;
