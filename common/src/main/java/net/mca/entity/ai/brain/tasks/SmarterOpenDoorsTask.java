@@ -86,6 +86,9 @@ public class SmarterOpenDoorsTask extends MultiTickTask<LivingEntity> {
         if (pathNode != null) {
             BlockPos blockPos = pathNode.getBlockPos();
             BlockState blockState = world.getBlockState(blockPos);
+            // (Settlements) not with a monster at the door: it walks in after him
+            if (isDoor(blockState) && blockState.getBlock() instanceof net.minecraft.block.DoorBlock && !world.isSkyVisible(entity.getBlockPos())
+                    && !world.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, new net.minecraft.util.math.Box(blockPos).expand(10, 4, 10), net.minecraft.entity.LivingEntity::isAlive).isEmpty()) return;
             if (isDoor(blockState)) {
                 boolean wasOpen = blockState.contains(Properties.OPEN) && blockState.get(Properties.OPEN);
                 if (setOpen(entity, world, blockState, blockPos, true) || wasOpen) {

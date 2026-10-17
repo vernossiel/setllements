@@ -526,8 +526,15 @@ public final class Move {
         return s.getBlock() instanceof net.minecraft.block.DoorBlock door && door.getBlockSetType().canOpenByHand() && !s.get(net.minecraft.block.DoorBlock.OPEN);
     }
 
+    /** Not a door opened with a monster close behind him: it would walk in after him (two died so in the hall). */
+    static boolean monsterNear(ServerWorld world, BlockPos p) {
+        return !world.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, new net.minecraft.util.math.Box(p).expand(10, 4, 10), net.minecraft.entity.LivingEntity::isAlive).isEmpty();
+    }
+
     static void open(VillagerEntityMCA v, ServerWorld world, BlockPos p) {
         shutBehind(v); // the last one he went through, shut before he opens the next
+        // indoors with a monster about the door: he stays in (going in, he goes in, and the door is shut behind him at once)
+        if (!(world.getBlockState(p).getBlock() instanceof net.minecraft.block.FenceGateBlock) && !world.isSkyVisible(v.getBlockPos()) && monsterNear(world, p)) return;
         BlockState s = world.getBlockState(p);
         v.swingHand(v.getDominantHand());
         if (s.getBlock() instanceof net.minecraft.block.FenceGateBlock) {

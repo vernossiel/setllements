@@ -966,6 +966,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
             net.mca.settlements.Move.hold(this); // on an errand of ours, MCA's own wandering keeps out of his way
             net.mca.settlements.Move.makeWay(this);
             net.mca.settlements.Move.doorsAhead(this);
+            if (age % 2 == 0) net.mca.settlements.Move.shutBehind(this); // the door shut the moment he is through (a zombie on his heels got in in the second it stood open)
         }
         super.tick();
 
