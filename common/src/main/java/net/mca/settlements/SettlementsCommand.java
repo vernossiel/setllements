@@ -189,7 +189,7 @@ public final class SettlementsCommand {
                                     java.util.List<String> list = new java.util.ArrayList<>();
                                     String style = here(c);
                                     for (String kind : Tiers.kinds()) for (String design : Tiers.row(kind, tier))
-                                        for (String d : Templates.expand(design, style)) if (!list.contains(d)) list.add(d);
+                                        for (String one : Templates.expand(design, style)) if (!list.contains(one)) list.add(one);
                                     return placeRow(c, list, "Every building of a " + t + " village (" + style + ")");
                                 })))
                         .then(CommandManager.literal("templates").then(CommandManager.argument("style", StringArgumentType.word())
@@ -210,7 +210,7 @@ public final class SettlementsCommand {
                                     java.util.List<String> list = new java.util.ArrayList<>();
                                     String style = here(c);
                                     for (int tier = 0; tier <= Tiers.CITY; tier++) for (String design : Tiers.row(kind, tier))
-                                        for (String d : Templates.expand(design, style)) if (!list.contains(d)) list.add(d);
+                                        for (String one : Templates.expand(design, style)) if (!list.contains(one)) list.add(one);
                                     return placeRow(c, list, kind + " from the poorest to the city's (" + style + ")");
                                 })))
                         .executes(c -> {
