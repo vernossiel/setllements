@@ -339,6 +339,12 @@ public final class Workforce {
         if (village != null && Mood.now(village) == Mood.Kind.JOY && v.getWorld() instanceof net.minecraft.server.world.ServerWorld jw && Mood.tick(v, village, jw, false)) return;
         if (Seat.seated(v)) Rest.end(v); // up, back to work
         STAGE.put(v.getUuid(), "custom");
+        // a hungry village sends him out for food before his own work (see Forage.sent)
+        if (village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld fsw && Forage.sent(v, village, fsw) && Forage.work(v, village, fsw)) {
+            v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
+            hunger(v, HUNGER_RISE);
+            return;
+        }
         if (isCustomWorker(prof)) {
             if (Forge.waiting(v, village)) return; // at the smithy, waiting for his new tool
             boolean worked = false;

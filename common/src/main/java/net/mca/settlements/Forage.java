@@ -43,6 +43,37 @@ public final class Forage {
         return food < Math.max(1, village.getPopulation()) * 3;
     }
 
+    private record Sent(long at, java.util.List<UUID> who) {
+    }
+
+    private static final Map<Integer, Sent> SENT = new HashMap<>();
+
+    /**
+     * A hungry village sends hands out for food: one of its workers (two when the stores are all but empty), not the
+     * farmers and the herdsmen (food is their work already), the builder, the guards or the elder. Reckoned once a
+     * minute, the same people while it lasts.
+     */
+    public static boolean sent(VillagerEntityMCA v, Village village, ServerWorld world) {
+        if (village == null || !hungry(village)) return false;
+        Sent s = SENT.get(village.getId());
+        long now = world.getTime();
+        if (s == null || now - s.at() > 20 * 60) {
+            int n = food(village) < Math.max(1, village.getPopulation()) ? 2 : 1;
+            java.util.List<UUID> who = village.getResidents(world).stream()
+                    .filter(o -> o.isAlive() && !o.isBaby() && !o.isGuard() && !o.isElder())
+                    .filter(o -> {
+                        var p = o.getProfession();
+                        return p != net.minecraft.village.VillagerProfession.FARMER && p != net.minecraft.village.VillagerProfession.CARTOGRAPHER
+                                && p != net.minecraft.village.VillagerProfession.BUTCHER && p != net.minecraft.village.VillagerProfession.SHEPHERD
+                                && p != net.minecraft.village.VillagerProfession.FISHERMAN && p != net.minecraft.village.VillagerProfession.LEATHERWORKER;
+                    })
+                    .map(VillagerEntityMCA::getUuid).sorted().limit(n).toList();
+            s = new Sent(now, who);
+            SENT.put(village.getId(), s);
+        }
+        return s.who().contains(v.getUuid());
+    }
+
     /** Meals in the stores. */
     public static int food(Village village) {
         int food = 0;
