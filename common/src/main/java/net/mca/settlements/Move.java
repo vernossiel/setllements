@@ -222,6 +222,17 @@ public final class Move {
     /** Places a cheap block from the villager's pockets or the village stores. */
     static boolean place(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos p) {
         if (!passable(world, p) || !world.getBlockState(p).isReplaceable() && !world.getBlockState(p).isAir()) return false;
+        BlockState state = takeFiller(v, village);
+        if (state == null) return false;
+        world.setBlockState(p, state);
+        world.playSound(null, p, state.getSoundGroup().getPlaceSound(), SoundCategory.BLOCKS, 0.8f, 1.0f);
+        v.swingHand(v.getDominantHand());
+        if (village != null) village.markDirty();
+        return true;
+    }
+
+    /** A block of earth, stone or board to put down, from his pockets or the stores (taken); null if there is none. */
+    static BlockState takeFiller(VillagerEntityMCA v, Village village) {
         BlockState state = null;
         var inv = v.getInventory();
         for (int i = 0; i < inv.size() && state == null; i++) {
@@ -241,13 +252,9 @@ public final class Move {
             }
             if (state != null) village.storageBuffer.removeIf(ItemStack::isEmpty);
             else if (Builder.takeItem(village, s -> s.isIn(ItemTags.PLANKS), 1)) state = Blocks.OAK_PLANKS.getDefaultState();
+            if (state != null) village.markDirty();
         }
-        if (state == null) return false;
-        world.setBlockState(p, state);
-        world.playSound(null, p, state.getSoundGroup().getPlaceSound(), SoundCategory.BLOCKS, 0.8f, 1.0f);
-        v.swingHand(v.getDominantHand());
-        if (village != null) village.markDirty();
-        return true;
+        return state;
     }
 
     /** Doors and gates count as open: villagers use them. */
@@ -490,13 +497,14 @@ public final class Move {
             }
             return false;
         }
-        v.refreshPositionAndAngles(v.getX(), feet.getY() + 1.05, v.getZ(), v.getYaw(), v.getPitch());
-        if (place(v, village, world, feet)) {
-            if (village != null) SCAFFOLD.add(new Scaffold(feet.toImmutable(), world.getTime(), village.getId()));
-            return true;
-        }
-        v.refreshPositionAndAngles(v.getX(), feet.getY(), v.getZ(), v.getYaw(), v.getPitch()); // nothing to stand on
-        return false;
+        // a jump, and the block under his feet at the top of it, as a player towers up (he was lifted a block before)
+        BlockState block = takeFiller(v, village);
+        if (block == null) return false; // nothing to stand on
+        BlockPos cell = feet.toImmutable();
+        Moves.jumpPlace(v, block, () -> {
+            if (village != null) SCAFFOLD.add(new Scaffold(cell, world.getTime(), village.getId()));
+        });
+        return true;
     }
 
     static void step(VillagerEntityMCA v, BlockPos cell) {
@@ -545,7 +553,26 @@ public final class Move {
      * for his head. Never in the air, never in the rock; no fall to hurt him. False when there is no such spot near.
      */
     public static boolean putSafely(VillagerEntityMCA v, BlockPos at) {
-        if (!(v.getWorld() instanceof ServerWorld world) || !world.isChunkLoaded(at.getX() >> 4, at.getZ() >> 4)) return false;
+        BlockPos best = safeSpot(v, at);
+        if (best == null) return false;
+        v.refreshPositionAndAngles(best.getX() + 0.5, best.getY(), best.getZ() + 0.5, v.getYaw(), 0);
+        v.fallDistance = 0;
+        v.setVelocity(Vec3d.ZERO);
+        v.getNavigation().stop();
+        return true;
+    }
+
+    /** Caught in a block: shoved out of it to the nearest safe spot beside, as a body squeezes out. False if none. */
+    public static boolean shoveOut(VillagerEntityMCA v) {
+        BlockPos best = safeSpot(v, v.getBlockPos());
+        if (best == null) return false;
+        Moves.shove(v, best);
+        return true;
+    }
+
+    /** The nearest safe spot round {@code at} (see putSafely), or null. */
+    static BlockPos safeSpot(VillagerEntityMCA v, BlockPos at) {
+        if (!(v.getWorld() instanceof ServerWorld world) || !world.isChunkLoaded(at.getX() >> 4, at.getZ() >> 4)) return null;
         BlockPos best = null;
         double bd = Double.MAX_VALUE;
         for (BlockPos p : BlockPos.iterate(at.add(-2, -2, -2), at.add(2, 2, 2))) {
@@ -562,12 +589,7 @@ public final class Move {
                 best = p.toImmutable();
             }
         }
-        if (best == null) return false;
-        v.refreshPositionAndAngles(best.getX() + 0.5, best.getY(), best.getZ() + 0.5, v.getYaw(), 0);
-        v.fallDistance = 0;
-        v.setVelocity(Vec3d.ZERO);
-        v.getNavigation().stop();
-        return true;
+        return best;
     }
 
     private static final java.util.Map<java.util.UUID, BlockPos> OPENED = new java.util.HashMap<>();

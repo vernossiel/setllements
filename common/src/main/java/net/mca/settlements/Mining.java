@@ -69,7 +69,7 @@ public final class Mining {
         BlockPos stand = standFor(world, o, steps, village);
         if (world.getBlockState(v.getBlockPos()).isSolidBlock(world, v.getBlockPos()) || world.getBlockState(v.getBlockPos().up()).isSolidBlock(world, v.getBlockPos().up())) {
             // caught inside the rock or a timber frame: out beside it (to the working face only where nobody sees)
-            if (!Move.putSafely(v, v.getBlockPos()) && Bed.unseen(v, world)) Move.putSafely(v, stand);
+            if (!Move.shoveOut(v) && Bed.unseen(v, world)) Move.putSafely(v, stand);
             v.getNavigation().stop();
         }
         if (v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > 25) {
@@ -347,11 +347,7 @@ public final class Mining {
         for (int i = 0; i < inv.size(); i++) {
             net.minecraft.item.ItemStack st = inv.getStack(i);
             if (!st.isOf(net.minecraft.item.Items.COBBLESTONE) && !st.isOf(net.minecraft.item.Items.COBBLED_DEEPSLATE) && !st.isOf(net.minecraft.item.Items.DIRT)) continue;
-            v.getNavigation().stop();
-            v.refreshPositionAndAngles(v.getX(), feet.getY() + 1, v.getZ(), v.getYaw(), v.getPitch()); // the jump
-            world.setBlockState(feet, net.minecraft.block.Block.getBlockFromItem(st.getItem()).getDefaultState());
-            world.playSound(null, feet, net.minecraft.sound.SoundEvents.BLOCK_STONE_PLACE, net.minecraft.sound.SoundCategory.BLOCKS, 1f, 1f);
-            v.swingHand(v.getDominantHand());
+            Moves.jumpPlace(v, net.minecraft.block.Block.getBlockFromItem(st.getItem()).getDefaultState(), null); // the jump, the stone under him
             st.decrement(1);
             Doing.count("m.climbout");
             return true;

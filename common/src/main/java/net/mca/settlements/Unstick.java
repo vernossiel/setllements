@@ -128,12 +128,7 @@ public final class Unstick {
         BlockPos feet = v.getBlockPos();
         if (!Move.passable(world, feet.up(2))) return; // a roof over him: not a pit
         if (!Layout.land(world.getBlockState(feet.down()))) return; // the floor of a pit is the earth: not a scaffold, a floor, a roof
-        v.getNavigation().stop();
-        world.setBlockState(feet, net.minecraft.block.Blocks.DIRT.getDefaultState());
-        world.playSound(null, feet, net.minecraft.sound.SoundEvents.BLOCK_GRAVEL_PLACE, net.minecraft.sound.SoundCategory.BLOCKS, 0.8f, 1f);
-        v.refreshPositionAndAngles(v.getX(), feet.getY() + 1, v.getZ(), v.getYaw(), v.getPitch());
-        v.swingHand(net.minecraft.util.Hand.MAIN_HAND);
-        v.fallDistance = 0;
+        Moves.jumpPlace(v, net.minecraft.block.Blocks.DIRT.getDefaultState(), null); // a jump and the earth under his feet
     }
 
     private record Patch(BlockPos pos, BlockState state, long at) {
@@ -193,7 +188,7 @@ public final class Unstick {
         if (world.getBlockState(head).shouldSuffocate(world, head)) {
             if (breakable(world, village, head)) {
                 world.breakBlock(head, false, v);
-            } else if (!Move.putSafely(v, v.getBlockPos())) { // out beside, on his own level; up through it only when there is nothing beside
+            } else if (!Move.shoveOut(v)) { // shoved out beside, on his own level; up through it only when there is nothing beside
                 BlockPos up = head;
                 for (int i = 0; i < 6 && !world.getBlockState(up).isAir(); i++) up = up.up();
                 v.refreshPositionAndAngles(up.getX() + 0.5, up.getY(), up.getZ() + 0.5, v.getYaw(), 0);

@@ -211,7 +211,7 @@ public final class Scaffold {
             if (hx * hx + hz * hz <= 1.7 * 1.7 && hy <= 1.2 && hy >= -1.5) {
                 Doing.count(hx * hx + hz * hz < 0.3 && Math.abs(hy) < 0.3 ? "c.perch.there" : "c.perch.step");
                 v.getNavigation().stop();
-                v.refreshPositionAndAngles(perch.getX() + 0.5, perch.getY(), perch.getZ() + 0.5, v.getYaw(), v.getPitch()); // a step over
+                Moves.step(v, perch); // a step over (walked, a hop up)
             } else {
                 Doing.count("c.perch.walk");
                 // a quarter of a minute walking and not there: no way up to it after all (the pathfinder says yes to
@@ -250,8 +250,7 @@ public final class Scaffold {
         if (!onIt && onScaffold(world, v)) {
             Doing.count("c.col.down");
             // down the scaffolding he is on, a block at a time
-            v.getNavigation().stop();
-            v.refreshPositionAndAngles(v.getX(), Math.floor(v.getY()) - 1, v.getZ(), v.getYaw(), v.getPitch());
+            Moves.crouchDown(v); // a crouch, and down through it as a player lets himself down
             return true;
         }
         if (!onIt) {
@@ -261,8 +260,7 @@ public final class Scaffold {
             double cx = col.getX() + 0.5 - v.getX(), cz = col.getZ() + 0.5 - v.getZ();
             if (cx * cx + cz * cz <= 2.0 * 2.0 && Math.abs(v.getY() - col.getY()) <= 2.5 && Move.passable(world, col.up())) {
                 Doing.count("c.col.on");
-                v.getNavigation().stop();
-                v.refreshPositionAndAngles(col.getX() + 0.5, col.getY(), col.getZ() + 0.5, v.getYaw(), v.getPitch());
+                Moves.step(v, col); // onto it, a step
                 return true;
             }
             Doing.count("c.col.walk");
@@ -289,18 +287,18 @@ public final class Scaffold {
             Doing.count("c.col.up");
             // up a block: the scaffolding under his feet, and he steps up onto it
             BlockPos under = new BlockPos(col.getX(), at, col.getZ());
-            if (open(world, under)) {
-                world.setBlockState(under, Blocks.SCAFFOLDING.getDefaultState().with(ScaffoldingBlock.DISTANCE, 0));
-                world.playSound(null, under, SoundEvents.BLOCK_SCAFFOLDING_PLACE, SoundCategory.BLOCKS, 0.7f, 1f);
-                PUT_UP.computeIfAbsent(village.getId(), k -> new HashSet<>()).add(under.toImmutable());
-                v.swingHand(v.getDominantHand());
+            if (open(world, under)) { // a jump, and the scaffolding put in under his feet at the top of it
+                Moves.jumpPlace(v, Blocks.SCAFFOLDING.getDefaultState().with(ScaffoldingBlock.DISTANCE, 0),
+                        () -> PUT_UP.computeIfAbsent(village.getId(), k -> new HashSet<>()).add(under.toImmutable()));
+            } else if (world.getBlockState(under).isOf(Blocks.SCAFFOLDING)) {
+                v.getJumpControl().setActive(); // up the scaffolding there already, climbing it
+                v.setVelocity(v.getVelocity().x, Math.max(v.getVelocity().y, 0.2), v.getVelocity().z);
             }
-            v.refreshPositionAndAngles(col.getX() + 0.5, at + 1, col.getZ() + 0.5, v.getYaw(), v.getPitch());
             return true;
         }
         if (at > feet + 1) {
             Doing.count("c.col.lower");
-            v.refreshPositionAndAngles(col.getX() + 0.5, at - 1, col.getZ() + 0.5, v.getYaw(), v.getPitch());
+            Moves.crouchDown(v);
             return true;
         }
         Doing.count("c.col.top");
@@ -377,9 +375,7 @@ public final class Scaffold {
         }
         for (VillagerEntityMCA r : village.getResidents(world)) {
             if (r.squaredDistanceTo(o.getX(), o.getY(), o.getZ()) < 40 * 40 && world.getBlockState(r.getBlockPos().down()).isAir()) {
-                int g = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, r.getBlockX(), r.getBlockZ());
-                r.refreshPositionAndAngles(r.getX(), g, r.getZ(), r.getYaw(), r.getPitch());
-                r.fallDistance = 0;
+                Moves.softFall(r); // he drops with it, and lands unharmed (he was set down on the ground before)
             }
         }
     }
@@ -392,9 +388,7 @@ public final class Scaffold {
         // anyone still up there comes down safely
         for (VillagerEntityMCA r : village.getResidents(world)) {
             if (s.contains(r.getBlockPos().down()) || world.getBlockState(r.getBlockPos().down()).isAir() && s.stream().anyMatch(p -> p.getX() == r.getBlockX() && p.getZ() == r.getBlockZ())) {
-                int g = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, r.getBlockX(), r.getBlockZ());
-                r.refreshPositionAndAngles(r.getX(), g, r.getZ(), r.getYaw(), r.getPitch());
-                r.fallDistance = 0;
+                Moves.softFall(r); // he drops with it, and lands unharmed (he was set down on the ground before)
             }
         }
     }
