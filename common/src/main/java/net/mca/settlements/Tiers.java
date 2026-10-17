@@ -50,9 +50,10 @@ public final class Tiers {
             Map.entry("charcoal", new String[][]{a("charcoal"), a("charcoal"), a("charcoal-2"), a("charcoal-city")}),
             Map.entry("armory", new String[][]{a("armory-poor"), a("armory"), a("armory-wealthy"), a("armory-city")}),
             Map.entry("shop", new String[][]{a(), a(), a("shop-general", "shop-bakery", "shop-mc:bakery3"), a("shop-bakery", "shop-weaver", "shop-general", "shop-apothecary", "shop-mc:bakery5")}),
-            Map.entry("home", new String[][]{a("cruck", "cruck", "hut", "longhouse"), a("house", "porch", "annex", "farmhouse", "twin", "cottage", "home-mc:home1", "home-mc:home2", "home-mc:home2"),
-                    a("wealden", "wealden", "manor", "mansion", "cottage", "home-mc:home3", "home-mc:home4", "home-mc:home3"),
-                    a("rowhouse", "rowhouse", "rowhouse", "tallhouse", "wealden", "home-mc:home5", "home-mc:home4", "home-mc:home5")})
+            Map.entry("home", new String[][]{a("home-mc:home1", "home-mc:home1", "home-mc:home1", "cruck", "hut"),
+                    a("home-mc:home2", "home-mc:home2", "home-mc:home1", "home-mc:home2", "house", "cottage"),
+                    a("home-mc:home3", "home-mc:home3", "home-mc:home4", "home-mc:home3", "wealden", "manor"),
+                    a("home-mc:home5", "home-mc:home4", "home-mc:home5", "home-mc:home5", "rowhouse")})
     );
 
     /** Older designs still standing in older villages, by the station they were built for. They are rebuilt in the new style. */

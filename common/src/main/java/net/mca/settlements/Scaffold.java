@@ -75,15 +75,55 @@ public final class Scaffold {
         return best;
     }
 
-    /** How many columns of scaffolding stand about this site already. */
-    private static int columns(ServerWorld world, Built site) {
-        if (site == null) return 0;
+    /** The feet of the columns of scaffolding standing about this site. */
+    private static java.util.List<BlockPos> feet(ServerWorld world, Built site) {
+        java.util.List<BlockPos> out = new java.util.ArrayList<>();
+        if (site == null) return out;
         java.util.Set<Long> cols = new java.util.HashSet<>();
         BlockPos o = site.origin();
-        for (BlockPos p : BlockPos.iterate(o.add(-3, 0, -3), o.add(site.fw() + 3, 1, site.fd() + 3))) {
-            if (world.getBlockState(p).isOf(Blocks.SCAFFOLDING)) cols.add(((long) p.getX() << 32) ^ (p.getZ() & 0xFFFFFFFFL));
+        for (BlockPos p : BlockPos.iterate(o.add(-3, -1, -3), o.add(site.fw() + 3, 1, site.fd() + 3))) {
+            if (!world.getBlockState(p).isOf(Blocks.SCAFFOLDING)) continue;
+            if (!cols.add(((long) p.getX() << 32) ^ (p.getZ() & 0xFFFFFFFFL))) continue;
+            BlockPos f = p.toImmutable();
+            while (world.getBlockState(f.down()).isOf(Blocks.SCAFFOLDING)) f = f.down();
+            out.add(f);
         }
-        return cols.size();
+        return out;
+    }
+
+    /** A column with nothing left to build within reach of it: it has done its work. */
+    private static boolean spent(BlockPos foot, Set<Long> planned) {
+        if (planned == null) return false;
+        for (long l : planned) {
+            BlockPos q = BlockPos.fromLong(l);
+            if (q.getY() >= foot.getY() + 2 && Math.abs(q.getX() - foot.getX()) <= REACH && Math.abs(q.getZ() - foot.getZ()) <= REACH) return false;
+        }
+        return true;
+    }
+
+    /** How many columns of scaffolding about this site are still of use (the spent ones come down, see tidy). */
+    private static int columns(ServerWorld world, Built site, Set<Long> planned) {
+        int n = 0;
+        for (BlockPos f : feet(world, site)) if (!spent(f, planned)) n++;
+        return n;
+    }
+
+    /**
+     * A spent column by him, as he passes on the ground: taken down, as a player takes down the scaffolding he has
+     * done with and puts it up again where the work is now (eight columns stood round a house, none of them where the
+     * roof still wanted laying, and he stood a minute at every block of it). True when he took one down.
+     */
+    static boolean tidy(VillagerEntityMCA v, ServerWorld world, Built site, Set<Long> planned) {
+        if (onScaffold(world, v) || !v.isOnGround()) return false;
+        for (BlockPos f : feet(world, site)) {
+            if (v.squaredDistanceTo(f.getX() + 0.5, f.getY(), f.getZ() + 0.5) > 3.5 * 3.5 || !spent(f, planned)) continue;
+            Gear.face(v, f);
+            v.swingHand(v.getDominantHand());
+            world.breakBlock(f, true, v); // the column above falls with its foot, and he picks it up
+            Doing.count("c.tidy");
+            return true;
+        }
+        return false;
     }
 
     private static BlockPos columnFor(ServerWorld world, VillagerEntityMCA v, BlockPos target, Built site) {
@@ -181,7 +221,7 @@ public final class Scaffold {
                 if (w[0] != perch.asLong()) {
                     w[0] = perch.asLong();
                     w[1] = now;
-                } else if (now - w[1] > 300) {
+                } else if (now - w[1] > 600) { // (half a minute: up a ladder by hand takes its time)
                     BAD.add(perch.asLong());
                     PERCH.remove(v.getUuid());
                     WALKING.remove(v.getUuid());
@@ -196,9 +236,10 @@ public final class Scaffold {
         // chosen beforehand that he may never get to); else the nearest column that will do
         // a column put up already that reaches it first (a new one for every block: the house stood in a forest of them)
         BlockPos col = existing(world, v, target, site);
-        // and no more than eight columns round one building: past that, the old ones and his arm's length must do
-        if (col == null && columns(world, site) < 8) col = here(world, v, target, site);
-        if (col == null && columns(world, site) < 8) col = columnFor(world, v, target, site);
+        // and no more than eight columns of use round one building: the spent ones he takes down as he passes
+        if (col == null && tidy(v, world, site, planned)) return true;
+        if (col == null && columns(world, site, planned) < 8) col = here(world, v, target, site);
+        if (col == null && columns(world, site, planned) < 8) col = columnFor(world, v, target, site);
         if (col == null) {
             Doing.count("c.nocolumn");
             return false;
@@ -299,6 +340,13 @@ public final class Scaffold {
             if (paths++ >= 3) break;
             var path = v.getNavigation().findPathTo(p, 0);
             if (path != null && path.reachesTarget()) {
+                found = p;
+                break;
+            }
+            // the path finder takes no ladders: the floor upstairs, the loft under the roof (the best place to lay a
+            // roof from) were never his to stand on; our own route goes up the ladder (and Move walks it so)
+            var route = Route.find(world, v.getResidency().getHomeVillage().orElse(null), v.getBlockPos(), p, false);
+            if (route != null && !route.isEmpty() && route.get(route.size() - 1).pos().getManhattanDistance(p) <= 1) {
                 found = p;
                 break;
             }

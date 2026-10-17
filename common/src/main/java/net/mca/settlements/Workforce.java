@@ -119,7 +119,13 @@ public final class Workforce {
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld nw && !v.isGuard() && v.getProfession() != net.mca.ProfessionsMCA.WATCHMAN.get()) {
             long tod = nw.getTimeOfDay() % 24000L;
             net.mca.server.world.data.Village nv = net.mca.server.world.data.Village.findNearest(v).or(() -> v.getResidency().getHomeVillage()).orElse(null);
-            if (nv != null && tod >= 13500 && tod < 23300 && !Persona.working(v, nw.getTimeOfDay()) && Bed.tick(v, nv, nw)) return;
+            if (nv != null && tod >= 13500 && tod < 23300 && !Persona.working(v, nw.getTimeOfDay()) && Bed.tick(v, nv, nw)) {
+                // and his way to bed walked as any errand is, by hand when the path finder has none (down the ladder from
+                // the hall's loft: at night only the path finder was asked, and he called to be let out till morning)
+                Unstick.tick(v, nv);
+                Move.tick(v, nv);
+                return;
+            }
         }
         if (v.isBaby()) {
             if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld kw && Games.tick(v, kw)) return; // at play with the others

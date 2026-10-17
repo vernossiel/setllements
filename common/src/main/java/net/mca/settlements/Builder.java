@@ -89,7 +89,15 @@ public final class Builder {
             last.put(key, st);
         }
         java.util.TreeMap<Integer, List<Step>> clears = new java.util.TreeMap<>(), shell = new java.util.TreeMap<>(), fit = new java.util.TreeMap<>();
+        // the ladders go up with the walls, each at the end of its layer (the wall behind it standing): left with the
+        // fittings, they went in after the roof, and the roof and the loft had no way up to them from inside
+        java.util.Map<Integer, List<Step>> ladders = new java.util.HashMap<>();
         for (Step st : last.values()) {
+            if (st.kind() == Kind.LADDER) {
+                ladders.computeIfAbsent(st.dy(), y -> new ArrayList<>()).add(st);
+                shell.computeIfAbsent(st.dy(), y -> new ArrayList<>());
+                continue;
+            }
             var map = st.kind() == Kind.CLEAR || st.kind() == Kind.DIG ? clears : fitting(st.kind()) ? fit : shell;
             map.computeIfAbsent(st.dy(), y -> new ArrayList<>()).add(st);
         }
@@ -97,7 +105,8 @@ public final class Builder {
         for (List<Step> layer : clears.values()) out.addAll(layer);
         int[] at = {0, 0};
         for (var group : List.of(shell, fit)) {
-            for (List<Step> layer : group.values()) {
+            for (var entry : group.entrySet()) {
+                List<Step> layer = entry.getValue();
                 // nearest next: a wall goes up round the house, not in jumps from one side to the other
                 List<Step> left = new ArrayList<>(layer);
                 while (!left.isEmpty()) {
@@ -116,6 +125,7 @@ public final class Builder {
                     at[0] = next.dx();
                     at[1] = next.dz();
                 }
+                if (group == shell) out.addAll(ladders.getOrDefault(entry.getKey(), List.of()));
             }
         }
         return out;

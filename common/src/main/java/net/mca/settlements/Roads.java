@@ -94,8 +94,100 @@ public final class Roads {
         return out;
     }
 
+    // ---------- bridges ----------
+
+    /** The top block of a column, water counted (the surface of a river is the bottom of the gap). */
+    private static int top(ServerWorld world, int x, int z) {
+        return world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
+    }
+
+    private static boolean wet(ServerWorld world, int x, int y, int z) {
+        return !world.getFluidState(new BlockPos(x, y, z)).isEmpty();
+    }
+
+    /**
+     * Where the road crosses a gap - a ravine, a gully, a stream or a river - with ground on both sides of it at much
+     * the same height along the road: the height of the deck (the y of its planks, level with the banks), else
+     * Integer.MIN_VALUE. The villagers went down into every gully and up the far side, or round, or not at all.
+     */
+    static int bridgeLevel(ServerWorld world, int x, int z) {
+        if (!world.isChunkLoaded(x >> 4, z >> 4)) return Integer.MIN_VALUE;
+        int g = top(world, x, z);
+        boolean water = wet(world, x, g, z);
+        int best = Integer.MIN_VALUE;
+        for (int[] ax : new int[][]{{1, 0}, {0, 1}}) {
+            int a = bank(world, x, z, ax[0], ax[1], g, water), b = bank(world, x, z, -ax[0], -ax[1], g, water);
+            if (a == Integer.MIN_VALUE || b == Integer.MIN_VALUE || Math.abs(a - b) > 2) continue;
+            best = Math.max(best, Math.min(a, b));
+        }
+        return best;
+    }
+
+    /** The first bank along a direction (within ten blocks) standing well above the gap's floor, or MIN_VALUE. */
+    private static int bank(ServerWorld world, int x, int z, int sx, int sz, int g, boolean water) {
+        for (int d = 1; d <= 10; d++) {
+            int nx = x + sx * d, nz = z + sz * d;
+            if (!world.isChunkLoaded(nx >> 4, nz >> 4)) return Integer.MIN_VALUE;
+            int t = top(world, nx, nz);
+            if (wet(world, nx, t, nz)) continue; // the river goes on
+            if (t >= g + (water ? 1 : 2)) return t;
+        }
+        return Integer.MIN_VALUE;
+    }
+
+    /** A rail put along the edge of a deck (a fence on a plank, nothing above): on the road itself it must go. */
+    private static boolean rail(ServerWorld world, int x, int z) {
+        int t = top(world, x, z);
+        BlockPos p = new BlockPos(x, t, z);
+        return world.getBlockState(p).isIn(net.minecraft.registry.tag.BlockTags.FENCES) && world.getBlockState(p.up()).isAir()
+                && world.getBlockState(p.down()).isIn(net.minecraft.registry.tag.BlockTags.PLANKS);
+    }
+
+    /** Where the builder stands to lay this cell: the deck when there is one to be, else the ground. */
+    public static int standY(ServerWorld world, int x, int z) {
+        int lv = bridgeLevel(world, x, z);
+        return lv != Integer.MIN_VALUE ? lv + 1 : top(world, x, z) + 1;
+    }
+
+    /**
+     * A plank of the deck at this cell, at the level of the banks; the side of it that looks out over the gap given a
+     * plank more with a fence on it, the rail; and every fourth cell over a deep place a post of logs down to the ground.
+     */
+    private static void deck(ServerWorld world, Village village, int x, int z, int level) {
+        Palette pal = Palette.of(village);
+        BlockPos d = new BlockPos(x, level, z);
+        if (!world.getBlockState(d).isReplaceable() && !world.getBlockState(d).isAir() && world.getFluidState(d).isEmpty()) return;
+        if (!Builder.takeItem(village, s -> s.isIn(net.minecraft.registry.tag.ItemTags.PLANKS), 1)) return;
+        world.setBlockState(d, pal.planks().getDefaultState());
+        if (world.getBlockState(d.up()).isIn(net.minecraft.registry.tag.BlockTags.FENCES)) world.setBlockState(d.up(), Blocks.AIR.getDefaultState());
+        rails(world, village, d);
+        if (Math.floorMod(x + z, 4) == 0) { // a post under it, down to the bed of the gap
+            BlockPos q = d.down();
+            for (int i = 0; i < 14 && (world.getBlockState(q).isAir() || world.getBlockState(q).isReplaceable() || !world.getFluidState(q).isEmpty()); i++, q = q.down()) {
+                if (!Builder.takeItem(village, s -> s.isIn(net.minecraft.registry.tag.ItemTags.LOGS), 1)) break;
+                world.setBlockState(q, pal.log().getDefaultState());
+            }
+        }
+    }
+
+    /** The sides of a plank of the deck that look out over the gap: a plank more, and a fence on it. */
+    private static void rails(ServerWorld world, Village village, BlockPos d) {
+        Palette pal = Palette.of(village);
+        int level = d.getY();
+        for (net.minecraft.util.math.Direction dir : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+            BlockPos n = d.offset(dir);
+            if (!world.getBlockState(n).isAir() && !world.getBlockState(n).isReplaceable() && world.getFluidState(n).isEmpty()) continue;
+            if (!world.getBlockState(n.up()).isAir()) continue;
+            if (bridgeLevel(world, n.getX(), n.getZ()) == Integer.MIN_VALUE && top(world, n.getX(), n.getZ()) >= level - 1) continue; // ground there
+            if (!Builder.takeItem(village, s -> s.isIn(net.minecraft.registry.tag.ItemTags.PLANKS), 1)) break;
+            world.setBlockState(n, pal.planks().getDefaultState());
+            world.setBlockState(n.up(), pal.fence().getDefaultState());
+        }
+    }
+
     /** Whether there is work at this cell: a road cell to lay or mend, a lamp post missing (when there is a torch for it). */
     public static boolean needs(ServerWorld world, Village village, int[] cell) {
+        if (cell.length < 3 && (bridgeLevel(world, cell[0], cell[1]) != Integer.MIN_VALUE || rail(world, cell[0], cell[1]))) return true;
         if (cell.length < 3) return broken(world, village, cell[0], cell[1]);
         int x = cell[0], z = cell[1];
         if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
@@ -109,7 +201,15 @@ public final class Roads {
 
     /** Lays the work at a cell: the road, or the lamp post. */
     public static void work(ServerWorld world, Village village, int[] cell) {
-        if (cell.length < 3) mend(world, village, cell[0], cell[1]);
+        if (cell.length < 3 && rail(world, cell[0], cell[1])) { // the rail of the lane beside: this lane is the road
+            BlockPos f = new BlockPos(cell[0], top(world, cell[0], cell[1]), cell[1]);
+            world.setBlockState(f, Blocks.AIR.getDefaultState());
+            rails(world, village, f.down()); // and the rail goes along its own outer side instead
+            return;
+        }
+        int lv = cell.length < 3 ? bridgeLevel(world, cell[0], cell[1]) : Integer.MIN_VALUE;
+        if (lv != Integer.MIN_VALUE) deck(world, village, cell[0], cell[1], lv);
+        else if (cell.length < 3) mend(world, village, cell[0], cell[1]);
         else lamp(world, village, cell[0], cell[1]);
     }
 

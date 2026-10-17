@@ -122,6 +122,8 @@ public final class Repair {
         return true;
     }
 
+    private static final java.util.Map<Integer, long[]> HEAD = new java.util.HashMap<>();
+
     /** The builder mends the next broken road cell. True while he is at it. */
     public static boolean roadWork(VillagerEntityMCA v, Village village, ServerWorld world) {
         Deque<int[]> roads = ROADS.get(village.getId());
@@ -131,11 +133,26 @@ public final class Repair {
             roads.poll();
             return true;
         }
-        double dx = cell[0] + 0.5 - v.getX(), dz = cell[1] + 0.5 - v.getZ();
-        if (dx * dx + dz * dz > 9) {
-            int y = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, cell[0], cell[1]);
-            Move.to(v, cell[0] + 0.5, y, cell[1] + 0.5, 0.6);
+        // a minute at one cell and not got to it (the middle of a bridge with its end not laid yet): it goes to the back
+        long[] h = HEAD.computeIfAbsent(village.getId(), k -> new long[]{0, 0});
+        long key = ((long) cell[0] << 32) ^ (cell[1] & 0xFFFFFFFFL) ^ cell.length;
+        if (h[0] != key) {
+            h[0] = key;
+            h[1] = world.getTime();
+        } else if (world.getTime() - h[1] > 1200) {
+            roads.addLast(roads.poll());
+            h[0] = 0;
             return true;
+        }
+        double dx = cell[0] + 0.5 - v.getX(), dz = cell[1] + 0.5 - v.getZ();
+        int y = Roads.standY(world, cell[0], cell[1]); // over a gap: the deck, laid from its end so far, not the bottom of the ravine
+        if (dx * dx + dz * dz > 9 || Math.abs(v.getY() - y) > 3) {
+            // a bridge is laid from where the last plank was (the cells come in order along the road); in reach of it
+            // from the bank or the deck so far, he lays it from there
+            if (!(dx * dx + dz * dz <= 4.5 * 4.5 && Math.abs(v.getY() - y) <= 3)) {
+                Move.to(v, cell[0] + 0.5, y, cell[1] + 0.5, 0.6);
+                return true;
+            }
         }
         Roads.work(world, village, cell);
         v.swingHand(v.getDominantHand());
