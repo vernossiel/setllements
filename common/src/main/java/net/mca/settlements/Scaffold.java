@@ -119,6 +119,19 @@ public final class Scaffold {
                 v.refreshPositionAndAngles(perch.getX() + 0.5, perch.getY(), perch.getZ() + 0.5, v.getYaw(), v.getPitch()); // a step over
             } else {
                 Doing.count("c.perch.walk");
+                // a quarter of a minute walking and not there: no way up to it after all (the pathfinder says yes to
+                // ways a man cannot take); the scaffold then (a day went in walking about the house so)
+                long[] w = WALKING.computeIfAbsent(v.getUuid(), k -> new long[]{Long.MIN_VALUE, 0});
+                long now = world.getTime();
+                if (w[0] != perch.asLong()) {
+                    w[0] = perch.asLong();
+                    w[1] = now;
+                } else if (now - w[1] > 300) {
+                    BAD.add(perch.asLong());
+                    PERCH.remove(v.getUuid());
+                    WALKING.remove(v.getUuid());
+                    return true;
+                }
                 Move.to(v, perch.getX() + 0.5, perch.getY(), perch.getZ() + 0.5, 0.6);
             }
             Gaze.at(v, target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
@@ -169,6 +182,8 @@ public final class Scaffold {
     }
 
     private static final Map<java.util.UUID, Object[]> PERCH = new HashMap<>(); // builder -> {target, perch or null, until}
+    private static final Map<java.util.UUID, long[]> WALKING = new HashMap<>(); // builder -> {perch, since}
+    private static final Set<Long> BAD = new HashSet<>(); // perches he could not get to
 
     /**
      * Where on the building itself he can stand with the block in reach: solid under foot, room for him, nothing more
@@ -177,9 +192,10 @@ public final class Scaffold {
     private static BlockPos perch(VillagerEntityMCA v, ServerWorld world, BlockPos target, Built site, Set<Long> planned) {
         Object[] c = PERCH.get(v.getUuid());
         long now = world.getTime();
+        if (BAD.size() > 2000) BAD.clear();
         if (c != null && c[0].equals(target) && now < (long) c[2]) {
             BlockPos p = (BlockPos) c[1];
-            if (p == null || stand(world, p, planned)) return p;
+            if (p == null || stand(world, p, planned) && !BAD.contains(p.asLong())) return p;
         }
         java.util.List<BlockPos> cands = new java.util.ArrayList<>();
         int r = (int) REACH - 1;
@@ -187,7 +203,7 @@ public final class Scaffold {
             double dx = target.getX() - p.getX(), dz = target.getZ() - p.getZ();
             if (dx * dx + dz * dz > (REACH - 0.5) * (REACH - 0.5) || dx == 0 && dz == 0) continue;
             if (site != null && !site.contains(p)) continue; // on the building or at its edge
-            if (!stand(world, p, planned)) continue;
+            if (!stand(world, p, planned) || BAD.contains(p.asLong())) continue;
             cands.add(p.toImmutable());
         }
         cands.sort(java.util.Comparator.comparingDouble(p -> p.getSquaredDistance(v.getPos())));

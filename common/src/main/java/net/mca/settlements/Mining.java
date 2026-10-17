@@ -23,6 +23,7 @@ public final class Mining {
     private static final int STONE_QUOTA = 1200;
     static final int QUOTA = STONE_QUOTA;
     private static final Map<Integer, List<Step>> LEVELS = new HashMap<>();
+    private static final Map<java.util.UUID, long[]> SHED = new HashMap<>(); // miner -> {step, since}
 
     private Mining() {
     }
@@ -121,7 +122,20 @@ public final class Mining {
             BlockPos target = o.add(step.dx(), step.dy(), step.dz());
             if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 20) {
                 Doing.count("m.outofreach");
-                break; // within arm's reach
+                if (step.dy() < 0) break; // within arm's reach (down in the rock: the way to the face is walked above)
+                // the shed over the mouth: he goes round it to the block, as a builder would; the corner of its roof
+                // was out of reach from the mouth, and there he stood, day after day, the mine not begun
+                long[] sh = SHED.computeIfAbsent(v.getUuid(), k -> new long[]{-1, 0});
+                if (sh[0] != village.mineStep) {
+                    sh[0] = village.mineStep;
+                    sh[1] = world.getTime();
+                }
+                if (world.getTime() - sh[1] < 400) {
+                    if (!Scaffold.inReach(v, target)) {
+                        Move.to(v, target.getX() + 0.5, o.getY(), target.getZ() + 0.5, 0.6);
+                        break;
+                    }
+                } // twenty seconds and no nearer: laid from where he is
             }
             var here = world.getBlockState(target);
             if (step.kind() == Blueprints.Kind.DIG && (here.isIn(net.minecraft.registry.tag.BlockTags.IRON_ORES) || here.isIn(net.minecraft.registry.tag.BlockTags.COAL_ORES)
