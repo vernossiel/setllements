@@ -131,8 +131,23 @@ public final class Elder {
             return;
         }
         OUT.add(Text.translatable("settlements.elder.help." + need.name().toLowerCase()));
+        // where to bring it, the way a man says it - the chest in the hall, in the storehouse - not a string of numbers
         var store = Haul.store(elder, village);
-        if (store != null) OUT.add(Text.translatable("settlements.elder.bring", store.getX(), store.getY(), store.getZ()));
+        if (store != null) {
+            Text where = Text.translatable("settlements.elder.bring.hall");
+            for (Built b : village.built) {
+                if (b.contains(store)) {
+                    String base = Buildings.base(b.type());
+                    where = java.util.Set.of("townhall", "storage", "granary").contains(base) ? Text.translatable("settlements.elder.bring.at." + base)
+                            : Text.translatable("settlements.elder.bring.in", Text.translatable("settlements.building." + base));
+                    break;
+                }
+            }
+            VillagerEntityMCA builder = null;
+            for (VillagerEntityMCA r : village.getResidents(world)) if (r.isAlive() && r.getProfession() == net.minecraft.village.VillagerProfession.CARTOGRAPHER) builder = r;
+            OUT.add(builder != null ? Text.translatable("settlements.elder.bring.to", where, builder.getName())
+                    : Text.translatable("settlements.elder.bring.nobuilder", where));
+        }
     }
 
     /** What is being built, and what comes after. */
