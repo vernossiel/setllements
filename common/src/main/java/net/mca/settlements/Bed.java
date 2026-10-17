@@ -123,6 +123,9 @@ public final class Bed {
                 return true;
             }
             SINCE.remove(v.getUuid());
+            // the house shut for the night: a door somebody left open by his bed is shut (a zombie walked in through
+            // one onto a sleeper two blocks from it)
+            if (world.getTime() / 20 % 5 == 0) Move.shutDoorsAbout(v, 4);
             return true;
         }
         if (v.hasVehicle()) v.stopRiding();
