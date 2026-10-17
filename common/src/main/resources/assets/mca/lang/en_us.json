@@ -4167,6 +4167,7 @@
   "settlements.say.witness.caught.f": "Hey, %s! I saw that. Put it back - or I call the guards.",
   "settlements.say.witness.thanks": "That's better. I've got my eye on you, %s.",
   "settlements.say.witness.thanks.f": "That's better. I've got my eye on you, %s.",
+  "settlements.say.witness.honest": "You think you can buy me, %s? I'm not for sale. We're going to the guard.",
   "settlements.say.witness.hush": "...I saw nothing. But don't let me catch you twice, %s.",
   "settlements.say.witness.hush.f": "...I saw nothing. But don't let me catch you twice, %s.",
   "settlements.say.witness.nohush": "You think you can buy me too, %s? Guards!",

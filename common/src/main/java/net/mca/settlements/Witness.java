@@ -54,6 +54,12 @@ public final class Witness {
     }
 
     /** How likely he takes the money and keeps quiet: likelier for somebody the village thinks well of. */
+    /** One who will not take money to hold his tongue: the hard-working and the brave, and one in three of the rest. */
+    static boolean honest(VillagerEntityMCA w) {
+        Persona.Traits t = Persona.of(w);
+        return t.diligence() > 1.15 || t.bravery() > 0.8 || Math.floorMod(w.getUuid().hashCode(), 3) == 0;
+    }
+
     private static double chance(Village village, ServerPlayerEntity p) {
         return Math.max(0.15, Math.min(0.85, 0.5 + village.getReputation(p) / 300.0));
     }
@@ -140,6 +146,12 @@ public final class Witness {
                     p.sendMessage(Text.translatable("settlements.justice.cannot_pay", o.hush()).formatted(Formatting.RED), true);
                     OFFERS.put(p.getUuid(), o); // still standing there: something else, then
                     return 0;
+                }
+                if (honest(w)) {
+                    // some cannot be bought at any price: and an offer of money is an insult on top of the theft
+                    Speech.sayNow(w, "settlements.say.witness.honest", p.getName());
+                    tell(world, w, p, new Offer(o.witness(), o.village(), o.value() + o.hush() / 3.0, o.items(), 0, o.hush()));
+                    return 1;
                 }
                 if (world.random.nextDouble() < chance(village, p)) {
                     Money.take(p.getInventory(), o.hush());
