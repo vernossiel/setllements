@@ -91,7 +91,8 @@ public final class Templates {
         String n = name.replaceAll("\\d", ""), lv = name.replaceAll("\\D", "");
         return switch (n) {
             case "home" -> new String[]{"residence" + lv, "residencetower" + lv, "residencelarge" + lv, "residenceluxuryred" + lv, "residenceluxuryblue" + lv,
-                    "dwelling" + lv, "dwelling" + lv}; // (our own, twice: drawn for each station, the cramped hut to the town house)
+                    "dwelling" + lv, "dwelling" + lv + "b", "dwelling" + lv + "c", "dwelling" + lv + "d"}; // (our own: four for each station, the cramped hut to the town house)
+            case "townhall" -> new String[]{"townhall" + lv, "hall" + lv, "hall" + lv}; // (and our own halls for the hamlet, the village, the wealthy village)
             case "bakery" -> new String[]{"baker" + lv, "bakery" + lv};
             default -> new String[]{name};
         };
@@ -100,7 +101,8 @@ public final class Templates {
     /** The logical name of a template file ("residencetower3" -> "home3"). */
     static String logical(String file) {
         String n = file.replaceAll("\\d", ""), lv = file.replaceAll("\\D", "");
-        if (n.startsWith("residence") || n.equals("dwelling")) return "home" + lv;
+        if (n.startsWith("residence") || n.startsWith("dwelling")) return "home" + lv;
+        if (n.equals("hall")) return "townhall" + lv;
         if (n.equals("baker")) return "bakery" + lv;
         return file;
     }
