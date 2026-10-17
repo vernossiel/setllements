@@ -118,6 +118,7 @@ public final class Mining {
         }
 
         if (redo(v, village, world, o)) return true; // the shed or a step left for want of planks or stone, now there is some
+        if (mouth(v, village, world, o)) return true; // up top: the shed whole and its doors hung
 
         boolean worked = false;
         int ops = 0, skips = 0;
@@ -289,6 +290,48 @@ public final class Mining {
                 return true;
             }
         }
+        return false;
+    }
+
+    private static List<Step> MOUTH;
+    private static final Map<Integer, Long> MOUTH_WAIT = new HashMap<>(); // village -> no stuff for it till then
+
+    /** Up by the mouth of the mine, with the shed or its doors not whole: what is missing put in. True while at it. */
+    private static boolean mouth(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos o) {
+        if (village.mineLevel == 0 && village.mineStep < 60) return false; // the shed is being put up the first time
+        if (Math.abs(v.getY() - o.getY()) > 2 || v.squaredDistanceTo(o.getX() + 1, o.getY(), o.getZ()) > 12 * 12) return false;
+        if (world.getTime() < MOUTH_WAIT.getOrDefault(village.getId(), 0L)) return false;
+        if (MOUTH == null) MOUTH = Blueprints.mineMouth();
+        for (Step step : MOUTH) {
+            BlockPos target = o.add(step.dx(), step.dy(), step.dz());
+            BlockState here = world.getBlockState(target);
+            if (!here.isAir() && !here.isReplaceable()) continue; // standing
+            if (step.kind() == Blueprints.Kind.DOOR && here.getBlock() instanceof net.minecraft.block.DoorBlock) continue;
+            if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 16) {
+                Doing.set(v, "settlements.doing.mine.shed");
+                Move.to(v, target.getX() + 0.5, o.getY(), target.getZ() - 1.5, 0.6); // from in front of the shed
+                return true;
+            }
+            Builder.COLLECTOR = v;
+            Builder.Result r;
+            try {
+                r = Builder.execute(world, village, step, target, 0);
+            } finally {
+                Builder.COLLECTOR = null;
+            }
+            if (r == Builder.Result.WAIT || r == Builder.Result.ABORT) {
+                MOUTH_WAIT.put(village.getId(), world.getTime() + 1200); // nothing to make it of: again in a minute
+                return false;
+            }
+            Doing.set(v, "settlements.doing.mine.shed");
+            if (r == Builder.Result.PLACED) {
+                Gear.face(v, target);
+                v.swingHand(v.getDominantHand());
+                Doing.count("m.mouth");
+                return true;
+            }
+        }
+        MOUTH_WAIT.put(village.getId(), world.getTime() + 2400); // all standing: looked at again in a while
         return false;
     }
 
@@ -476,7 +519,7 @@ public final class Mining {
                 v.getMoveControl().moveTo(o.getX() + (v.getX() - o.getX() < 1 ? 0.5 : 1.5), o.getY(), o.getZ() + 0.5, 0.55);
                 return true;
             }
-            Move.to(v, o.getX() + 1.0, o.getY(), o.getZ() - 1.0, 0.55); // the mouth, in front of the shed
+            Move.to(v, o.getX() + 1.0, o.getY(), o.getZ() - 1.0, 0.55); // the mouth, in the shed's doorway
             return true;
         }
         double rz = v.getZ() - o.getZ();

@@ -678,6 +678,28 @@ public final class Blueprints {
         return l;
     }
 
+    /**
+     * The head of the mine as it should stand: the shed over the stair (its posts, walls and roof), and before it a
+     * porch with a pair of doors, so the shaft is shut - nobody falls in, nothing walks in at night. Gone over by the
+     * miner whenever he is up top (see Mining.mouth), and what is missing put in.
+     */
+    public static List<Step> mineMouth() {
+        List<Step> l = new ArrayList<>();
+        for (Step st : mine()) {
+            if (st.dy() < 0) break; // the shed comes first in the plan, then the shaft
+            if (st.kind() != Kind.DIG && st.kind() != Kind.CLEAR) l.add(st);
+        }
+        for (int x = 0; x <= 1; x++) l.add(new Step(x, -1, -1, Kind.STONE)); // a sill to stand the doors on
+        for (int y = 0; y <= 2; y++) {
+            l.add(new Step(-1, y, -1, Kind.PILLAR));
+            l.add(new Step(2, y, -1, Kind.PILLAR));
+        }
+        for (int x = 0; x <= 1; x++) l.add(new Step(x, 2, -1, Kind.WALL)); // the lintel
+        for (int x = -1; x <= 2; x++) l.add(new Step(x, 3, -1, Kind.ROOF));
+        for (int x = 0; x <= 1; x++) l.add(new Step(x, 0, -1, Kind.DOOR));
+        return l;
+    }
+
     /** A timber frame across a gallery: posts on both walls and a beam of planks over the roof, against cave-ins. */
     private static void galleryFrame(List<Step> l, int x, int bottom, int z0) {
         for (int h = 0; h < 3; h++) {
