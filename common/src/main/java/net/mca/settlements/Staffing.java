@@ -225,6 +225,21 @@ public final class Staffing {
         for (Role role : roles) firsts.add(new Role(role.profession(), 1));
         fill(world, elder, adults, pool, firsts, true);
         fill(world, elder, adults, pool, roles, false);
+        // nobody stands about with no trade while there is work: a spare hand goes where the village is shortest - the
+        // fields when food runs low, the woods or the quarry when the builders wait on wood or stone, else the fields
+        while (!pool.isEmpty()) {
+            VillagerEntityMCA who = pool.remove(0);
+            VillagerProfession prof = hungry ? VillagerProfession.FARMER
+                    : short_ != null && short_.need() == Needs.Need.PLANKS ? VillagerProfession.FLETCHER
+                    : short_ != null && short_.need() == Needs.Need.COBBLE ? VillagerProfession.MASON
+                    : VillagerProfession.FARMER;
+            announce(elder, assign(world, who, prof), prof);
+        }
+    }
+
+    /** At once, not at the next half minute: a newcomer is taken on the moment he arrives. */
+    static void staffNow(ServerWorld world, Village v) {
+        staff(world, v);
     }
 
     private static void fill(ServerWorld world, VillagerEntityMCA elder, List<VillagerEntityMCA> adults, List<VillagerEntityMCA> pool, List<Role> roles, boolean firsts) {

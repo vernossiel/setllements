@@ -100,6 +100,7 @@ public final class Arrivals {
         }
         String names = came.size() == 2 ? came.get(0).getName().getString() + ", " + came.get(1).getName().getString() : came.get(0).getName().getString();
         Life.news(v, came.size() == 2 ? "arrival.couple" : "arrival", names);
+        Staffing.staffNow(world, v); // and given work straight away
         VillagerEntityMCA elder = Plan.elder(world, v);
         if (elder != null) elder.settlementsQueue.add(Text.translatable(came.size() == 2 ? "settlements.elder.welcome.couple" : "settlements.elder.welcome", names));
     }
@@ -153,6 +154,7 @@ public final class Arrivals {
         BlockPos to = v.hallPos != null ? v.hallPos : new BlockPos(v.getCenter());
         n.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(to, 0.5f, 3));
         Speech.sayNow(n, "settlements.say.arrive");
+        n.getResidency().seekHome(); // one of the village from the moment he walks in (not at the next half-minute check)
         return n;
     }
 
