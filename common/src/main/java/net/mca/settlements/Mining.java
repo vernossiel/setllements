@@ -78,7 +78,11 @@ public final class Mining {
                 v.settlementsStuck = 0;
                 return false;
             }
-            if (shaftWalk(v, o, false)) return false;
+            if (shaftWalk(v, o, false)) {
+                Doing.count(inShaft(v, o) ? "m.shaft.in" : "m.shaft.mouth");
+                return false;
+            }
+            Doing.count("m.shaft.nowalk");
         }
         if (v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > 25) {
             // walk down; if the stairs do not work out, go straight to the face

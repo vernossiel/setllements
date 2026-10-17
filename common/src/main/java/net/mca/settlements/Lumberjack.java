@@ -407,7 +407,9 @@ public final class Lumberjack {
         Village home = v.getResidency().getHomeVillage().orElse(null);
         // a tree felled out in the wild is not planted again out there: its sapling goes into the village's own grove
         // by the hall, where the next one will be at hand (see plantGrove)
-        if (home != null && base.getSquaredDistance(heart(home)) > 40 * 40) {
+        // and one felled in the village is not planted again on the stump either, by a road or a field: only where a grove
+        // may stand; else it goes to the grove too
+        if (home != null && (base.getSquaredDistance(heart(home)) > 40 * 40 || !base.equals(groveSpot(world, home, base.getX(), base.getZ(), heart(home))))) {
             plantGrove(v, home, world, sapling);
             return;
         }
@@ -489,6 +491,12 @@ public final class Lumberjack {
         }
         for (Built b : village.built) if (b.contains(p) || b.contains(p.add(6, 0, 0)) || b.contains(p.add(-6, 0, 0)) || b.contains(p.add(0, 0, 6)) || b.contains(p.add(0, 0, -6))) return null;
         for (BlockPos q : new BlockPos[]{p, p.add(6, 0, 0), p.add(-6, 0, 0), p.add(0, 0, 6), p.add(0, 0, -6)}) if (village.getBuildingAt(q).isPresent()) return null; // nor by the old houses
+        // not on a road, nor by a field or the water: three blocks clear of them all round
+        for (BlockPos q : BlockPos.iterate(p.add(-3, -2, -3), p.add(3, 1, 3))) {
+            BlockState qs = world.getBlockState(q);
+            if (qs.isOf(Blocks.DIRT_PATH) || qs.isOf(Blocks.FARMLAND) || qs.getBlock() instanceof net.minecraft.block.CropBlock
+                    || !qs.getFluidState().isEmpty() || qs.getBlock() instanceof net.minecraft.block.FenceBlock) return null;
+        }
         return p;
     }
 }

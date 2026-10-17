@@ -114,25 +114,32 @@ public final class Scaffold {
             v.fallDistance = 0;
             double hx = perch.getX() + 0.5 - v.getX(), hz = perch.getZ() + 0.5 - v.getZ(), hy = perch.getY() - v.getY();
             if (hx * hx + hz * hz <= 1.7 * 1.7 && hy <= 1.2 && hy >= -1.5) {
+                Doing.count(hx * hx + hz * hz < 0.3 && Math.abs(hy) < 0.3 ? "c.perch.there" : "c.perch.step");
                 v.getNavigation().stop();
                 v.refreshPositionAndAngles(perch.getX() + 0.5, perch.getY(), perch.getZ() + 0.5, v.getYaw(), v.getPitch()); // a step over
             } else {
+                Doing.count("c.perch.walk");
                 Move.to(v, perch.getX() + 0.5, perch.getY(), perch.getZ() + 0.5, 0.6);
             }
             Gaze.at(v, target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
             return true;
         }
         BlockPos col = columnFor(world, v, target, site);
-        if (col == null) return false;
+        if (col == null) {
+            Doing.count("c.nocolumn");
+            return false;
+        }
         v.fallDistance = 0; // on the scaffolding a step down is a step, not a fall
         boolean onIt = Math.abs(v.getX() - (col.getX() + 0.5)) < 0.8 && Math.abs(v.getZ() - (col.getZ() + 0.5)) < 0.8;
         if (!onIt && onScaffold(world, v)) {
+            Doing.count("c.col.down");
             // down the scaffolding he is on, a block at a time
             v.getNavigation().stop();
             v.refreshPositionAndAngles(v.getX(), Math.floor(v.getY()) - 1, v.getZ(), v.getYaw(), v.getPitch());
             return true;
         }
         if (!onIt) {
+            Doing.count("c.col.walk");
             Move.to(v, col.getX() + 0.5, col.getY(), col.getZ() + 0.5, 0.6);
             return true;
         }
@@ -140,6 +147,7 @@ public final class Scaffold {
         v.getNavigation().stop();
         Gaze.at(v, target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
         if (at < feet) {
+            Doing.count("c.col.up");
             // up a block: the scaffolding under his feet, and he steps up onto it
             BlockPos under = new BlockPos(col.getX(), at, col.getZ());
             if (open(world, under)) {
@@ -152,9 +160,11 @@ public final class Scaffold {
             return true;
         }
         if (at > feet + 1) {
+            Doing.count("c.col.lower");
             v.refreshPositionAndAngles(col.getX() + 0.5, at - 1, col.getZ() + 0.5, v.getYaw(), v.getPitch());
             return true;
         }
+        Doing.count("c.col.top");
         return false; // up there: in reach
     }
 

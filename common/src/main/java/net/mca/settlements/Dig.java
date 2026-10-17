@@ -128,7 +128,7 @@ public final class Dig {
         gather(v, 2.5);
         ItemEntity best = null;
         double bd = Double.MAX_VALUE;
-        for (ItemEntity e : world.getEntitiesByClass(ItemEntity.class, v.getBoundingBox().expand(radius, 6, radius), e -> e.isAlive() && !e.cannotPickup())) {
+        for (ItemEntity e : world.getEntitiesByClass(ItemEntity.class, v.getBoundingBox().expand(radius, 6, radius), e -> e.isAlive() && !e.cannotPickup() && !IGNORED.contains(e.getUuid()))) {
             if (world.getClosestPlayer(e, 4) != null) continue;
             double d = e.squaredDistanceTo(v);
             if (d < bd) {
@@ -136,8 +136,37 @@ public final class Dig {
                 best = e;
             }
         }
+        if (IGNORED.size() > 500) IGNORED.clear();
         if (best == null) return false;
+        // up on the leaves of the crown it came down through: he knocks the leaves out from under it, as a man would,
+        // instead of staring up at it half a minute
+        BlockPos under = best.getBlockPos().down();
+        double hx = best.getX() - v.getX(), hz = best.getZ() - v.getZ();
+        if (best.getY() - v.getY() > 1.2 && hx * hx + hz * hz < 5 * 5) {
+            for (int i = 0; i < 6 && world.getBlockState(under).isAir(); i++) under = under.down();
+            if (world.getBlockState(under).isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) {
+                v.getNavigation().stop();
+                Gaze.at(v, best.getX(), best.getY(), best.getZ());
+                v.swingHand(v.getDominantHand());
+                world.breakBlock(under, true, v);
+                return true;
+            }
+        }
+        // what he cannot get to (in the water, on a roof) he leaves after a few tries
+        long now = world.getTime();
+        long[] t = TRYING.computeIfAbsent(v.getUuid(), k -> new long[]{-1, 0});
+        if (t[0] != best.getId()) {
+            t[0] = best.getId();
+            t[1] = now;
+        } else if (now - t[1] > 200) {
+            best.setPickupDelay(40); // (and the others go for it no more than he does)
+            IGNORED.add(best.getUuid());
+            return false;
+        }
         Move.to(v, best, 0.6);
         return true;
     }
+
+    private static final java.util.Map<java.util.UUID, long[]> TRYING = new java.util.HashMap<>(); // villager -> {item entity id, since}
+    private static final java.util.Set<java.util.UUID> IGNORED = new java.util.HashSet<>();
 }
