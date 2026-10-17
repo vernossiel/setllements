@@ -136,6 +136,36 @@ public final class Unstick {
         v.fallDistance = 0;
     }
 
+    private record Patch(BlockPos pos, BlockState state, long at) {
+    }
+
+    private static final java.util.List<Patch> PATCHES = new java.util.ArrayList<>();
+
+    /**
+     * Once a second per world: the holes broken in somebody's building to get out, filled again a quarter of a minute
+     * later with what was there, once nobody stands in them (he made his way out; he does not leave the house open).
+     */
+    public static void patchUp(ServerWorld world) {
+        if (PATCHES.isEmpty()) return;
+        long now = world.getTime();
+        for (java.util.Iterator<Patch> it = PATCHES.iterator(); it.hasNext(); ) {
+            Patch p = it.next();
+            if (now - p.at() > 20 * 600) { // long gone by: let be
+                it.remove();
+                continue;
+            }
+            if (now - p.at() < 20 * 15 || !world.isChunkLoaded(p.pos().getX() >> 4, p.pos().getZ() >> 4)) continue;
+            if (!world.getBlockState(p.pos()).isAir()) { // filled by someone meanwhile
+                it.remove();
+                continue;
+            }
+            if (!world.getEntitiesByClass(net.minecraft.entity.LivingEntity.class, new net.minecraft.util.math.Box(p.pos()).expand(0.4), e -> true).isEmpty()) continue;
+            world.setBlockState(p.pos(), p.state());
+            world.playSound(null, p.pos(), p.state().getSoundGroup().getPlaceSound(), net.minecraft.sound.SoundCategory.BLOCKS, 0.8f, 1f);
+            it.remove();
+        }
+    }
+
     /** The last place each was making for (the brain forgets it the moment it finds no way there). */
     private static final java.util.Map<java.util.UUID, BlockPos> LAST_GOAL = new java.util.HashMap<>();
 
@@ -176,9 +206,15 @@ public final class Unstick {
             for (BlockPos p : BlockPos.iterateOutwards(v.getBlockPos(), 5, 4, 5)) {
                 if (Move.passable(world, p) && Move.passable(world, p.up()) && world.getFluidState(p).isEmpty() && world.getFluidState(p.up()).isEmpty()
                         && world.getBlockState(p.down()).isSideSolidFullSquare(world, p.down(), net.minecraft.util.math.Direction.UP)) {
-                    v.getNavigation().stop();
-                    v.refreshPositionAndAngles(p.getX() + 0.5, p.getY(), p.getZ() + 0.5, v.getYaw(), v.getPitch());
-                    v.setAir(v.getMaxAir());
+                    if (Bed.unseen(v, world)) {
+                        v.getNavigation().stop();
+                        v.refreshPositionAndAngles(p.getX() + 0.5, p.getY(), p.getZ() + 0.5, v.getYaw(), v.getPitch());
+                        v.setAir(v.getMaxAir());
+                    } else { // before a player's eyes he swims for it, kicking up to the surface
+                        v.getNavigation().startMovingTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5, 0.8);
+                        v.getJumpControl().setActive();
+                        v.setAir(Math.max(v.getAir(), v.getMaxAir() / 3)); // (a breath at the surface)
+                    }
                     return;
                 }
             }
@@ -198,7 +234,13 @@ public final class Unstick {
             Doing.set(v, "settlements.doing.trapped");
             if (v.settlementsTrappedSec >= 8 && !Dig.busy(v)) {
                 BlockPos out = wallBlock(world, village, v);
-                if (out != null) Dig.start(v, out);
+                if (out != null) {
+                    // a block of someone's building broken to get out: put back once he is clear of it (see patchUp); a
+                    // block a player put across him on purpose is not
+                    BlockState was = world.getBlockState(out);
+                    if (!playerPut(out) && !Layout.land(was)) PATCHES.add(new Patch(out.toImmutable(), was, world.getTime()));
+                    Dig.start(v, out);
+                }
                 else if (world.isSkyVisible(v.getBlockPos().up(2)) && v.settlementsTrappedSec % 2 == 0) climbOut(world, v); // the bottom of a pit: up out of it
             }
             return;

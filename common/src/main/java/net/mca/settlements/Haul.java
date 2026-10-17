@@ -92,9 +92,7 @@ public final class Haul {
         BlockPos s = store(v, village);
         if (s == null) return true; // no hall yet: the stores are wherever he is
         if (v.squaredDistanceTo(s.getX() + 0.5, s.getY(), s.getZ() + 0.5) > 9) {
-            // out of the mine by its stairs first
-            if (village.mineOrigin != null && Mining.inShaft(v, village.mineOrigin) && v.getY() < village.mineOrigin.getY() - 1
-                    && Mining.shaftWalk(v, village.mineOrigin, true)) return false;
+            // (out of the mine by its stairs: his own route takes them, see Route)
             Move.to(v, s.getX() + 0.5, s.getY(), s.getZ() + 0.5, 0.6);
             return false;
         }

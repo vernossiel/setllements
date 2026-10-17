@@ -281,16 +281,18 @@ public final class GuardAI {
             BlockPos deck = village.watchPoints.get(tower), ladder = village.towerLadders.get(tower);
             if (g.climbPhase != 0) return; // busy on the ladder
             boolean onDeck = g.getY() > ladder.getY() + 5;
+            // up and down the ladder as anyone goes (his own route climbs it); the old hand-over-hand lift only where
+            // nobody sees, for a tower whose ladder the route cannot make out
             if (night && isArcher(g)) {
                 if (!onDeck) {
-                    Climb.toDeck(g, ladder, deck);
+                    if (!Move.to(g, deck.getX() + 0.5, deck.getY(), deck.getZ() + 0.5, 0.5) && Bed.unseen(g, world)) Climb.toDeck(g, ladder, deck);
                     return;
                 }
                 g.getNavigation().stop();
                 return;
             }
             if (onDeck) { // dawn, or not an archer's post: back down
-                Climb.toGround(g, ladder, deck);
+                if (!Move.to(g, ladder.getX() + 0.5, ladder.getY(), ladder.getZ() + 0.5, 0.5) && Bed.unseen(g, world)) Climb.toGround(g, ladder, deck);
                 return;
             }
         }

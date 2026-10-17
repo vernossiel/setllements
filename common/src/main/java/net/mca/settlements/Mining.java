@@ -68,31 +68,17 @@ public final class Mining {
         BlockPos o = village.mineOrigin;
         BlockPos stand = standFor(world, o, steps, village);
         if (world.getBlockState(v.getBlockPos()).isSolidBlock(world, v.getBlockPos()) || world.getBlockState(v.getBlockPos().up()).isSolidBlock(world, v.getBlockPos().up())) {
-            // caught inside the rock or a timber frame: out to the working face
-            Move.putSafely(v, stand);
+            // caught inside the rock or a timber frame: out beside it (to the working face only where nobody sees)
+            if (!Move.putSafely(v, v.getBlockPos()) && Bed.unseen(v, world)) Move.putSafely(v, stand);
             v.getNavigation().stop();
         }
-        if (v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > 25
-                && stand.getY() < o.getY() - 2 && v.getY() > stand.getY() + 2) {
-            // down the stairs of the shaft, step by step; a mouth he cannot get into (the shed in the way, a hole
-            // beside it) does not keep him there all day: after a minute he is set down at the working face
-            Doing.count("m.shaft");
-            if (v.settlementsStuck++ > 15 && Bed.unseen(v, world) && world.isChunkLoaded(stand.getX() >> 4, stand.getZ() >> 4)) { // (a quarter of a minute; it was a minute at every trip down, a third of his day)
-                Doing.count("m.put.shaft");
-                if (!Move.putSafely(v, stand)) lostWay(village);
-                v.settlementsStuck = 0;
-                return false;
-            }
-            if (shaftWalk(v, o, false)) {
-                Doing.count(inShaft(v, o) ? "m.shaft.in" : "m.shaft.mouth");
-                return false;
-            }
-            Doing.count("m.shaft.nowalk");
-        }
         if (v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > 25) {
-            // walk down; if the stairs do not work out, go straight to the face
+            // down the stairs of the shaft and along the drift to the face, as anyone walks (his own route takes the
+            // stairs); only when that has got him nowhere, and nobody sees, is he set down at the face
             Doing.count("m.walk");
-            if (v.settlementsStuck++ > 15 && Bed.unseen(v, world) && world.isChunkLoaded(stand.getX() >> 4, stand.getZ() >> 4)) {
+            boolean onWay = Route.active(v, stand) || v.getNavigation().isFollowingPath();
+            if (onWay) v.settlementsStuck = 0;
+            if (!onWay && v.settlementsStuck++ > 20 && Bed.unseen(v, world) && world.isChunkLoaded(stand.getX() >> 4, stand.getZ() >> 4)) {
                 Doing.count("m.put.face");
                 // set down on the floor of the drift, never in the air or the rock; no floor down there to stand on
                 // (the way down was never finished): the mine is gone over again from the top, the gaps dug out
@@ -478,10 +464,6 @@ public final class Mining {
         return rx >= -0.5 && rx <= 2.5 && rz >= -0.5 && rz <= Blueprints.MINE_DEPTH + 0.5 && v.getY() <= o.getY() + 1.5 && v.getY() >= o.getY() - Blueprints.MINE_DEPTH - 1;
     }
 
-    /**
-     * The way down (or up) the mine is known, so he walks it: to the mouth of the shaft under its shed, then from step
-     * to step, as anyone would on a stair. True while on the way.
-     */
     /** The workings cannot be got to: back to the top of the plan, where what is dug already is passed over quickly. */
     /**
      * The whole run of the shaft and its landing kept free of building, not only the shed over its mouth: a house was
@@ -506,35 +488,6 @@ public final class Mining {
         village.mineLevel = 0;
         village.mineStep = 0;
         village.markDirty();
-    }
-
-    static boolean shaftWalk(VillagerEntityMCA v, BlockPos o, boolean up) {
-        int depth = Blueprints.MINE_DEPTH;
-        if (!inShaft(v, o)) {
-            if (up) return false;
-            double mx = o.getX() + 1.0 - v.getX(), mz = o.getZ() - 1.0 - v.getZ();
-            if (mx * mx + mz * mz < 2.5 && Math.abs(v.getY() - o.getY()) < 1.5) {
-                // at the mouth: onto the top stair, in under the shed roof
-                v.getNavigation().stop();
-                v.getMoveControl().moveTo(o.getX() + (v.getX() - o.getX() < 1 ? 0.5 : 1.5), o.getY(), o.getZ() + 0.5, 0.55);
-                return true;
-            }
-            Move.to(v, o.getX() + 1.0, o.getY(), o.getZ() - 1.0, 0.55); // the mouth, in the shed's doorway
-            return true;
-        }
-        double rz = v.getZ() - o.getZ();
-        int here = (int) Math.max(0, Math.min(depth - 1, Math.floor(rz + 0.5)));
-        int i = up ? here - 1 : here + 1;
-        if (i < 0) {
-            Move.to(v, o.getX() + 1.0, o.getY(), o.getZ() - 1.5, 0.55); // out at the top
-            return true;
-        }
-        if (i >= depth) return false; // at the bottom: the landing
-        BlockPos next = o.add(v.getX() - o.getX() < 1 ? 0 : 1, -i, i);
-        v.getNavigation().stop();
-        v.getMoveControl().moveTo(next.getX() + 0.5, next.getY(), next.getZ() + 0.5, 0.5);
-        if (up) v.getJumpControl().setActive();
-        return true;
     }
 
     /** The stores could do with coal or iron (for the torches, the tools, the smithy to come). */

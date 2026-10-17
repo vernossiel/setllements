@@ -20,17 +20,22 @@ import java.util.PriorityQueue;
 import java.util.UUID;
 
 /**
- * Finding the way like somebody who knows how to get about: when the ordinary path finder gives up, the villager
- * works out a route of his own over the ground as it is - steps up and drops, ladders, vines and scaffolding, doors
- * and gates, water to wade or swim through - and, if there is no way on foot, the least work that makes one: a bit of
- * earth or rock dug out of the way, a block laid over a gap. He then walks it, doing the work where it comes.
- * When even that fails he tries again harder, step by step, the way MineColonies' stuck handler does
+ * Getting about like a player: the villager's own way over the ground as it is, worked out for every errand that is
+ * more than a few steps on the level (the ordinary path finder is left the short walks). Each move has its price -
+ * a step, a step up, a drop of up to three blocks, a ladder or vine up or down, a door or gate opened and shut behind
+ * him, water waded or swum - and where there is no way on foot, the work that makes one, dearer still: earth or rock
+ * dug out of the way, a step cut into a slope, a block laid over a gap, a block put under his feet to climb, the
+ * ground dug out under him to get down. The search takes the cheapest: round, rather than through. Edges with a drop
+ * of more than three below cost more, so the way keeps off the brink of roofs, scaffolds and cliffs; a drop that would
+ * hurt him is never a step. Shut in (a house with no way to the goal, a box, a pit), he first looks for the way out.
+ * When even that fails he tries harder, step by step, the way MineColonies' stuck handler does
  * (https://github.com/ldtteam/minecolonies, GPL-3.0, whose escalation this follows): look again, look again allowing
- * work, walk off a little and come at it from elsewhere, and only at the very end is he set down near the goal.
+ * work, walk off a little and come at it from elsewhere; and at the very end, where nobody sees, he is set down near
+ * the goal - before a player's eyes he says there is no way and leaves it.
  */
 public final class Route {
-    private static final int MAX_NODES = 4000;
-    private static final int RANGE = 48;
+    private static final int MAX_NODES = 6000;
+    private static final int RANGE = 56;
 
     private Route() {
     }
@@ -45,12 +50,14 @@ public final class Route {
         BlockPos goal;
         List<Hop> path;
         int i;
-        int level;      // how hard he is trying (0 plain, 1 again, 2 with work, 3 from elsewhere, 4 last resort)
-        int still;      // seconds without getting anywhere
+        int level;        // how hard he is trying (0 plain, 1 again, 2 with work, 3 from elsewhere, 4 last resort)
+        int still;        // seconds without getting anywhere
         Vec3d last;
         BlockPos segmentEnd;
         int awaySec;
-        long touched;   // the last second he was on it
+        long touched;     // the last second he was on it
+        boolean out;      // the route is the way out (of a house, a box, a pit); the goal after it
+        double setOut;    // how far from the goal he was when he set out on this route
     }
 
     private static final Map<UUID, State> STATE = new HashMap<>();
@@ -62,8 +69,8 @@ public final class Route {
     /** Whether he is on his own route to (about) this goal now: nothing else is to set him another way meanwhile. */
     public static boolean active(VillagerEntityMCA v, BlockPos goal) {
         State s = STATE.get(v.getUuid());
-        return s != null && s.goal != null && s.goal.isWithinDistance(goal, 1.5) && (s.path != null || s.awaySec > 0)
-                && v.getWorld().getTime() - s.touched < 60;
+        return s != null && s.goal != null && s.goal.isWithinDistance(goal, 2.5) && (s.path != null || s.awaySec > 0)
+                && v.getWorld().getTime() - s.touched < 200;
     }
 
     /**
@@ -76,7 +83,7 @@ public final class Route {
         State s = STATE.get(v.getUuid());
         if (s == null || s.path == null) return;
         BlockPos feet = v.getBlockPos();
-        for (int j = Math.max(0, s.i - 1); j < Math.min(s.path.size(), s.i + 4); j++) {
+        for (int j = Math.max(0, s.i - 2); j < Math.min(s.path.size(), s.i + 8); j++) {
             BlockPos hp = s.path.get(j).pos();
             if (hp.getX() == feet.getX() && hp.getZ() == feet.getZ() && hp.getY() > feet.getY()) {
                 v.getJumpControl().setActive();
@@ -118,6 +125,61 @@ public final class Route {
         return !below.getCollisionShape(world, p.down()).isEmpty() || below.isOf(Blocks.SCAFFOLDING);
     }
 
+    /** What one search learns of the ground, once for each block: the same cells are looked at from every side. */
+    private static final class Ground {
+        final ServerWorld world;
+        private final Map<Long, Byte> seen = new HashMap<>();
+
+        Ground(ServerWorld world) {
+            this.world = world;
+        }
+
+        private static final byte OPEN = 1, STAND = 2, WATER = 4, CLIMB = 8, DOOR = 16, EDGE = 32, KNOWN = 64;
+
+        private byte of(BlockPos p) {
+            long k = p.asLong();
+            Byte b = seen.get(k);
+            if (b != null) return b;
+            byte v = KNOWN;
+            BlockState s = world.getBlockState(p);
+            if (Route.open(world, p)) v |= OPEN;
+            if (Route.stand(world, p)) v |= STAND;
+            if (Route.water(world, p)) v |= WATER;
+            if (s.isIn(BlockTags.CLIMBABLE)) v |= CLIMB;
+            if (s.getBlock() instanceof net.minecraft.block.DoorBlock || s.getBlock() instanceof net.minecraft.block.FenceGateBlock) v |= DOOR;
+            seen.put(k, v);
+            return v;
+        }
+
+        boolean open(BlockPos p) { return (of(p) & OPEN) != 0; }
+
+        boolean stand(BlockPos p) { return (of(p) & STAND) != 0; }
+
+        boolean water(BlockPos p) { return (of(p) & WATER) != 0; }
+
+        boolean climb(BlockPos p) { return (of(p) & CLIMB) != 0; }
+
+        boolean door(BlockPos p) { return (of(p) & DOOR) != 0; }
+
+        boolean solid(BlockPos p) { return !world.getBlockState(p).getCollisionShape(world, p).isEmpty(); }
+
+        private final Map<Long, Boolean> edges = new HashMap<>();
+
+        /** By the brink of a drop of more than three blocks: the edge of a roof, a scaffold, a cliff, a shaft. */
+        boolean edge(BlockPos p) {
+            return edges.computeIfAbsent(p.asLong(), k -> {
+                for (Direction d : Direction.Type.HORIZONTAL) {
+                    BlockPos n = p.offset(d);
+                    if (!open(n) || !open(n.down()) || water(n.down())) continue;
+                    int drop = 2;
+                    while (drop <= 4 && open(n.down(drop)) && !water(n.down(drop))) drop++;
+                    if (drop > 4) return true;
+                }
+                return false;
+            });
+        }
+    }
+
     // ---------- the search ----------
 
     private static final class Node implements Comparable<Node> {
@@ -141,16 +203,31 @@ public final class Route {
     }
 
     private static double h(BlockPos a, BlockPos b) {
+        if (b == null) return 0; // looking for the way out: no goal to make for, the nearest one found
         double dx = a.getX() - b.getX(), dy = a.getY() - b.getY(), dz = a.getZ() - b.getZ();
         return Math.sqrt(dx * dx + dz * dz) + Math.abs(dy) * 1.2;
     }
 
     /**
      * The best route from {@code start} to within a step of {@code goal}; when the goal cannot be reached, the route
-     * to the nearest point he can get to (or null when that is no nearer than where he is). {@code work} allows digging
-     * natural ground and bridging gaps.
+     * to the nearest point he can get to (or null when that is no nearer than where he is). {@code work} allows the
+     * moves that change the ground (digging, bridging, climbing on blocks of his own).
      */
     static List<Hop> find(ServerWorld world, Village village, BlockPos start, BlockPos goal, boolean work) {
+        return search(world, village, start, goal, null, work);
+    }
+
+    /**
+     * The way out from where he is shut in - a house with no way to where he must go, a box, a pit: the nearest spot
+     * under the open sky with ground to stand on, a few steps off.
+     */
+    static List<Hop> findOut(ServerWorld world, Village village, BlockPos start, boolean work) {
+        return search(world, village, start, null, p -> Math.abs(p.getX() - start.getX()) + Math.abs(p.getZ() - start.getZ()) >= 4
+                && world.isSkyVisible(p.up()), work);
+    }
+
+    private static List<Hop> search(ServerWorld world, Village village, BlockPos start, BlockPos goal, java.util.function.Predicate<BlockPos> done, boolean work) {
+        Ground gr = new Ground(world);
         PriorityQueue<Node> open = new PriorityQueue<>();
         Map<Long, Double> best = new HashMap<>();
         Node first = new Node(start, 0, h(start, goal), null, Act.WALK);
@@ -158,20 +235,28 @@ public final class Route {
         best.put(start.asLong(), 0.0);
         Node closest = first;
         double closestH = h(start, goal);
+        boolean found = false;
         int expanded = 0;
         while (!open.isEmpty() && expanded++ < MAX_NODES) {
             Node c = open.poll();
             if (c.g > best.getOrDefault(c.pos.asLong(), Double.MAX_VALUE)) continue;
-            double hc = h(c.pos, goal);
-            if (hc < closestH) {
-                closestH = hc;
+            if (goal != null) {
+                double hc = h(c.pos, goal);
+                if (hc < closestH) {
+                    closestH = hc;
+                    closest = c;
+                }
+                if (Math.abs(c.pos.getX() - goal.getX()) + Math.abs(c.pos.getZ() - goal.getZ()) <= 1 && Math.abs(c.pos.getY() - goal.getY()) <= 1) {
+                    closest = c;
+                    found = true;
+                    break;
+                }
+            } else if (c != first && gr.stand(c.pos) && done.test(c.pos)) {
                 closest = c;
-            }
-            if (Math.abs(c.pos.getX() - goal.getX()) + Math.abs(c.pos.getZ() - goal.getZ()) <= 1 && Math.abs(c.pos.getY() - goal.getY()) <= 1) {
-                closest = c;
+                found = true;
                 break;
             }
-            for (Node n : neighbours(world, village, c, goal, work)) {
+            for (Node n : neighbours(gr, village, c, goal, work)) {
                 if (Math.abs(n.pos.getX() - start.getX()) > RANGE || Math.abs(n.pos.getZ() - start.getZ()) > RANGE || Math.abs(n.pos.getY() - start.getY()) > 24) continue;
                 if (!world.isChunkLoaded(n.pos.getX() >> 4, n.pos.getZ() >> 4)) continue;
                 long k = n.pos.asLong();
@@ -181,66 +266,84 @@ public final class Route {
                 }
             }
         }
-        if (closest == first || closestH > h(start, goal) - 2) return null;
+        if (goal == null && !found) return null;
+        if (goal != null && !found && (closest == first || closestH > h(start, goal) - 2)) return null;
         List<Hop> out = new ArrayList<>();
         for (Node n = closest; n != null && n != first; n = n.parent) out.add(0, new Hop(n.pos, n.act));
         return out;
     }
 
-    private static List<Node> neighbours(ServerWorld world, Village village, Node c, BlockPos goal, boolean work) {
+    // the prices of the moves (a step on the level is one)
+    private static final double STEP_UP = 1.6, LADDER_UP = 1.5, LADDER_DOWN = 1.2, WADE = 3, DOOR = 1, EDGE = 2.5;
+    private static final double DIG = 4, PER_BLOCK = 3, BRIDGE = 9, PILLAR = 7, DIG_DOWN = 6;
+
+    private static List<Node> neighbours(Ground gr, Village village, Node c, BlockPos goal, boolean work) {
+        ServerWorld world = gr.world;
         List<Node> out = new ArrayList<>(8);
         BlockPos p = c.pos;
         for (Direction dir : Direction.Type.HORIZONTAL) {
             BlockPos n = p.offset(dir);
-            if (stand(world, n)) {
-                add(out, c, n, water(world, n) ? 3 : 1, goal, Act.WALK);
+            double door = gr.door(n) ? DOOR : 0; // opened, gone through, shut behind him (see Move.doorsAhead, shutBehind)
+            if (gr.stand(n)) {
+                add(out, c, n, (gr.water(n) ? WADE : 1) + door + (gr.edge(n) ? EDGE : 0), goal, Act.WALK);
                 continue;
             }
-            if (stand(world, n.up()) && open(world, p.up(2))) { // a step up (a block, a stair)
-                add(out, c, n.up(), 1.6, goal, Act.WALK);
+            if (gr.stand(n.up()) && gr.open(p.up(2))) { // a step up (a block, a stair)
+                add(out, c, n.up(), STEP_UP + (gr.edge(n.up()) ? EDGE : 0), goal, Act.WALK);
                 continue;
             }
-            if (open(world, n) && open(world, n.up())) {
+            if (gr.open(n) && gr.open(n.up())) {
                 boolean landed = false;
-                for (int d = 1; d <= 3; d++) { // a drop he can take without hurting himself
+                for (int d = 1; d <= 3; d++) { // a drop he can take without hurting himself; more is never a step
                     BlockPos low = n.down(d);
-                    if (stand(world, low)) {
-                        add(out, c, low, 1 + 0.4 * d, goal, Act.WALK);
+                    if (gr.stand(low)) {
+                        add(out, c, low, 1 + 0.4 * d + (gr.edge(low) ? EDGE : 0), goal, Act.WALK);
                         landed = true;
                         break;
                     }
-                    if (!open(world, low)) break;
+                    if (!gr.open(low)) break;
                 }
-                if (!landed && work && !water(world, n.down()) && world.getBlockState(n.down()).isReplaceable()) {
-                    add(out, c, n, 9, goal, Act.BRIDGE); // a gap: lay a block over it
+                if (!landed && work && !gr.water(n.down()) && world.getBlockState(n.down()).isReplaceable()) {
+                    add(out, c, n, BRIDGE, goal, Act.BRIDGE); // a gap: a block laid over it
                 }
                 continue;
             }
             if (work) {
-                // earth or rock in the way, a floor beyond: dig through, as a man with a shovel would
+                // earth or rock in the way, a floor beyond: dug through, as a man with a shovel would
                 int blocks = 0;
-                boolean ok = !world.getBlockState(n.down()).getCollisionShape(world, n.down()).isEmpty();
+                boolean ok = gr.solid(n.down());
                 for (BlockPos b : new BlockPos[]{n, n.up()}) {
-                    if (open(world, b)) continue;
+                    if (gr.open(b)) continue;
                     if (!Move.diggable(world, village, b)) ok = false;
                     blocks++;
                 }
-                if (ok && blocks > 0) add(out, c, n, 3 + 3 * blocks, goal, Act.DIG);
+                if (ok && blocks > 0) add(out, c, n, DIG + PER_BLOCK * blocks, goal, Act.DIG);
+                // or a step cut into the slope: up onto the block ahead, the earth over it (and over his head) dug out
+                if (gr.solid(n) && !gr.door(n)) {
+                    int cut = 0;
+                    boolean ok2 = true;
+                    for (BlockPos b : new BlockPos[]{n.up(), n.up(2), p.up(2)}) {
+                        if (gr.open(b)) continue;
+                        if (!Move.diggable(world, village, b)) ok2 = false;
+                        cut++;
+                    }
+                    if (ok2 && cut > 0) add(out, c, n.up(), DIG + PER_BLOCK * cut, goal, Act.DIG);
+                }
             }
         }
         // up and down ladders, vines and scaffolding
-        if ((climbable(world, p) || climbable(world, p.up())) && open(world, p.up()) && open(world, p.up(2))) add(out, c, p.up(), 1.5, goal, Act.WALK);
-        if (climbable(world, p.down()) && open(world, p.down())) add(out, c, p.down(), 1.2, goal, Act.WALK);
-        if (work && !climbable(world, p) && !water(world, p)) {
+        if ((gr.climb(p) || gr.climb(p.up())) && gr.open(p.up()) && gr.open(p.up(2))) add(out, c, p.up(), LADDER_UP, goal, Act.WALK);
+        if (gr.climb(p.down()) && gr.open(p.down())) add(out, c, p.down(), LADDER_DOWN, goal, Act.WALK);
+        if (work && !gr.climb(p) && !gr.water(p)) {
             // up where there is no other way, as a player does: a jump and a block put under his feet (taken down after)
             BlockPos under = p.down();
-            if (goal.getY() > p.getY() + 1 && open(world, p.up(2)) && !world.getBlockState(under).getCollisionShape(world, under).isEmpty())
-                add(out, c, p.up(), 6, goal, Act.PILLAR);
+            if ((goal == null || goal.getY() > p.getY() + 1) && gr.open(p.up(2)) && gr.solid(under))
+                add(out, c, p.up(), PILLAR, goal, Act.PILLAR);
             // and down where there is no other way: the earth under him dug out, a block at a time, into what lies below
             BlockPos floor2 = p.down(2);
-            if (goal.getY() < p.getY() - 1 && Move.diggable(world, village, under) && !water(world, floor2) && !wetNear(world, under)
-                    && !world.getBlockState(floor2).getCollisionShape(world, floor2).isEmpty() && !dangerous(world.getBlockState(floor2)))
-                add(out, c, under, 5, goal, Act.DIGDOWN);
+            if (goal != null && goal.getY() < p.getY() - 1 && Move.diggable(world, village, under) && !gr.water(floor2) && !wetNear(world, under)
+                    && gr.solid(floor2) && !dangerous(world.getBlockState(floor2)))
+                add(out, c, under, DIG_DOWN, goal, Act.DIGDOWN);
         }
         return out;
     }
@@ -256,22 +359,29 @@ public final class Route {
         out.add(new Node(n.toImmutable(), g, g + h(n, goal), c, act));
     }
 
+    /** Under a roof or shut in by walls: where a way to anywhere may first have to be a way out. */
+    private static boolean shutIn(ServerWorld world, VillagerEntityMCA v) {
+        BlockPos feet = v.getBlockPos();
+        if (!world.isSkyVisible(feet.up())) return true;
+        int walls = 0;
+        for (Direction d : Direction.Type.HORIZONTAL) if (!open(world, feet.offset(d)) || !open(world, feet.offset(d).up())) walls++;
+        return walls >= 3;
+    }
+
     // ---------- walking it ----------
 
-    /**
-     * One second of getting to {@code goal} the hard way (called once the ordinary path finder got him nowhere).
-     * True while he is at it.
-     */
+    /** One second of getting to {@code goal} on his own route. True while he is at it. */
     public static boolean tick(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos goal) {
         State s = STATE.computeIfAbsent(v.getUuid(), k -> new State());
         s.touched = world.getTime();
-        if (!goal.equals(s.goal)) {
+        if (s.goal == null || !s.goal.isWithinDistance(goal, 2.5)) { // (a goal that moves a little - someone he follows - keeps the route)
             s.goal = goal.toImmutable();
             s.path = null;
             s.level = 0;
             s.still = 0;
             s.awaySec = 0;
-        }
+            s.out = false;
+        } else s.goal = goal.toImmutable();
         Vec3d pos = v.getPos();
         boolean moved = s.last != null && pos.squaredDistanceTo(s.last) > 0.3;
         s.last = pos;
@@ -287,6 +397,7 @@ public final class Route {
         if (s.still >= 6) { // no good: try harder
             s.still = 0;
             s.path = null;
+            s.out = false;
             s.level++;
             if (s.level == 3) {
                 Vec3d away = net.minecraft.entity.ai.NoPenaltyTargeting.find(v, 10, 4);
@@ -299,27 +410,34 @@ public final class Route {
                 s.level++;
             }
             if (s.level >= 4) {
-                // the very last resort: set down by the goal (never in the air or the rock), or the errand is given up
-                // (never before a player's eyes: there he gives the errand up for now, as a man who finds no way does)
+                // the very last resort: set down by the goal (never in the air or the rock), where nobody sees; before a
+                // player's eyes he says there is no way and leaves it, as a man does
                 if (v.getBlockPos().getSquaredDistance(goal) < 64 * 64 && Bed.unseen(v, world) && Move.putSafely(v, goal)) {
                     Speech.sayAny(v, "settlements.say.way.round", 3);
                     Doing.count("nav.put");
                 } else {
-                    // no way there: he says so and lets it be; whatever wanted it looks for something else (see Move.unreachable)
                     Speech.sayAny(v, "settlements.say.way.none", 3);
                     Doing.count("nav.giveup");
-                    v.settlementsGoal = null;
-                    v.getNavigation().stop();
+                    Move.giveUp(v, goal);
                 }
                 STATE.remove(v.getUuid());
                 return true;
             }
         }
         if (s.path == null) {
-            s.path = find(world, village, v.getBlockPos(), goal, s.level >= 2);
+            boolean work = s.level >= 2;
+            s.path = find(world, village, v.getBlockPos(), goal, work);
+            s.out = false;
+            if (s.path == null && shutIn(world, v)) {
+                // no way from in here: first the way out of the house, the box, the pit; the goal from outside
+                s.path = findOut(world, village, v.getBlockPos(), work);
+                s.out = s.path != null;
+                if (s.out) Doing.count("nav.out");
+            }
             s.i = 0;
             s.segmentEnd = null;
-            Doing.count(s.path == null ? "nav.none" : "nav.route" + (s.level >= 2 ? ".work" : ""));
+            s.setOut = Math.sqrt(v.getBlockPos().getSquaredDistance(goal));
+            if (!s.out) Doing.count(s.path == null ? "nav.none" : "nav.route" + (work ? ".work" : ""));
             if (s.path == null) {
                 s.still = 6; // nothing at this level: straight to the next one
                 return true;
@@ -336,15 +454,24 @@ public final class Route {
                 break;
             }
         }
-        if (s.i >= s.path.size()) { // at the end of it: there, or as near as the ground allowed - look again
+        if (s.i >= s.path.size()) {
+            // at the end of it: there; or out of the house, on to the goal now; or as near as the ground allowed (a long
+            // way, a stretch at a time: a stretch that got him nearer is no failure) - look again from here
             s.path = null;
-            if (v.getBlockPos().getSquaredDistance(goal) > 4) s.level++;
+            double left = Math.sqrt(v.getBlockPos().getSquaredDistance(goal));
+            if (s.out) s.out = false;
+            else if (left > 2 && left > s.setOut - 4) s.level++;
             return true;
         }
         Hop next = s.path.get(s.i);
         switch (next.act()) {
             case DIG -> {
-                for (BlockPos b : new BlockPos[]{next.pos().up(), next.pos()}) {
+                // what stands in the way: the block ahead and the one over it, and going up a cut step, the one over his head
+                java.util.List<BlockPos> cut = new java.util.ArrayList<>();
+                if (next.pos().getY() > feet.getY()) cut.add(feet.up(2));
+                cut.add(next.pos().up());
+                cut.add(next.pos());
+                for (BlockPos b : cut) {
                     if (open(world, b)) continue;
                     if (!Move.diggable(world, village, b)) { // someone built here meanwhile
                         s.path = null;
@@ -352,11 +479,15 @@ public final class Route {
                     }
                     if (v.squaredDistanceTo(Vec3d.ofCenter(b)) > 16 || !Dig.sees(v, b)) break;
                     Gear.face(v, b);
+                    Gear.toolFor(v, village, world.getBlockState(b));
                     Dig.start(v, b); // a crack at a time, like anyone with a shovel
                     Doing.count("nav.dig");
                     return true;
                 }
-                if (open(world, next.pos()) && open(world, next.pos().up())) walk(v, s, s.i);
+                if (open(world, next.pos()) && open(world, next.pos().up())) {
+                    if (next.pos().getY() > feet.getY()) Move.step(v, next.pos()); // up the step he cut
+                    else walk(v, s, s.i);
+                }
                 return true;
             }
             case BRIDGE -> {
@@ -397,6 +528,7 @@ public final class Route {
                 if (feet.equals(base)) {
                     v.getNavigation().stop();
                     Gear.face(v, next.pos());
+                    Gear.toolFor(v, village, world.getBlockState(next.pos()));
                     Dig.start(v, next.pos());
                     Doing.count("nav.digdown");
                 } else Move.step(v, base);

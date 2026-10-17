@@ -29,6 +29,25 @@ public final class Move {
     private Move() {
     }
 
+    private static final double SHORT_WALK = 12; // blocks on the level: further, or up or down, is his own route's
+
+    /** More than a short walk on the level: further off, or up or down a storey. */
+    static boolean longWay(VillagerEntityMCA v, BlockPos goal) {
+        double dx = goal.getX() + 0.5 - v.getX(), dz = goal.getZ() + 0.5 - v.getZ();
+        return dx * dx + dz * dz > SHORT_WALK * SHORT_WALK || Math.abs(goal.getY() - v.getBlockY()) >= 3;
+    }
+
+    /**
+     * No way there at all: the errand is let go of, and the spot is given up a while so that whatever wanted it looks
+     * for another (see unreachable).
+     */
+    static void giveUp(VillagerEntityMCA v, BlockPos goal) {
+        v.settlementsGoal = null;
+        v.getNavigation().stop();
+        UNREACHABLE.put(goal.asLong(), v.getWorld().getTime() + 2400);
+        TRYING.remove(v.getUuid());
+    }
+
     /** An ordinary walking pace for every errand: nobody races about the village. */
     private static final double PACE = 0.6;
 
@@ -57,14 +76,14 @@ public final class Move {
         long now = v.getWorld().getTime();
         long[] tr = TRYING.get(v.getUuid());
         if (tr == null || BlockPos.fromLong(tr[0]).getSquaredDistance(goal) > 4) TRYING.put(v.getUuid(), new long[]{goal.asLong(), now});
-        else if (now - tr[1] > 20 * 12 && v.squaredDistanceTo(x, y, z) < 8 * 8
+        else if (now - tr[1] > 20 * 12 && v.squaredDistanceTo(x, y, z) < 8 * 8 && !Route.active(v, goal) // (his own route has its own patience)
                 && (v.getNavigation().getCurrentPath() == null || !v.getNavigation().getCurrentPath().reachesTarget())) { // (a way that gets there, he keeps walking)
             v.getNavigation().stop();
             return true;
         }
         // asked for most of a minute and no way there at all (up a cliff, across a ravine): the spot is given up for a
         // day, so the work that wanted it looks for another (see unreachable)
-        if (tr != null && now - tr[1] > 20 * 45 && v.squaredDistanceTo(x, y, z) > 2.5 * 2.5
+        if (tr != null && now - tr[1] > 20 * 45 && v.squaredDistanceTo(x, y, z) > 2.5 * 2.5 && !Route.active(v, goal)
                 && (v.getNavigation().getCurrentPath() == null || !v.getNavigation().getCurrentPath().reachesTarget())) {
             UNREACHABLE.put(goal.asLong(), now + 24000L);
             TRYING.remove(v.getUuid());
@@ -81,8 +100,9 @@ public final class Move {
         var nav = v.getNavigation();
         var path = nav.getCurrentPath();
         if (path != null && !path.isFinished() && nav.isFollowingPath() && path.getTarget().isWithinDistance(goal, 1.5)) return true;
-        // on his own route there (see Route): not thrown off it each second for the path finder's way that does not get there
-        if (Route.active(v, goal)) return true;
+        // on his own route there (see Route): not thrown off it each second for the path finder's way that does not get there;
+        // and a long way is his own route's from the start (see tick)
+        if (Route.active(v, goal) || longWay(v, goal)) return true;
         return nav.startMovingTo(x, y, z, speed);
     }
 
@@ -316,9 +336,19 @@ public final class Move {
         boolean there = horiz < 2.5 && Math.abs(dy) <= 1;
         boolean progressing = v.settlementsHandLast != null && pos.squaredDistanceTo(v.settlementsHandLast) > 0.5;
         v.settlementsHandLast = pos;
-        if (there || progressing && v.getNavigation().isFollowingPath()) {
+        if (there) {
             v.settlementsHandSec = 0;
-            if (there) Route.forget(v);
+            Route.forget(v);
+            return false;
+        }
+        // anything more than a short walk on the level goes by his own route, from the first step (the path finder
+        // takes no ladders, opens no way, and gave up only after he had stood a while; it is left the short walks)
+        if (!v.settlementsEscaping && longWay(v, goal)) {
+            v.settlementsHandSec = 0;
+            return Route.tick(v, village, world, goal);
+        }
+        if (progressing && v.getNavigation().isFollowingPath()) {
+            v.settlementsHandSec = 0;
             return false;
         }
         // the path finder has no way there at all (a ladder, a door it will not take, a gap), or his own route is already
@@ -375,8 +405,12 @@ public final class Move {
             boolean tunnel = !v.settlementsEscaping && (surface > feet.getY() + 3 || !thin);
             if (tunnel) {
                 if (v.settlementsHandSec > HAND_AFTER + 30) {
-                    // no way through on foot after half a minute: he finds his own way round (put down by the goal)
-                    if (!putSafely(v, goal)) {
+                    // no way through on foot after half a minute: where nobody sees he gets there somehow (put down by
+                    // the goal); before a player's eyes he lets it be
+                    if (!Bed.unseen(v, world)) {
+                        Speech.sayAny(v, "settlements.say.way.none", 3);
+                        giveUp(v, goal);
+                    } else if (!putSafely(v, goal)) {
                         int gy = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, goal.getX(), goal.getZ());
                         putSafely(v, new BlockPos(goal.getX(), gy, goal.getZ()));
                     }
@@ -428,6 +462,7 @@ public final class Move {
 
     /** Once a second per world: a climbing column left standing a minute, with nobody on it, comes down; the block back to the stores. */
     public static void clearScaffold(ServerWorld world) {
+        Unstick.patchUp(world); // and the holes broken to get out of somebody's house, filled again
         if (SCAFFOLD.isEmpty()) return;
         long now = world.getTime();
         for (java.util.Iterator<Scaffold> it = SCAFFOLD.iterator(); it.hasNext(); ) {
@@ -447,7 +482,7 @@ public final class Move {
 
     static boolean pillar(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos feet) {
         // in his own mine he takes the stairs, he does not build himself a column out of it
-        if (village != null && village.mineOrigin != null && Mining.inShaft(v, village.mineOrigin) && Mining.shaftWalk(v, village.mineOrigin, true)) return true;
+        if (village != null && village.mineOrigin != null && Mining.inShaft(v, village.mineOrigin)) return false; // (the route takes the stairs)
         if (!passable(world, feet.up(2))) {
             if (diggable(world, village, feet.up(2))) {
                 dig(v, world, feet.up(2));
