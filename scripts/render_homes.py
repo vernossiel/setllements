@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 S = 18  # half the width of a block on the picture
 
 COL = [
+    ("white_wool", (236, 236, 236)), ("chain", (60, 64, 70)), ("carved_pumpkin", (220, 130, 30)), ("smooth_stone", (160, 160, 160)), ("minecraft:stone", (125, 125, 125)), ("gravel", (130, 124, 120)),
     ("white_terracotta", (210, 178, 160)), ("orange_terracotta", (162, 84, 38)), ("red_terracotta", (143, 61, 46)), ("brown_terracotta", (77, 51, 36)), ("terracotta", (152, 94, 68)), ("oak_wood", (110, 86, 54)), ("anvil", (70, 70, 74)), ("blast_furnace", (80, 80, 84)), ("stonecutter", (130, 130, 130)), ("smithing", (60, 50, 50)), ("fletching", (190, 170, 120)), ("target", (230, 220, 200)),
     ("red_sandstone", (184, 98, 40)), ("chiseled_sandstone", (206, 192, 140)), ("cut_sandstone", (210, 196, 146)), ("smooth_sandstone", (224, 212, 168)), ("sandstone", (216, 203, 155)), ("_wall[", (120, 120, 120)),
     ("dark_oak_log", (58, 42, 26)), ("dark_oak", (74, 50, 30)), ("spruce_log", (70, 52, 32)), ("spruce", (112, 84, 52)),

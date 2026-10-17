@@ -1376,6 +1376,469 @@ WORKS = {
 WORK_FILE = {"storage": "storehouse", "granary": "granary", "smithy": "forge", "armory": "armoury", "sawmill": "lumberyard",
              "mason": "masonry", "mill": "mill", "tavern": "inn", "barracks": "garrison"}
 
+# ---------- workplaces that look like what they are: the windmill, the forge shed, the barn, the granary on its
+# staddle stones, the saw shed, the masons' yard, the barracks and its yard, the armoury keep ----------
+
+AIR = "minecraft:air"
+
+
+def wcol(h, x, z, y0, y1, b):
+    for y in range(y0, y1 + 1):
+        h.put(x, y, z, b)
+
+
+def windmill(level):
+    R, B = 4 + level, (5 if level < 3 else 7)
+    H = 10 + 2 * level                    # the top of the tower walls: a tower, not a house
+    w = max(B + 2, 2 * R + 3)
+    cx = w // 2
+    x0, x1, z0, z1 = cx - B // 2, cx - B // 2 + B - 1, 1, B
+    h = House(w, B + 4, H + 8)
+    lower = COB if level < 3 else SBRICK
+    h.box(x0, 0, z0, x1, 0, z1, lower)
+    frame(h, x0, z0, x1, z1, 1, 1, lower, lower)
+    h.box(x0 + 1, 1, z0 + 1, x1 - 1, 1, z1 - 1, PLANK)
+    for y in range(2, H + 1):
+        stone = y <= 4 + level
+        for x in range(x0, x1 + 1):
+            for z in (z0, z1):
+                h.put(x, y, z, lower if stone else (log() if x in (x0, x1) else PLANK))
+        for z in range(z0 + 1, z1):
+            for x in (x0, x1):
+                h.put(x, y, z, lower if stone else PLANK)
+    plate(h, x0, z0, x1, z1, H + 1)
+    h.put(cx, 2, z1, door("north", "lower", "left"))
+    h.put(cx, 3, z1, door("north", "upper", "left"))
+    h.put(cx, 1, z1 + 1, cst("north"))
+    for (x, y, z, a) in ((x0, 3, (z0 + z1) // 2, "z"), (x1, 7, (z0 + z1) // 2, "z"), (cx, 9, z0, "x"), (x0, 10, (z0 + z1) // 2, "z")):
+        h.put(x, y, z, pane(a))
+    # the stones and the stores below; up the ladder the grain floor
+    up = level >= 2
+    if up:
+        h.box(x0 + 1, 6, z0 + 1, x1 - 1, 6, z1 - 1, PLANK)
+        for y in range(2, 7):
+            h.put(x0 + 1, y, z1 - 1, ladder("east"))
+    room = Room(h, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 2, random.Random(level))
+    room.keep(cx, z1 - 1)
+    room.keep(x0 + 1, z1 - 1)
+    room.keep(x0 + 2, z1 - 1)
+    for it in ["grind", "grind", "hay", "barrel", "chest"] + (["smoker", "barrel"] if level >= 2 else []):
+        room.place(it)
+    room.torches(2)
+    if up:
+        top = Room(h, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 7, random.Random(level + 9))
+        top.keep(x0 + 1, z1 - 1)
+        top.keep(x0 + 2, z1 - 1)
+        for it in ["hay", "hay", "hay", "barrel", "barrel"]:
+            top.place(it)
+    clear(h, 0, w - 1, 0, B + 3, 1, H + 7)
+    # the cap: a steep little roof over the tower
+    for i in range(0, B // 2 + 2):
+        zn, zs, y = z0 - 1 + i, z1 + 1 - i, H + 1 + i
+        if zn > zs:
+            break
+        for x in range(x0 - 1, x1 + 2):
+            if zn == zs:
+                h.roof(x, y, zn, slab("bottom", "spruce"))
+            else:
+                h.roof(x, y, zn, rstairs("spruce", "south"))
+                h.roof(x, y, zs, rstairs("spruce", "north"))
+        for z in range(zn + 1, zs):
+            for gx in (x0, x1):
+                if h.cells.get((gx, y, z), AIR) == AIR:
+                    h.put(gx, y, z, "minecraft:spruce_planks")
+    # the sails: a hub on the front wall, four arms of timber with their cloth, turned to the wind
+    hy = H - 1
+    h.put(cx, hy, z1 + 1, log("z"))
+    zs = z1 + 2
+    h.put(cx, hy, zs, log("z"))
+    for k in range(1, R + 1):
+        h.put(cx, hy + k, zs, fence())                       # up
+        h.put(cx, hy - k, zs, fence())                       # down
+        h.put(cx + k, hy, zs, fence(e=k < R, w=True))        # right
+        h.put(cx - k, hy, zs, fence(e=True, w=k < R))        # left
+        if k >= 2:
+            for (xx, yy) in ((cx + 1, hy + k), (cx - 1, hy - k), (cx + k, hy - 1), (cx - k, hy + 1)):
+                h.put(xx, yy, zs, "minecraft:white_wool")
+    trim_top(h)
+    return h
+
+
+def forge_shed(level):
+    W, D = (7, 5, 9, 7)[0:2] if level == 1 else (9, 5) if level == 2 else (11, 7)
+    h = House(W + 2, D + 2, 16)
+    x0, x1, z0, z1 = 1, W, 1, D
+    stone = COB if level < 3 else SBRICK
+    h.box(x0, 0, z0, x1, 0, z1, stone)
+    h.box(x0, 1, z0, x1, 1, z1, "minecraft:cobblestone" if level < 3 else "minecraft:stone_bricks")  # a stone floor: sparks
+    for y in range(2, 5):  # the back wall of stone behind the hearth, the rest open on its posts: a shed, not a house
+        for x in range(x0, x1 + 1):
+            h.put(x, y, z0, stone)
+        for z in range(z0, z0 + 2):
+            h.put(x0, y, z, stone)
+            h.put(x1, y, z, stone)
+        for x in [x0, x1] + list(range(x0 + 4, x1 - 1, 4)):
+            h.put(x, y, z1, log())
+        for z in range(z0 + 3, z1, 2):
+            h.put(x0, y, z, log())
+            h.put(x1, y, z, log())
+    for z in range(z0 + 2, z1):  # a rail along the open sides, waist high
+        for x in (x0, x1):
+            if h.cells.get((x, 2, z), AIR) == AIR:
+                h.put(x, 2, z, fence(n=True, s=True))
+    plate(h, x0, z0, x1, z1, 5)
+    cx = (x0 + x1) // 2
+    # the hearth at the back: the fire, a stone hood over it, the stack up through the roof
+    h.put(cx, 2, z0 + 1, (f"minecraft:blast_furnace[facing=south,lit=false]" if level >= 2 else furnace("south")))
+    for x in (cx - 1, cx, cx + 1):
+        h.put(x, 4, z0 + 1, f"minecraft:{'cobblestone' if level < 3 else 'stone_brick'}_stairs[facing=north,half=top,shape=straight,waterlogged=false]")
+    h.put(cx - 1, 2, z0 + 1, stone)
+    h.put(cx + 1, 2, z0 + 1, stone)
+    # the anvil in the middle of the floor, the trough, the grindstone, the bench, the stores
+    h.put(cx, 2, z0 + 3, "minecraft:anvil[facing=east]")
+    h.put(cx + 2, 2, z0 + 1, "minecraft:water_cauldron[level=3]")
+    h.put(x0 + 1, 2, z0 + 1, "minecraft:grindstone[face=floor,facing=south]")
+    h.put(x1 - 1, 2, z0 + 1, chest("south"))
+    h.put(x1 - 1, 2, z0 + 2, BARREL_UP)
+    if level >= 2:
+        h.put(x0 + 1, 2, z0 + 2, "minecraft:smithing_table")
+        h.put(x1 - 1, 2, z0 + 3, "minecraft:barrel[facing=west,open=false]")
+    if level >= 3:  # a store room behind a board wall at the east end
+        for z in range(z0 + 1, z1):
+            for y in range(2, 5):
+                h.put(x1 - 3, y, z, PLANK)
+        h.put(x1 - 3, 2, z1 - 1, door("east", "lower", "left"))
+        h.put(x1 - 3, 3, z1 - 1, door("east", "upper", "left"))
+        for z in range(z0 + 1, z1 - 1):
+            h.put(x1 - 1, 2, z, chest("west"))
+        h.put(x1 - 2, 2, z0 + 1, BARREL_UP)
+        h.put(cx - 2, 2, z0 + 3, "minecraft:anvil[facing=east]")
+    h.put(cx, 4, z0 + 3, lantern(True))
+    clear(h, 0, W + 1, 0, D + 1, 1, 15)
+    top = roof_x(h, 0, W + 1, x0, x1, D + 2, 5, "spruce" if level < 3 else "deepslate_tile", "minecraft:spruce_planks")
+    for y in range(3, top + 2):
+        h.put(cx, y, z0, stone)
+    h.put(cx, top + 2, z0, cap(stone))
+    trim_top(h)
+    return h
+
+
+def barn(level):
+    W, D = ((9, 7), (11, 9), (13, 9))[level - 1]
+    h = House(W + 2, D + 3, 22)
+    x0, x1, z0, z1 = 1, W, 1, D
+    post = "minecraft:dark_oak_log[axis=y]"
+    h.box(x0, 0, z0, x1, 0, z1, COB)
+    frame(h, x0, z0, x1, z1, 1, 1, COB, COB)
+    h.box(x0 + 1, 1, z0 + 1, x1 - 1, 1, z1 - 1, PLANK)
+    top = 6
+    for y in range(2, top + 1):  # tall board walls on a dark frame
+        for x in range(x0, x1 + 1):
+            for z in (z0, z1):
+                h.put(x, y, z, post if x in (x0, x1) or (x - x0) % 4 == 0 else "minecraft:spruce_planks")
+        for z in range(z0 + 1, z1):
+            for x in (x0, x1):
+                h.put(x, y, z, post if (z - z0) % 4 == 0 else "minecraft:spruce_planks")
+    plate(h, x0, z0, x1, z1, top + 1)
+    cx = (x0 + x1) // 2
+    # the great doors, two wide, and the hay door over them in the gable
+    for (dx, hinge) in ((cx, "left"), (cx + 1, "right")):
+        h.put(dx, 2, z1, door("north", "lower", hinge))
+        h.put(dx, 3, z1, door("north", "upper", hinge))
+        h.put(dx, 4, z1, "minecraft:spruce_planks")
+        h.put(dx, 1, z1 + 1, cst("north"))
+    # the loft over the back half, up a ladder
+    zl = z0 + (D - 2) // 2
+    h.box(x0 + 1, 5, z0 + 1, x1 - 1, 5, zl, PLANK)
+    for y in range(2, 6):
+        h.put(x0 + 1, y, zl + 1, ladder("east"))
+    room = Room(h, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 2, random.Random(level))
+    for x in (cx, cx + 1):
+        for z in range(zl + 1, z1):
+            room.keep(x, z)
+    room.keep(x0 + 1, zl + 1)
+    room.keep(x0 + 2, zl + 1)
+    for it in ["chest"] * (3 + level) + ["barrel"] * (3 + level) + ["crate"] * level:
+        room.place(it)
+    room.torches(3)
+    loft = Room(h, x0 + 1, z0 + 1, x1 - 1, zl, 6, random.Random(level + 5))
+    loft.keep(x0 + 1, zl)
+    for it in ["hay"] * (4 + 2 * level) + ["barrel"] * 2:
+        loft.place(it)
+    clear(h, 0, W + 1, 0, D + 2, 1, 21)
+    apex = roof_z(h, 0, D + 1, z0, z1, W + 2, top + 1, "dark_oak", "minecraft:spruce_planks")  # the gable to the street, as a barn stands
+    # the hoist: a beam out over the hay door, a rope and a bale on it
+    hb = top + 3
+    h.put(cx, hb - 1, z1, AIR)
+    h.put(cx + 1, hb - 1, z1, AIR)
+    h.put(cx, hb - 1, z1, "minecraft:spruce_trapdoor[facing=south,half=bottom,open=true,powered=false,waterlogged=false]")
+    h.put(cx, hb + 1, z1 + 1, log("z"))
+    h.put(cx, hb + 1, z1 + 2, log("z"))
+    h.put(cx, hb, z1 + 2, "minecraft:chain[axis=y,waterlogged=false]")
+    h.put(cx, hb - 1, z1 + 2, "minecraft:hay_block[axis=y]")
+    trim_top(h)
+    return h
+
+
+def staddle_granary(level):
+    W, D = ((5, 5), (7, 5), (7, 7))[level - 1]
+    h = House(W + 2, D + 5, 16)
+    x0, x1, z0, z1 = 1, W, 1, D
+    h.box(x0, 0, z0, x1, 0, z1, "minecraft:gravel")
+    # the staddle stones: a post of stone, a flat cap, the floor up on them out of the mice's reach
+    for x in range(x0, x1 + 1, 2):
+        for z in range(z0, z1 + 1, 2):
+            h.put(x, 1, z, "minecraft:cobblestone_wall[east=none,north=none,south=none,up=true,waterlogged=false,west=none]")
+            h.put(x, 2, z, "minecraft:smooth_stone_slab[type=top,waterlogged=false]")
+    h.box(x0, 3, z0, x1, 3, z1, PLANK)
+    for y in range(4, 7):
+        for x in range(x0, x1 + 1):
+            for z in (z0, z1):
+                h.put(x, y, z, log() if x in (x0, x1) else PLANK)
+        for z in range(z0 + 1, z1):
+            for x in (x0, x1):
+                h.put(x, y, z, PLANK)
+    plate(h, x0, z0, x1, z1, 7)
+    cx = (x0 + x1) // 2
+    h.put(cx, 4, z1, door("north", "lower", "left"))
+    h.put(cx, 5, z1, door("north", "upper", "left"))
+    for k, y in ((1, 3), (2, 2), (3, 1)):  # steps up to the door
+        h.put(cx, y, z1 + k, st("north"))
+    room = Room(h, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 4, random.Random(level))
+    room.keep(cx, z1 - 1)
+    for it in ["hay"] * (2 + level) + ["barrel"] * (1 + level) + ["composter"]:
+        room.place(it)
+    room.torches(1)
+    clear(h, 0, W + 1, 0, D + 4, 1, 15)
+    roof_x(h, 0, W + 1, x0, x1, D + 2, 7, "oak" if level < 3 else "spruce", PLANK)
+    trim_top(h)
+    return h
+
+
+def saw_shed(level):
+    W, D = ((9, 5), (11, 7), (13, 7))[level - 1]
+    h = House(W + 2, D + 2, 16)
+    x0, x1, z0, z1 = 1, W, 1, D
+    h.box(x0, 0, z0, x1, 0, z1, COB)
+    h.box(x0, 1, z0, x1, 1, z1, PLANK)
+    for x in [x0, x1] + list(range(x0 + 4, x1 - 1, 4)):
+        for z in (z0, z1):
+            wcol(h, x, z, 2, 4, log())
+    for z in range(z0 + 2, z1 - 1, 3):
+        wcol(h, x0, z, 2, 4, log())
+        wcol(h, x1, z, 2, 4, log())
+    plate(h, x0, z0, x1, z1, 5)
+    cx, cz = (x0 + x1) // 2, (z0 + z1) // 2
+    # the saw bench down the middle: the log fed in at one end, the boards out at the other
+    h.put(cx, 2, cz, "minecraft:stonecutter[facing=south]")
+    for x in range(cx - 3, cx):
+        h.put(x, 2, cz, "minecraft:oak_wood[axis=x]")
+    for x in range(cx + 1, cx + 3):
+        h.put(x, 2, cz, slab("bottom"))
+    # the log piles along the back, the stacked boards at the front corners
+    for x in range(x0 + 1, x1):
+        if x % 4 == 0:
+            continue
+        h.put(x, 2, z0, "minecraft:oak_wood[axis=x]") if False else None
+        h.put(x, 2, z0 + 1, "minecraft:oak_wood[axis=x]")
+        if x % 2 == 0:
+            h.put(x, 3, z0 + 1, "minecraft:oak_wood[axis=x]")
+    for (x, z) in ((x0 + 1, z1 - 1), (x1 - 1, z1 - 1)):
+        h.put(x, 2, z, PLANK)
+        h.put(x, 3, z, slab("bottom"))
+    h.put(x1 - 1, 2, cz, CRAFT)
+    h.put(x1 - 1, 2, cz + 1, chest("west"))
+    if level >= 2:  # the sawyer's office at the west end
+        for z in range(z0 + 1, z1):
+            wcol(h, x0 + 3, z, 2, 4, PLANK)
+        for x in range(x0 + 1, x0 + 3):
+            wcol(h, x, z1, 2, 4, PLANK)
+        h.put(x0 + 3, 2, cz, door("east", "lower", "left"))
+        h.put(x0 + 3, 3, cz, door("east", "upper", "left"))
+        h.put(x0 + 1, 2, z0 + 2, chest("east"))
+        h.put(x0 + 1, 2, z0 + 3, CRAFT)
+        h.put(x0 + 2, 4, cz, lantern(True))
+        h.put(x0 + 1, 2, z0 + 1, "minecraft:air")
+    h.put(cx, 4, cz, lantern(True))
+    clear(h, 0, W + 1, 0, D + 1, 1, 15)
+    roof_x(h, 0, W + 1, x0, x1, D + 2, 5, "spruce", "minecraft:spruce_planks")
+    # the gables left open under the roof (a saw shed: air through it)
+    trim_top(h)
+    return h
+
+
+def mason_yard(level):
+    W, D = ((9, 9), (11, 9), (13, 11))[level - 1]
+    h = House(W + 2, D + 2, 16)
+    x0, x1, z0, z1 = 1, W, 1, D
+    h.box(x0, 0, z0, x1, 0, z1, COB)
+    h.box(x0, 1, z0, x1, 1, z1, "minecraft:gravel")
+    wall = "minecraft:cobblestone_wall[east=low,north=none,south=none,up=true,waterlogged=false,west=low]"
+    wallz = "minecraft:cobblestone_wall[east=none,north=low,south=low,up=true,waterlogged=false,west=none]"
+    cx = (x0 + x1) // 2
+    for x in range(x0, x1 + 1):  # the low wall round the yard, a way in at the front
+        h.put(x, 2, z1, wall if abs(x - cx) > 1 else AIR)
+    for z in range(z0 + 5, z1):
+        h.put(x0, 2, z, wallz)
+        h.put(x1, 2, z, wallz)
+    # the shed at the back: stone walls, open to the yard
+    for y in range(2, 5):
+        for x in range(x0, x1 + 1):
+            h.put(x, y, z0, COB)
+        for z in range(z0, z0 + 5):
+            h.put(x0, y, z, COB)
+            h.put(x1, y, z, COB)
+        for x in range(x0 + 3, x1, 3):
+            h.put(x, y, z0 + 4, log())
+    for x in range(x0, x1 + 1):
+        for z in range(z0, z0 + 5):
+            pass
+    room = Room(h, x0 + 1, z0 + 1, x1 - 1, z0 + 3, 2, random.Random(level))
+    for it in ["stonecutter"] * (1 + level // 2) + ["chest", "chest", "barrel", "grind"] + (["stonecutter"] if level >= 3 else []):
+        room.place(it)
+    room.torches(2)
+    # the blocks dressed and waiting in the yard
+    rng = random.Random(level + 3)
+    for (x, z) in ((x0 + 1, z1 - 2), (x0 + 2, z1 - 2), (x0 + 1, z1 - 3), (x1 - 2, z0 + 6), (x1 - 1, z0 + 6)):
+        h.put(x, 2, z, rng.choice(["minecraft:stone_bricks", COB, "minecraft:smooth_stone", "minecraft:stone"]))
+    h.put(x0 + 1, 3, z1 - 2, "minecraft:stone_bricks")
+    # the crane: a post, a jib, a chain and a block on it
+    px, pz = x1 - 1, z1 - 2
+    wcol(h, px, pz, 2, 7, log())
+    for x in range(px - 3, px):
+        h.put(x, 7, pz, log("x"))
+    h.put(px - 3, 6, pz, "minecraft:chain[axis=y,waterlogged=false]")
+    h.put(px - 3, 5, pz, "minecraft:chain[axis=y,waterlogged=false]")
+    h.put(px - 3, 4, pz, "minecraft:stone_bricks")
+    clear(h, 0, W + 1, 0, D + 1, 1, 15)
+    # the shed's roof only (a lean-to of stone over the back of the yard)
+    for i, z in enumerate(range(z0 - 1, z0 + 6)):
+        y = 6 - (i // 2)
+        for x in range(x0 - 1, x1 + 2):
+            h.roof(x, y, z, rstairs("spruce" if level < 3 else "deepslate_tile", "north") if i % 2 == 1 else rslab("spruce" if level < 3 else "deepslate_tile").replace("bottom", "top"))
+    trim_top(h)
+    return h
+
+
+def garrison(level):
+    W, D = ((11, 5), (13, 7), (15, 7))[level - 1]
+    YARD = 7
+    h = House(W + 2 + YARD, D + 2, 16)
+    x0, x1, z0, z1 = 1, W, 1, D
+    stone = (COB, COB, SBRICK)[level - 1]
+    walls = ("logs", "cobble", "stonebrick")[level - 1]
+    rng = random.Random(level)
+    h.box(x0, 0, z0, x1, 0, z1, stone)
+    frame(h, x0, z0, x1, z1, 1, 1, stone, stone)
+    h.box(x0 + 1, 1, z0 + 1, x1 - 1, 1, z1 - 1, PLANK)
+    for y in range(2, 5):
+        for x in range(x0, x1 + 1):
+            for z in (z0, z1):
+                h.put(x, y, z, log() if x in (x0, x1) else wall_block(walls, "x", x, y, z, rng))
+        for z in range(z0 + 1, z1):
+            for x in (x0, x1):
+                h.put(x, y, z, wall_block(walls, "z", x, y, z, rng))
+    plate(h, x0, z0, x1, z1, 5)
+    cx = (x0 + x1) // 2
+    h.put(cx, 2, z1, door("north", "lower", "left"))
+    h.put(cx, 3, z1, door("north", "upper", "left"))
+    h.put(cx, 1, z1 + 1, cst("north"))
+    for x in range(x0 + 2, x1 - 1, 3):
+        if abs(x - cx) > 1:
+            h.put(x, 3, z1, pane("x"))
+        h.put(x, 3, z0, pane("x"))
+    h.put(x1, 3, (z0 + z1) // 2, door("west", "lower", "left")) if False else None
+    room = Room(h, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 2, rng)
+    room.keep(cx, z1 - 1)
+    for it in ["bed:red"] * (3 + 2 * level) + ["chest"] * (2 + level) + ["grind"]:
+        room.place(it)
+    room.torches(3)
+    # the yard for drill beside it: a fence round it, straw men to strike, targets to shoot at
+    yx0, yx1 = x1 + 1, x1 + YARD
+    h.box(yx0, 0, z0, yx1, 0, z1, "minecraft:gravel") if False else None
+    h.box(yx0, 1, z0, yx1, 1, z1, "minecraft:gravel")
+    for x in range(yx0, yx1 + 1):
+        for z in (z0, z1):
+            h.put(x, 2, z, fence(e=x < yx1, w=x > yx0))
+    for z in range(z0 + 1, z1):
+        h.put(yx1, 2, z, fence(n=True, s=True))
+    gz = (z0 + z1) // 2
+    h.put(yx0 + 3, 2, z1, f"minecraft:oak_fence_gate[facing=south,in_wall=false,open=false,powered=false]")
+    for (x, z) in ((yx0 + 2, z0 + 2), (yx0 + 4, z0 + 2)):
+        h.put(x, 2, z, fence())
+        h.put(x, 3, z, "minecraft:hay_block[axis=y]")
+        h.put(x, 4, z, "minecraft:carved_pumpkin[facing=south]")
+    h.put(yx1 - 1, 2, z1 - 2, "minecraft:target[power=0]")
+    h.put(yx1 - 1, 3, z1 - 2, "minecraft:target[power=0]") if level >= 2 else None
+    h.put(yx0 + 1, 2, z1 - 1, BARREL_UP)
+    clear(h, 0, h.w - 1, 0, D + 1, 1, 15)
+    roof_x(h, 0, W + 1, x0, x1, D + 2, 5, ("spruce", "dark_oak", "deepslate_tile")[level - 1], "minecraft:spruce_planks")
+    trim_top(h)
+    return h
+
+
+def keep(level):
+    W = (7, 7, 9)[level - 1]
+    floors = 1 if level == 1 else 2
+    top = 5 if floors == 1 else 9
+    h = House(W + 2, W + 2, 16)
+    x0, x1, z0, z1 = 1, W, 1, W
+    stone = COB if level < 3 else SBRICK
+    rng = random.Random(level)
+    h.box(x0, 0, z0, x1, 0, z1, stone)
+    h.box(x0, 1, z0, x1, 1, z1, stone)
+    for y in range(2, top + 1):
+        for x in range(x0, x1 + 1):
+            for z in (z0, z1):
+                h.put(x, y, z, wall_block("cobble" if level < 3 else "stonebrick", "x", x, y, z, rng))
+        for z in range(z0 + 1, z1):
+            for x in (x0, x1):
+                h.put(x, y, z, wall_block("cobble" if level < 3 else "stonebrick", "z", x, y, z, rng))
+    if floors == 2:
+        h.box(x0 + 1, 5, z0 + 1, x1 - 1, 5, z1 - 1, PLANK)
+    h.box(x0 + 1, top + 1, z0 + 1, x1 - 1, top + 1, z1 - 1, slab("top"))   # the flat roof to stand on
+    for x in range(x0, x1 + 1):  # the battlements
+        for z in (z0, z1):
+            h.put(x, top + 1, z, stone)
+            if (x - x0) % 2 == 0:
+                h.put(x, top + 2, z, stone)
+    for z in range(z0 + 1, z1):
+        for x in (x0, x1):
+            h.put(x, top + 1, z, stone)
+            if (z - z0) % 2 == 0:
+                h.put(x, top + 2, z, stone)
+    cx = (x0 + x1) // 2
+    h.put(cx, 2, z1, door("north", "lower", "left"))
+    h.put(cx, 3, z1, door("north", "upper", "left"))
+    h.put(cx, 1, z1 + 1, cst("north"))
+    for y in (3, 7) if floors == 2 else (3,):  # arrow slits
+        h.put(x0, y, cx, pane("z"))
+        h.put(x1, y, cx, pane("z"))
+        h.put(cx, y, z0, pane("x"))
+    for y in range(2, top + 2):  # the ladder up to the roof, through a hatch
+        h.put(x0 + 1, y, z0 + 1, ladder("east") if y <= top else ladder("east"))
+    room = Room(h, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 2, rng)
+    room.keep(x0 + 1, z0 + 1)
+    room.keep(x0 + 2, z0 + 1)
+    room.keep(cx, z1 - 1)
+    for it in ["smithing", "grind", "chest", "chest", "barrel", "barrel"] + (["anvil", "fletching"] if level >= 2 else []):
+        room.place(it)
+    room.torches(2)
+    if floors == 2:
+        up = Room(h, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 6, random.Random(level + 4))
+        up.keep(x0 + 1, z0 + 1)
+        up.keep(x0 + 2, z0 + 1)
+        for it in ["chest", "chest", "chest", "target", "barrel", "barrel"]:
+            up.place(it)
+        up.torches(2)
+    clear(h, 0, W + 1, 0, W + 1, 1, 15)
+    trim_top(h)
+    return h
+
+
+SHAPED = {"storehouse": barn, "granary": staddle_granary, "forge": forge_shed, "armoury": keep, "lumberyard": saw_shed,
+          "masonry": mason_yard, "mill": windmill, "garrison": garrison}
+
 CREDIT = "Settlements' own design, drawn after the MineColonies residences (github.com/ldtteam/minecolonies)"
 STYLES = {"medievaloak": "oak", "medievalbirch": "birch", "medievaldarkoak": "dark_oak", "nordic": "spruce", "sandstone": "oak", "badlands": "oak"}
 DESIGNS = {"dwelling1": hut, "dwelling2": cottage, "dwelling3": townhouse, "dwelling4": manor, "dwelling5": manor}
@@ -1392,7 +1855,10 @@ for lv in (1, 2, 3):
 for kind, specs in WORKS.items():
     for lv, spec in enumerate(specs, 1):
         n = f"{WORK_FILE[kind]}{lv}"
-        DESIGNS[n] = (lambda n=n, spec=spec: build_home(n, spec))
+        if WORK_FILE[kind] in SHAPED:  # a workplace built as what it is, not as a house
+            DESIGNS[n] = (lambda lv=lv, f=SHAPED[WORK_FILE[kind]]: f(lv))
+        else:
+            DESIGNS[n] = (lambda n=n, spec=spec: build_home(n, spec))
 index = []
 made = {}
 for name, make in DESIGNS.items():
