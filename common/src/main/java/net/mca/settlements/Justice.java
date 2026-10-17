@@ -381,6 +381,12 @@ public final class Justice {
      * Once a second for a guard: true while he is on a player's case - he goes to him and stays by him, facing him,
      * whatever his round or his shift would have him do (a fight still comes first).
      */
+    /** Whether he is on a player's case now (see duty), without stepping in. */
+    public static boolean onCase(VillagerEntityMCA g) {
+        Object[] d = DUTY.get(g.getUuid());
+        return d != null && g.getWorld().getTime() < (long) d[1];
+    }
+
     public static boolean duty(VillagerEntityMCA g, ServerWorld world) {
         Object[] d = DUTY.get(g.getUuid());
         if (d == null) return false;

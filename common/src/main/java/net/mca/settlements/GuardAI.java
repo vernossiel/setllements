@@ -85,6 +85,16 @@ public final class GuardAI {
             }
         }
 
+        // an archer keeps his distance: a foe come close, he backs off a few steps to shoot, he does not bash him with the bow
+        if (current != null && isArcher(g) && g.isHolding(net.minecraft.item.Items.BOW) && g.squaredDistanceTo(current) < 4.5 * 4.5) {
+            Vec3d away = net.minecraft.entity.ai.NoPenaltyTargeting.findFrom(g, 8, 4, current.getPos());
+            if (away != null) {
+                brain.forget(MemoryModuleType.WALK_TARGET);
+                g.getNavigation().startMovingTo(away.x, away.y, away.z, 0.9);
+                return;
+            }
+        }
+
         // the one he is after has shut himself in, or gone up where there is no way: in through the barricade, a block
         // at a time; up a tree, a shout to come down (the archers see to the rest)
         if (current instanceof PlayerEntity p && !isArcher(g) && g.squaredDistanceTo(p) < 10 * 10) {

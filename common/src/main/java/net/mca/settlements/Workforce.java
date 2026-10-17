@@ -162,7 +162,9 @@ public final class Workforce {
             Remember.tick(v, village, watchWorld); // a word about what that player did, if anything stands out
         }
         STAGE.put(v.getUuid(), "escort");
-        if (v.isGuard() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld ew && Escort.guard(v, village, ew)) return; // seeing a worker safe out and back
+        if (v.isGuard() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld ew
+                && v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).isEmpty() && !Justice.onCase(v) // (not off on an escort in the middle of a fight or a case)
+                && Escort.guard(v, village, ew)) return; // seeing a worker safe out and back
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld skw && Sickness.tick(v, skw)) return; // ill: in bed at home today
         // a conversation: carried on, or started when he has a moment (on the guards' watch, nobody stands chatting)
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld tw && !(v.isGuard() && GuardAI.onDuty(v, time))) {
