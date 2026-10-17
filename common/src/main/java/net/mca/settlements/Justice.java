@@ -176,8 +176,11 @@ public final class Justice {
             ServerPlayerEntity p = world.getServer().getPlayerManager().getPlayer(s.player());
             String what = s.crime().name().toLowerCase();
             if (s.seen() && p != null && s.crime() == Crime.THEFT && p.getWorld() == world) {
-                // he was seen about the place: the watch will want a look in his pockets
+                // he was seen about the place: the one who finds it gone goes up to him himself, if he is in sight and no
+                // guard is by (see Witness); else the watch will want a look in his pockets
                 Speech.sayNow(finder, "settlements.justice.found." + what + ".seen", p.getName());
+                if (finder.squaredDistanceTo(p) < 24 * 24 && finder.canSee(p) && !finder.isGuard()
+                        && Witness.confront(world, village, finder, p, s.value(), s.items())) continue;
                 askSearch(world, village, p, s.items(), s.value(), now, true);
                 continue;
             }
