@@ -88,6 +88,7 @@ public final class Arrivals {
         net.mca.MCA.LOGGER.info("[Settlements] {} morning: pop {}, food {}/head, free {}, empty houses {}, homeless {}, danger {}, afraid {}, chance {}, roll {}",
                 v.getName(), pop, String.format("%.1f", per), free, Housing.empty(v), Housing.homeless(v), Prosperity.danger(v), Mood.afraid(v),
                 String.format("%.2f", Math.max(0.05, Math.min(0.75, chance))), String.format("%.2f", roll));
+        net.mca.MCA.LOGGER.info("[Settlements] {} builders' day (s): {}", v.getName(), Doing.daySummary());
         if (free < 1 || per < 1.5 || Prosperity.danger(v) >= 4 || Mood.afraid(v)) return;
         if (roll >= Math.max(0.05, Math.min(0.75, chance))) return;
         boolean couple = free >= 2 && world.random.nextFloat() < 0.4f;

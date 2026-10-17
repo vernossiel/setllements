@@ -37,6 +37,27 @@ public final class Doing {
         NOTES.put(v.getUuid(), new Note(key, args, v.getWorld().getTime()));
     }
 
+    /** Builders' seconds of the working day, by what they were doing (for the morning record: where the day went). */
+    private static final Map<String, Integer> TALLY = new HashMap<>();
+
+    /** Once a second, before the new second's note is written: last second's note of a builder, counted. */
+    static void tally(VillagerEntityMCA v) {
+        if (v.getProfession() != net.minecraft.village.VillagerProfession.CARTOGRAPHER) return;
+        long tod = v.getWorld().getTimeOfDay() % 24000L;
+        if (tod >= 12000) return;
+        Note n = NOTES.get(v.getUuid());
+        String k = v.isSleeping() ? "sleep" : v.settlementsEatTicks > 0 ? "eating" : n == null || v.getWorld().getTime() - n.at() > 40 ? "none" : n.key().replace("settlements.doing.", "");
+        TALLY.merge(k, 1, Integer::sum);
+    }
+
+    /** Where the builders' day went, most first; and the count starts afresh. */
+    public static String daySummary() {
+        String s = TALLY.entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue()).limit(10)
+                .map(e -> e.getKey() + "=" + e.getValue()).collect(java.util.stream.Collectors.joining(" "));
+        TALLY.clear();
+        return s;
+    }
+
     private record Plan(Text chain, long at) {
     }
 

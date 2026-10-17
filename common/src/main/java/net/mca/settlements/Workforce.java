@@ -81,6 +81,7 @@ public final class Workforce {
 
     /** Server side, once per second. */
     public static void tick(VillagerEntityMCA v) {
+        Doing.tally(v);
         Pose.tick(v);
         Anim.tick(v);
         Move.shutBehind(v); // the door he came through shut behind him, first of all, whatever he does next (at bedtime too: a door left open let the zombies in on a sleeper)
