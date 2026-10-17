@@ -306,8 +306,13 @@ public final class Builder {
     private static boolean plan(Village village, ServerWorld world) {
         int planks = planks(village);
         var rand = world.random;
+        // people without a roof and not wood enough for their house yet: the village saves its timber for it - no pen, no
+        // charcoal pit, no tower in the meantime (only the hall and the fields, which feed them)
+        boolean saving = false;
+        for (Plan.Status st : Plan.pending(village)) if (st.goal().id().equals("housing") && !st.ready()) saving = true;
         for (Plan.Status st : Plan.pending(village)) {
             if (!st.ready()) continue;
+            if (saving && st.goal().planks() > 0 && !java.util.Set.of("townhall", "farm", "well").contains(st.goal().id())) continue;
             switch (st.goal().id()) {
                 case "well" -> {
                     Layout.Slot slot = Layout.center(world, village, "well");
