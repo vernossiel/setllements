@@ -124,7 +124,11 @@ public final class Lumberjack {
         }
         if (felling == null && (v.lumberTarget == null || !world.getBlockState(v.lumberTarget).isIn(BlockTags.LOGS))) {
             v.lumberTarget = null;
-            List<BlockPos> trees = trees(world, v.getBlockPos(), village);
+            // round the village, not round wherever he stands: each tree looked for from the last one, he walked off a tree
+            // at a time a hundred blocks into the wild and down into the valley, and was not seen again
+            BlockPos heart = village == null ? v.getBlockPos() : village.hallPos != null ? village.hallPos : new BlockPos(village.getCenter());
+            List<BlockPos> trees = trees(world, heart, village);
+            if (village != null) trees.removeIf(t -> Math.abs(t.getY() - heart.getY()) > 16);
             // the stand of trees round the village is spared, unless the builders are short of wood
             Builder.Shortage sh = village == null ? null : Builder.shortage(village);
             if (order != null || village != null && stockLogs(village) < 16) force = true;
