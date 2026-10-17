@@ -90,7 +90,8 @@ public final class Templates {
     private static String[] aliases(String name) {
         String n = name.replaceAll("\\d", ""), lv = name.replaceAll("\\D", "");
         return switch (n) {
-            case "home" -> new String[]{"residence" + lv, "residencetower" + lv, "residencelarge" + lv, "residenceluxuryred" + lv, "residenceluxuryblue" + lv};
+            case "home" -> new String[]{"residence" + lv, "residencetower" + lv, "residencelarge" + lv, "residenceluxuryred" + lv, "residenceluxuryblue" + lv,
+                    "dwelling" + lv, "dwelling" + lv}; // (our own, twice: drawn for each station, the cramped hut to the town house)
             case "bakery" -> new String[]{"baker" + lv, "bakery" + lv};
             default -> new String[]{name};
         };
@@ -99,7 +100,7 @@ public final class Templates {
     /** The logical name of a template file ("residencetower3" -> "home3"). */
     static String logical(String file) {
         String n = file.replaceAll("\\d", ""), lv = file.replaceAll("\\D", "");
-        if (n.startsWith("residence")) return "home" + lv;
+        if (n.startsWith("residence") || n.equals("dwelling")) return "home" + lv;
         if (n.equals("baker")) return "bakery" + lv;
         return file;
     }
@@ -188,12 +189,50 @@ public final class Templates {
     static boolean fitting(BlockState s) {
         Block b = s.getBlock();
         return b instanceof TorchBlock || b instanceof LanternBlock || b instanceof CarpetBlock || b instanceof BedBlock || b instanceof ChestBlock
-                || b instanceof BarrelBlock || b instanceof FlowerPotBlock || b instanceof AbstractBannerBlock || b instanceof LadderBlock
+                || b instanceof BarrelBlock || b instanceof FlowerPotBlock || b instanceof AbstractBannerBlock
                 || b instanceof AbstractSignBlock || b instanceof CraftingTableBlock || b instanceof AbstractFurnaceBlock || b instanceof LecternBlock
                 || b instanceof AnvilBlock || b instanceof BrewingStandBlock || b instanceof AbstractCauldronBlock || b instanceof ComposterBlock
                 || b instanceof GrindstoneBlock || b instanceof StonecutterBlock || b instanceof EnchantingTableBlock || b instanceof ButtonBlock
                 || b instanceof LeverBlock || b instanceof ChainBlock || b instanceof AbstractCandleBlock || b instanceof PlantBlock
                 || b instanceof TripwireHookBlock || b instanceof CampfireBlock || b instanceof BellBlock || b == Blocks.BOOKSHELF;
+    }
+
+    private static final Map<String, Integer> TURN = new HashMap<>();
+
+    /**
+     * The quarter turns that bring a template's front door round to the south, the side our own plans have it on and
+     * the side the street is laid out to (MineColonies draws its houses facing every way: the door came out by the
+     * fence, the road ran to the back wall). Added to the turn a site is given, when it is chosen.
+     */
+    public static int entryTurn(String type) {
+        Template t = of(type);
+        if (t == null) return 0;
+        return TURN.computeIfAbsent(t.id(), k -> {
+            int bx = -1, by = Integer.MAX_VALUE, bz = -1, bedge = Integer.MAX_VALUE;
+            for (int y = 0; y < t.h(); y++) {
+                for (int z = 0; z < t.d(); z++) {
+                    for (int x = 0; x < t.w(); x++) {
+                        int i = t.at(x, y, z);
+                        if (i == 0xFFFF) continue;
+                        BlockState s = t.palette()[i];
+                        if (!(s.getBlock() instanceof DoorBlock) || s.get(DoorBlock.HALF) != net.minecraft.block.enums.DoubleBlockHalf.LOWER) continue;
+                        int edge = Math.min(Math.min(x, t.w() - 1 - x), Math.min(z, t.d() - 1 - z));
+                        // the lowest door, and of those the one nearest the outside: the front door
+                        if (y < by || y == by && edge < bedge) {
+                            by = y;
+                            bedge = edge;
+                            bx = x;
+                            bz = z;
+                        }
+                    }
+                }
+            }
+            if (bx < 0) return 0;
+            int[] dist = {bz, t.w() - 1 - bx, t.d() - 1 - bz, bx}; // north, east, south, west
+            int side = 0;
+            for (int i = 1; i < 4; i++) if (dist[i] < dist[side]) side = i;
+            return Math.floorMod(2 - side, 4);
+        });
     }
 
     /** The plan of a template building, in our own terms (y = 0 the first layer above the ground). */

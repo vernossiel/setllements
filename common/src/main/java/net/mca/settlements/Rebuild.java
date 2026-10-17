@@ -117,7 +117,7 @@ public final class Rebuild {
         BlockPos c = old.getCenter();
         BlockPos vc = new BlockPos(village.getCenter());
         double dx = vc.getX() - c.getX(), dz = vc.getZ() - c.getZ();
-        int rot = Math.abs(dx) >= Math.abs(dz) ? (dx > 0 ? 1 : 3) : (dz > 0 ? 0 : 2);
+        int rot = ((Math.abs(dx) >= Math.abs(dz) ? (dx > 0 ? 1 : 3) : (dz > 0 ? 0 : 2)) + Templates.entryTurn(type)) & 3;
         int fw = (rot & 1) == 0 ? fp[0] : fp[1], fd = (rot & 1) == 0 ? fp[1] : fp[0];
         int x0 = c.getX() - fw / 2, z0 = c.getZ() - fd / 2;
 
@@ -216,7 +216,7 @@ public final class Rebuild {
         }
         int[] dm = type.equals("house") ? new int[]{9, 8, 2} : dims(type);
         int[] fp = Blueprints.footprint(type, dm[0], dm[1]);
-        int rot = old.rot();
+        int rot = (old.rot() - Templates.entryTurn(old.type()) + Templates.entryTurn(type)) & 3; // the new door where the old one faced
         int fw = (rot & 1) == 0 ? fp[0] : fp[1], fd = (rot & 1) == 0 ? fp[1] : fp[0];
         int cx = old.origin().getX() + old.fw() / 2, cz = old.origin().getZ() + old.fd() / 2;
         int x0 = cx - fw / 2, z0 = cz - fd / 2;

@@ -123,7 +123,7 @@ public final class Layout {
                 int x = c.getX() + dx, z = c.getZ() + dz;
                 if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
                 int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
-                int rot = facingCenter(dx, dz); // the door towards the village, as on the rings
+                int rot = (facingCenter(dx, dz) + Templates.entryTurn(type)) & 3; // the door towards the village, as on the rings
                 lots.add(new Lot(x, z, rot, dist + Math.abs(y - c.getY()) * 3));
             }
         }
@@ -153,7 +153,7 @@ public final class Layout {
             // along a north-south street at x = k*GRID: plots east of it face west (rot 1), west of it face east (rot 3)
             for (int axis = 0; axis < 2; axis++) {
                 for (int side = -1; side <= 1; side += 2) {
-                    int rot = axis == 0 ? (side < 0 ? 0 : 2) : (side < 0 ? 3 : 1);
+                    int rot = ((axis == 0 ? (side < 0 ? 0 : 2) : (side < 0 ? 3 : 1)) + Templates.entryTurn(type)) & 3; // (a template's door brought round to the street)
                     int fw = (rot & 1) == 0 ? fp[0] : fp[1], fd = (rot & 1) == 0 ? fp[1] : fp[0];
                     int along = (rot & 1) == 0 ? fw : fd, deep = (rot & 1) == 0 ? fd : fw;
                     // a plot is half a block deep; a big building takes the whole block, from one street to the next
@@ -210,7 +210,7 @@ public final class Layout {
             for (int i = 0; i < n; i++) {
                 double angle = offset + ((start + i) % n) * Math.PI * 2 / n;
                 double dx = Math.cos(angle) * radius, dz = Math.sin(angle) * radius;
-                int rot = type.equals("mine") ? 0 : facingCenter(dx, dz);
+                int rot = type.equals("mine") ? 0 : (facingCenter(dx, dz) + Templates.entryTurn(type)) & 3;
                 int fw = (rot & 1) == 0 ? fp[0] : fp[1], fd = (rot & 1) == 0 ? fp[1] : fp[0];
                 int x = c.getX() + (int) dx - fw / 2, z = c.getZ() + (int) dz - fd / 2;
                 if (!free(village, x, z, fw, fd)) continue;

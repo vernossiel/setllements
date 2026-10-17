@@ -5,6 +5,11 @@ medievalbirch/barracks5
 medievalbirch/blacksmith2
 medievalbirch/blacksmith3
 medievalbirch/blacksmith5
+medievalbirch/dwelling1
+medievalbirch/dwelling2
+medievalbirch/dwelling3
+medievalbirch/dwelling4
+medievalbirch/dwelling5
 medievalbirch/residence1
 medievalbirch/residence2
 medievalbirch/residence3
@@ -31,6 +36,11 @@ medievaldarkoak/barracks5
 medievaldarkoak/blacksmith2
 medievaldarkoak/blacksmith3
 medievaldarkoak/blacksmith5
+medievaldarkoak/dwelling1
+medievaldarkoak/dwelling2
+medievaldarkoak/dwelling3
+medievaldarkoak/dwelling4
+medievaldarkoak/dwelling5
 medievaldarkoak/residence1
 medievaldarkoak/residence2
 medievaldarkoak/residence3
@@ -57,6 +67,11 @@ medievaloak/barracks5
 medievaloak/blacksmith2
 medievaloak/blacksmith3
 medievaloak/blacksmith5
+medievaloak/dwelling1
+medievaloak/dwelling2
+medievaloak/dwelling3
+medievaloak/dwelling4
+medievaloak/dwelling5
 medievaloak/residence1
 medievaloak/residence2
 medievaloak/residence3
@@ -83,6 +98,11 @@ nordic/barracks5
 nordic/blacksmith2
 nordic/blacksmith3
 nordic/blacksmith5
+nordic/dwelling1
+nordic/dwelling2
+nordic/dwelling3
+nordic/dwelling4
+nordic/dwelling5
 nordic/residence1
 nordic/residence2
 nordic/residence3

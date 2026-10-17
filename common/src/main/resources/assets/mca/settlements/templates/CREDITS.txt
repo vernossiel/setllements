@@ -10,3 +10,7 @@ Changes made for Settlements: converted to vanilla blocks (Domum Ornamentum's sh
 vanilla stairs, slabs, walls, fences and doors of their material, its bricks the nearest vanilla stone),
 MineColonies' own blocks replaced by vanilla ones, turned to face south and cropped; when built, the
 timber is swapped for the village's own wood.
+
+The "dwelling" homes (dwelling1 to dwelling5, in every timber style) are Settlements' own designs, drawn after the
+MineColonies residences: a cramped one-room hut for a hamlet, a cottage with a sleeping loft, a two-floor house with
+rooms of its own, and a stone-and-timber town house with a porch and a balcony.
