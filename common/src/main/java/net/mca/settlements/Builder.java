@@ -831,7 +831,7 @@ public final class Builder {
             double bx = target.getX() + 0.5 - v.getX(), bz = target.getZ() + 0.5 - v.getZ();
             // within reach, and nothing in the way between his eyes and the spot (no building through walls)
             boolean far = mine ? v.squaredDistanceTo(origin.getX() + 0.5, origin.getY(), origin.getZ() + 0.5) > 144 : !Scaffold.inReach(v, target)
-                    || target.getY() - origin.getY() < 3 && !Dig.sees(v, target); // (ceilings and roofs are laid from the scaffolding, over the edge)
+                    || target.getY() > origin.getY() && target.getY() - origin.getY() < 3 && !Dig.sees(v, target); // (ceilings and roofs are laid from the scaffolding, over the edge; the ground and the floor at his feet he always gets at - a path cell walked round half a day)
             if (far && !mine && !border && target.getY() - origin.getY() >= 3) {
                 Built site = new Built(village.buildType, origin, village.buildW, village.buildD, Math.max(1, village.buildF), village.buildRot);
                 ON_SITE.put(v.getUuid(), world.getTime());
@@ -1087,7 +1087,7 @@ public final class Builder {
                 continue;
             }
             double bx = t.getX() + 0.5 - v.getX(), bz = t.getZ() + 0.5 - v.getZ();
-            if (!Scaffold.inReach(v, t) || !Dig.sees(v, t)) {
+            if (!Scaffold.inReach(v, t) || t.getY() > origin.getY() && !Dig.sees(v, t)) {
                 if (s.dy() >= 3) {
                     if (triedHigh) continue; // (one look for a way up a second: each costs a search for a path)
                     triedHigh = true;
@@ -2255,8 +2255,11 @@ public final class Builder {
                 return pal.stairs().getDefaultState().with(StairsBlock.FACING, facing);
             }
             case STONE: {
-                if (take(village, COBBLE, 1)) return (Buildings.has(village, "mason") ? pal.accent() : pal.stone()).getDefaultState();
-                return plank(village, pal.planks()); // stone or earth from around, or wood
+                // stone if there is stone enough for all of it, else timber throughout (a cobble patch here and there in a plank wall)
+                boolean dressed = once(village, "STONE:mason", Buildings.has(village, "mason"));
+                BlockState b = betterOr(village, kind, "stone", COBBLE, (dressed ? pal.accent() : pal.stone()).getDefaultState());
+                if (b != null) return b == WANT ? null : b;
+                return plank(village, pal.planks());
             }
             case SIGN:
                 if (!takePlanks(village, 2)) return null;
@@ -2344,6 +2347,12 @@ public final class Builder {
             m.put(key, b);
         }
         return b;
+    }
+
+    /** A choice for the project made the first time it is asked, and held to (what the stone is dressed as). */
+    private static boolean once(Village village, String key, boolean now) {
+        if (village.buildOrigin == null) return now;
+        return CHOICE.computeIfAbsent(village.buildType + "@" + village.buildOrigin, k -> new HashMap<>()).computeIfAbsent(key, k -> now);
     }
 
     /** The better material, if this part is made of it: the block, or WANT while it is not in the stores; null if the plain one. */
