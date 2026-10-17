@@ -41,8 +41,13 @@ public final class GuardAI {
 
     /** Shift A guards the day, shift B the night; archers keep both. */
     public static boolean onDuty(VillagerEntityMCA g, long time) {
-        if (isArcher(g)) return true;
         boolean night = time % 24000L >= 13000L;
+        if (isArcher(g)) {
+            // an archer keeps the night watch from a tower's deck; with no tower he is no match for a zombie at arm's
+            // length on open ground (one died every night): by night the swordsmen keep watch and he sleeps
+            if (!night) return true;
+            return g.getResidency().getHomeVillage().map(v -> !v.watchPoints.isEmpty()).orElse(false);
+        }
         boolean shiftA = (g.getUuid().hashCode() & 1) == 0;
         return night != shiftA;
     }
