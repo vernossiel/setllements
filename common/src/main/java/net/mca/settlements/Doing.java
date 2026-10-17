@@ -37,31 +37,46 @@ public final class Doing {
         NOTES.put(v.getUuid(), new Note(key, args, v.getWorld().getTime()));
     }
 
-    /** Builders' seconds of the working day, by what they were doing (for the morning record: where the day went). */
-    private static final Map<String, Integer> TALLY = new HashMap<>();
+    /** Every trade's seconds of the working day, by what they were doing (for the morning record: where the day went). */
+    private static final Map<String, Map<String, Integer>> TALLY = new java.util.TreeMap<>();
+    /** The current trade a count goes to (set by tally, read by count). */
+    private static String current = "builder";
 
-    /** Once a second, before the new second's note is written: last second's note of a builder, counted. */
+    private static String trade(VillagerEntityMCA v) {
+        if (v.isElder()) return "elder";
+        if (v.isGuard()) return "guard";
+        var p = v.getProfession();
+        if (p == net.minecraft.village.VillagerProfession.CARTOGRAPHER) return "builder";
+        if (p == net.minecraft.village.VillagerProfession.MASON) return "miner";
+        if (p == net.minecraft.village.VillagerProfession.FLETCHER || p == net.minecraft.village.VillagerProfession.TOOLSMITH) return "woodsman";
+        return net.minecraft.registry.Registries.VILLAGER_PROFESSION.getId(p).getPath();
+    }
+
+    /** Once a second, before the new second's note is written: last second's note, counted for his trade. */
     static void tally(VillagerEntityMCA v) {
-        boolean miner = v.getProfession() == net.minecraft.village.VillagerProfession.MASON;
-        if (v.getProfession() != net.minecraft.village.VillagerProfession.CARTOGRAPHER && !miner) return;
+        if (v.isBaby()) return;
         long tod = v.getWorld().getTimeOfDay() % 24000L;
+        current = trade(v);
         if (tod >= 12000) return;
         Note n = NOTES.get(v.getUuid());
-        String k = v.isSleeping() ? "sleep" : v.settlementsEatTicks > 0 ? "eating" : n == null || v.getWorld().getTime() - n.at() > 40 ? "none" : n.key().replace("settlements.doing.", "");
-        TALLY.merge(miner ? "M." + k : k, 1, Integer::sum);
+        String k = v.isSleeping() ? "sleep" : v.settlementsEatTicks > 0 ? "eating" : n == null || v.getWorld().getTime() - n.at() > 40 ? "none" : n.key().replace("settlements.doing.", "").replace("settlements.plan.doing.", "plan.");
+        TALLY.computeIfAbsent(current, t -> new HashMap<>()).merge(k, 1, Integer::sum);
     }
 
-    /** One more of something a builder does within his work (a block laid, a turn, a walk), for the same record. */
+    /** One more of something done within the work (a block laid, a turn, a walk), for the trade being ticked. */
     static void count(String what) {
-        TALLY.merge(what, 1, Integer::sum);
+        TALLY.computeIfAbsent(current, t -> new HashMap<>()).merge(what, 1, Integer::sum);
     }
 
-    /** Where the builders' day went, most first; and the count starts afresh. */
-    public static String daySummary() {
-        String s = TALLY.entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue()).limit(30)
-                .map(e -> e.getKey() + "=" + e.getValue()).collect(java.util.stream.Collectors.joining(" "));
+    /** Where each trade's day went, most first, one line per trade; and the count starts afresh. */
+    public static java.util.List<String> daySummary() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (var t : TALLY.entrySet()) {
+            out.add(t.getKey() + ": " + t.getValue().entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue()).limit(18)
+                    .map(e -> e.getKey() + "=" + e.getValue()).collect(java.util.stream.Collectors.joining(" ")));
+        }
         TALLY.clear();
-        return s;
+        return out;
     }
 
     private record Plan(Text chain, long at) {
