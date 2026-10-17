@@ -76,9 +76,14 @@ public final class Arrivals {
 
         // free beds, bread, peace: newcomers
         int free = v.getMaxPopulation() - pop;
-        if (Housing.empty(v) < 1) free = 0; // newcomers come where a house stands empty for them
+        // a house standing empty draws a family; none, and one comes alone all the same, sleeps on the hall floor and
+        // the builders put up a house for him (the homeless are what starts a house: see Plan's housing goal). Only one
+        // such at a time: without that the village waited on an empty house that nobody would build
+        boolean lodger = Housing.empty(v) < 1;
+        if (lodger) free = Housing.homeless(v) > 0 ? 0 : Math.min(free, 1) + (free < 1 && pop < 12 ? 1 : 0);
         if (free < 1 || per < 1.5 || Prosperity.danger(v) >= 4 || Mood.afraid(v)) return;
         double chance = 0.25 + Math.min(0.35, (per - 1.5) * 0.08) + (Prosperity.factor(v) - 1.0) * 0.5;
+        if (lodger) chance *= 0.6;
         if (world.random.nextDouble() >= Math.max(0.05, Math.min(0.75, chance))) return;
         boolean couple = free >= 2 && world.random.nextFloat() < 0.4f;
         BlockPos road = edge(world, v);
