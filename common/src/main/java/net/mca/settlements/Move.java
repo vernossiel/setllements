@@ -72,6 +72,12 @@ public final class Move {
             return false;
         }
         // already on his way there: he keeps walking the path he has, not stopping each second to work out a new one
+        // and the brain is told the same place: with a walk target of its own (or none, ours having been struck out by
+        // hold), its walking task stopped the path we had set at every turn, and he went a step, stood, a step, stood
+        var brain = v.getBrain();
+        var wt = brain.getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET).orElse(null);
+        if (wt == null || wt.getLookTarget().getBlockPos().getSquaredDistance(goal) > 2.25)
+            brain.remember(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET, new net.minecraft.entity.ai.brain.WalkTarget(new Vec3d(x, y, z), (float) speed, 1));
         var nav = v.getNavigation();
         var path = nav.getCurrentPath();
         if (path != null && !path.isFinished() && nav.isFollowingPath() && path.getTarget().isWithinDistance(goal, 1.5)) return true;
