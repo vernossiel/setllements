@@ -59,6 +59,8 @@ public final class Festival {
             WEDDINGS.remove(village.getId());
             w = null;
         }
+        long tod = timeOfDay % 24000L;
+        if (w != null && (tod >= 11800 || tod < 300)) return false; // no dancing on the square after dark: the guests go home (a wedding feast ran into the night and the zombies came)
         if (w != null) return wedding(v, world, w);
         if (Forage.hungry(village)) return false; // a hungry village has no time for fairs: there is food to get in
         if (service(timeOfDay) && Buildings.has(village, "chapel")) return church(v, village, world);

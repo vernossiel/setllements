@@ -107,7 +107,7 @@ public final class Bed {
         if (v.isSleeping()) {
             // asleep in a bed he took for himself off in the valley: up, and to a proper place for the night
             BlockPos in = v.getSleepingPosition().orElse(null);
-            if (in != null && village != null && !Housing.allowed(village, in)) {
+            if (in != null && village != null && (!Housing.allowed(village, in) || !Housing.safe(world, in))) { // (or one in a room the night walks into)
                 v.wakeUp();
                 v.getBrain().forget(net.minecraft.entity.ai.brain.MemoryModuleType.HOME);
                 return true;

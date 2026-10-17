@@ -50,7 +50,7 @@ public final class Housing {
         // a bed somebody took for himself the vanilla way, off in the valley or the woods: let go of it
         for (VillagerEntityMCA m : folk) {
             GlobalPos home = m.getResidency().getHome().orElse(null);
-            if (home != null && !allowed(v, home.getPos())) {
+            if (home != null && (!allowed(v, home.getPos()) || !safe(world, home.getPos()))) { // (nor one in a room open to the night)
                 m.releaseTicketFor(MemoryModuleType.HOME);
                 m.getBrain().forget(MemoryModuleType.HOME);
             }
@@ -358,7 +358,7 @@ public final class Housing {
         // where it comes from: an empty bed off in the woods or the valley first
         net.minecraft.block.BlockState bed = null;
         BlockPos far = world.getPointOfInterestStorage().getInSquare(t -> t.matchesKey(PointOfInterestTypes.HOME), heart, 96, PointOfInterestStorage.OccupationStatus.HAS_SPACE)
-                .map(net.minecraft.world.poi.PointOfInterest::getPos).filter(p -> !allowed(v, p) && !hallArea(world, hall, p)).findFirst().orElse(null);
+                .map(net.minecraft.world.poi.PointOfInterest::getPos).filter(p -> (!allowed(v, p) || !safe(world, p)) && !hallArea(world, hall, p)).findFirst().orElse(null); // (one in a room open to the night is carried in too)
         if (far != null && world.getBlockState(far).getBlock() instanceof net.minecraft.block.BedBlock b) {
             bed = b.getDefaultState();
             world.breakBlock(far, false); // (both halves go)
