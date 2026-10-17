@@ -128,15 +128,15 @@ public final class Layout {
             }
         }
         lots.sort(Comparator.comparingDouble(Lot::score));
-        int tried = 0;
         for (int pass = 0; pass < TOLERANCE.length; pass++) {
+            int tried = 0; // each pass its own tries: the first strict pass used them all up and the rough one never ran
             for (Lot lot : lots) {
                 int fw = (lot.rot() & 1) == 0 ? fp[0] : fp[1], fd = (lot.rot() & 1) == 0 ? fp[1] : fp[0];
                 int x = lot.x() - fw / 2, z = lot.z() - fd / 2;
                 if (!free(village, x, z, fw, fd) || !freeOfBuildings(village, x, z, fw, fd)) continue;
                 BlockPos origin = flat(world, x, z, fw, fd, pass);
                 if (origin != null && reachable(village, type, origin)) return new Slot(origin, lot.rot(), fw, fd);
-                if (++tried > 400) return null; // enough looking for one time
+                if (++tried > 400) break; // enough looking at this pass
             }
         }
         return null;

@@ -499,6 +499,7 @@ public final class Builder {
         }
         if (slot == null) {
             lastNoSite = type;
+            if (Tiers.isHome(type)) net.mca.MCA.LOGGER.info("[Settlements] {}: no site for a {} ({}x{}) anywhere", village.getName(), type, w, d);
             return false;
         }
         lastNoSite = null;
