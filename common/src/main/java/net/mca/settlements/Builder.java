@@ -982,7 +982,7 @@ public final class Builder {
                 gone++;
             } else if (first >= 0) standing.add(i);
         }
-        if (first < 0 || gone < 3) return; // a block or two: not worth going back over the whole house for
+        if (first < 0 || gone < 8) return; // a few blocks: not worth going back over the whole house for (the repairs see to them later)
         if (RECHECK_FIRST.getOrDefault(village.getId(), -1) == first) return; // went back for it once already: that one will not stand (left as it is)
         RECHECK_FIRST.put(village.getId(), first);
         Set<Integer> done = ahead(village);
