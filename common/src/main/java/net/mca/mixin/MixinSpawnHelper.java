@@ -23,6 +23,9 @@ public abstract class MixinSpawnHelper {
             at = @At("HEAD"), cancellable = true)
     private static void settlements$noMonstersInVillages(ServerWorld world, SpawnGroup group, StructureAccessor structures, ChunkGenerator generator,
                                                          SpawnSettings.SpawnEntry entry, BlockPos.Mutable pos, double squaredDistance, CallbackInfoReturnable<Boolean> cir) {
-        if (group == SpawnGroup.MONSTER && net.mca.settlements.Safety.inVillage(world, pos)) cir.setReturnValue(false);
+        if (group != SpawnGroup.MONSTER) return;
+        boolean in = net.mca.settlements.Safety.inVillage(world, pos);
+        net.mca.settlements.Safety.count(in);
+        if (in) cir.setReturnValue(false);
     }
 }

@@ -21,8 +21,24 @@ public final class Safety {
     private Safety() {
     }
 
+    private static long refused, allowed, lastLog;
+
+    /** For the record: how many monster spawns were turned away from the villages, and how many let through elsewhere. */
+    public static void count(boolean in) {
+        if (in) refused++;
+        else allowed++;
+        long now = System.currentTimeMillis();
+        if (now - lastLog > 60000) {
+            lastLog = now;
+            net.mca.MCA.LOGGER.info("[Settlements] monster spawns: {} refused in villages, {} allowed elsewhere (last minute)", refused, allowed);
+            refused = allowed = 0;
+        }
+    }
+
     public static boolean inVillage(ServerWorld world, BlockPos pos) {
-        long chunk = ((long) (pos.getX() >> 4) << 32) ^ ((pos.getZ() >> 4) & 0xFFFFFFFFL);
+        // the chunk and its sixteen-block band of height: the answer below ground (a cave far under the village) is not
+        // the answer for the roofs above it (cached by the chunk alone, one look in a cave let skeletons out on the roofs)
+        long chunk = (((long) (pos.getX() >> 4) & 0x3FFFFFL) << 42) | (((long) (pos.getZ() >> 4) & 0x3FFFFFL) << 20) | ((pos.getY() >> 4) & 0xFFFFFL);
         long now = world.getTime();
         long[] c = CACHE.get(chunk);
         if (c != null && now < c[1]) return c[0] == 1;
