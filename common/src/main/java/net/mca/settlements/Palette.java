@@ -60,16 +60,21 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
     }
 
     public Block planks() { return get(wood + "_planks", Blocks.OAK_PLANKS); }
-    public Block log() { return get(wood + "_log", Blocks.OAK_LOG); }
-    public Block strippedLog() { return get("stripped_" + wood + "_log", Blocks.STRIPPED_OAK_LOG); }
+    /** The desert builds in its own stone: there is no timber to be had for beams and roofs out there. */
+    private boolean desert() {
+        return stone == Blocks.SANDSTONE;
+    }
+
+    public Block log() { return desert() ? Blocks.CUT_SANDSTONE : get(wood + "_log", Blocks.OAK_LOG); }
+    public Block strippedLog() { return desert() ? Blocks.CUT_SANDSTONE : get("stripped_" + wood + "_log", Blocks.STRIPPED_OAK_LOG); }
     public Block door() { return get(wood + "_door", Blocks.OAK_DOOR); }
     public Block fence() { return get(wood + "_fence", Blocks.OAK_FENCE); }
     public Block trapdoor() { return get(wood + "_trapdoor", Blocks.OAK_TRAPDOOR); }
     public Block plate() { return get(wood + "_pressure_plate", Blocks.OAK_PRESSURE_PLATE); }
     public Block leaves() { return get(wood + "_leaves", Blocks.OAK_LEAVES); }
-    public Block roofStairs() { return get(roofWood + "_stairs", Blocks.SPRUCE_STAIRS); }
-    public Block roofSlab() { return get(roofWood + "_slab", Blocks.SPRUCE_SLAB); }
-    public Block roofPlanks() { return get(roofWood + "_planks", Blocks.SPRUCE_PLANKS); }
+    public Block roofStairs() { return desert() ? Blocks.SMOOTH_SANDSTONE_STAIRS : get(roofWood + "_stairs", Blocks.SPRUCE_STAIRS); }
+    public Block roofSlab() { return desert() ? Blocks.SMOOTH_SANDSTONE_SLAB : get(roofWood + "_slab", Blocks.SPRUCE_SLAB); }
+    public Block roofPlanks() { return desert() ? Blocks.SMOOTH_SANDSTONE : get(roofWood + "_planks", Blocks.SPRUCE_PLANKS); }
     public Block stairs() { return get(wood + "_stairs", Blocks.OAK_STAIRS); }
     public Block fenceGate() { return get(wood + "_fence_gate", Blocks.OAK_FENCE_GATE); }
     private boolean northern() {

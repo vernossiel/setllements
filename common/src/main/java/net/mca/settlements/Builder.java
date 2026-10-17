@@ -623,6 +623,12 @@ public final class Builder {
                 || s.isOf(Blocks.SNOW) || s.isOf(Blocks.CACTUS) || s.isOf(Blocks.DEAD_BUSH);
     }
 
+    /** A beam laid along its axis (a log); in the desert's stone, the plain block. */
+    private static BlockState axised(Block b, net.minecraft.util.math.Direction.Axis axis) {
+        BlockState st = b.getDefaultState();
+        return st.contains(PillarBlock.AXIS) ? st.with(PillarBlock.AXIS, axis) : st;
+    }
+
     private static boolean startAt(Village village, String type, int w, int d, int floors, Layout.Slot slot) {
         if (village.getWorld() != null) {
             String clash = Layout.clash(village.getWorld(), village, slot.origin().getX(), slot.origin().getZ(), slot.fw(), slot.fd());
@@ -1832,7 +1838,7 @@ public final class Builder {
             }
             case BEAM_X, BEAM_Z: {
                 Direction.Axis axis = (kind == Kind.BEAM_X) == ((rot & 1) == 0) ? Direction.Axis.X : Direction.Axis.Z;
-                if (take(village, LOG, 1)) return pal.strippedLog().getDefaultState().with(PillarBlock.AXIS, axis);
+                if (take(village, LOG, 1)) return axised(pal.strippedLog(), axis);
                 return plank(village, pal.planks());
             }
             case ACCENT: {
@@ -1917,7 +1923,7 @@ public final class Builder {
             case LOG_X, LOG_Z: {
                 Direction.Axis axis = (kind == Kind.LOG_X) == ((rot & 1) == 0) ? Direction.Axis.X : Direction.Axis.Z;
                 if (!take(village, LOG, 1)) return null;
-                return pal.log().getDefaultState().with(PillarBlock.AXIS, axis);
+                return axised(pal.log(), axis);
             }
             case GLASS: {
                 if (take(village, GLASS, 1)) return Blocks.GLASS_PANE.getDefaultState();
