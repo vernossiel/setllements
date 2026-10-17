@@ -161,6 +161,15 @@ public final class Housing {
      * A house with a wall gone - an old one half pulled down, one cut into by a road - lets the night in to the bed:
      * three in a row died in one such house at the edge of the plains. Reckoned once a day per bed.
      */
+    static final Map<BlockPos, BlockPos> LEAK = new HashMap<>(); // bed -> the open-sky cell its room was found to reach (for /settlements bedcheck)
+
+    /** The same, looked at afresh (for /settlements bedcheck). */
+    static boolean safeNow(ServerWorld world, BlockPos bed) {
+        SAFE.remove(bed);
+        LEAK.remove(bed);
+        return safe(world, bed);
+    }
+
     public static boolean safe(ServerWorld world, BlockPos bed) {
         long day = world.getTimeOfDay() / 24000L;
         Safe c = SAFE.get(bed);
@@ -180,7 +189,10 @@ public final class Housing {
         }
         while (!open.isEmpty() && ok) {
             BlockPos p = open.poll();
-            if (world.isSkyVisible(p)) ok = false; // out under the sky without a door between
+            if (world.isSkyVisible(p)) {
+                ok = false; // out under the sky without a door between
+                LEAK.put(bed.toImmutable(), p.toImmutable());
+            }
             if (seen.size() > 160 || p.getSquaredDistance(bed) > 10 * 10) break; // a big house: room enough, call it shut
             for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
                 for (int dy = -1; dy <= 1; dy++) {

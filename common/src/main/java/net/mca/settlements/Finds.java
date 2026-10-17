@@ -12,8 +12,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Money on the ground does not lie there long: a villager who sees coins, gems or ingots dropped in the village goes
- * and picks them up, and they go into the village's coffers (a thrown purse, a dead thief's pockets).
+ * Nothing useful lies about long: a villager who sees money, food, coal and ore, wood or stone on the ground in the
+ * village goes and picks it up for the stores (a thrown purse, a dead thief's pockets, the coal a miner dug out and
+ * left, meat from a kill).
  */
 public final class Finds {
     private static final double RANGE = 10;
@@ -22,8 +23,16 @@ public final class Finds {
     private Finds() {
     }
 
+    /** Worth stooping for: money and gems, and whatever the village uses - food, coal and ore, wood, stone, wool, seed. */
     static boolean valuable(ItemStack s) {
-        return Money.is(s) || Reputation.value(new ItemStack(s.getItem())) >= 3;
+        if (Money.is(s) || Reputation.value(new ItemStack(s.getItem())) >= 3 || s.isFood()) return true;
+        var item = s.getItem();
+        return s.isIn(net.minecraft.registry.tag.ItemTags.LOGS) || s.isIn(net.minecraft.registry.tag.ItemTags.PLANKS) || s.isIn(net.minecraft.registry.tag.ItemTags.WOOL)
+                || s.isIn(net.minecraft.registry.tag.ItemTags.SAPLINGS) || s.isIn(net.minecraft.registry.tag.ItemTags.COALS)
+                || item == net.minecraft.item.Items.COBBLESTONE || item == net.minecraft.item.Items.COBBLED_DEEPSLATE || item == net.minecraft.item.Items.RAW_IRON
+                || item == net.minecraft.item.Items.RAW_COPPER || item == net.minecraft.item.Items.RAW_GOLD || item == net.minecraft.item.Items.LEATHER
+                || item == net.minecraft.item.Items.WHEAT || item == net.minecraft.item.Items.WHEAT_SEEDS || item == net.minecraft.item.Items.FEATHER
+                || item == net.minecraft.item.Items.STRING || item == net.minecraft.item.Items.FLINT || item == net.minecraft.item.Items.IRON_INGOT;
     }
 
     /** Once a second. True while he is going for something he saw lying there. */
@@ -34,7 +43,7 @@ public final class Finds {
         ItemEntity best = null;
         double bd = RANGE * RANGE;
         for (ItemEntity e : world.getEntitiesByClass(ItemEntity.class, v.getBoundingBox().expand(RANGE, 4, RANGE),
-                e -> e.isAlive() && e.age > 40 && valuable(e.getStack()))) {
+                e -> e.isAlive() && e.age > 40 && valuable(e.getStack()) && world.getClosestPlayer(e, 3) == null && !Move.unreachable(world, e.getBlockPos()))) { // (no way to it: a builder stood stuck reaching for a nugget) // (not what a player stands over: his own, likely)
             UUID by = CLAIMED.get(e.getUuid());
             if (by != null && !by.equals(v.getUuid()) && world.getEntity(by) instanceof VillagerEntityMCA o && o.isAlive() && o.squaredDistanceTo(e) < RANGE * RANGE * 2) continue;
             double d = v.squaredDistanceTo(e);
@@ -44,7 +53,7 @@ public final class Finds {
             }
         }
         if (best == null) return false;
-        if (CLAIMED.put(best.getUuid(), v.getUuid()) == null) Speech.say(v, "settlements.say.finds");
+        if (CLAIMED.put(best.getUuid(), v.getUuid()) == null && world.random.nextInt(4) == 0) Speech.say(v, "settlements.say.finds");
         Doing.set(v, "settlements.doing.finds");
         if (bd > 1.6 * 1.6) {
             Gaze.at(v, best.getX(), best.getY(), best.getZ());

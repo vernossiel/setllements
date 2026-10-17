@@ -136,7 +136,8 @@ public final class SettlementsCommand {
                     var pos = net.minecraft.command.argument.BlockPosArgumentType.getBlockPos(c, "pos");
                     var vil = net.mca.server.world.data.VillageManager.get(w).findNearestVillage(pos, 200).orElse(null);
                     if (vil == null) return say(c, "no village");
-                    StringBuilder b = new StringBuilder("allowed=" + Housing.allowed(vil, pos) + " hall=" + vil.hallPos + " built:");
+                    StringBuilder b = new StringBuilder("allowed=" + Housing.allowed(vil, pos) + " safe=" + Housing.safeNow(w, pos) + " leak=" + Housing.LEAK.get(pos)
+                            + " homeless=" + Housing.homeless(vil) + " empty=" + Housing.empty(vil) + " hall=" + vil.hallPos + " built:");
                     for (Built x : vil.built) if (x.contains(pos)) b.append(' ').append(x.type()).append('@').append(x.origin().toShortString());
                     vil.getBuildingAt(pos).ifPresent(bd -> b.append(" building=").append(bd.getType()).append(' ').append(bd.getPos0().toShortString()).append("..").append(bd.getPos1().toShortString()));
                     say(c, b.toString());

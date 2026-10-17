@@ -298,6 +298,8 @@ public final class Layout {
                 BlockState ground = world.getBlockState(g);
                 if (!ground.isSolidBlock(world, g) || !ground.getFluidState().isEmpty()) return null;
                 if (!land(ground)) return null; // a roof or a floor: something stands here already
+                // nor on a field: the farmland and its crops are somebody's (a farm was laid down over an old field, its fence round the old one's fence)
+                if (ground.isOf(net.minecraft.block.Blocks.FARMLAND) || world.getBlockState(g.up()).getBlock() instanceof net.minecraft.block.CropBlock) return null;
                 // not under a tree: no trunk standing on the site or right beside it (the second time round, they are felled)
                 if (!rough) {
                     for (int up = 0; up <= 8; up++) {

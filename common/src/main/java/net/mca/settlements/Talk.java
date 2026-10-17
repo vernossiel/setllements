@@ -45,6 +45,7 @@ public final class Talk {
     }
 
     private static final Map<UUID, Conversation> TALKING = new HashMap<>();
+    private static final java.util.Set<String> TOLD = new java.util.HashSet<>(); // who has passed on which news already
 
     private Talk() {
     }
@@ -186,7 +187,9 @@ public final class Talk {
         PlayerEntity p = world.getClosestPlayer(v, 20);
         double roll = r.nextDouble();
         // the stranger about: you
-        if (p != null && village != null && roll < 0.3) {
+        // (once a day for each of them: three hundred times "he steals from us" was too many)
+        long today = world.getTimeOfDay() / 24000L;
+        if (p != null && village != null && roll < 0.15 && TOLD.add(v.getUuid() + "|player|" + p.getUuid() + "|" + today)) {
             int tier = Reputation.tier(village.getReputation(p));
             String name = p.getName().getString();
             if (tier >= 5) return new String[]{"player_good", name};
@@ -195,9 +198,13 @@ public final class Talk {
         }
         // the news
         if (village != null && roll < 0.5) {
-            List<Life.News> news = Life.news(village);
+            List<Life.News> news = new ArrayList<>(Life.news(village));
+            // each passes a piece of news on once, not every time he stops to talk
+            news.removeIf(n -> TOLD.contains(v.getUuid() + "|" + n.key() + "|" + (n.args().length > 0 ? n.args()[0] : "") + "|" + n.time()));
             if (!news.isEmpty()) {
                 Life.News n = news.get(r.nextInt(Math.min(3, news.size())));
+                if (TOLD.size() > 5000) TOLD.clear();
+                TOLD.add(v.getUuid() + "|" + n.key() + "|" + (n.args().length > 0 ? n.args()[0] : "") + "|" + n.time());
                 Object a = n.args().length > 0 ? n.args()[0] : "";
                 return new String[]{"news." + n.key(), a instanceof Text tx ? tx.getString() : String.valueOf(a)};
             }

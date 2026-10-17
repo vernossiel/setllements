@@ -52,6 +52,9 @@ public final class Life {
         if (village == null) return;
         Deque<News> q = NEWS.computeIfAbsent(village.getId(), k -> new ArrayDeque<>());
         long now = village.getWorld() == null ? 0 : village.getWorld().getTime();
+        // the same news again (another theft by the same man) is the old news freshened, not a second piece of it
+        String a0 = args.length > 0 ? String.valueOf(args[0]) : "";
+        q.removeIf(n -> n.key().equals(key) && (n.args().length > 0 ? String.valueOf(n.args()[0]) : "").equals(a0));
         q.addFirst(new News(key, args, now));
         while (q.size() > 8) q.removeLast();
     }
@@ -151,7 +154,7 @@ public final class Life {
         double bd = range * range;
         for (PlayerEntity p : world.getPlayers()) {
             double d = p.squaredDistanceTo(watcher);
-            if (d < bd && p.isAlive() && which.test(p) && watcher.canSee(p)) {
+            if (d < bd && p.isAlive() && !p.isSpectator() && which.test(p) && watcher.canSee(p)) { // (a spectator is not there to be seen)
                 bd = d;
                 best = p;
             }

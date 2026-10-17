@@ -259,9 +259,29 @@ public final class Builder {
         for (int attempt = 0; attempt < 12; attempt++) {
             BlockPos o = findSite(world, village, 4, 4);
             if (o == null) return null;
-            if (dryUnder(world, o)) return o;
+            if (dryUnder(world, o) && clearOver(world, village, o)) return o;
         }
         return null;
+    }
+
+    /**
+     * Nothing built over the whole run of the shaft, not just its 4x4 mouth: the stair goes down a long way to one side,
+     * and one was dug right in through the floor of a house beside it (the miner stood stuck in the house).
+     */
+    private static boolean clearOver(ServerWorld world, Village village, BlockPos o) {
+        int depth = Blueprints.MINE_DEPTH;
+        for (int x = -3; x <= 6; x++) {
+            for (int z = -3; z <= depth + 7; z++) {
+                BlockPos p = o.add(x, 0, z);
+                if (Layout.ground(world, p.getX(), p.getZ()) == Integer.MIN_VALUE && !world.getFluidState(p.down()).isEmpty()) return false;
+                for (Building b : village.getBuildings().values()) if (!b.getBuildingType().grouped() && b.containsPos(p.up())) return false;
+                for (Built b : village.built) if (b.contains(p)) return false;
+                int top = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, p.getX(), p.getZ());
+                BlockState t = world.getBlockState(new BlockPos(p.getX(), top - 1, p.getZ()));
+                if (!Layout.land(t) && !t.isIn(net.minecraft.registry.tag.BlockTags.LOGS) && !t.isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) return false; // a roof, a floor, a fence
+            }
+        }
+        return true;
     }
 
     private static boolean dryUnder(ServerWorld world, BlockPos o) {

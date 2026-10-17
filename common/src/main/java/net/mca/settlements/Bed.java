@@ -87,7 +87,7 @@ public final class Bed {
     /** Nobody is watching him: no player close by, and none who has him in sight. */
     public static boolean unseen(VillagerEntityMCA v, ServerWorld world) {
         for (net.minecraft.server.network.ServerPlayerEntity p : world.getPlayers()) {
-            if (p.isSpectator()) continue;
+            // (a spectator watches too: nobody is put somewhere else before the eyes of one looking on, whatever his mode)
             double d = p.squaredDistanceTo(v);
             if (d < 16 * 16 || d < 96 * 96 && p.canSee(v)) return false;
         }
