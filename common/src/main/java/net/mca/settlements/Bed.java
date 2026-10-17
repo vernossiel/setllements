@@ -33,7 +33,12 @@ public final class Bed {
      */
     private static BlockPos inside(net.mca.server.world.data.Village village, ServerWorld world) {
         long day = world.getTimeOfDay() / 24000L;
-        if (SHUT_IN_AT.getOrDefault(village.getId(), -1L) == day) return SHUT_IN.get(village.getId());
+        if (SHUT_IN_AT.getOrDefault(village.getId(), -1L) == day) {
+            BlockPos at = SHUT_IN.get(village.getId());
+            // still free to stand on (a bed put down in the hall since took the very spot, and the homeless stood all
+            // night just outside, two steps from a place that could no longer be had)
+            if (at == null || Move.passable(world, at) && Move.passable(world, at.up())) return at;
+        }
         SHUT_IN_AT.put(village.getId(), day);
         Built hall = null;
         for (Built b : village.built) if (Buildings.base(b.type()).equals("townhall")) hall = b;
