@@ -83,6 +83,7 @@ public final class Workforce {
     public static void tick(VillagerEntityMCA v) {
         Pose.tick(v);
         Anim.tick(v);
+        Move.shutBehind(v); // the door he came through shut behind him, first of all, whatever he does next (at bedtime too: a door left open let the zombies in on a sleeper)
         // a guard on a player's case: he goes to him and stays by him, nothing else (a fight aside)
         if (v.isGuard() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld jw && Justice.duty(v, jw)) return;
         if (Witness.busy(v)) return; // having it out with a thief he caught (see Witness)
@@ -156,7 +157,6 @@ public final class Workforce {
 
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw0) Haul.closeChests(cw0);
         if (!Talk.talking(v)) Move.elbowRoom(v); // nobody stands pressed into another
-        Move.shutBehind(v);
         Unstick.tick(v, village);
         Move.tick(v, village);
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld gw) {

@@ -527,6 +527,7 @@ public final class Move {
     }
 
     static void open(VillagerEntityMCA v, ServerWorld world, BlockPos p) {
+        shutBehind(v); // the last one he went through, shut before he opens the next
         BlockState s = world.getBlockState(p);
         v.swingHand(v.getDominantHand());
         if (s.getBlock() instanceof net.minecraft.block.FenceGateBlock) {
