@@ -183,7 +183,10 @@ public final class Workforce {
             boolean moment = !Mind.onDuty(v, village, time) || v.settlementsBreak || v.settlementsIdleWork >= 10 || Morning.active(v, time) || Festival.fair(time)
                     || Mind.before(v, village, time, Mind.Drive.TALK);
             STAGE.put(v.getUuid(), "talk");
-            if (Talk.tick(v, village, tw, moment && !Dig.busy(v) && !v.settlementsHauling)) return;
+            long dusk2 = tw.getTimeOfDay() % 24000L;
+            boolean late = dusk2 >= 12300 || dusk2 < 500; // after sunset nobody stands talking in the street: home (a chat at dusk kept one out till the zombies came)
+            if (late && Talk.talking(v)) Talk.end(v);
+            if (!late && Talk.tick(v, village, tw, moment && !Dig.busy(v) && !v.settlementsHauling)) return;
         }
 
         // the elder keeps office by the town hall's lectern

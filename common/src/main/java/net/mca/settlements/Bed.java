@@ -65,6 +65,7 @@ public final class Bed {
             }
         }
         if (bestSky > 7) best = null; // open to the night all the same (a hall still going up, its roof not on yet): no shelter there
+        if (best != null && !Housing.safe(world, best)) best = null; // a gap in its walls the zombies walk through
         if (best == null) SHUT_IN.remove(village.getId());
         else SHUT_IN.put(village.getId(), best);
         return best;
@@ -222,7 +223,7 @@ public final class Bed {
                     }
                 }
             }
-            if (in == null) continue;
+            if (in == null || !Housing.safe(world, in)) continue; // a room the night can walk into is no shelter (one woken from an unsafe bed sat the night on the floor of the same room, and died there)
             double d = in.getSquaredDistance(v.getBlockPos());
             if (d < bd) {
                 bd = d;

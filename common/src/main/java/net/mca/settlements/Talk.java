@@ -130,6 +130,12 @@ public final class Talk {
         return true;
     }
 
+    /** Breaks off the conversation he is in (it is late: both go home). */
+    public static void end(VillagerEntityMCA v) {
+        Conversation c = TALKING.get(v.getUuid());
+        if (c != null) end(c);
+    }
+
     private static void end(Conversation c) {
         TALKING.remove(c.a);
         TALKING.remove(c.b);

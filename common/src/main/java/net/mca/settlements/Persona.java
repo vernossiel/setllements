@@ -115,7 +115,7 @@ public final class Persona {
     /** Up and about with nothing to do for the village: the morning before work, the evening after it, the rest day. */
     public static boolean free(VillagerEntityMCA v, long time) {
         long t = time % 24000L;
-        if (t >= 12800 + of(v).shift() / 3 || t < 500) return false; // bedtime
+        if (t >= 12300 + of(v).shift() / 3 || t < 500) return false; // bedtime: home with the sunset, before the monsters are about (at 12800 and later they were caught on their own doorsteps)
         return !working(v, time);
     }
 
