@@ -28,10 +28,18 @@ public final class DialogueHud {
     private DialogueHud() {
     }
 
+    private static boolean priority; // put there by the server (the guard, a witness, the elder): not covered by passing chatter
+
     public static void open(JusticeScreenRequest r) {
+        show(r);
+        priority = true;
+    }
+
+    private static void show(JusticeScreenRequest r) {
         current = r;
         opened = System.currentTimeMillis();
         selected = 0;
+        priority = false;
     }
 
     /**
@@ -43,6 +51,8 @@ public final class DialogueHud {
     public static void hear(java.util.UUID from, Text words) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.world == null || mc.player == null || current != null && current.getOptions().length > 0) return;
+        // what the guard or the one who caught him said is not wiped off by somebody else's remark in passing
+        if (current != null && priority && left() > 0) return;
         Entity e = null;
         for (Entity x : mc.world.getEntities()) {
             if (x.getUuid().equals(from)) {
@@ -56,7 +66,9 @@ public final class DialogueHud {
         Vec3d to = mc.player.getEyePos().subtract(e.getEyePos()).normalize();
         boolean facing = e.getRotationVec(1f).dotProduct(to) > 0.8;
         if (!(named && d < 24 * 24 || d < 6 * 6 && facing)) return;
-        open(new JusticeScreenRequest(e.getId(), e.getDisplayName(), List.of(words), new String[0], List.of(), 0));
+        // and of the others, words said to him by name are not covered by words that are not
+        if (current != null && left() > 0 && current.getLines().stream().anyMatch(t -> t.getString().contains(mc.player.getName().getString())) && !named) return;
+        show(new JusticeScreenRequest(e.getId(), e.getDisplayName(), List.of(words), new String[0], List.of(), 0));
     }
 
     public static void close() {

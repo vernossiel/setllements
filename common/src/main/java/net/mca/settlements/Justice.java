@@ -100,6 +100,18 @@ public final class Justice {
         c.value += value;
         c.witnessed |= witnessed;
         if (items != null) items.forEach((k, n) -> c.stolen.merge(k, n, Integer::sum));
+        // caught at it: what else of the same kind he took here before, unseen, goes on the same account (eight nuggets
+        // taken unseen, then the rest seen: the search came for the first lot, and only those were taken back)
+        if (crime == Crime.THEFT && witnessed) {
+            for (Iterator<Suspicion> it = SUSPICIONS.iterator(); it.hasNext(); ) {
+                Suspicion s = it.next();
+                if (!s.player().equals(player.getUuid()) || s.villageId() != village.getId() || s.crime() != Crime.THEFT) continue;
+                c.value += s.value();
+                if (s.items() != null) s.items().forEach((k, n) -> c.stolen.merge(k, n, Integer::sum));
+                it.remove();
+            }
+            SEARCHES.remove(player.getUuid()); // and no search: he was seen
+        }
         if (crime == Crime.MURDER) {
             if (player instanceof ServerPlayerEntity sp && c.stage != Stage.EXILED) exile(world, village, sp, c, 3);
         } else if (crime == Crime.ASSAULT && c.stage.ordinal() < Stage.RESISTING.ordinal()) {
@@ -177,6 +189,14 @@ public final class Justice {
             it.remove();
             ServerPlayerEntity p = world.getServer().getPlayerManager().getPlayer(s.player());
             String what = s.crime().name().toLowerCase();
+            Case open = CASES.get(s.player());
+            if (open != null && open.villageId == s.villageId() && s.crime() == Crime.THEFT) {
+                // he is already answering for a theft here: this one goes on the same account, no search on top of it
+                open.value += s.value();
+                if (s.items() != null) s.items().forEach((k, n) -> open.stolen.merge(k, n, Integer::sum));
+                Speech.sayNow(finder, "settlements.justice.found." + what);
+                continue;
+            }
             if (s.seen() && p != null && s.crime() == Crime.THEFT && p.getWorld() == world) {
                 // he was seen about the place: the one who finds it gone goes up to him himself, if he is in sight and no
                 // guard is by (see Witness); else the watch will want a look in his pockets
