@@ -96,7 +96,9 @@ class House:
         self.roofs.add((x, y, z))
 
     def put(self, x, y, z, b):
-        assert 0 <= x < self.w and 0 <= y < self.h and 0 <= z < self.d, (x, y, z, b)
+        assert 0 <= x < self.w and 0 <= y and 0 <= z < self.d, (x, y, z, b)
+        if y >= self.h:
+            self.h = y + 1  # (a turret, a hoist added on top after the house was measured)
         self.cells[(x, y, z)] = b
 
     def box(self, x0, y0, z0, x1, y1, z1, b):
@@ -1836,8 +1838,289 @@ def keep(level):
     return h
 
 
-SHAPED = {"storehouse": barn, "granary": staddle_granary, "forge": forge_shed, "armoury": keep, "lumberyard": saw_shed,
-          "masonry": mason_yard, "mill": windmill, "garrison": garrison}
+# ---------- what sets the stations apart: the hamlet's makeshift, the wealthy village's establishment ----------
+
+def sails(h, cx, hy, zs, R, cloth=True):
+    """Four arms of timber on a hub, their cloth beside them, turned to the wind."""
+    h.put(cx, hy, zs, log("z"))
+    for k in range(1, R + 1):
+        h.put(cx, hy + k, zs, fence())
+        h.put(cx, hy - k, zs, fence())
+        h.put(cx + k, hy, zs, fence(e=k < R, w=True))
+        h.put(cx - k, hy, zs, fence(e=True, w=k < R))
+        if cloth and k >= 2:
+            for (xx, yy) in ((cx + 1, hy + k), (cx - 1, hy - k), (cx + k, hy - 1), (cx - k, hy + 1)):
+                h.put(xx, yy, zs, "minecraft:white_wool")
+
+
+def post_mill():
+    """The hamlet's mill: a box of boards up on a post and its trestle, turned whole to the wind; a ladder of steps."""
+    R = 5
+    w = 2 * R + 3
+    cx = w // 2
+    x0, x1, z0, z1 = cx - 2, cx + 2, 1, 5
+    h = House(w, 12, 20)
+    h.box(x0 - 1, 0, z0 - 1, x1 + 1, 0, z1 + 1, "minecraft:gravel")
+    # the trestle: the post up the middle, its four legs out on stones
+    wcol(h, cx, 3, 1, 4, log())
+    for (x, z) in ((x0, z0), (x1, z0), (x0, z1), (x1, z1)):
+        h.put(x, 1, z, COB)
+        h.put(x, 2, z, fence())
+    for (x, z) in ((cx - 1, 3), (cx + 1, 3), (cx, 2), (cx, 4)):
+        h.put(x, 3, z, fence(e=x < cx, w=x > cx, n=z > 3, s=z < 3))
+    # the body on top of it
+    h.box(x0, 5, z0, x1, 5, z1, PLANK)
+    for y in range(6, 10):
+        for x in range(x0, x1 + 1):
+            for z in (z0, z1):
+                h.put(x, y, z, log() if x in (x0, x1) else PLANK)
+        for z in range(z0 + 1, z1):
+            for x in (x0, x1):
+                h.put(x, y, z, PLANK)
+    plate(h, x0, z0, x1, z1, 10)
+    h.put(cx, 6, z1, door("north", "lower", "left"))
+    h.put(cx, 7, z1, door("north", "upper", "left"))
+    for k in range(1, 6):  # the steps up to it
+        h.put(cx, 6 - k, z1 + k, st("north"))
+        if k > 1:
+            h.put(cx, 5 - k, z1 + k, PLANK) if 5 - k >= 1 else None
+    h.put(x0 + 1, 6, z0 + 1, "minecraft:grindstone[face=floor,facing=south]")
+    h.put(x1 - 1, 6, z0 + 1, "minecraft:hay_block[axis=y]")
+    h.put(x1 - 1, 6, z0 + 2, BARREL_UP)
+    h.put(x0 + 1, 8, z0 + 2, wtorch("east"))
+    clear(h, 0, w - 1, 0, 11, 1, 19)
+    roof_x(h, x0 - 1, x1 + 1, x0, x1, z1 + 2, 10, "oak", PLANK) if False else None
+    for i in range(0, 4):
+        zn, zs_, y = z0 - 1 + i, z1 + 1 - i, 10 + i
+        if zn > zs_:
+            break
+        for x in range(x0 - 1, x1 + 2):
+            if zn == zs_:
+                h.roof(x, y, zn, slab("bottom"))
+            else:
+                h.roof(x, y, zn, st("south"))
+                h.roof(x, y, zs_, st("north"))
+        for z in range(zn + 1, zs_):
+            for gx in (x0, x1):
+                if h.cells.get((gx, y, z), AIR) == AIR:
+                    h.put(gx, y, z, PLANK)
+    sails(h, cx, 9, z0 - 1, R, cloth=False) if False else None
+    # (the sails on the back of the body, away from the door and its steps)
+    h.put(cx, 8, z0 - 1, log("z")) if False else None
+    sails(h, cx, 8, 0, 4, cloth=False)
+    trim_top(h)
+    return h
+
+
+def mill_gallery(h):
+    """The great mill's stage: a gallery round the tower half way up, railed, for the miller to reach the sails."""
+    xs = [x for (x, y, z), b in h.cells.items() if y == 6 and b != AIR and "log" not in b]
+    zs = [z for (x, y, z), b in h.cells.items() if y == 6 and b != AIR and "log" not in b]
+    x0, x1, z0, z1 = min(xs), max(xs), min(zs), max(zs)
+    for x in range(x0 - 1, x1 + 2):
+        for z in range(z0 - 1, z1 + 2):
+            if x0 <= x <= x1 and z0 <= z <= z1:
+                continue
+            if h.cells.get((x, 8, z), AIR) == AIR:
+                h.put(x, 8, z, slab("top"))
+            if h.cells.get((x, 9, z), AIR) == AIR and (x in (x0 - 1, x1 + 1) or z in (z0 - 1, z1 + 1)):
+                h.put(x, 9, z, fence(e=x < x1 + 1 and z in (z0 - 1, z1 + 1), w=x > x0 - 1 and z in (z0 - 1, z1 + 1),
+                                     n=z > z0 - 1 and x in (x0 - 1, x1 + 1), s=z < z1 + 1 and x in (x0 - 1, x1 + 1)))
+    for (x, z) in ((x0 - 1, z0 - 1), (x1 + 1, z0 - 1), (x0 - 1, z1 + 1), (x1 + 1, z1 + 1)):
+        for y in range(1, 8):  # its struts down to the ground
+            if h.cells.get((x, y, z), AIR) == AIR:
+                h.put(x, y, z, fence())
+
+
+def lean_forge():
+    """The hamlet's smith: a hearth of stone under a lean-to roof on two posts, the anvil out in the open."""
+    h = House(7, 7, 10)
+    h.box(1, 0, 1, 5, 0, 5, COB)
+    h.box(1, 1, 1, 5, 1, 4, "minecraft:cobblestone")
+    for x in range(1, 6):
+        for y in range(2, 4):
+            h.put(x, y, 1, COB)
+    h.put(3, 2, 2, furnace("south"))
+    h.put(2, 2, 2, COB)
+    h.put(4, 2, 2, COB)
+    for x in (2, 3, 4):
+        h.put(x, 4, 2, cst("north", "top"))
+    wcol(h, 1, 3, 2, 3, log())
+    wcol(h, 5, 3, 2, 3, log())
+    h.put(3, 2, 4, "minecraft:anvil[facing=east]")
+    h.put(5, 2, 4, "minecraft:water_cauldron[level=3]")
+    h.put(1, 2, 2, "minecraft:grindstone[face=floor,facing=south]")
+    h.put(5, 2, 2, chest("south"))
+    clear(h, 0, 6, 0, 6, 1, 9)
+    for x in range(0, 7):  # the lean-to: high at the hearth, low over the posts
+        h.roof(x, 4, 1, slab("bottom", "spruce")) if False else None
+        h.roof(x, 5, 0, rstairs("spruce", "south"))
+        h.roof(x, 5, 1, slab("bottom", "spruce"))
+        h.roof(x, 4, 2, rstairs("spruce", "north", "top")) if False else None
+        h.roof(x, 4, 3, rstairs("spruce", "north"))
+    for y in range(2, 8):
+        h.put(3, y, 0, COB)
+    h.put(3, 8, 0, cap(COB))
+    trim_top(h)
+    return h
+
+
+def crib():
+    """The hamlet's store: a little log crib, notched corners, a door, the sacks and barrels inside."""
+    h = House(7, 7, 12)
+    x0, x1, z0, z1 = 1, 5, 1, 5
+    h.box(x0, 0, z0, x1, 0, z1, COB)
+    frame(h, x0, z0, x1, z1, 1, 1, COB, COB)
+    h.box(x0 + 1, 1, z0 + 1, x1 - 1, 1, z1 - 1, PLANK)
+    for y in range(2, 5):
+        for x in range(x0, x1 + 1):
+            for z in (z0, z1):
+                h.put(x, y, z, log("x") if y % 2 == 0 or x in (x0, x1) else log("x"))
+        for z in range(z0 + 1, z1):
+            for x in (x0, x1):
+                h.put(x, y, z, log("z"))
+        for (x, z) in ((x0, z0), (x1, z0), (x0, z1), (x1, z1)):
+            h.put(x, y, z, log("x") if y % 2 == 0 else log("z"))  # the notched corners, crossing course by course
+    h.put(3, 2, z1, door("north", "lower", "left"))
+    h.put(3, 3, z1, door("north", "upper", "left"))
+    h.put(3, 1, z1 + 1, cst("north"))
+    for (x, z, b) in ((2, 2, BARREL_UP), (3, 2, chest("south")), (4, 2, BARREL_UP), (4, 3, "minecraft:hay_block[axis=y]"),
+                      (2, 3, "minecraft:barrel[facing=east,open=false]")):
+        h.put(x, 2, z, b)
+    h.put(3, 4, 2, wtorch("south"))
+    clear(h, 0, 6, 0, 6, 1, 11)
+    roof_x(h, 0, 6, x0, x1, 7, 5, "spruce", log("x"))
+    trim_top(h)
+    return h
+
+
+def saw_pit():
+    """The hamlet's sawyers: a pit with a log across it under a roof on four posts, the logs lying out in the open."""
+    h = House(11, 9, 10)
+    h.box(0, 0, 0, 10, 0, 8, "minecraft:coarse_dirt")
+    cx, cz = 5, 4
+    for x in range(cx - 2, cx + 3):
+        h.put(x, 0, cz, AIR)  # the pit
+    h.put(cx - 2, 0, cz, "minecraft:coarse_dirt")
+    for x in range(cx - 3, cx + 4):
+        h.put(x, 1, cz, "minecraft:oak_wood[axis=x]") if x in (cx - 3, cx + 3) else None
+    for x in range(cx - 2, cx + 3):
+        h.put(x, 2, cz, "minecraft:oak_log[axis=x]") if False else None
+    h.put(cx, 1, cz, "minecraft:stonecutter[facing=south]")
+    for (x, z) in ((cx - 3, cz - 2), (cx + 3, cz - 2), (cx - 3, cz + 2), (cx + 3, cz + 2)):
+        wcol(h, x, z, 1, 3, log())
+    clear(h, 0, 10, 0, 8, 1, 9)
+    for x in range(cx - 4, cx + 5):
+        for z in range(cz - 3, cz + 4):
+            h.roof(x, 4, z, slab("bottom", "spruce"))
+    for x in range(cx - 4, cx + 5):
+        h.roof(x, 4, cz, rstairs("spruce", "south")) if False else None
+    # the logs waiting, the boards stacked, in the open
+    for x in range(0, 4):
+        h.put(x, 1, 7, "minecraft:oak_wood[axis=x]")
+        h.put(x, 1, 8, "minecraft:oak_wood[axis=x]")
+        if x < 3:
+            h.put(x, 2, 7, "minecraft:oak_wood[axis=x]")
+    for x in range(7, 10):
+        h.put(x, 1, 8, PLANK)
+        h.put(x, 2, 8, slab("bottom"))
+    h.put(9, 1, 0, CRAFT)
+    h.put(9, 1, 1, chest("west"))
+    trim_top(h)
+    return h
+
+
+def drying_racks(h, x0, x1, z, y=2):
+    """Racks of boards drying in the air: posts and rails with planks laid across."""
+    for x in range(x0, x1 + 1):
+        h.put(x, y, z, fence(e=x < x1, w=x > x0))
+        h.put(x, y + 1, z, slab("bottom") if x % 2 else fence(e=x < x1, w=x > x0))
+
+
+def turrets(h, size, top, stone):
+    """Corner turrets on a keep: each corner raised two courses more, its own battlement."""
+    x0, x1, z0, z1 = 1, size, 1, size
+    for (cx, cz) in ((x0, z0), (x1, z0), (x0, z1), (x1, z1)):
+        for dx in (0, 1 if cx == x0 else -1):
+            for dz in (0, 1 if cz == z0 else -1):
+                for y in range(top + 1, top + 4):
+                    h.put(cx + dx, y, cz + dz, stone)
+        h.put(cx, top + 4, cz, stone)
+
+
+def walled_yard(h, x0, x1, z0, z1, stone):
+    """A stone wall round the drill yard, a gate in it."""
+    wx = "minecraft:cobblestone_wall[east=low,north=none,south=none,up=true,waterlogged=false,west=low]"
+    wz = "minecraft:cobblestone_wall[east=none,north=low,south=low,up=true,waterlogged=false,west=none]"
+    for x in range(x0, x1 + 1):
+        for z in (z0, z1):
+            h.put(x, 2, z, stone)
+            h.put(x, 3, z, wx)
+    for z in range(z0 + 1, z1):
+        h.put(x1, 2, z, stone)
+        h.put(x1, 3, z, wz)
+
+def mill_at(level):
+    if level == 1:
+        return post_mill()
+    h = windmill(level)
+    if level == 3:
+        mill_gallery(h)
+    return h
+
+
+def forge_at(level):
+    return lean_forge() if level == 1 else forge_shed(level)
+
+
+def store_at(level):
+    if level == 1:
+        return crib()
+    h = barn(level)
+    if level == 3:  # a lean-to along its side, and the loading yard before it
+        W = 13
+        for z in range(2, 9):
+            for y in range(2, 4):
+                h.put(W + 1, y, z, BARREL_UP if y == 2 and z % 2 else AIR)
+    return h
+
+
+def granary_at(level):
+    return staddle_granary(level)
+
+
+def lumber_at(level):
+    if level == 1:
+        return saw_pit()
+    h = saw_shed(level)
+    if level == 3:
+        drying_racks(h, 2, 8, 0)
+    return h
+
+
+def mason_at(level):
+    return mason_yard(level)
+
+
+def garrison_at(level):
+    h = garrison(level)
+    if level == 3:
+        W, D, YARD = 15, 7, 7
+        walled_yard(h, W + 1, W + YARD, 1, D, SBRICK)
+        h.put(W + 4, 2, D, AIR)
+        h.put(W + 4, 3, D, AIR)
+    return h
+
+
+def armoury_at(level):
+    h = keep(level)
+    if level == 3:
+        turrets(h, 9, 9, SBRICK)
+    return h
+
+
+SHAPED = {"storehouse": store_at, "granary": granary_at, "forge": forge_at, "armoury": armoury_at, "lumberyard": lumber_at,
+          "masonry": mason_at, "mill": mill_at, "garrison": garrison_at}
 
 CREDIT = "Settlements' own design, drawn after the MineColonies residences (github.com/ldtteam/minecolonies)"
 STYLES = {"medievaloak": "oak", "medievalbirch": "birch", "medievaldarkoak": "dark_oak", "nordic": "spruce", "sandstone": "oak", "badlands": "oak"}
