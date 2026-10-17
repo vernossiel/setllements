@@ -293,6 +293,7 @@ public final class Staffing {
 
     static VillagerEntityMCA assign(ServerWorld world, VillagerEntityMCA v, VillagerProfession prof) {
         v.setProfession(prof);
+        if (Haul.load(v) > 0) v.settlementsDeliverNow = true; // what he gathered at his old work goes to the stores first (see Workforce)
         v.setExperience(1); // keeps the vanilla "lost my job site" logic from taking the job away again
         v.reinitializeBrain(world);
         Speech.sayHired(v);

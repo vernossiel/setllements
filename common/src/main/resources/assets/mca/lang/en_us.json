@@ -4169,6 +4169,7 @@
   "settlements.witness.button.refuse": "\"Mind your own business.\" [Refuse]",
   "settlements.say.finds": "Hey, who dropped this? It goes to the coffers.",
   "settlements.doing.finds": "picking up money dropped in the street",
+  "settlements.doing.fight": "fighting %s off alongside the guards",
   "settlements.say.trapped": "Hey! Somebody let me out of here!",
   "settlements.say.trapped.f": "Hey! Somebody let me out of here!",
   "settlements.doing.trapped": "shut in: calling for help, breaking his way out",

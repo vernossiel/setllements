@@ -4166,6 +4166,7 @@
   "settlements.witness.button.refuse": "«Иди куда шёл.» [Отказать]",
   "settlements.say.finds": "Кто это обронил? В казну пойдёт.",
   "settlements.doing.finds": "подбирает обронённые деньги",
+  "settlements.doing.fight": "вместе со стражей даёт отпор %s",
   "settlements.say.trapped": "Эй! Выпустите меня отсюда!",
   "settlements.say.trapped.f": "Эй! Выпустите меня отсюда!",
   "settlements.doing.trapped": "заперт: зовёт на помощь, пробивается наружу",

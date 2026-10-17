@@ -345,6 +345,11 @@ public final class Workforce {
         if (village != null && Mood.now(village) == Mood.Kind.JOY && v.getWorld() instanceof net.minecraft.server.world.ServerWorld jw && Mood.tick(v, village, jw, false)) return;
         if (Seat.seated(v)) Rest.end(v); // up, back to work
         STAGE.put(v.getUuid(), "custom");
+        // just taken on for other work: first the load from the old work to the stores, not round with him for days
+        if (village != null && (v.settlementsDeliverNow || v.settlementsHauling) && Haul.carry(v, village, true)) {
+            v.settlementsEnergy -= WORK_DRAIN;
+            return;
+        }
         // a hungry village sends him out for food before his own work (see Forage.sent)
         if (village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld fsw && Forage.sent(v, village, fsw) && Forage.work(v, village, fsw)) {
             v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;

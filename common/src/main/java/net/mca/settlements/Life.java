@@ -172,6 +172,11 @@ public final class Life {
         if (crime == Justice.Crime.HARASSMENT) {
             Speech.sayNow(victim, "settlements.react.hit");
             Gaze.at(victim, attacker, 30f, 30f);
+            // a shove or a cuff: he backs off from him and keeps clear a while, he does not walk straight back past him to work
+            if (!victim.isGuard()) {
+                flee(victim, attacker, village, world);
+                victim.settlementsFleeUntil = Math.max(victim.settlementsFleeUntil, now + 20 * 12);
+            }
             return;
         }
         String k = key(village, attacker);
@@ -187,15 +192,44 @@ public final class Life {
         victim.settlementsFleeUntil = now + 20 * 60; // the one who was struck is a while getting over it
         for (VillagerEntityMCA o : world.getEntitiesByClass(VillagerEntityMCA.class, victim.getBoundingBox().expand(32),
                 o -> o.isAlive() && !o.isSleeping() && (o.canSee(attacker) || o.canSee(victim) || o.squaredDistanceTo(victim) < 64))) {
-            if (o.isGuard()) {
+            if (o.isGuard() || armed(o) && o.getHealth() > 8f) {
                 charge(o, attacker);
             } else if (o != victim) {
                 flee(o, attacker, village, world);
                 if (world.random.nextInt(3) == 0) Speech.say(o, "settlements.react.attack");
             }
         }
-        if (!victim.isGuard()) flee(victim, attacker, village, world);
+        if (!victim.isGuard() && armed(victim) && victim.getHealth() > 8f) charge(victim, attacker); // the hunter hits back
+        else if (!victim.isGuard()) flee(victim, attacker, village, world);
         callGuards(world, village, victim, attacker, true);
+    }
+
+    /** One who can handle a weapon: the hunter, or anybody with a sword in his hand (and not a child). */
+    public static boolean armed(VillagerEntityMCA v) {
+        return !v.isBaby() && (v.getProfession() == net.minecraft.village.VillagerProfession.LEATHERWORKER
+                || v.getMainHandStack().getItem() instanceof net.minecraft.item.SwordItem);
+    }
+
+    /** An armed villager (not a guard) with a player to fight, and the strength left for it. */
+    public static boolean fighting(VillagerEntityMCA v) {
+        return !v.isGuard() && armed(v) && v.getHealth() > 6f
+                && v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).map(t -> t instanceof PlayerEntity).orElse(false);
+    }
+
+    /** Once a second for an armed villager in a fight: after the one he is fighting, or out of it when it is over. */
+    private static boolean fight(VillagerEntityMCA v, ServerWorld world) {
+        if (v.isGuard() || !armed(v)) return false;
+        var brain = v.getBrain();
+        var t = brain.getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).orElse(null);
+        if (!(t instanceof PlayerEntity p)) return false;
+        if (!p.isAlive() || p.isCreative() || p.isSpectator() || Justice.spared(p) || v.squaredDistanceTo(p) > 32 * 32 || v.getHealth() <= 6f) {
+            brain.forget(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET); // over, or he is too hurt to go on: now he runs
+            return false;
+        }
+        Doing.set(v, "settlements.doing.fight", p.getName());
+        if (v.squaredDistanceTo(p) > 2.5 * 2.5) Move.to(v, p, 0.8);
+        Gaze.at(v, p, 30f, 30f);
+        return true;
     }
 
     private static void charge(VillagerEntityMCA guard, PlayerEntity target) {
@@ -235,7 +269,7 @@ public final class Life {
         }
         if (away == null) away = NoPenaltyTargeting.findFrom(v, 14, 5, from.getPos());
         if (away != null) v.getNavigation().startMovingTo(away.x, away.y, away.z, 0.7); // running, but not like a madman
-        v.settlementsFleeUntil = world.getTime() + 160;
+        v.settlementsFleeUntil = Math.max(v.settlementsFleeUntil, world.getTime() + 160); // (not cut short: the struck get a minute)
     }
 
     /** Runs from a monster: towards the nearest guard if there is one, else away from it. */
@@ -289,6 +323,7 @@ public final class Life {
         }
         if (v.isSleeping()) return false;
 
+        if (fight(v, world)) return true;
         if (notice(v, village, world, time)) return true;
         if (now < v.settlementsFleeUntil && !v.isGuard()) { // still running and shaking
             shaken(v, village, world);
