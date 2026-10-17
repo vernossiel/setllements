@@ -274,17 +274,65 @@ public final class Watch {
         if (village.hallPos != null) posts.add(village.hallPos);
         if (posts.isEmpty()) return false;
         int i = ROUND.getOrDefault(v.getUuid(), 0) % posts.size();
-        BlockPos post = posts.get(i);
+        // he keeps watch outside, a little off the building's door: inside, or standing in the doorway, he held the
+        // door open all night and watched nothing
+        long day = world.getTimeOfDay() / 24000L;
+        if (day != outsideDay) { // the village changes: the spots looked up afresh each night
+            OUTSIDE.clear();
+            outsideDay = day;
+        }
+        BlockPos post = OUTSIDE.computeIfAbsent(posts.get(i).asLong(), k -> outside(world, posts.get(i)));
         Doing.set(v, "settlements.doing.watch.round");
-        if (v.squaredDistanceTo(Vec3d.ofBottomCenter(post)) > 4 * 4) {
+        if (v.squaredDistanceTo(Vec3d.ofBottomCenter(post)) > 2 * 2) {
             Move.to(v, post.getX() + 0.5, post.getY(), post.getZ() + 0.5, 0.45);
+            if (WALKING.merge(v.getUuid(), 1, Integer::sum) > 40) { // no way there: on to the next
+                WALKING.remove(v.getUuid());
+                ROUND.put(v.getUuid(), i + 1);
+            }
             return true;
         }
+        WALKING.remove(v.getUuid());
         v.getNavigation().stop();
         if (world.random.nextInt(20) == 0) {
             ROUND.put(v.getUuid(), i + 1); // on to the next
             if (world.random.nextInt(3) == 0) Speech.sayAny(v, "settlements.say.watch.round", 3);
         }
         return true;
+    }
+
+    private static final Map<UUID, Integer> WALKING = new HashMap<>();
+    private static final Map<Long, BlockPos> OUTSIDE = new HashMap<>();
+    private static long outsideDay = -1;
+
+    /** Where to stand watching a building: out under the sky two steps off its nearest door, or the nearest open spot. */
+    static BlockPos outside(ServerWorld world, BlockPos at) {
+        BlockPos door = null;
+        for (BlockPos p : BlockPos.iterateOutwards(at, 10, 3, 10)) {
+            if (world.getBlockState(p).getBlock() instanceof net.minecraft.block.DoorBlock) {
+                door = p.toImmutable();
+                break;
+            }
+        }
+        if (door != null) {
+            for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+                for (int k = 2; k <= 3; k++) {
+                    BlockPos q = door.offset(d, k);
+                    for (int dy = 0; dy >= -1; dy--) {
+                        BlockPos f = q.up(dy);
+                        if (open(world, f)) return f;
+                    }
+                }
+            }
+        }
+        for (BlockPos p : BlockPos.iterateOutwards(at, 8, 3, 8)) {
+            if (open(world, p)) return p.toImmutable();
+        }
+        return at;
+    }
+
+    private static boolean open(ServerWorld world, BlockPos p) {
+        return world.isSkyVisible(p) && Move.passable(world, p) && Move.passable(world, p.up())
+                && world.getBlockState(p.down()).isSolidBlock(world, p.down())
+                && !(world.getBlockState(p).getBlock() instanceof net.minecraft.block.DoorBlock);
     }
 }

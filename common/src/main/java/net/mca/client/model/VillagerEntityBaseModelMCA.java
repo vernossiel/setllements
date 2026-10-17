@@ -97,6 +97,15 @@ public class VillagerEntityBaseModelMCA<T extends LivingEntity & VillagerLike<T>
             posePart(v, animationProgress, limbDistance);
         }
 
+        if (net.mca.settlements.Seat.dozing(villager)) { // asleep sitting up: chin on the chest, hands in the lap
+            head.pitch = 0.55f;
+            head.yaw = 0;
+            rightArm.pitch = -0.6f;
+            leftArm.pitch = -0.6f;
+            rightArm.yaw = -0.3f;
+            leftArm.yaw = 0.3f;
+        }
+
         applyVillagerDimensions(villager, sneaking);
     }
 

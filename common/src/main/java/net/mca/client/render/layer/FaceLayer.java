@@ -38,7 +38,7 @@ public class FaceLayer<T extends LivingEntity, M extends BipedEntityModel<T>> ex
     public Identifier getSkin(T villager) {
         int index = (int) Math.min(FACE_COUNT - 1, Math.max(0, CommonVillagerModel.getVillager(villager).getGenetics().getGene(Genetics.FACE) * FACE_COUNT));
         int time = villager.age / 2 + (int) (CommonVillagerModel.getVillager(villager).getGenetics().getGene(Genetics.HEMOGLOBIN) * 65536);
-        boolean blink = time % 50 == 1 || time % 57 == 1 || villager.isSleeping() || villager.isDead();
+        boolean blink = time % 50 == 1 || time % 57 == 1 || villager.isSleeping() || net.mca.settlements.Seat.dozing(villager) || villager.isDead();
         boolean hasHeterochromia = variant.equals("normal") && CommonVillagerModel.getVillager(villager).getTraits().hasTrait(Traits.HETEROCHROMIA);
         String gender = CommonVillagerModel.getVillager(villager).getGenetics().getGender().getDataName();
         String blinkTexture = blink ? "_blink" : (hasHeterochromia ? "_hetero" : "");

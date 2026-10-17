@@ -67,6 +67,22 @@ public final class Seat {
         return e != null && e.getVehicle() instanceof ArmorStandEntity a && a.hasCustomName() && STOCKS_NAME.equals(a.getCustomName().getString());
     }
 
+    /** The name a seat carries while its rider dozes on it for the night, so that clients draw him with eyes shut, head down. */
+    public static final String DOZE_NAME = "settlements_doze";
+
+    /** Whether this entity sits asleep on a seat (works on the client: the seat's name is synced). */
+    public static boolean dozing(Entity e) {
+        return e != null && e.getVehicle() instanceof ArmorStandEntity a && a.hasCustomName() && DOZE_NAME.equals(a.getCustomName().getString());
+    }
+
+    /** Asleep (or awake again) where he sits. */
+    public static void doze(VillagerEntityMCA v, boolean asleep) {
+        Entity e = v.getVehicle();
+        if (!(e instanceof ArmorStandEntity) || !e.getCommandTags().contains(TAG) || dozing(v) == asleep) return;
+        e.setCustomName(asleep ? net.minecraft.text.Text.literal(DOZE_NAME) : null);
+        e.setCustomNameVisible(false);
+    }
+
     public static void kneel(net.minecraft.entity.LivingEntity who, double x, double y, double z, float yaw) {
         if (!(who.getWorld() instanceof ServerWorld world)) return;
         if (who.hasVehicle()) who.stopRiding();
