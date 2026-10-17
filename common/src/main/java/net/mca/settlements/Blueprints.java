@@ -305,17 +305,20 @@ public final class Blueprints {
      */
     public static List<Step> townhall() {
         List<Step> l = house(HALL_W, HALL_D, 1, true);
-        l.add(new Step(3, 1, 1, Kind.HALL_CHEST)); // (x 2 free: the foot of the stairs when a floor is added)
-        l.add(new Step(4, 1, 1, Kind.HALL_CHEST));
-        l.add(new Step(5, 1, 1, Kind.BOOKSHELF));
-        l.add(new Step(6, 1, 1, Kind.BOOKSHELF));
-        l.add(new Step(4, 1, 3, Kind.LECTERN));
-        l.add(new Step(2, 1, 4, Kind.FENCE));
-        l.add(new Step(2, 2, 4, Kind.PLATE));
-        l.add(new Step(1, 1, 4, Kind.SEAT_W));
-        l.add(new Step(3, 1, 4, Kind.SEAT_E));
-        for (int x = 4; x <= 6; x++) l.add(new Step(x, 1, 4, Kind.CARPET));
-        l.add(new Step(1, 3, 3, Kind.LANTERN));
+        // along the back wall: the ladder up to the loft (x 3, see attic), the village's chests beside it, the books in the
+        // corner; x 1 and 2 stay free (the foot of the stairs when a floor is added)
+        l.add(new Step(5, 1, 1, Kind.HALL_CHEST));
+        l.add(new Step(6, 1, 1, Kind.HALL_CHEST));
+        l.add(new Step(7, 1, 1, Kind.BOOKSHELF));
+        l.add(new Step(7, 1, 2, Kind.BOOKSHELF));
+        l.add(new Step(4, 1, 3, Kind.LECTERN)); // the elder's, in the middle of the room
+        // the table by the east wall, out of the way in from the door, a chair either side
+        l.add(new Step(6, 1, 4, Kind.FENCE));
+        l.add(new Step(6, 2, 4, Kind.PLATE));
+        l.add(new Step(5, 1, 4, Kind.SEAT_W));
+        l.add(new Step(7, 1, 4, Kind.SEAT_E));
+        for (int z = 4; z <= 5; z++) l.add(new Step(4, 1, z, Kind.CARPET)); // the way in from the door
+        l.add(new Step(4, 3, 3, Kind.LANTERN));
         return l;
     }
 
@@ -323,7 +326,7 @@ public final class Blueprints {
     public static List<Step> hallUpgrade(int w, int d, int floors) {
         List<Step> l = addFloor(w, d, floors, true);
         int base = floors * LEVEL_HEIGHT;
-        for (int x = 3; x <= 5; x++) l.add(new Step(x, base + 1, 1, Kind.HALL_CHEST)); // (x 2: the foot of the next stairs)
+        for (int x = 5; x <= 6; x++) l.add(new Step(x, base + 1, 1, Kind.HALL_CHEST)); // (x 1 and 2: the foot of the next stairs; x 3: the ladder to the loft)
         for (int x = 2; x <= w - 3; x++) l.add(new Step(x, base + 1, d - 2, Kind.BOOKSHELF));
         for (int x = 3; x <= w - 4; x++) for (int z = 3; z <= 4; z++) l.add(new Step(x, base + 1, z, Kind.CARPET));
         return l;
