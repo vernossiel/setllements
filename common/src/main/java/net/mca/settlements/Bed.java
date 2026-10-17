@@ -64,15 +64,20 @@ public final class Bed {
                 }
             }
         }
+        if (bestSky > 7) best = null; // open to the night all the same (a hall still going up, its roof not on yet): no shelter there
         if (best == null) SHUT_IN.remove(village.getId());
         else SHUT_IN.put(village.getId(), best);
         return best;
     }
 
-    private static BlockPos refuge(net.mca.server.world.data.Village village, ServerWorld world) {
+    private static BlockPos refuge(VillagerEntityMCA v, net.mca.server.world.data.Village village, ServerWorld world) {
         if (village == null) return null;
-        BlockPos in = inside(village, world);
+        // the hall once it stands finished (a hall going up is a frame open to the sky: a woman sat the night out in
+        // one and the zombies had her); till then the nearest house with a door, then the old meeting place
+        BlockPos in = village.hall != null ? inside(village, world) : null;
         if (in != null) return in;
+        BlockPos h = house(v, village, world);
+        if (h != null) return h;
         if (village.hallPos != null) return village.hallPos;
         BlockPos c = new BlockPos(village.getCenter());
         return new BlockPos(c.getX(), world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, c.getX(), c.getZ()), c.getZ());
@@ -101,7 +106,7 @@ public final class Bed {
             if (t >= 12800 || t < 500) v.sleep(bed);
             return true;
         }
-        BlockPos hall = refuge(village, world);
+        BlockPos hall = refuge(v, village, world);
         if (hall == null) return false;
         v.requestTeleport(hall.getX() + 0.5, hall.getY(), hall.getZ() + 0.5);
         return true;
@@ -163,7 +168,7 @@ public final class Bed {
             }
         }
         // no bed to be had or reached: the night under the town hall's roof
-        BlockPos hall = refuge(village, world);
+        BlockPos hall = refuge(v, village, world);
         if (hall == null) return false;
         if (NO_HALL.getOrDefault(v.getUuid(), -1L) == night) hall = ROOF.getOrDefault(v.getUuid(), hall); // no way up to the hall: the roof he found
         if (v.squaredDistanceTo(Vec3d.ofCenter(hall)) > 3 * 3) {
