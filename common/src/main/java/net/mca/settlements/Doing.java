@@ -50,9 +50,14 @@ public final class Doing {
         TALLY.merge(k, 1, Integer::sum);
     }
 
+    /** One more of something a builder does within his work (a block laid, a turn, a walk), for the same record. */
+    static void count(String what) {
+        TALLY.merge(what, 1, Integer::sum);
+    }
+
     /** Where the builders' day went, most first; and the count starts afresh. */
     public static String daySummary() {
-        String s = TALLY.entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue()).limit(10)
+        String s = TALLY.entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue()).limit(16)
                 .map(e -> e.getKey() + "=" + e.getValue()).collect(java.util.stream.Collectors.joining(" "));
         TALLY.clear();
         return s;

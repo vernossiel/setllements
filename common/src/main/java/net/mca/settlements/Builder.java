@@ -784,12 +784,15 @@ public final class Builder {
         if (Haul.fetch(v, village)) return true;
         // two builders do not crowd one spot: the first lays the blocks in order, the others take a stretch further on
         if (!village.buildRepair && !village.buildType.equals("mine") && !village.buildType.equals("wall") && !village.buildType.equals("palisade")
-                && !lead(v, village, world)) return helper(v, village, world, steps, origin);
+                && !lead(v, village, world)) {
+            Doing.count("b.help");
+            return helper(v, village, world, steps, origin);
+        }
         boolean worked = false;
         int ops = 0, skips = 0;
         int checks = 0;
         int budget = Prosperity.ops(v, village, opsPerSecond); // tired builders and struggling villages build slower
-        if (budget == 0) return true; // working, just slowly
+        if (budget == 0) { Doing.count("b.slow"); return true; } // working, just slowly
         // a man lays one block at a time: two going up in the same instant looked like a machine (what is left over is
         // kept for the next beat, up to a block or two)
         if (budget > 1) {
@@ -828,6 +831,7 @@ public final class Builder {
             if (far && !mine && !border && target.getY() - origin.getY() >= 3) {
                 Built site = new Built(village.buildType, origin, village.buildW, village.buildD, Math.max(1, village.buildF), village.buildRot);
                 ON_SITE.put(v.getUuid(), world.getTime());
+                Doing.count("b.climb");
                 if (Scaffold.approach(v, village, world, target, site, planned(village, steps, origin))) return worked;
                 far = bx * bx + bz * bz > Scaffold.REACH * Scaffold.REACH; // no way up: he does what he can from below
             }
@@ -849,6 +853,7 @@ public final class Builder {
             }
             if (far) {
                 Move.to(v, (mine ? origin : target).getX() + 0.5, mine || border ? target.getY() : origin.getY(), (mine ? origin : target).getZ() + 0.5, 0.6);
+                Doing.count(mine ? "b.walk.mine" : "b.walk");
                 return worked;
             }
 
@@ -867,6 +872,7 @@ public final class Builder {
                 v.setBodyYaw(want);
                 v.setHeadYaw(want);
                 v.setYaw(want);
+                Doing.count("b.turn");
                 return true;
             }
             Gear.face(v, target);
@@ -895,6 +901,7 @@ public final class Builder {
             village.buildStep++;
             if (r == Result.PLACED) {
                 SHORT.remove(village.getId());
+                Doing.count("b.placed");
                 v.settlementsCarry--;
                 ops++;
                 worked = true;
@@ -1034,6 +1041,7 @@ public final class Builder {
             if (r == Result.WAIT || r == Result.ABORT) return false;
             done.add(i);
             if (r == Result.PLACED) {
+                Doing.count("b.help.placed");
                 Gear.face(v, t);
                 Item held = world.getBlockState(t).getBlock().asItem();
                 if (held != Items.AIR) v.setStackInHand(v.getDominantHand(), new ItemStack(held));

@@ -171,6 +171,7 @@ public final class Haul {
             return true;
         }
         v.settlementsCarry = FULL_LOAD;
+        Workforce.provision(v, village); // at the store anyway: his food for the day along with the load
         v.swingHand(v.getDominantHand());
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld world) openChest(world, s);
         return false;

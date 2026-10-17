@@ -688,6 +688,28 @@ public final class Workforce {
     }
 
     private static final int EAT_SECONDS = 3;
+    /** How many meals a worker takes along from the stores (a walk back to the store for every one cost a builder two and a half minutes a day). */
+    private static final int PROVISIONS = 3;
+
+    /** At the stores: food for the day into his bag, up to a few meals, paid for, the cheapest first. */
+    static void provision(VillagerEntityMCA v, net.mca.server.world.data.Village village) {
+        if (village == null || v.isBaby()) return;
+        int have = 0;
+        for (int i = 0; i < v.getInventory().size(); i++) if (eatable(v.getInventory().getStack(i))) have += v.getInventory().getStack(i).getCount();
+        while (have < PROVISIONS) {
+            ItemStack pick = null;
+            for (ItemStack s : village.storageBuffer) if (eatable(s) && (pick == null || Purse.price(s) < Purse.price(pick))) pick = s;
+            if (pick == null || !Purse.pay(v, village, pick)) break;
+            ItemStack one = pick.split(1);
+            if (!v.getInventory().addStack(one).isEmpty()) { // no room
+                pick.increment(1);
+                break;
+            }
+            have++;
+        }
+        village.storageBuffer.removeIf(ItemStack::isEmpty);
+        village.markDirty();
+    }
 
     /** Starts a meal: the food goes into the hand and the villager stands still for a few seconds. */
     /** Lunch at the hearth: something from the pocket or the stores, however hungry he is. */
@@ -728,10 +750,9 @@ public final class Workforce {
             }
             if (pick != null) {
                 meal = pick.split(1);
-                // and a bite for later in his bag, so the next meal at work is his own (paid for as well)
-                if (!pick.isEmpty() && Purse.pay(v, village, pick)) v.getInventory().addStack(pick.split(1));
                 village.storageBuffer.removeIf(ItemStack::isEmpty);
                 village.markDirty();
+                provision(v, village); // and food for the day in his bag, so the next meals at work are his own
             }
         }
         if (meal.isEmpty()) return false;
