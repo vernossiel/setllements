@@ -168,9 +168,15 @@ public final class Housing {
         java.util.ArrayDeque<BlockPos> open = new java.util.ArrayDeque<>();
         java.util.Set<BlockPos> seen = new java.util.HashSet<>();
         boolean ok = true;
-        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
-            BlockPos q = bed.offset(d);
-            if (Move.passable(world, q) && seen.add(q)) open.add(q);
+        // round both halves of the bed: a hole in the wall by its foot let a zombie in on a sleeper whose pillow end was shut in
+        java.util.List<BlockPos> halves = new java.util.ArrayList<>(List.of(bed));
+        var bs = world.getBlockState(bed);
+        if (bs.getBlock() instanceof net.minecraft.block.BedBlock) halves.add(bed.offset(net.minecraft.block.BedBlock.getOppositePartDirection(bs)));
+        for (BlockPos half : halves) {
+            for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+                BlockPos q = half.offset(d);
+                if (!halves.contains(q) && Move.passable(world, q) && seen.add(q)) open.add(q);
+            }
         }
         while (!open.isEmpty() && ok) {
             BlockPos p = open.poll();
