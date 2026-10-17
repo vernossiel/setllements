@@ -827,7 +827,8 @@ public final class Builder {
                     || target.getY() - origin.getY() < 3 && !Dig.sees(v, target); // (ceilings and roofs are laid from the scaffolding, over the edge)
             if (far && !mine && !border && target.getY() - origin.getY() >= 3) {
                 Built site = new Built(village.buildType, origin, village.buildW, village.buildD, Math.max(1, village.buildF), village.buildRot);
-                if (Scaffold.approach(v, village, world, target, site)) return worked;
+                ON_SITE.put(v.getUuid(), world.getTime());
+                if (Scaffold.approach(v, village, world, target, site, planned(village, steps, origin))) return worked;
                 far = bx * bx + bz * bz > Scaffold.REACH * Scaffold.REACH; // no way up: he does what he can from below
             }
             // stuck on one step for half a minute with the spot close by: the ground in the way is dug out, or else
@@ -914,6 +915,34 @@ public final class Builder {
     }
 
     private record Lead(java.util.UUID id, long at) {
+    }
+
+    /** Builders up on the work (the last time): a step down off a wall onto the floor of the building hurts nobody. */
+    private static final Map<java.util.UUID, Long> ON_SITE = new HashMap<>();
+
+    public static boolean upOnWork(VillagerEntityMCA v) {
+        return v.getWorld().getTime() - ON_SITE.getOrDefault(v.getUuid(), -1000L) < 200;
+    }
+
+    private static final Map<Integer, Object[]> PLANNED = new HashMap<>(); // village -> {origin, step from, positions}
+
+    /** The spots the rest of the project still fills (not where to stand), looked up afresh every hundred steps. */
+    private static Set<Long> planned(Village village, List<Step> steps, BlockPos origin) {
+        Object[] c = PLANNED.get(village.getId());
+        if (c != null && c[0].equals(origin) && village.buildStep >= (int) c[1] && village.buildStep - (int) c[1] < 100) {
+            @SuppressWarnings("unchecked") Set<Long> s = (Set<Long>) c[2];
+            return s;
+        }
+        Set<Long> s = new java.util.HashSet<>();
+        int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
+        for (int i = village.buildStep; i < steps.size(); i++) {
+            Step st = steps.get(i);
+            if (st.kind() == Kind.CLEAR || st.kind() == Kind.DIG) continue;
+            int[] rp = Blueprints.rotate(st.dx(), st.dz(), fp[0], fp[1], village.buildRot);
+            s.add(origin.add(rp[0], st.dy(), rp[1]).asLong());
+        }
+        PLANNED.put(village.getId(), new Object[]{origin, village.buildStep, s});
+        return s;
     }
 
     private static final Map<Integer, Lead> LEAD = new HashMap<>();

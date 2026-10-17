@@ -106,7 +106,22 @@ public final class Scaffold {
      * the wrong one, over to the foot of the right column, then up it a block at a time, putting it up as he goes.
      * True while he is on his way; false when there is no way up (he works from where he can).
      */
-    public static boolean approach(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos target, Built site) {
+    public static boolean approach(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos target, Built site, Set<Long> planned) {
+        // as a man builds: up on what stands already - the top of a wall, the floor laid upstairs - when he can walk
+        // there or step over onto it from where he is, the scaffolding only where there is nothing to stand on
+        BlockPos perch = perch(v, world, target, site, planned);
+        if (perch != null) {
+            v.fallDistance = 0;
+            double hx = perch.getX() + 0.5 - v.getX(), hz = perch.getZ() + 0.5 - v.getZ(), hy = perch.getY() - v.getY();
+            if (hx * hx + hz * hz <= 1.7 * 1.7 && hy <= 1.2 && hy >= -1.5) {
+                v.getNavigation().stop();
+                v.refreshPositionAndAngles(perch.getX() + 0.5, perch.getY(), perch.getZ() + 0.5, v.getYaw(), v.getPitch()); // a step over
+            } else {
+                Move.to(v, perch.getX() + 0.5, perch.getY(), perch.getZ() + 0.5, 0.6);
+            }
+            Gaze.at(v, target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
+            return true;
+        }
         BlockPos col = columnFor(world, v, target, site);
         if (col == null) return false;
         v.fallDistance = 0; // on the scaffolding a step down is a step, not a fall
@@ -141,6 +156,56 @@ public final class Scaffold {
             return true;
         }
         return false; // up there: in reach
+    }
+
+    private static final Map<java.util.UUID, Object[]> PERCH = new HashMap<>(); // builder -> {target, perch or null, until}
+
+    /**
+     * Where on the building itself he can stand with the block in reach: solid under foot, room for him, nothing more
+     * to go there; and a way to it - a step over from where he stands, or a walk (stairs up, along the wall tops).
+     */
+    private static BlockPos perch(VillagerEntityMCA v, ServerWorld world, BlockPos target, Built site, Set<Long> planned) {
+        Object[] c = PERCH.get(v.getUuid());
+        long now = world.getTime();
+        if (c != null && c[0].equals(target) && now < (long) c[2]) {
+            BlockPos p = (BlockPos) c[1];
+            if (p == null || stand(world, p, planned)) return p;
+        }
+        java.util.List<BlockPos> cands = new java.util.ArrayList<>();
+        int r = (int) REACH - 1;
+        for (BlockPos p : BlockPos.iterate(target.add(-r, -2, -r), target.add(r, 0, r))) {
+            double dx = target.getX() - p.getX(), dz = target.getZ() - p.getZ();
+            if (dx * dx + dz * dz > (REACH - 0.5) * (REACH - 0.5) || dx == 0 && dz == 0) continue;
+            if (site != null && !site.contains(p)) continue; // on the building or at its edge
+            if (!stand(world, p, planned)) continue;
+            cands.add(p.toImmutable());
+        }
+        cands.sort(java.util.Comparator.comparingDouble(p -> p.getSquaredDistance(v.getPos())));
+        BlockPos found = null;
+        int paths = 0;
+        for (BlockPos p : cands) {
+            double hx = p.getX() + 0.5 - v.getX(), hz = p.getZ() + 0.5 - v.getZ(), hy = p.getY() - v.getY();
+            if (hx * hx + hz * hz <= 1.7 * 1.7 && hy <= 1.2 && hy >= -1.5) {
+                found = p;
+                break;
+            }
+            if (paths++ >= 3) break;
+            var path = v.getNavigation().findPathTo(p, 0);
+            if (path != null && path.reachesTarget()) {
+                found = p;
+                break;
+            }
+        }
+        PERCH.put(v.getUuid(), new Object[]{target.toImmutable(), found, now + (found == null ? 200 : 100)});
+        return found;
+    }
+
+    /** Somewhere to stand: solid under foot (not scaffolding), open for his feet and head, and nothing to go there. */
+    private static boolean stand(ServerWorld world, BlockPos p, Set<Long> planned) {
+        BlockState under = world.getBlockState(p.down());
+        if (!under.isSolidBlock(world, p.down()) || under.isOf(Blocks.SCAFFOLDING)) return false;
+        if (!open(world, p) || !open(world, p.up())) return false;
+        return planned == null || !planned.contains(p.asLong()) && !planned.contains(p.up().asLong());
     }
 
     /** The building stands: the scaffolding comes down. */

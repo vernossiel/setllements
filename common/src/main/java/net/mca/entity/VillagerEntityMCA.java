@@ -701,6 +701,8 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
             net.mca.settlements.Seat.stand(this);
             if (net.mca.settlements.Move.putSafely(this, getBlockPos().up())) return false;
         }
+        // Settlements: a builder stepping down off the wall he works on (onto the floor, a block or three) is not hurt
+        if (!getWorld().isClient && source.isOf(net.minecraft.entity.damage.DamageTypes.FALL) && damageAmount <= 3 && net.mca.settlements.Builder.upOnWork(this)) return false;
         // Settlements: the village's own fire does not kill its people. Stepped onto a campfire, a villager jumps off
         // it and the flames on his clothes are beaten out, instead of standing in it till he is dead.
         if (!getWorld().isClient && (source.isOf(net.minecraft.entity.damage.DamageTypes.IN_FIRE) || source.isOf(net.minecraft.entity.damage.DamageTypes.ON_FIRE))) {
