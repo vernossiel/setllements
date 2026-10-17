@@ -81,10 +81,15 @@ public final class Arrivals {
         // such at a time: without that the village waited on an empty house that nobody would build
         boolean lodger = Housing.empty(v) < 1;
         if (lodger) free = Housing.homeless(v) > 0 ? 0 : Math.min(free, 1) + (free < 1 && pop < 12 ? 1 : 0);
-        if (free < 1 || per < 1.5 || Prosperity.danger(v) >= 4 || Mood.afraid(v)) return;
         double chance = 0.25 + Math.min(0.35, (per - 1.5) * 0.08) + (Prosperity.factor(v) - 1.0) * 0.5;
         if (lodger) chance *= 0.6;
-        if (world.random.nextDouble() >= Math.max(0.05, Math.min(0.75, chance))) return;
+        double roll = world.random.nextDouble();
+        // for the record (and the tests): who could have come this morning, and why nobody did
+        net.mca.MCA.LOGGER.info("[Settlements] {} morning: pop {}, food {}/head, free {}, empty houses {}, homeless {}, danger {}, afraid {}, chance {}, roll {}",
+                v.getName(), pop, String.format("%.1f", per), free, Housing.empty(v), Housing.homeless(v), Prosperity.danger(v), Mood.afraid(v),
+                String.format("%.2f", Math.max(0.05, Math.min(0.75, chance))), String.format("%.2f", roll));
+        if (free < 1 || per < 1.5 || Prosperity.danger(v) >= 4 || Mood.afraid(v)) return;
+        if (roll >= Math.max(0.05, Math.min(0.75, chance))) return;
         boolean couple = free >= 2 && world.random.nextFloat() < 0.4f;
         BlockPos road = edge(world, v);
         if (road == null) return;
