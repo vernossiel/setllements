@@ -149,7 +149,7 @@ public final class Staffing {
         for (net.minecraft.item.ItemStack s : v.storageBuffer) if (s.isFood()) food += s.getCount();
         boolean hungry = food < p * 3;
         List<Role> roles = new ArrayList<>(); // in order of importance
-        roles.add(new Role(VillagerProfession.CARTOGRAPHER, Math.max(1, p / 5)));
+        roles.add(new Role(VillagerProfession.CARTOGRAPHER, Math.max(1, Math.min(4, p / 3)))); // a second pair of hands from six people on: one builder alone took days over a house
         if (p >= 3) roles.add(new Role(VillagerProfession.FARMER, Math.max(1, p / 6) + (hungry ? 1 : 0)));
         // lumberjacks after the woods there are: a desert or a steppe village keeps one, who goes far for wood
         int woods = forest(world, v);

@@ -244,12 +244,17 @@ public final class Justice {
                         it.remove();
                         continue;
                     }
-                    if (guard == null || guard.squaredDistanceTo(p) < 36) {
+                    // somebody comes up to him to say it, face to face: the guard, or with no guard about, the elder; nobody
+                    // in reach, the matter waits (no window out of thin air, from a guard nowhere to be seen)
+                    VillagerEntityMCA speaker = guard != null ? guard : Plan.elder(world, village);
+                    if (speaker == null || speaker.squaredDistanceTo(p) > 64 * 64) continue;
+                    if (speaker.squaredDistanceTo(p) < 36 && speaker.canSee(p)) {
                         c.stage = Stage.DEMAND;
                         c.deadline = now + 20 * 60;
                         demand(world, village, guard, p, c);
                     } else {
-                        guard.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(p, 0.6f, 2));
+                        speaker.getBrain().remember(MemoryModuleType.WALK_TARGET, new WalkTarget(p, 0.6f, 2));
+                        Move.to(speaker, p, 0.6);
                     }
                 }
                 case DEMAND -> {
@@ -259,7 +264,9 @@ public final class Justice {
                         c.since = now;
                         talk(world, village, guard, p, "settlements.justice.wanted", now);
                     } else if (now - c.lastTalk > 400) {
-                        demand(world, village, guard, p, c);
+                        VillagerEntityMCA speaker = guard != null ? guard : Plan.elder(world, village);
+                        if (speaker != null && speaker.squaredDistanceTo(p) < 10 * 10) demand(world, village, guard, p, c); // reminded only by one who is by him
+                        else if (speaker != null && speaker.squaredDistanceTo(p) < 64 * 64) Move.to(speaker, p, 0.6);
                     }
                 }
                 case WANTED -> {
@@ -421,8 +428,8 @@ public final class Justice {
         VillagerEntityMCA speaker = guard != null ? guard : Plan.elder(world, village);
         if (speaker != null && speaker.squaredDistanceTo(p) < 48 * 48) {
             speaker.sendChatMessage(Text.translatable(key, p.getName()), p); // over his head
-            // and at the bottom of the screen, face to face, till the next words
-            net.mca.cobalt.network.NetworkHandler.sendToPlayer(new net.mca.network.s2c.JusticeScreenRequest(speaker.getId(), speaker.getName(),
+            // and at the bottom of the screen, face to face, till the next words (only face to face: not from across the village)
+            if (speaker.squaredDistanceTo(p) < 12 * 12) net.mca.cobalt.network.NetworkHandler.sendToPlayer(new net.mca.network.s2c.JusticeScreenRequest(speaker.getId(), speaker.getName(),
                     List.of(Text.translatable(key, p.getName())), new String[0], List.of(), 0), p);
         } else p.sendMessage(Text.translatable(key, p.getName()).formatted(Formatting.GOLD), false);
         Case c = CASES.get(p.getUuid());
@@ -446,6 +453,7 @@ public final class Justice {
         if (!c.denied) o.add("deny");
         o.add("leave");
         c.shown = true;
+        if (guard == null) guard = Plan.elder(world, village); // no guard in the village: the elder puts it to him
         window(guard, village, p, List.of(lead != null ? lead : Text.translatable(key, p.getName()), Text.empty(), money.copy().formatted(Formatting.YELLOW)),
                 o.toArray(new String[0]), (int) Math.max(0, (c.deadline - world.getTime()) / 20));
     }
