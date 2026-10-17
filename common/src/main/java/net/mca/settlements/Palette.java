@@ -38,7 +38,9 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
     }
 
     static Palette forBiome(String b) {
-        if (b.contains("desert") || b.contains("badlands"))
+        if (b.contains("badlands")) // red sandstone and terracotta, the dark oak of the old mineshafts
+            return new Palette("dark_oak", "dark_oak", Blocks.RED_SANDSTONE, Blocks.RED_SANDSTONE_STAIRS, Blocks.CUT_RED_SANDSTONE, Blocks.POTTED_DEAD_BUSH);
+        if (b.contains("desert"))
             return new Palette("birch", "jungle", Blocks.SANDSTONE, Blocks.SANDSTONE_STAIRS, Blocks.CUT_SANDSTONE, Blocks.POTTED_DEAD_BUSH);
         if (b.contains("taiga") || b.contains("snowy") || b.contains("grove") || b.contains("frozen") || b.contains("ice"))
             return new Palette("spruce", "dark_oak", Blocks.COBBLESTONE, Blocks.COBBLESTONE_STAIRS, Blocks.STONE_BRICKS, Blocks.POTTED_FERN);
@@ -62,19 +64,23 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
     public Block planks() { return get(wood + "_planks", Blocks.OAK_PLANKS); }
     /** The desert builds in its own stone: there is no timber to be had for beams and roofs out there. */
     private boolean desert() {
-        return stone == Blocks.SANDSTONE;
+        return stone == Blocks.SANDSTONE || stone == Blocks.RED_SANDSTONE;
     }
 
-    public Block log() { return desert() ? Blocks.CUT_SANDSTONE : get(wood + "_log", Blocks.OAK_LOG); }
-    public Block strippedLog() { return desert() ? Blocks.CUT_SANDSTONE : get("stripped_" + wood + "_log", Blocks.STRIPPED_OAK_LOG); }
+    private boolean badlands() {
+        return stone == Blocks.RED_SANDSTONE;
+    }
+
+    public Block log() { return badlands() ? Blocks.CUT_RED_SANDSTONE : desert() ? Blocks.CUT_SANDSTONE : get(wood + "_log", Blocks.OAK_LOG); }
+    public Block strippedLog() { return badlands() ? Blocks.CUT_RED_SANDSTONE : desert() ? Blocks.CUT_SANDSTONE : get("stripped_" + wood + "_log", Blocks.STRIPPED_OAK_LOG); }
     public Block door() { return get(wood + "_door", Blocks.OAK_DOOR); }
     public Block fence() { return get(wood + "_fence", Blocks.OAK_FENCE); }
     public Block trapdoor() { return get(wood + "_trapdoor", Blocks.OAK_TRAPDOOR); }
     public Block plate() { return get(wood + "_pressure_plate", Blocks.OAK_PRESSURE_PLATE); }
     public Block leaves() { return get(wood + "_leaves", Blocks.OAK_LEAVES); }
-    public Block roofStairs() { return desert() ? Blocks.SMOOTH_SANDSTONE_STAIRS : get(roofWood + "_stairs", Blocks.SPRUCE_STAIRS); }
-    public Block roofSlab() { return desert() ? Blocks.SMOOTH_SANDSTONE_SLAB : get(roofWood + "_slab", Blocks.SPRUCE_SLAB); }
-    public Block roofPlanks() { return desert() ? Blocks.SMOOTH_SANDSTONE : get(roofWood + "_planks", Blocks.SPRUCE_PLANKS); }
+    public Block roofStairs() { return badlands() ? Blocks.RED_SANDSTONE_STAIRS : desert() ? Blocks.SMOOTH_SANDSTONE_STAIRS : get(roofWood + "_stairs", Blocks.SPRUCE_STAIRS); }
+    public Block roofSlab() { return badlands() ? Blocks.RED_SANDSTONE_SLAB : desert() ? Blocks.SMOOTH_SANDSTONE_SLAB : get(roofWood + "_slab", Blocks.SPRUCE_SLAB); }
+    public Block roofPlanks() { return badlands() ? Blocks.SMOOTH_RED_SANDSTONE : desert() ? Blocks.SMOOTH_SANDSTONE : get(roofWood + "_planks", Blocks.SPRUCE_PLANKS); }
     public Block stairs() { return get(wood + "_stairs", Blocks.OAK_STAIRS); }
     public Block fenceGate() { return get(wood + "_fence_gate", Blocks.OAK_FENCE_GATE); }
     private boolean northern() {
@@ -90,6 +96,7 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
 
     /** The walls of the poorest houses: daub, adobe in the desert, red clay in the savanna, logs in the north, mud brick in the swamps. */
     public Block daub() {
+        if (stone == Blocks.RED_SANDSTONE) return Blocks.TERRACOTTA;
         if (stone == Blocks.SANDSTONE) return Blocks.SMOOTH_SANDSTONE;
         if (accent == Blocks.TERRACOTTA) return Blocks.TERRACOTTA;
         if (northern()) return strippedLog();
@@ -100,6 +107,7 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
 
     /** A city's plastered walls above its stone ground floors. */
     public Block plaster() {
+        if (stone == Blocks.RED_SANDSTONE) return Blocks.WHITE_TERRACOTTA;
         if (stone == Blocks.SANDSTONE) return Blocks.SMOOTH_SANDSTONE;
         if (stone == Blocks.MUD_BRICKS) return Blocks.PACKED_MUD;
         if (northern()) return Blocks.CALCITE;
@@ -108,6 +116,7 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
 
     /** A city's roof tiles: red sandstone in the desert, brick in the savanna, slate elsewhere. */
     public Block tiles() {
+        if (stone == Blocks.RED_SANDSTONE) return Blocks.BRICKS;
         if (stone == Blocks.SANDSTONE) return Blocks.SMOOTH_RED_SANDSTONE;
         if (accent == Blocks.TERRACOTTA) return Blocks.BRICKS;
         if (wood.equals("cherry") || wood.equals("birch")) return Blocks.BRICKS;
@@ -115,6 +124,7 @@ public record Palette(String wood, String roofWood, Block stone, Block stoneStai
     }
 
     public Block tileStairs() {
+        if (stone == Blocks.RED_SANDSTONE) return Blocks.BRICK_STAIRS;
         if (stone == Blocks.SANDSTONE) return Blocks.SMOOTH_RED_SANDSTONE_STAIRS;
         if (accent == Blocks.TERRACOTTA) return Blocks.BRICK_STAIRS;
         if (wood.equals("cherry") || wood.equals("birch")) return Blocks.BRICK_STAIRS;

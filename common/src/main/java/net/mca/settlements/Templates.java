@@ -67,7 +67,8 @@ public final class Templates {
         ServerWorld world = village.getWorld();
         if (world == null) return "medievaloak";
         String biome = world.getBiome(new BlockPos(village.getCenter())).getKey().map(k -> k.getValue().getPath()).orElse("plains");
-        if (biome.contains("desert") || biome.contains("badlands")) return "sandstone";
+        if (biome.contains("badlands")) return "badlands"; // terracotta and red sandstone (MineColonies' desert buildings stand in for the rest)
+        if (biome.contains("desert")) return "sandstone";
         if (biome.contains("snow") || biome.contains("taiga") || biome.contains("frozen") || biome.contains("ice") || biome.contains("grove")
                 || biome.contains("slope") || biome.contains("peak")) return "nordic";
         if (biome.contains("birch")) return "medievalbirch";
@@ -82,7 +83,7 @@ public final class Templates {
             case "medievaloak" -> "oak";
             case "medievalbirch" -> "birch";
             case "medievaldarkoak" -> "dark_oak";
-            case "sandstone" -> "oak"; // (its doors, shutters and furniture: in whatever wood the desert village has)
+            case "sandstone", "badlands" -> "oak"; // (their doors, shutters and furniture: in whatever wood the village has)
             default -> null;
         };
     }
@@ -117,9 +118,12 @@ public final class Templates {
         String style = style(village);
         if (style == null) return null;
         List<String> found = new ArrayList<>();
-        for (String file : aliases(name)) {
-            String type = base + "-mc." + style + "." + file;
-            if (of(type) != null) found.add(type);
+        for (String st : styles(style)) {
+            for (String file : aliases(name)) {
+                String type = base + "-mc." + st + "." + file;
+                if (of(type) != null) found.add(type);
+            }
+            if (!found.isEmpty()) break;
         }
         if (found.isEmpty()) return null;
         return found.get(Math.floorMod((int) (village.getId() * 31L + found.size() * 7L + (village.getWorld() == null ? 0 : village.getWorld().getTime() / 24000L)), found.size()));
@@ -133,11 +137,19 @@ public final class Templates {
         String base = placeholder.substring(0, i), name = placeholder.substring(i + 4);
         String style = style(village);
         if (style == null) return found;
-        for (String file : aliases(name)) {
-            String type = base + "-mc." + style + "." + file;
-            if (of(type) != null && !found.contains(type)) found.add(type);
+        for (String st : styles(style)) {
+            for (String file : aliases(name)) {
+                String type = base + "-mc." + st + "." + file;
+                if (of(type) != null && !found.contains(type)) found.add(type);
+            }
+            if (!found.isEmpty()) break;
         }
         return found;
+    }
+
+    /** The style of the land, and the one to fall back on where it has no such building (the badlands: the desert's). */
+    private static List<String> styles(String style) {
+        return style.equals("badlands") ? List.of("badlands", "sandstone") : List.of(style);
     }
 
     /** Every template there is, as "style/file" (from the index written with them), optionally of one style only. */

@@ -30,7 +30,9 @@ public final class Scavenge {
             Items.COBBLED_DEEPSLATE, Items.SANDSTONE, Items.SAND, Items.DIRT, Items.COARSE_DIRT);
     private static final Set<Block> SOURCES = Set.of(Blocks.STONE, Blocks.ANDESITE, Blocks.DIORITE, Blocks.GRANITE,
             Blocks.SANDSTONE, Blocks.SAND, Blocks.DIRT, Blocks.GRASS_BLOCK, Blocks.COARSE_DIRT, Blocks.PODZOL);
-    private static final Set<Block> STONES = Set.of(Blocks.STONE, Blocks.ANDESITE, Blocks.DIORITE, Blocks.GRANITE, Blocks.SANDSTONE, Blocks.RED_SANDSTONE); // (the desert's stone too)
+    private static final Set<Block> STONES = Set.of(Blocks.STONE, Blocks.ANDESITE, Blocks.DIORITE, Blocks.GRANITE, Blocks.SANDSTONE, Blocks.RED_SANDSTONE,
+            Blocks.TERRACOTTA, Blocks.ORANGE_TERRACOTTA, Blocks.RED_TERRACOTTA, Blocks.YELLOW_TERRACOTTA, Blocks.BROWN_TERRACOTTA,
+            Blocks.WHITE_TERRACOTTA, Blocks.LIGHT_GRAY_TERRACOTTA); // (the desert's stone and the badlands' clay too)
 
     private Scavenge() {
     }

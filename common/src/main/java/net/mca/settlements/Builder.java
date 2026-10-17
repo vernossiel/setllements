@@ -243,6 +243,9 @@ public final class Builder {
 
     // stone for building: cobble, and in the desert the sandstone its quarries give
     private static final Predicate<ItemStack> COBBLE = s -> s.isOf(Items.COBBLESTONE) || s.isOf(Items.COBBLED_DEEPSLATE) || s.isOf(Items.SANDSTONE) || s.isOf(Items.RED_SANDSTONE);
+    /** What a desert or the badlands builds with: its sandstone and sand, its terracotta, and cobble if there is any. */
+    private static final Predicate<ItemStack> SANDISH = s -> COBBLE.test(s) || s.isOf(Items.SAND) || s.isOf(Items.RED_SAND)
+            || s.isOf(Items.SMOOTH_SANDSTONE) || s.isOf(Items.CUT_SANDSTONE) || Registries.ITEM.getId(s.getItem()).getPath().contains("terracotta");
     private static final Predicate<ItemStack> LOG = s -> s.isIn(ItemTags.LOGS);
     private static final Predicate<ItemStack> GLASS = s -> s.isOf(Items.GLASS_PANE) || s.isOf(Items.GLASS);
     private static final Predicate<ItemStack> WOOL = s -> s.isIn(ItemTags.WOOL);
@@ -1487,6 +1490,9 @@ public final class Builder {
         if (b instanceof AbstractFurnaceBlock || b instanceof StonecutterBlock || b instanceof GrindstoneBlock) return take(village, COBBLE, 4) ? s : SKIP;
         // the desert builds of sandstone, paid in sandstone or its sand (there is no cobble to be had there); adobe of earth
         String bid = Registries.BLOCK.getId(b).getPath();
+        if (bid.contains("terracotta")) // the badlands' clay, in what they have: their terracotta, their red sand
+            return take(village, x -> Registries.ITEM.getId(x.getItem()).getPath().contains("terracotta"), 1)
+                    || take(village, x -> x.isOf(Items.RED_SAND) || x.isOf(Items.CLAY_BALL), 2) || take(village, COBBLE, 1) ? s : fit ? SKIP : null;
         if (bid.contains("sandstone"))
             return take(village, x -> x.isOf(Items.SANDSTONE) || x.isOf(Items.CUT_SANDSTONE) || x.isOf(Items.SMOOTH_SANDSTONE) || x.isOf(Items.RED_SANDSTONE), 1)
                     || take(village, x -> x.isOf(Items.SAND) || x.isOf(Items.RED_SAND), 2) || take(village, COBBLE, 1) ? s : fit ? SKIP : null;
@@ -2017,23 +2023,34 @@ public final class Builder {
             }
         }
         // the desert builds in sandstone: wood is scarce there and dear, kept for doors, beams and shutters
+        // (paid in what the desert has: its sandstone, its sand, its clay - the cobble asked for here before was never
+        // there, and the walls went up in planks every time)
         if (pal.stone() == Blocks.SANDSTONE || pal.stone() == Blocks.RED_SANDSTONE) {
             switch (kind) {
                 case WALL -> {
-                    BlockState b = betterOr(village, kind, "sand", COBBLE, (step.dy() == 0 ? pal.stone() : pal.daub()).getDefaultState());
+                    BlockState b = betterOr(village, kind, "sand", SANDISH, (step.dy() == 0 ? pal.stone() : pal.daub()).getDefaultState());
                     if (b != null) return b == WANT ? null : b;
                 }
                 case FLOOR -> {
-                    BlockState b = step.dy() > 0 ? betterOr(village, kind, "sand", COBBLE, pal.daub().getDefaultState()) : null;
+                    BlockState b = step.dy() > 0 ? betterOr(village, kind, "sand", SANDISH, pal.daub().getDefaultState()) : null;
                     if (b != null) return b == WANT ? null : b;
                 }
                 case ROOF -> {
-                    BlockState b = betterOr(village, kind, "sand", COBBLE, Blocks.CUT_SANDSTONE.getDefaultState());
+                    BlockState b = betterOr(village, kind, "sand", SANDISH, pal.roofPlanks().getDefaultState());
+                    if (b != null) return b == WANT ? null : b;
+                }
+                case PILLAR, BEAM_X, BEAM_Z -> {
+                    BlockState b = betterOr(village, kind, "sand", SANDISH, pal.log().getDefaultState());
                     if (b != null) return b == WANT ? null : b;
                 }
                 default -> {
                 }
             }
+        }
+        // the north: the first course of the walls in stone, against the snow and the wet
+        if (pal.wood().equals("spruce") && kind == Kind.WALL && step.dy() == 0) {
+            BlockState b = betterOr(village, kind, "north", COBBLE, pal.stone().getDefaultState());
+            if (b != null) return b == WANT ? null : b;
         }
         switch (kind) {
             case FLOOR:

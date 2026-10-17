@@ -14,3 +14,5 @@ timber is swapped for the village's own wood.
 The "dwelling" homes (dwelling1 to dwelling5, in every timber style) are Settlements' own designs, drawn after the
 MineColonies residences: a cramped one-room hut for a hamlet, a cottage with a sleeping loft, a two-floor house with
 rooms of its own, and a stone-and-timber town house with a porch and a balcony.
+The workplaces of the hamlet, the village and the wealthy village (storehouse, granary, forge, armoury, lumberyard,
+masonry, mill, inn, garrison - 1 to 3) and the badlands style are Settlements' own designs too.

@@ -28,7 +28,42 @@ DESERT = {  # what the desert builds with instead: sandstone in its kinds, adobe
     "minecraft:stone_brick_wall": "minecraft:sandstone_wall", "minecraft:brick_wall": "minecraft:red_sandstone_wall",
     "minecraft:spruce_trapdoor": "minecraft:oak_trapdoor", "minecraft:dark_oak_trapdoor": "minecraft:oak_trapdoor",
 }
-KEEP_PROPS = ("_stairs", "_slab", "_wall", "_trapdoor")
+KEEP_PROPS = ("_stairs", "_slab", "_wall", "_trapdoor", "_log")
+
+BADLANDS = {  # the badlands: terracotta in its colours and red sandstone; dark oak, the wood of the old mines there
+    "minecraft:oak_planks": "minecraft:terracotta", "minecraft:spruce_planks": "minecraft:red_terracotta",
+    "minecraft:dark_oak_planks": "minecraft:brown_terracotta", "minecraft:oak_log": "minecraft:cut_red_sandstone",
+    "minecraft:stripped_oak_log": "minecraft:smooth_red_sandstone", "minecraft:dark_oak_log": "minecraft:dark_oak_log",
+    "minecraft:cobblestone": "minecraft:red_sandstone", "minecraft:mossy_cobblestone": "minecraft:red_sandstone",
+    "minecraft:stone_bricks": "minecraft:cut_red_sandstone", "minecraft:mossy_stone_bricks": "minecraft:cut_red_sandstone",
+    "minecraft:cracked_stone_bricks": "minecraft:cut_red_sandstone", "minecraft:polished_andesite": "minecraft:smooth_red_sandstone",
+    "minecraft:calcite": "minecraft:white_terracotta", "minecraft:packed_mud": "minecraft:orange_terracotta",
+    "minecraft:bricks": "minecraft:red_terracotta", "minecraft:coarse_dirt": "minecraft:coarse_dirt",
+    "minecraft:oak_stairs": "minecraft:red_sandstone_stairs", "minecraft:spruce_stairs": "minecraft:smooth_red_sandstone_stairs",
+    "minecraft:dark_oak_stairs": "minecraft:dark_oak_stairs", "minecraft:deepslate_tile_stairs": "minecraft:brick_stairs",
+    "minecraft:cobblestone_stairs": "minecraft:red_sandstone_stairs", "minecraft:stone_brick_stairs": "minecraft:red_sandstone_stairs",
+    "minecraft:oak_slab": "minecraft:red_sandstone_slab", "minecraft:spruce_slab": "minecraft:smooth_red_sandstone_slab",
+    "minecraft:dark_oak_slab": "minecraft:dark_oak_slab", "minecraft:deepslate_tile_slab": "minecraft:brick_slab",
+    "minecraft:cobblestone_wall": "minecraft:red_sandstone_wall", "minecraft:mossy_cobblestone_wall": "minecraft:red_sandstone_wall",
+    "minecraft:stone_brick_wall": "minecraft:red_sandstone_wall", "minecraft:brick_wall": "minecraft:brick_wall",
+    "minecraft:spruce_trapdoor": "minecraft:dark_oak_trapdoor",
+}
+NORTH_ROOF = {  # the north: sod and moss on stone over the roofs of the poorer houses
+    "minecraft:oak_stairs": "minecraft:mossy_cobblestone_stairs", "minecraft:spruce_stairs": "minecraft:mossy_cobblestone_stairs",
+    "minecraft:oak_slab": "minecraft:mossy_cobblestone_slab", "minecraft:spruce_slab": "minecraft:mossy_cobblestone_slab",
+}
+NORTH_WALL = ("minecraft:oak_planks", "minecraft:oak_log", "minecraft:packed_mud", "minecraft:calcite", "minecraft:mud_bricks",
+              "minecraft:stripped_oak_log", "minecraft:bricks")
+
+
+def translate(table, b, roof):
+    bid = b.split("[")[0]
+    if bid not in table or bid in WOODEN and not roof:
+        return b
+    nb = table[bid]
+    if "[" in b and nb.endswith(KEEP_PROPS):
+        return nb + "[" + b.split("[", 1)[1]
+    return nb
 
 
 WOODEN = ("minecraft:oak_stairs", "minecraft:spruce_stairs", "minecraft:dark_oak_stairs", "minecraft:oak_slab", "minecraft:spruce_slab", "minecraft:dark_oak_slab")
@@ -70,7 +105,7 @@ class House:
                 for z in range(z0, z1 + 1):
                     self.put(x, y, z, b)
 
-    def write(self, name, wood, credit, desert=False):
+    def write(self, name, wood, credit, desert=False, land=None):
         pal = ["minecraft:air"]
         idx = {"minecraft:air": 0}
         data = []
@@ -83,6 +118,13 @@ class House:
                         continue
                     if desert:
                         b = to_desert(b, (x, y, z) in self.roofs)
+                    elif land == "badlands":
+                        b = translate(BADLANDS, b, (x, y, z) in self.roofs)
+                    elif land == "north":
+                        if (x, y, z) in self.roofs:
+                            b = translate(NORTH_ROOF, b, True)
+                        elif y == 2 and b.split("[")[0] in NORTH_WALL:
+                            b = "minecraft:cobblestone"  # a second course of stone at the foot of the walls, against the snow
                     if wood != "oak":  # the timber of the style (only oak itself: dark oak and the accents stay as drawn)
                         b = b.replace("minecraft:oak_", f"minecraft:{wood}_").replace("minecraft:stripped_oak_", f"minecraft:stripped_{wood}_")
                         b = b.replace("minecraft:potted_oak_", "minecraft:potted_oak_")
@@ -710,6 +752,12 @@ class Room:
                 "lectern": f"minecraft:lectern[facing={inward},has_book=false,powered=false]",
                 "loom": f"minecraft:loom[facing={inward}]", "hay": "minecraft:hay_block[axis=y]",
                 "grind": f"minecraft:grindstone[face=floor,facing={inward}]",
+                "anvil": f"minecraft:anvil[facing={'east' if inward in ('north', 'south') else 'north'}]",
+                "smithing": "minecraft:smithing_table", "fletching": "minecraft:fletching_table",
+                "stonecutter": f"minecraft:stonecutter[facing={inward}]", "blast": f"minecraft:blast_furnace[facing={inward},lit=false]",
+                "logs": "minecraft:oak_wood[axis=x]", "cobble": "minecraft:cobblestone", "target": "minecraft:target[power=0]",
+                "crate": "minecraft:barrel[facing=east,open=false]", "brew": "minecraft:brewing_stand[has_bottle_0=false,has_bottle_1=false,has_bottle_2=false]",
+                "bench": st(inward),
             }[item]
             h.put(x, y, z, block)
             self.keep(x, z)
@@ -725,9 +773,9 @@ class Room:
         if self.h.cells.get((x, self.y + 1, z), "minecraft:air") == "minecraft:air":
             self.h.put(x, self.y + 1, z, f"minecraft:potted_{flower}")
 
-    def table(self, length=1, axis="x", carpet="white"):
-        """A table in the middle of the room, chairs along both sides of it."""
-        cx, cz = (self.x0 + self.x1) // 2, (self.z0 + self.z1) // 2
+    def table(self, length=1, axis="x", carpet="white", off=0):
+        """A table in the middle of the room (or `off` along x from it), chairs along both sides of it."""
+        cx, cz = (self.x0 + self.x1) // 2 + off, (self.z0 + self.z1) // 2
         cells = [(cx + i, cz) if axis == "x" else (cx, cz + i) for i in range(-(length // 2), length - length // 2)]
         side = [("north", "south")] if axis == "x" else [("west", "east")]
         need = cells + [(x + DIR[d][0], z + DIR[d][1]) for (x, z) in cells for d in side[0]]
@@ -941,7 +989,10 @@ def furnish(h, spec, k, sy, hgt, plan, rng, dx, storeys):
             room.keep(lx, lz)
             room.keep(lx + 1, lz)
         for item in r["items"]:
-            if item == "table":
+            if item.startswith("table@"):  # a table off the middle: table@dx[:len]
+                parts = item[6:].split(":")
+                room.table(int(parts[1]) if len(parts) > 1 else 1, "x", off=int(parts[0]))
+            elif item == "table":
                 room.table(1, "x")
             elif item.startswith("table"):
                 n = int(item[5:])
@@ -1221,8 +1272,112 @@ LHOMES = {
                                [{"x": (2, 8), "items": ["bed:yellow", "bed:yellow", "chest", "loom", "pot:red_tulip", "torches"]}]]), "east"),
 }
 
+# ---------- the workplaces: the stores, the granary, the forge, the armoury, the sawmill, the masons', the mill,
+# the inn, the barracks - three of each, for the hamlet, the village and the wealthy village ----------
+
+def W(**k):
+    return k
+
+
+WORKS = {
+    "storage": [
+        W(W=7, D=7, ridge="x", walls=["planks"], post="log", footing="cobble", roof="oak", double=True, door_off=-1,
+          rooms=[[{"x": (2, 6), "items": ["barrel", "barrel", "barrel", "chest", "chest", "crate", "hay", "chest", "torches"]}]]),
+        W(W=11, D=7, ridge="x", walls=["logs"], post="log", footing="cobble", roof="spruce", gable="minecraft:spruce_planks", double=True,
+          porch=True, rooms=[[{"x": (2, 10), "items": ["chest", "chest", "chest", "chest", "barrel", "barrel", "barrel", "barrel", "crate", "crate", "hay", "hay", "lanterns"]}]]),
+        W(W=13, D=9, ridge="x", floors=2, walls=["stonebrick", "planks"], post="log", studs=4, footing="stonebrick", roof="dark_oak",
+          double=True, shutters=True, rooms=[[{"x": (2, 12), "items": ["chest"] * 8 + ["barrel"] * 6 + ["lanterns"]}],
+                                             [{"x": (2, 12), "items": ["barrel"] * 6 + ["hay"] * 4 + ["crate"] * 4 + ["torches"]}]]),
+    ],
+    "granary": [
+        W(W=7, D=5, ridge="z", walls=["planks"], post="log", footing="cobble", roof="oak", double=True,
+          rooms=[[{"x": (2, 6), "items": ["hay", "hay", "hay", "barrel", "barrel", "composter", "torches"]}]]),
+        W(W=9, D=7, ridge="x", loft=True, walls=["planks"], post="stripped", studs=4, footing="cobble", roof="spruce", double=True,
+          rooms=[[{"x": (2, 8), "items": ["hay"] * 6 + ["barrel"] * 3 + ["composter", "torches"]}]]),
+        W(W=11, D=9, ridge="z", floors=2, walls=["stonebrick", "planks"], post="log", studs=5, footing="stonebrick", roof="dark_oak",
+          double=True, rooms=[[{"x": (2, 10), "items": ["barrel"] * 6 + ["hay"] * 4 + ["composter", "lanterns"]}],
+                              [{"x": (2, 10), "items": ["hay"] * 10 + ["torches"]}]]),
+    ],
+    "smithy": [
+        W(W=7, D=7, ridge="x", walls=["cobble"], post=None, footing="cobble", roof="spruce", gable="minecraft:spruce_planks",
+          chimney="east", porch=True, rooms=[[{"x": (2, 6), "items": ["furnace", "anvil", "grind", "chest", "barrel", "torches"]}]]),
+        W(W=9, D=7, ridge="x", walls=["cobble"], post="log", footing="stonebrick", roof="dark_oak", chimney="east", porch=True, double=True,
+          rooms=[[{"x": (2, 8), "items": ["blast", "furnace", "anvil", "smithing", "grind", "chest", "chest", "barrel", "lanterns"]}]]),
+        W(W=11, D=9, ridge="x", floors=2, walls=["stonebrick", "planks"], post="log", studs=5, footing="stonebrick", roof="deepslate_tile",
+          gable="minecraft:dark_oak_planks", chimney="east", chimney_mat=SBRICK, shutters=True, double=True,
+          rooms=[[{"x": (2, 10), "items": ["blast", "furnace", "furnace", "anvil", "anvil", "smithing", "grind", "chest", "chest", "barrel", "lanterns"]}],
+                 [{"x": (2, 10), "items": ["bed:red", "chest", "chest", "barrel", "table", "torches"]}]]),
+    ],
+    "armory": [
+        W(W=7, D=7, ridge="z", walls=["planks"], post="log", footing="cobble", roof="spruce", gable="minecraft:spruce_planks",
+          rooms=[[{"x": (2, 6), "items": ["grind", "smithing", "chest", "chest", "barrel", "target", "torches"]}]]),
+        W(W=9, D=7, ridge="x", walls=["cobble"], post="log", footing="stonebrick", roof="dark_oak", double=True, shutters=True,
+          rooms=[[{"x": (2, 8), "items": ["smithing", "grind", "fletching", "chest", "chest", "chest", "barrel", "target", "lanterns"]}]]),
+        W(W=11, D=9, ridge="z", floors=2, walls=["stonebrick", "stonebrick"], post="minecraft:dark_oak_log[axis=y]", studs=5,
+          footing="stonebrick", roof="deepslate_tile", gable="minecraft:dark_oak_planks", double=True, shutters=True, trim="dark_oak",
+          rooms=[[{"x": (2, 10), "items": ["smithing", "grind", "fletching", "anvil", "chest", "chest", "chest", "chest", "barrel", "lanterns"]}],
+                 [{"x": (2, 10), "items": ["target", "target", "chest", "chest", "barrel", "barrel", "torches"]}]]),
+    ],
+    "sawmill": [
+        W(W=7, D=7, ridge="x", walls=["planks"], post="log", footing="cobble", roof="oak", porch=True, double=True, door_off=-1,
+          rooms=[[{"x": (2, 6), "items": ["craft", "logs", "logs", "logs", "chest", "barrel", "torches"]}]]),
+        W(W=11, D=7, ridge="x", walls=["logs"], post="log", footing="cobble", roof="spruce", gable="minecraft:spruce_planks", porch=True,
+          double=True, rooms=[[{"x": (2, 10), "items": ["craft", "craft", "stonecutter", "logs", "logs", "logs", "logs", "logs", "chest", "chest", "barrel", "lanterns"]}]]),
+        W(W=13, D=9, ridge="z", floors=2, walls=["planks", "planks"], post="log", studs=4, footing="stonebrick", roof="dark_oak", double=True,
+          rooms=[[{"x": (2, 12), "items": ["craft", "craft", "stonecutter", "logs"] + ["logs"] * 6 + ["chest", "chest", "lanterns"]}],
+                 [{"x": (2, 12), "items": ["logs"] * 6 + ["barrel", "barrel", "chest", "torches"]}]]),
+    ],
+    "mason": [
+        W(W=7, D=7, ridge="x", walls=["cobble"], post="log", footing="cobble", roof="spruce", gable="minecraft:spruce_planks", porch=True,
+          rooms=[[{"x": (2, 6), "items": ["stonecutter", "cobble", "cobble", "chest", "barrel", "torches"]}]]),
+        W(W=9, D=7, ridge="z", walls=["stonebrick"], post="log", footing="stonebrick", roof="dark_oak", double=True,
+          rooms=[[{"x": (2, 8), "items": ["stonecutter", "stonecutter", "cobble", "cobble", "cobble", "chest", "chest", "barrel", "lanterns"]}]]),
+        W(W=11, D=9, ridge="x", floors=2, walls=["stonebrick", "stonebrick"], post=None, footing="stonebrick", roof="deepslate_tile",
+          gable="minecraft:stone_bricks", double=True, shutters=True,
+          rooms=[[{"x": (2, 10), "items": ["stonecutter", "stonecutter", "grind"] + ["cobble"] * 5 + ["chest", "chest", "lanterns"]}],
+                 [{"x": (2, 10), "items": ["bed:gray", "chest", "barrel", "table", "books", "torches"]}]]),
+    ],
+    "mill": [
+        W(W=7, D=7, ridge="z", walls=["planks"], post="log", footing="cobble", roof="oak",
+          rooms=[[{"x": (2, 6), "items": ["grind", "hay", "hay", "barrel", "smoker", "chest", "torches"]}]]),
+        W(W=9, D=7, ridge="x", loft=True, walls=["planks"], post="log", studs=4, footing="cobble", roof="spruce", double=True, chimney="west",
+          rooms=[[{"x": (2, 8), "items": ["grind", "grind", "smoker", "furnace", "hay", "hay", "barrel", "barrel", "chest", "torches"]}]]),
+        W(W=11, D=9, ridge="z", floors=2, walls=["stonebrick", "planks"], post="log", studs=5, footing="stonebrick", roof="dark_oak",
+          chimney="west", chimney_mat=SBRICK, double=True, shutters=True,
+          rooms=[[{"x": (2, 10), "items": ["grind", "grind", "smoker", "smoker", "furnace", "barrel", "barrel", "chest", "craft", "lanterns"]}],
+                 [{"x": (2, 10), "items": ["hay"] * 8 + ["barrel", "barrel", "torches"]}]]),
+    ],
+    "tavern": [
+        W(W=9, D=7, ridge="x", walls=["planks"], post="log", footing="cobble", roof="oak", chimney="west", porch=True,
+          rooms=[[{"x": (2, 8), "items": ["smoker", "barrel", "craft", "barrel", "table@-2", "table@2", "lanterns"]}]]),
+        W(W=11, D=9, ridge="x", floors=2, walls=["cobble", "planks"], post="log", studs=5, footing="stonebrick", roof="spruce",
+          gable="minecraft:spruce_planks", chimney="west", porch=True, double=True, shutters=True,
+          rooms=[[{"x": (2, 10), "items": ["smoker", "furnace", "barrel", "barrel", "barrel", "craft", "table@-3", "table@3", "table", "lanterns"]}],
+                 [{"x": (2, 5), "items": ["bed:red", "bed:red", "chest", "torches"]}, {"x": (7, 10), "items": ["bed:blue", "bed:blue", "chest", "torches"]}]]),
+        W(W=13, D=11, ridge="z", floors=2, walls=["stonebrick", "daub"], post="minecraft:dark_oak_log[axis=y]", studs=3, footing="stonebrick",
+          roof="deepslate_tile", gable="minecraft:calcite", chimney="west", chimney_mat=SBRICK, double=True, shutters=True, sills=True,
+          trim="dark_oak", floor="minecraft:spruce_planks",
+          rooms=[[{"x": (2, 12), "items": ["smoker", "smoker", "furnace", "barrel", "barrel", "barrel", "barrel", "craft", "cauldron",
+                                           "table@-3:2", "table@2:2", "rug:red", "lanterns"]}],
+                 [{"x": (2, 4), "items": ["bed:red", "chest", "torches"]}, {"x": (6, 8), "items": ["bed:green", "chest", "torches"]},
+                  {"x": (10, 12), "items": ["bed:blue", "chest", "torches"]}]]),
+    ],
+    "barracks": [
+        W(W=9, D=7, ridge="x", walls=["logs"], post="log", footing="cobble", roof="spruce", gable="minecraft:spruce_planks", double=True,
+          rooms=[[{"x": (2, 8), "items": ["bed:red", "bed:red", "bed:red", "bed:red", "chest", "chest", "grind", "torches"]}]]),
+        W(W=11, D=9, ridge="x", walls=["cobble"], post="log", footing="stonebrick", roof="dark_oak", double=True, shutters=True,
+          rooms=[[{"x": (2, 10), "items": ["bed:red"] * 6 + ["chest", "chest", "chest", "grind", "target", "table", "lanterns"]}]]),
+        W(W=13, D=11, ridge="z", floors=2, walls=["stonebrick", "stonebrick"], post="minecraft:dark_oak_log[axis=y]", studs=4,
+          footing="stonebrick", roof="deepslate_tile", gable="minecraft:stone_bricks", double=True, shutters=True, trim="dark_oak",
+          rooms=[[{"x": (2, 12), "items": ["grind", "smithing", "target", "target", "chest", "chest", "chest", "barrel", "table3", "lanterns"]}],
+                 [{"x": (2, 12), "items": ["bed:red"] * 8 + ["chest"] * 4 + ["torches"]}]]),
+    ],
+}
+WORK_FILE = {"storage": "storehouse", "granary": "granary", "smithy": "forge", "armory": "armoury", "sawmill": "lumberyard",
+             "mason": "masonry", "mill": "mill", "tavern": "inn", "barracks": "garrison"}
+
 CREDIT = "Settlements' own design, drawn after the MineColonies residences (github.com/ldtteam/minecolonies)"
-STYLES = {"medievaloak": "oak", "medievalbirch": "birch", "medievaldarkoak": "dark_oak", "nordic": "spruce", "sandstone": "oak"}
+STYLES = {"medievaloak": "oak", "medievalbirch": "birch", "medievaldarkoak": "dark_oak", "nordic": "spruce", "sandstone": "oak", "badlands": "oak"}
 DESIGNS = {"dwelling1": hut, "dwelling2": cottage, "dwelling3": townhouse, "dwelling4": manor, "dwelling5": manor}
 for n, spec in HOMES.items():
     DESIGNS[n] = (lambda n=n, spec=spec: build_home(n, spec))
@@ -1234,13 +1389,18 @@ for n, (m, wg, side) in LHOMES.items():
         DESIGNS["dwelling5e"] = (lambda n=n, m=m, wg=wg, side=side: lhome(n, m, wg, side))
 for lv in (1, 2, 3):
     DESIGNS[f"hall{lv}"] = (lambda lv=lv: hall(lv))
+for kind, specs in WORKS.items():
+    for lv, spec in enumerate(specs, 1):
+        n = f"{WORK_FILE[kind]}{lv}"
+        DESIGNS[n] = (lambda n=n, spec=spec: build_home(n, spec))
 index = []
 made = {}
 for name, make in DESIGNS.items():
     h = make()
     made[name] = h
     for style, wood in STYLES.items():
-        j = h.write(name, wood, CREDIT, desert=style == "sandstone")
+        j = h.write(name, wood, CREDIT, desert=style == "sandstone",
+                    land="badlands" if style == "badlands" else "north" if style == "nordic" and not name.startswith(("dwelling4", "dwelling5", "hall3")) else None)
         os.makedirs(os.path.join(OUT, style), exist_ok=True)
         with open(os.path.join(OUT, style, name + ".json"), "w") as f:
             json.dump(j, f, separators=(",", ":"))
