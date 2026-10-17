@@ -41,6 +41,7 @@ public final class Mining {
             village.markDirty();
             Speech.say(v, "settlements.say.build.mine");
         }
+        reserve(village);
         Workforce.craftTorches(village); // the mine needs light: torches from charcoal burnt out of logs
         if (Dig.busy(v)) {
             Doing.count("m.digging");
@@ -322,6 +323,19 @@ public final class Mining {
      * to step, as anyone would on a stair. True while on the way.
      */
     /** The workings cannot be got to: back to the top of the plan, where what is dug already is passed over quickly. */
+    /**
+     * The whole run of the shaft and its landing kept free of building, not only the shed over its mouth: a house was
+     * put up over the stair, its footing filled the shaft below, and the miner could not get down to his work.
+     */
+    static void reserve(Village village) {
+        BlockPos o = village.mineOrigin;
+        if (o == null) return;
+        int x = o.getX() - 2, z = o.getZ() - 1, w = 7, d = Blueprints.MINE_DEPTH + 7;
+        for (int[] p : village.plots) if (p[0] == x && p[1] == z && p[2] == w && p[3] == d) return;
+        village.plots.add(new int[]{x, z, w, d});
+        village.markDirty();
+    }
+
     /** Something to stand on: a full block, a step or a slab. */
     static boolean floor(ServerWorld world, BlockPos p) {
         var st = world.getBlockState(p);
