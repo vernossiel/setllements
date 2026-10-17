@@ -117,6 +117,18 @@ public final class Workforce {
         }
         if (v.settlementsCaravan) return; // trade caravan merchants only walk the road
         if (Hire.tick(v)) return; // hired escorts and mercenaries take no village work
+        // a meal is put down when something goes for him: struck a moment ago, or a monster at arm's length
+        if (v.settlementsEatTicks > 0 && (v.getAttacker() != null && v.age - v.getLastAttackedTime() < 100
+                || !v.getWorld().getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, v.getBoundingBox().expand(6, 3, 6), net.minecraft.entity.LivingEntity::isAlive).isEmpty())) {
+            v.settlementsEatTicks = 0;
+            v.settlementsMealValue = 0;
+            v.clearActiveItem();
+            ItemStack food = v.getStackInHand(v.getDominantHand());
+            if (!food.isEmpty() && !(food.getItem() instanceof net.minecraft.item.ToolItem) && !(food.getItem() instanceof net.minecraft.item.RangedWeaponItem)) {
+                v.getInventory().addStack(food.copy()); // the bread back in the bag, the weapon back in his hand (see EquipmentTask)
+                v.setStackInHand(v.getDominantHand(), ItemStack.EMPTY);
+            }
+        }
         if (v.settlementsEatTicks > 0) {
             eatTick(v);
             return;
