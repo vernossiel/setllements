@@ -1542,7 +1542,14 @@ public final class Builder {
     private static void finish(Village village) {
         BlockPos o = village.buildOrigin;
         if (o == null) return;
-        if (village.getWorld() != null) Scaffold.takeDown(village, village.getWorld()); // the building stands: down with the scaffolding
+        if (village.getWorld() != null) {
+            Scaffold.takeDown(village, village.getWorld()); // the building stands: down with the scaffolding
+            // and every bit of scaffolding about the site, whoever put it up and when (the list of it is not kept over a
+            // restart of the world, and a house stood with its scaffold round it for good)
+            int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
+            int w = (village.buildRot & 1) == 0 ? fp[0] : fp[1], d = (village.buildRot & 1) == 0 ? fp[1] : fp[0];
+            Scaffold.clearAround(village, village.getWorld(), o, w, d);
+        }
         String type = village.buildType;
         int rot = village.buildRot;
         if (village.buildRepair) { // a repair changes nothing in the books

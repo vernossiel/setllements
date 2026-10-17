@@ -146,6 +146,13 @@ public final class Mining {
                     || here.isIn(net.minecraft.registry.tag.BlockTags.COPPER_ORES))) {
                 Speech.sayAny(v, "settlements.say.mine.ore", 3); // a find
             }
+            // the mine's own steps and timbers are not dug out again when the plan is gone over from the top (each time it
+            // was, he broke his own stair from under his feet)
+            if (step.kind() == Blueprints.Kind.DIG && (here.getBlock() instanceof net.minecraft.block.StairsBlock || here.isIn(net.minecraft.registry.tag.BlockTags.PLANKS)
+                    || here.isIn(net.minecraft.registry.tag.BlockTags.LOGS) || here.getBlock() instanceof net.minecraft.block.TorchBlock)) {
+                village.mineStep++;
+                continue;
+            }
             if (step.kind() == Blueprints.Kind.DIG && !world.getBlockState(target).isAir()) {
                 boolean wet = false;
                 for (net.minecraft.util.math.Direction dir : net.minecraft.util.math.Direction.values()) if (!world.getFluidState(target.offset(dir)).isEmpty()) wet = true;

@@ -50,32 +50,40 @@ public final class Scaffold {
      * A column beside the target, outside the building, where a man standing at the target's height has it in
      * front of him: open from the ground up to his head.
      */
+    /**
+     * A column already standing that reaches this block: looked for in the world itself, not only in the list of what
+     * he put up (that list is gone after a restart, and he put up a new column beside the old one for every block).
+     */
     private static BlockPos existing(ServerWorld world, VillagerEntityMCA v, BlockPos target, Built site) {
         BlockPos best = null;
         double bd = Double.MAX_VALUE;
-        // a column put up already that reaches this block too: back up that one, not a new column for every block
-        // (a heap of scaffolding round every building, and the builder forever climbing up and down)
-        Village home = v.getResidency().getHomeVillage().orElse(null);
-        Set<BlockPos> up = home == null ? null : PUT_UP.get(home.getId());
-        if (up != null) {
-            java.util.Map<Long, Integer> foot = new java.util.HashMap<>(); // column -> its lowest block
-            for (BlockPos q : up) foot.merge(((long) q.getX() << 32) ^ (q.getZ() & 0xFFFFFFFFL), q.getY(), Math::min);
-            for (var e : foot.entrySet()) {
-                int cx = (int) (e.getKey() >> 32), cz = (int) (long) e.getKey().intValue();
-                double dx = target.getX() + 0.5 - (cx + 0.5), dz = target.getZ() + 0.5 - (cz + 0.5);
-                if (dx * dx + dz * dz > (REACH - 0.5) * (REACH - 0.5)) continue;
-                BlockPos c = new BlockPos(cx, target.getY() - 1, cz);
-                if (site != null && insideWalls(site, c)) continue;
-                if (!open(world, c) && !world.getBlockState(c).isOf(Blocks.SCAFFOLDING) || !open(world, c.up())) continue;
-                double dist = dx * dx + dz * dz;
-                if (dist < bd) {
-                    bd = dist;
-                    best = new BlockPos(cx, e.getValue(), cz);
-                }
+        int r = (int) REACH;
+        for (BlockPos p : BlockPos.iterate(target.add(-r, -1, -r), target.add(r, -1, r))) {
+            if (!world.getBlockState(p).isOf(Blocks.SCAFFOLDING) && !world.getBlockState(p.down()).isOf(Blocks.SCAFFOLDING)) continue;
+            double dx = target.getX() - p.getX(), dz = target.getZ() - p.getZ();
+            if (dx * dx + dz * dz > (REACH - 0.5) * (REACH - 0.5) || dx == 0 && dz == 0) continue;
+            if (site != null && insideWalls(site, p)) continue;
+            if (!open(world, p.up()) && !world.getBlockState(p.up()).isOf(Blocks.SCAFFOLDING)) continue;
+            BlockPos foot = world.getBlockState(p).isOf(Blocks.SCAFFOLDING) ? p : p.down();
+            while (world.getBlockState(foot.down()).isOf(Blocks.SCAFFOLDING)) foot = foot.down();
+            double dist = dx * dx + dz * dz;
+            if (dist < bd) {
+                bd = dist;
+                best = foot.toImmutable();
             }
-            if (best != null) return best;
         }
-        return null;
+        return best;
+    }
+
+    /** How many columns of scaffolding stand about this site already. */
+    private static int columns(ServerWorld world, Built site) {
+        if (site == null) return 0;
+        java.util.Set<Long> cols = new java.util.HashSet<>();
+        BlockPos o = site.origin();
+        for (BlockPos p : BlockPos.iterate(o.add(-3, 0, -3), o.add(site.fw() + 3, 1, site.fd() + 3))) {
+            if (world.getBlockState(p).isOf(Blocks.SCAFFOLDING)) cols.add(((long) p.getX() << 32) ^ (p.getZ() & 0xFFFFFFFFL));
+        }
+        return cols.size();
     }
 
     private static BlockPos columnFor(ServerWorld world, VillagerEntityMCA v, BlockPos target, Built site) {
@@ -188,8 +196,9 @@ public final class Scaffold {
         // chosen beforehand that he may never get to); else the nearest column that will do
         // a column put up already that reaches it first (a new one for every block: the house stood in a forest of them)
         BlockPos col = existing(world, v, target, site);
-        if (col == null) col = here(world, v, target, site);
-        if (col == null) col = columnFor(world, v, target, site);
+        // and no more than eight columns round one building: past that, the old ones and his arm's length must do
+        if (col == null && columns(world, site) < 8) col = here(world, v, target, site);
+        if (col == null && columns(world, site) < 8) col = columnFor(world, v, target, site);
         if (col == null) {
             Doing.count("c.nocolumn");
             return false;
@@ -204,6 +213,16 @@ public final class Scaffold {
             return true;
         }
         if (!onIt) {
+            // right by it: onto it, into the scaffolding at its foot, as a man steps onto a ladder (he was walked to the foot
+            // of a column standing there, the foot itself being scaffolding he cannot stand in, and set down beside it
+            // again and again: a day of it)
+            double cx = col.getX() + 0.5 - v.getX(), cz = col.getZ() + 0.5 - v.getZ();
+            if (cx * cx + cz * cz <= 2.0 * 2.0 && Math.abs(v.getY() - col.getY()) <= 2.5 && Move.passable(world, col.up())) {
+                Doing.count("c.col.on");
+                v.getNavigation().stop();
+                v.refreshPositionAndAngles(col.getX() + 0.5, col.getY(), col.getZ() + 0.5, v.getYaw(), v.getPitch());
+                return true;
+            }
             Doing.count("c.col.walk");
             // a quarter of a minute and not at the foot of it: set down there (he walked at one the whole day)
             long[] w = WALKING.computeIfAbsent(v.getUuid(), k -> new long[]{Long.MIN_VALUE, 0});
@@ -297,6 +316,20 @@ public final class Scaffold {
         if (!under.isSolidBlock(world, p.down()) && !step || under.isOf(Blocks.SCAFFOLDING)) return false;
         if (!open(world, p) || !open(world, p.up())) return false;
         return planned == null || !planned.contains(p.asLong()) && !planned.contains(p.up().asLong());
+    }
+
+    /** All scaffolding in and around a site (three blocks out, up to thirty above), taken down; whoever stands on it set on the ground. */
+    public static void clearAround(Village village, ServerWorld world, BlockPos o, int w, int d) {
+        for (BlockPos p : BlockPos.iterate(o.add(-3, -2, -3), o.add(w + 3, 30, d + 3))) {
+            if (world.getBlockState(p).isOf(Blocks.SCAFFOLDING)) world.setBlockState(p, Blocks.AIR.getDefaultState(), net.minecraft.block.Block.NOTIFY_LISTENERS);
+        }
+        for (VillagerEntityMCA r : village.getResidents(world)) {
+            if (r.squaredDistanceTo(o.getX(), o.getY(), o.getZ()) < 40 * 40 && world.getBlockState(r.getBlockPos().down()).isAir()) {
+                int g = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, r.getBlockX(), r.getBlockZ());
+                r.refreshPositionAndAngles(r.getX(), g, r.getZ(), r.getYaw(), r.getPitch());
+                r.fallDistance = 0;
+            }
+        }
     }
 
     /** The building stands: the scaffolding comes down. */
