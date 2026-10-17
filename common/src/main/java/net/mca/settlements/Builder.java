@@ -882,9 +882,7 @@ public final class Builder {
             } else if (world.getTime() - st[1] > 1200 && far) {
                 // a minute and no way to it: he gets there somehow (a man climbs, squeezes through): set down beside it
                 st[1] = world.getTime();
-                v.getNavigation().stop();
-                Move.putSafely(v, target);
-                LONG_ARM.put(village.getId(), village.buildStep);
+                LONG_ARM.put(village.getId(), village.buildStep); // laid from where he stands, not set down by it (a jump a player saw)
                 continue;
             }
             if (LONG_ARM.getOrDefault(village.getId(), -1) == village.buildStep) far = false;

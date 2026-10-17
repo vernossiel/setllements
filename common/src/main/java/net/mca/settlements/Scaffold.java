@@ -240,6 +240,7 @@ public final class Scaffold {
         if (col == null && tidy(v, world, site, planned)) return true;
         if (col == null && columns(world, site, planned) < 8) col = here(world, v, target, site);
         if (col == null && columns(world, site, planned) < 8) col = columnFor(world, v, target, site);
+        if (col != null && BAD.contains(col.asLong())) col = null; // one he could not get to
         if (col == null) {
             Doing.count("c.nocolumn");
             return false;
@@ -270,10 +271,13 @@ public final class Scaffold {
             if (w[0] != col.asLong()) {
                 w[0] = col.asLong();
                 w[1] = world.getTime();
-            } else if (world.getTime() - w[1] > 300) {
+            } else if (world.getTime() - w[1] > 600) {
+                // half a minute and not at its foot: no way to it, another column (he was set down at it before, a
+                // jump across the house a player saw)
                 WALKING.remove(v.getUuid());
-                Doing.count("c.col.put");
-                if (Move.putSafely(v, col)) return true;
+                Doing.count("c.col.bad");
+                BAD.add(col.asLong());
+                return false;
             }
             Move.to(v, col.getX() + 0.5, col.getY(), col.getZ() + 0.5, 0.6);
             return true;
