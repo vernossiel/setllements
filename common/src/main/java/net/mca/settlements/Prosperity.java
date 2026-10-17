@@ -18,7 +18,7 @@ import java.util.Map;
 public final class Prosperity {
     private static final Map<Integer, double[]> DANGER = new HashMap<>(); // {value, last update tick}
     private static final Map<Integer, double[]> CACHE = new HashMap<>();  // {factor, computed at tick}
-    private static final double DANGER_HALF_LIFE = 24000.0 * 2;
+    private static final double DANGER_HALF_LIFE = 24000.0; // a fright fades in a day or so (at two days one night's fight kept newcomers away for most of a week)
 
     private Prosperity() {
     }

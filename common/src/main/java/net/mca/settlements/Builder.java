@@ -738,6 +738,14 @@ public final class Builder {
         if (village.buildOrigin == null && (!look || !plan(village, world))) {
             if (look && lastNoSite != null) NEXT_LOOK.put(village.getId(), world.getTime() + 600);
             if (look && lastNoSite != null && Tiers.isHome(lastNoSite)) Expansion.noRoom(village, world); // no plot for a home: the village is hemmed in
+            // the house the homeless wait for is short of wood: he goes and gets it himself (picks up what lies about,
+            // fells a tree), not paving the road while they sleep on the hall floor
+            for (Plan.Status hs : Plan.pending(village)) {
+                if (hs.goal().id().equals("housing") && hs.missPlanks() > 0) {
+                    markShort(village, Needs.Need.PLANKS, true);
+                    if (Scavenge.work(v, village, world, Needs.Need.PLANKS, false)) return true;
+                }
+            }
             // nothing to start on now (no site, short of material): the roads meanwhile - buildings come first
             if (Repair.roadWork(v, village, world)) {
                 Doing.set(v, "settlements.doing.road");
