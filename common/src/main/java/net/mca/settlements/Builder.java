@@ -717,7 +717,14 @@ public final class Builder {
     /** One builder second. Returns true when the villager actually worked (the caller drains energy). */
     public static boolean work(VillagerEntityMCA v, Village village) {
         if (!(v.getWorld() instanceof ServerWorld world) || village == null) return false;
-        // upkeep first: a damaged building, then the roads
+        // upkeep first: a damaged building, then the roads. The hall broken (blown up, burnt, its chests gone) cannot
+        // wait for the house in hand: that is put aside and taken up again after (the village gave up on a blown-up hall)
+        if (village.buildOrigin != null && !village.buildRepair && !PARKED.containsKey(village.getId()) && Repair.hallBroken(village)
+                && !Buildings.base(village.buildType).equals("townhall")) {
+            PARKED.put(village.getId(), new Object[]{village.buildType, village.buildOrigin, village.buildRot, village.buildW, village.buildD, village.buildF, village.buildStep});
+            village.buildOrigin = null;
+            village.markDirty();
+        }
         if (village.buildOrigin == null && Repair.start(village)) Speech.say(v, "settlements.say.build.repair");
         // looking over the land for a site is heavy work: when nothing was found, again in half a minute
         boolean look = village.buildOrigin == null && world.getTime() >= NEXT_LOOK.getOrDefault(village.getId(), 0L);
@@ -1372,6 +1379,8 @@ public final class Builder {
         return laid;
     }
 
+    private static final Map<Integer, Object[]> PARKED = new HashMap<>(); // village -> the project put aside for the hall's repair
+
     private static void finish(Village village) {
         BlockPos o = village.buildOrigin;
         if (o == null) return;
@@ -1383,6 +1392,16 @@ public final class Builder {
             Life.news(village, "repaired", Text.translatable("settlements.building." + Buildings.base(type)));
             village.buildOrigin = null;
             village.buildStep = 0;
+            Object[] parked = PARKED.remove(village.getId());
+            if (parked != null) { // and back to the building that was put aside for it, from where it was left
+                village.buildType = (String) parked[0];
+                village.buildOrigin = (BlockPos) parked[1];
+                village.buildRot = (int) parked[2];
+                village.buildW = (int) parked[3];
+                village.buildD = (int) parked[4];
+                village.buildF = (int) parked[5];
+                village.buildStep = (int) parked[6];
+            }
             village.markDirty();
             return;
         }

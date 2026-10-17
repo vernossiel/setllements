@@ -99,6 +99,12 @@ public final class Repair {
         }
     }
 
+    /** The hall is what is waiting to be mended. */
+    public static boolean hallBroken(Village village) {
+        Built b = PENDING.get(village.getId());
+        return b != null && Buildings.base(b.type()).equals("townhall");
+    }
+
     /** Turns a pending repair into the builder's project. */
     public static boolean start(Village village) {
         Built b = PENDING.remove(village.getId());
