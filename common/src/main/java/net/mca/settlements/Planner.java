@@ -156,7 +156,9 @@ public final class Planner {
                 }
 
                 public boolean run(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
-                    return Repair.roadWork(v, village, world) || Scavenge.work(v, village, world, need, true);
+                    // not standing about while another brings it: he goes for it himself as well (the roads only when there
+                    // is nothing to fetch near)
+                    return Scavenge.work(v, village, world, need, true) || Ground.work(v, village, world) || Repair.roadWork(v, village, world);
                 }
             },
             // nobody on it: he gets it himself, from what lies about or grows near

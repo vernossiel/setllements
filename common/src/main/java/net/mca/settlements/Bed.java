@@ -126,7 +126,6 @@ public final class Bed {
             SINCE.remove(v.getUuid());
             // the house shut for the night: a door somebody left open by his bed is shut (a zombie walked in through
             // one onto a sleeper two blocks from it)
-            if (world.getTime() / 20 % 5 == 0) Move.shutDoorsAbout(v, 4);
             return true;
         }
         if (v.hasVehicle()) v.stopRiding();
@@ -193,7 +192,6 @@ public final class Bed {
             if ((t >= 12800 || t < 500) && !Seat.seated(v) && !world.isSkyVisible(v.getBlockPos().up())) Seat.sitHere(v, v.getBodyYaw());
             Seat.doze(v, (t >= 13000 || t < 500) && Seat.seated(v) && v.getRecentDamageSource() == null
                     && world.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, v.getBoundingBox().expand(8, 3, 8), net.minecraft.entity.LivingEntity::isAlive).isEmpty()); // nodding off where he sits, woken by trouble
-            if (world.getTime() / 20 % 5 == 0) Move.shutDoorsAbout(v, 5); // the door of the place he shelters in, shut for the night
             Doing.set(v, "settlements.doing.bed.floor");
         }
         return true;

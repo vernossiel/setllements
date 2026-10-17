@@ -39,6 +39,7 @@ public final class Notice {
     /** A player has put a block down. */
     public static void placed(PlayerEntity player, BlockPos pos) {
         if (!(player.getWorld() instanceof ServerWorld world)) return;
+        Unstick.placedByPlayer(pos);
         Village village = Village.findNearest(player).orElse(null);
         if (village == null || !village.isWithinBorder(player)) return;
         long now = world.getTime();
@@ -62,6 +63,7 @@ public final class Notice {
                 v -> v.isAlive() && !v.isSleeping() && !v.isBaby() && !v.isGuard() && !Dig.busy(v) && !v.settlementsHauling && !WATCHING.containsKey(v.getUuid()))) {
             if (drawn >= 2 || now < LOOKED.getOrDefault(v.getUuid(), 0L)) continue;
             if (Mind.onDuty(v, village, tod) && v.settlementsIdleWork < 30) continue; // at work: he looks up, no more
+            if (v.getProfession() == net.minecraft.village.VillagerProfession.CARTOGRAPHER && village.buildOrigin != null) continue; // a builder with a house in hand keeps at it
             if (world.random.nextInt(2) == 0) continue;
             // a place to stand on his side of it, a few steps off, on open ground
             Vec3d c = Vec3d.ofCenter(mid), dir = v.getPos().subtract(c).multiply(1, 0, 1);

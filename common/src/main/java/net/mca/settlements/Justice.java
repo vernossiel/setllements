@@ -155,7 +155,7 @@ public final class Justice {
                 v -> v.isAlive() && !v.isSleeping() && v.canSee(p)).isEmpty();
         // the stores in the town hall are the village's own: they are counted every day, a hole in them is soon found
         boolean hall = village.hallPos != null && where.isWithinDistance(village.hallPos, 12);
-        long at = world.getTime() + 20L * (hall ? 40 + world.random.nextInt(60) : 120 + world.random.nextInt(240));
+        long at = world.getTime() + 20L * (hall ? 10 + world.random.nextInt(20) : 30 + world.random.nextInt(60)); // (minutes it took, and the thief long gone)
         // the same hand at more chests before anybody noticed: one theft, all of it together
         for (int i = 0; i < SUSPICIONS.size(); i++) {
             Suspicion o = SUSPICIONS.get(i);
@@ -171,6 +171,22 @@ public final class Justice {
 
     private static void discover(ServerWorld world) {
         long now = world.getTime();
+        // caught red-handed: the very thing in his hand, before a villager's eyes, the moment it is missed or not
+        for (int i = 0; i < SUSPICIONS.size(); i++) {
+            Suspicion s = SUSPICIONS.get(i);
+            if (s.crime() != Crime.THEFT || s.items() == null || s.items().isEmpty()) continue;
+            ServerPlayerEntity p = world.getServer().getPlayerManager().getPlayer(s.player());
+            if (p == null || p.getWorld() != world || p.isSpectator() || p.isCreative()) continue;
+            // (only a thing that marks him: an emerald, gold, a sword - not a loaf, which any man may have of his own -
+            // and as much of it on him as went missing)
+            Item held = s.items().containsKey(p.getMainHandStack().getItem()) ? p.getMainHandStack().getItem()
+                    : s.items().containsKey(p.getOffHandStack().getItem()) ? p.getOffHandStack().getItem() : null;
+            if (held == null || Reputation.value(new ItemStack(held)) < 3 || p.getInventory().count(held) < s.items().get(held)) continue;
+            boolean eyes = !world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(8),
+                    v -> v.isAlive() && !v.isBaby() && !v.isSleeping() && v.canSee(p)).isEmpty();
+            if (!eyes) continue;
+            SUSPICIONS.set(i, new Suspicion(s.player(), s.villageId(), s.crime(), s.value(), s.items(), p.getBlockPos(), true, new long[]{now}, s.hall()));
+        }
         for (Iterator<Suspicion> it = SUSPICIONS.iterator(); it.hasNext(); ) {
             Suspicion s = it.next();
             if (now < s.at()[0]) continue;
@@ -236,6 +252,7 @@ public final class Justice {
     // ---------- every second ----------
 
     public static void tick(ServerWorld world) {
+        RepHud.tick(world);
         if (!SUSPICIONS.isEmpty()) discover(world);
         if (!SEARCHES.isEmpty()) searches(world);
         if (CASES.isEmpty()) return;

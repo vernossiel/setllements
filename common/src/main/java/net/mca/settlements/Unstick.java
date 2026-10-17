@@ -23,10 +23,29 @@ public final class Unstick {
     private Unstick() {
     }
 
+    /** Blocks a player has put down (the last few thousand): not the village's work, whatever they stand in. */
+    private static final java.util.LinkedHashSet<Long> PLAYER_PLACED = new java.util.LinkedHashSet<>();
+
+    public static void placedByPlayer(BlockPos pos) {
+        PLAYER_PLACED.remove(pos.asLong());
+        PLAYER_PLACED.add(pos.asLong());
+        if (PLAYER_PLACED.size() > 4000) {
+            var it = PLAYER_PLACED.iterator();
+            it.next();
+            it.remove();
+        }
+    }
+
+    /** Put there by a player (a block across a doorway, a cobble wall round a man): fair to break when in the way. */
+    public static boolean playerPut(BlockPos pos) {
+        return PLAYER_PLACED.contains(pos.asLong());
+    }
+
     private static boolean breakable(ServerWorld world, Village village, BlockPos pos) {
         BlockState state = world.getBlockState(pos);
         if (state.isAir() || !state.getFluidState().isEmpty()) return false;
         if (state.getHardness(world, pos) < 0) return false;
+        if (playerPut(pos) && !(state.getBlock() instanceof net.minecraft.block.BlockWithEntity) && state.getHardness(world, pos) <= 3.0f) return true;
         // only natural terrain and plants, never anything someone built
         boolean natural = state.isIn(net.minecraft.registry.tag.BlockTags.DIRT) || state.isIn(net.minecraft.registry.tag.BlockTags.SAND)
                 || state.isIn(net.minecraft.registry.tag.BlockTags.LEAVES) || state.isIn(net.minecraft.registry.tag.BlockTags.REPLACEABLE)
@@ -76,6 +95,7 @@ public final class Unstick {
                 if (st.isAir() || !st.getFluidState().isEmpty() || st.getBlock() instanceof net.minecraft.block.BlockWithEntity) continue;
                 float hard = st.getHardness(world, q);
                 if (hard < 0 || hard > 3.0f) continue; // no obsidian, no iron
+                if (playerPut(q)) return q.toImmutable(); // the cobble put across his door: out with it, whatever house it stands in
                 if (village != null && Protection.severity(world, village, q, st) > 0) continue; // the village's own
                 if (village != null) for (Built b : village.built) if (b.contains(q)) { st = null; break; }
                 if (st == null) continue;
@@ -83,6 +103,21 @@ public final class Unstick {
             }
         }
         return null;
+    }
+
+    /**
+     * Out of a pit as a player gets out: a block of earth under his feet and up onto it, a block a time, till he stands
+     * at the rim (the shaft's own earth: nothing taken from the stores).
+     */
+    private static void climbOut(ServerWorld world, VillagerEntityMCA v) {
+        BlockPos feet = v.getBlockPos();
+        if (!Move.passable(world, feet.up(2))) return; // a roof over him: not a pit
+        v.getNavigation().stop();
+        world.setBlockState(feet, net.minecraft.block.Blocks.DIRT.getDefaultState());
+        world.playSound(null, feet, net.minecraft.sound.SoundEvents.BLOCK_GRAVEL_PLACE, net.minecraft.sound.SoundCategory.BLOCKS, 0.8f, 1f);
+        v.refreshPositionAndAngles(v.getX(), feet.getY() + 1, v.getZ(), v.getYaw(), v.getPitch());
+        v.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+        v.fallDistance = 0;
     }
 
     private static Optional<BlockPos> target(VillagerEntityMCA v) {
@@ -108,15 +143,29 @@ public final class Unstick {
             return;
         }
 
+        // under water and out of breath (a pit of water, a flooded doorway): he swims for the nearest dry footing
+        if (v.isSubmergedInWater() && v.getAir() < v.getMaxAir() / 2) {
+            for (BlockPos p : BlockPos.iterateOutwards(v.getBlockPos(), 5, 4, 5)) {
+                if (Move.passable(world, p) && Move.passable(world, p.up()) && world.getFluidState(p).isEmpty() && world.getFluidState(p.up()).isEmpty()
+                        && world.getBlockState(p.down()).isSideSolidFullSquare(world, p.down(), net.minecraft.util.math.Direction.UP)) {
+                    v.getNavigation().stop();
+                    v.refreshPositionAndAngles(p.getX() + 0.5, p.getY(), p.getZ() + 0.5, v.getYaw(), v.getPitch());
+                    v.setAir(v.getMaxAir());
+                    return;
+                }
+            }
+        }
+
         // walled in (somebody shut him in a box of his own blocks): a shout for help, then he breaks his way out
         // through what is not the village's, a crack at a time, instead of pillaring up and running round in it
         if (trapped(world, village, v)) {
             v.settlementsTrappedSec++;
             if (v.settlementsTrappedSec == 2 || v.settlementsTrappedSec % 30 == 0) Speech.sayNow(v, "settlements.say.trapped");
             Doing.set(v, "settlements.doing.trapped");
-            if (v.settlementsTrappedSec >= 20 && !Dig.busy(v)) {
+            if (v.settlementsTrappedSec >= 8 && !Dig.busy(v)) {
                 BlockPos out = wallBlock(world, village, v);
                 if (out != null) Dig.start(v, out);
+                else if (world.isSkyVisible(v.getBlockPos().up(2)) && v.settlementsTrappedSec % 2 == 0) climbOut(world, v); // the bottom of a pit: up out of it
             }
             return;
         }

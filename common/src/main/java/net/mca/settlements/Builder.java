@@ -477,6 +477,7 @@ public final class Builder {
     private static final java.util.Map<Integer, Integer> NEWHOME_TRIES = new java.util.HashMap<>();
 
     private static final java.util.Map<Integer, long[]> STEP_AT = new java.util.HashMap<>(); // {step, since}
+    private static final java.util.Map<Integer, Integer> LONG_ARM = new java.util.HashMap<>(); // village -> the step he lays from where he is
 
     /** While the hall is first looked for: only a site close by the bell will do. */
     private static boolean NEAR_ONLY = false;
@@ -746,7 +747,9 @@ public final class Builder {
                     if (Scavenge.work(v, village, world, Needs.Need.PLANKS, false)) return true;
                 }
             }
-            // nothing to start on now (no site, short of material): the roads meanwhile - buildings come first
+            // nothing to start on now (no site, short of material): the village's ground first (holes, craters, lumps
+            // left standing), the roads meanwhile - buildings come first
+            if (Ground.work(v, village, world)) return true;
             if (Repair.roadWork(v, village, world)) {
                 Doing.set(v, "settlements.doing.road");
                 return true;
@@ -779,6 +782,7 @@ public final class Builder {
         }
 
         BlockPos origin = village.buildOrigin;
+        if (!village.buildRepair) recheck(village, world, steps, origin);
         Doing.set(v, "settlements.doing.build", Text.translatable("settlements.building." + Buildings.base(village.buildType)),
                 Math.min(100, village.buildStep * 100 / Math.max(1, steps.size())));
         if (Haul.fetch(v, village)) return true;
@@ -848,12 +852,25 @@ public final class Builder {
                 boolean ground = step.kind() == Kind.FARMLAND || step.kind() == Kind.WATER || step.kind() == Kind.DIG || step.kind() == Kind.CLEAR;
                 // (only something there to break: an empty spot is no obstacle, and breaking nothing held a house at one step for a day)
                 if (!ground && !world.getBlockState(target).isAir() && (Layout.land(world.getBlockState(target)) || world.getBlockState(target).isReplaceable())) world.breakBlock(target, true, v);
-                else village.buildStep++;
+                else LONG_ARM.put(village.getId(), village.buildStep); // laid from where he stands: never a hole left in the wall (steps passed over left houses gap-toothed)
+                continue;
+            } else if (world.getTime() - st[1] > 1200 && far) {
+                // a minute and no way to it: he gets there somehow (a man climbs, squeezes through): set down beside it
+                st[1] = world.getTime();
+                v.getNavigation().stop();
+                Move.putSafely(v, target);
+                LONG_ARM.put(village.getId(), village.buildStep);
                 continue;
             }
+            if (LONG_ARM.getOrDefault(village.getId(), -1) == village.buildStep) far = false;
             if (far) {
                 Move.to(v, (mine ? origin : target).getX() + 0.5, mine || border ? target.getY() : origin.getY(), (mine ? origin : target).getZ() + 0.5, 0.6);
-                Doing.count(mine ? "b.walk.mine" : "b.walk");
+                if (mine) Doing.count("b.walk.mine");
+                else {
+                    double hd = Math.sqrt(bx * bx + bz * bz), vd = target.getY() - v.getY();
+                    Doing.count(hd > Scaffold.REACH ? (v.getNavigation().isIdle() ? "b.walk.far.nopath" : "b.walk.far")
+                            : vd > 3.5 || vd < -3 ? "b.walk.height" : "b.walk.unseen." + step.kind().name().toLowerCase());
+                }
                 return worked;
             }
 
@@ -934,6 +951,52 @@ public final class Builder {
         Village village = v.getResidency().getHomeVillage().orElse(null);
         return village != null && village.buildOrigin != null && village.buildType != null && Tiers.isHome(village.buildType)
                 && Housing.homeless(village) > 0;
+    }
+
+    private static final Map<Integer, Long> RECHECK = new HashMap<>();
+    private static final Map<Integer, Integer> RECHECK_FIRST = new HashMap<>();
+
+    /**
+     * Once a minute, the work so far looked over: blocks laid that are gone again (blown up, broken, burnt) are laid
+     * again before he goes on - he goes back to the first one missing, and passes over what still stands. (A house
+     * blown to pieces stood at "90%" while he laid its roof on nothing.)
+     */
+    private static void recheck(Village village, ServerWorld world, List<Step> steps, BlockPos origin) {
+        long now = world.getTime();
+        if (now - RECHECK.getOrDefault(village.getId(), -10000L) < 1200) return;
+        RECHECK.put(village.getId(), now);
+        int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
+        int first = -1, gone = 0;
+        java.util.List<Integer> standing = new java.util.ArrayList<>();
+        for (int i = 0; i < Math.min(village.buildStep, steps.size()); i++) {
+            Step st = steps.get(i);
+            if (!structural(st.kind())) continue;
+            int[] rp = Blueprints.rotate(st.dx(), st.dz(), fp[0], fp[1], village.buildRot);
+            BlockPos t = origin.add(rp[0], st.dy(), rp[1]);
+            if (!world.isChunkLoaded(t)) return;
+            if (world.getBlockState(t).isAir() || !world.getFluidState(t).isEmpty()) {
+                if (first < 0) first = i;
+                gone++;
+            } else if (first >= 0) standing.add(i);
+        }
+        if (first < 0 || gone < 3) return; // a block or two: not worth going back over the whole house for
+        if (RECHECK_FIRST.getOrDefault(village.getId(), -1) == first) return; // went back for it once already: that one will not stand (left as it is)
+        RECHECK_FIRST.put(village.getId(), first);
+        Set<Integer> done = ahead(village);
+        done.addAll(standing);
+        for (int i = first; i < village.buildStep; i++) if (!structural(steps.get(i).kind())) done.add(i); // the clearing and the frills: not again
+        net.mca.MCA.LOGGER.info("[Settlements] {}: {} blocks of the {} gone, back to step {} of {}", village.getName(), gone, village.buildType, first, village.buildStep);
+        village.buildStep = first;
+        village.markDirty();
+    }
+
+    /** The bones of a building: what must stand for it to stand (not the clearing, nor the frills it can do without). */
+    private static boolean structural(Kind k) {
+        return switch (k) {
+            case FLOOR, WALL, PILLAR, ROOF, DOOR, STONE, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, BEAM_X, BEAM_Z, ACCENT, THATCH, DAUB,
+                 RSTAIR_S, RSTAIR_N, SLAB, LADDER, TPL -> true;
+            default -> false;
+        };
     }
 
     /** Builders up on the work (the last time): a step down off a wall onto the floor of the building hurts nobody. */
@@ -1877,7 +1940,8 @@ public final class Builder {
                     return pal.fence().getDefaultState();
                 }
                 case ACCENT -> {
-                    if (take(village, LOG, 1)) return pal.log().getDefaultState();
+                    BlockState b = betterOr(village, kind, "log", LOG, pal.log().getDefaultState());
+                    if (b != null) return b == WANT ? null : b;
                     return plank(village, pal.planks());
                 }
                 case FLOOR -> {
@@ -1890,20 +1954,25 @@ public final class Builder {
             boolean city = tier >= Tiers.CITY;
             switch (kind) {
                 case STONE, CHIMNEY -> { // a wealthy village builds in dressed stone
-                    if (take(village, COBBLE, 1)) return pal.accent().getDefaultState();
+                    BlockState b = betterOr(village, kind, "dressed", COBBLE, pal.accent().getDefaultState());
+                    if (b != null) return b == WANT ? null : b;
                 }
                 case WALL -> { // a city: a stone ground floor, plastered storeys above
-                    if (city && take(village, COBBLE, 1)) return (step.dy() <= 3 ? pal.accent() : pal.plaster()).getDefaultState();
+                    BlockState b = city ? betterOr(village, kind, "city", COBBLE, (step.dy() <= 3 ? pal.accent() : pal.plaster()).getDefaultState()) : null;
+                    if (b != null) return b == WANT ? null : b;
                 }
                 case ROOF -> { // and tiled roofs
-                    if (city && take(village, COBBLE, 1)) return pal.tiles().getDefaultState();
+                    BlockState b = city ? betterOr(village, kind, "city", COBBLE, pal.tiles().getDefaultState()) : null;
+                    if (b != null) return b == WANT ? null : b;
                 }
                 case STAIRS_E, STAIRS_W -> {
-                    if (city && step.dy() >= Blueprints.LEVEL_HEIGHT && take(village, COBBLE, 1))
-                        return pal.tileStairs().getDefaultState().with(StairsBlock.FACING, turn(kind == Kind.STAIRS_E ? Direction.EAST : Direction.WEST, rot));
+                    BlockState b = city && step.dy() >= Blueprints.LEVEL_HEIGHT ? betterOr(village, kind, "city", COBBLE,
+                            pal.tileStairs().getDefaultState().with(StairsBlock.FACING, turn(kind == Kind.STAIRS_E ? Direction.EAST : Direction.WEST, rot))) : null;
+                    if (b != null) return b == WANT ? null : b;
                 }
                 case PATH -> { // paved paths
-                    if (city && take(village, COBBLE, 1)) return pal.accent().getDefaultState();
+                    BlockState b = city ? betterOr(village, kind, "city", COBBLE, pal.accent().getDefaultState()) : null;
+                    if (b != null) return b == WANT ? null : b;
                 }
                 default -> {
                 }
@@ -1913,13 +1982,16 @@ public final class Builder {
         if (pal.stone() == Blocks.SANDSTONE || pal.stone() == Blocks.RED_SANDSTONE) {
             switch (kind) {
                 case WALL -> {
-                    if (take(village, COBBLE, 1)) return (step.dy() == 0 ? pal.stone() : pal.daub()).getDefaultState();
+                    BlockState b = betterOr(village, kind, "sand", COBBLE, (step.dy() == 0 ? pal.stone() : pal.daub()).getDefaultState());
+                    if (b != null) return b == WANT ? null : b;
                 }
                 case FLOOR -> {
-                    if (step.dy() > 0 && take(village, COBBLE, 1)) return pal.daub().getDefaultState();
+                    BlockState b = step.dy() > 0 ? betterOr(village, kind, "sand", COBBLE, pal.daub().getDefaultState()) : null;
+                    if (b != null) return b == WANT ? null : b;
                 }
                 case ROOF -> {
-                    if (take(village, COBBLE, 1)) return Blocks.CUT_SANDSTONE.getDefaultState();
+                    BlockState b = betterOr(village, kind, "sand", COBBLE, Blocks.CUT_SANDSTONE.getDefaultState());
+                    if (b != null) return b == WANT ? null : b;
                 }
                 default -> {
                 }
@@ -1933,16 +2005,19 @@ public final class Builder {
             case WALL:
                 return plank(village, pal.planks());
             case PILLAR: {
-                if (take(village, LOG, 1)) return pal.log().getDefaultState();
+                BlockState b = betterOr(village, kind, "log", LOG, pal.log().getDefaultState());
+                if (b != null) return b == WANT ? null : b;
                 return plank(village, pal.planks());
             }
             case BEAM_X, BEAM_Z: {
                 Direction.Axis axis = (kind == Kind.BEAM_X) == ((rot & 1) == 0) ? Direction.Axis.X : Direction.Axis.Z;
-                if (take(village, LOG, 1)) return axised(pal.strippedLog(), axis);
+                BlockState b = betterOr(village, kind, "log", LOG, axised(pal.strippedLog(), axis));
+                if (b != null) return b == WANT ? null : b;
                 return plank(village, pal.planks());
             }
             case ACCENT: {
-                if (take(village, COBBLE, 1)) return pal.accent().getDefaultState();
+                BlockState b = betterOr(village, kind, "stone", COBBLE, pal.accent().getDefaultState());
+                if (b != null) return b == WANT ? null : b;
                 return plank(village, pal.log());
             }
             case CHIMNEY: {
@@ -2245,26 +2320,45 @@ public final class Builder {
     }
 
     /** One plank's worth of building block: placed in the village's own wood, or stone and earth when wood is out. */
+    /** Per project: which material each kind of part is made of, decided once (see better). */
+    private static final Map<String, Map<String, Boolean>> CHOICE = new HashMap<>();
+    /** Not to be had now: the step waits for it (the choice holds; nothing else goes in its place). */
+    private static final BlockState WANT = Blocks.BARRIER.getDefaultState();
+
+    /**
+     * Whether this kind of part of the building is made of the better material: decided once for the project, the
+     * first time it comes up - the better one if the stores hold enough of it for all of that part still to build,
+     * else the plain one throughout. (Each block took whatever was at hand: a wall of planks, cobble and earth, a log
+     * pillar beside a plank one.)
+     */
+    private static boolean better(Village village, Kind kind, String what, Predicate<ItemStack> stock, int perBlock) {
+        if (FREE || village.buildOrigin == null) return count(village, stock) >= perBlock;
+        Map<String, Boolean> m = CHOICE.computeIfAbsent(village.buildType + "@" + village.buildOrigin, k -> new HashMap<>());
+        String key = kind.name() + ":" + what;
+        Boolean b = m.get(key);
+        if (b == null) {
+            int need = 0;
+            List<Step> steps = plan(village);
+            for (int i = village.buildStep; i < steps.size(); i++) if (steps.get(i).kind() == kind) need++;
+            b = count(village, stock) >= need * perBlock;
+            m.put(key, b);
+        }
+        return b;
+    }
+
+    /** The better material, if this part is made of it: the block, or WANT while it is not in the stores; null if the plain one. */
+    private static BlockState betterOr(Village village, Kind kind, String what, Predicate<ItemStack> stock, BlockState made) {
+        if (!better(village, kind, what, stock, 1)) return null;
+        return take(village, stock, 1) ? made : WANT;
+    }
+
     private static BlockState plank(Village village, Block preferred) {
-        Item p = takePlank(village);
-        if (p != null) return preferred.getDefaultState();
-        return plank(village);
+        return takePlank(village) != null ? preferred.getDefaultState() : null;
     }
 
     private static BlockState plank(Village village) {
         Item p = takePlank(village);
-        if (p == null) {
-            // no wood left: build from whatever stone and earth the villagers have gathered around
-            for (ItemStack s : village.storageBuffer) {
-                if (!Scavenge.isFiller(s)) continue;
-                Block fb = Block.getBlockFromItem(s.getItem());
-                s.decrement(1);
-                village.storageBuffer.removeIf(ItemStack::isEmpty);
-                village.markDirty();
-                return fb.getDefaultState();
-            }
-            return null;
-        }
+        if (p == null) return null; // no wood: he waits for it (a wall patched with earth and cobble was no wall)
         Block b = Block.getBlockFromItem(p);
         return b == Blocks.AIR ? Blocks.OAK_PLANKS.getDefaultState() : b.getDefaultState();
     }

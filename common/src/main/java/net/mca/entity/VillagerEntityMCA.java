@@ -701,6 +701,10 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
             net.mca.settlements.Seat.stand(this);
             if (net.mca.settlements.Move.putSafely(this, getBlockPos().up())) return false;
         }
+        // Settlements: no blow through a wall. A monster's melee reach is only a distance: a zombie at the outside of
+        // a house struck the sleeper in the bed on the other side of the planks (they were killed in their beds so)
+        if (!getWorld().isClient && source.getAttacker() instanceof net.minecraft.entity.mob.HostileEntity m && !source.isIndirect()
+                && source.getSource() == m && !m.canSee(this)) return false;
         // Settlements: a builder stepping down off the wall he works on (onto the floor, a block or three) is not hurt
         if (!getWorld().isClient && source.isOf(net.minecraft.entity.damage.DamageTypes.FALL) && damageAmount <= 3 && net.mca.settlements.Builder.upOnWork(this)) return false;
         // Settlements: the village's own fire does not kill its people. Stepped onto a campfire, a villager jumps off

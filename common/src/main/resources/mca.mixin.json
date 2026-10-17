@@ -32,7 +32,8 @@
     "MixinVillagerProfession",
     "MixinZombieEntity",
     "MixinZombieVillagerEntity",
-    "MixinSpawnHelper"
+    "MixinSpawnHelper",
+    "MixinFarmlandBlock"
   ],
   "client": [
     "client.MixinArmorFeatureRenderer",

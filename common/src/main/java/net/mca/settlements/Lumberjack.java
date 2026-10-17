@@ -426,8 +426,8 @@ public final class Lumberjack {
     }
 
     /**
-     * The village's grove: one stand of trees of its own near the hall, planted in rows three blocks apart, not
-     * saplings dotted about all round the village. Its place is chosen with the first sapling (open grass 16 to 30
+     * The village's grove: one stand of trees of its own near the hall, planted in rows five blocks apart, not
+     * saplings dotted about all round the village. Its place is chosen with the first sapling (open grass 30 to 45
      * blocks from the hall, on its level, off the plots and buildings); each sapling after goes into the next free
      * spot in the rows, the grove growing outward from the middle.
      */
@@ -437,21 +437,21 @@ public final class Lumberjack {
         double ad = Double.MAX_VALUE;
         for (BlockPos g : village.grove) { // the grove there is: its spot nearest the hall
             double d = g.getSquaredDistance(c);
-            if (d > 12 * 12 && d < 40 * 40 && d < ad) {
+            if (d > 24 * 24 && d < 56 * 56 && d < ad) {
                 ad = d;
                 anchor = g;
             }
         }
         if (anchor == null) {
             for (int attempt = 0; attempt < 40 && anchor == null; attempt++) {
-                int dist = 16 + world.random.nextInt(15);
+                int dist = 30 + world.random.nextInt(16); // out past the houses: a grove by the hall grew into the village (and over its roofs)
                 double angle = world.random.nextDouble() * Math.PI * 2;
                 int x = c.getX() + (int) (Math.cos(angle) * dist), z = c.getZ() + (int) (Math.sin(angle) * dist);
                 BlockPos p = groveSpot(world, village, x, z, c);
                 if (p == null) continue;
                 // room for a stand: most of the ground about it fit for trees too
                 int fit = 0;
-                for (int dx = -6; dx <= 6; dx += 3) for (int dz = -6; dz <= 6; dz += 3) if (groveSpot(world, village, x + dx, z + dz, c) != null) fit++;
+                for (int dx = -10; dx <= 10; dx += 5) for (int dz = -10; dz <= 10; dz += 5) if (groveSpot(world, village, x + dx, z + dz, c) != null) fit++;
                 if (fit >= 12) anchor = p;
             }
         }
@@ -461,7 +461,7 @@ public final class Lumberjack {
             for (int dx = -r; dx <= r; dx++) {
                 for (int dz = -r; dz <= r; dz++) {
                     if (Math.max(Math.abs(dx), Math.abs(dz)) != r) continue;
-                    BlockPos p = groveSpot(world, village, anchor.getX() + dx * 3, anchor.getZ() + dz * 3, c);
+                    BlockPos p = groveSpot(world, village, anchor.getX() + dx * 5, anchor.getZ() + dz * 5, c); // five apart: room for the crowns, and for him to walk between
                     if (p == null || !world.getBlockState(p).isAir()) continue;
                     world.setBlockState(p, sapling.getDefaultState());
                     Grove.remember(village, p);
@@ -485,10 +485,10 @@ public final class Lumberjack {
         BlockState here = world.getBlockState(p);
         if (!here.isAir() && !(here.getBlock() instanceof net.minecraft.block.SaplingBlock) && !here.isIn(BlockTags.LOGS)) return null;
         for (int[] plot : village.plots) {
-            if (x >= plot[0] - 2 && x <= plot[0] + plot[2] + 2 && z >= plot[1] - 2 && z <= plot[1] + plot[3] + 2) return null;
+            if (x >= plot[0] - 6 && x <= plot[0] + plot[2] + 6 && z >= plot[1] - 6 && z <= plot[1] + plot[3] + 6) return null; // a crown's width off any plot
         }
-        for (Built b : village.built) if (b.contains(p) || b.contains(p.add(2, 0, 0)) || b.contains(p.add(-2, 0, 0)) || b.contains(p.add(0, 0, 2)) || b.contains(p.add(0, 0, -2))) return null;
-        if (village.getBuildingAt(p).isPresent()) return null;
+        for (Built b : village.built) if (b.contains(p) || b.contains(p.add(6, 0, 0)) || b.contains(p.add(-6, 0, 0)) || b.contains(p.add(0, 0, 6)) || b.contains(p.add(0, 0, -6))) return null;
+        for (BlockPos q : new BlockPos[]{p, p.add(6, 0, 0), p.add(-6, 0, 0), p.add(0, 0, 6), p.add(0, 0, -6)}) if (village.getBuildingAt(q).isPresent()) return null; // nor by the old houses
         return p;
     }
 }

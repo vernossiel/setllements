@@ -35,6 +35,7 @@ public final class Dialogue {
             return false;
         }
         v.getNavigation().stop();
+        Move.stay(v); // and kept there between the seconds: the brain's own errands walked the elder off while she spoke
         Gaze.at(v, p, 30f, 30f);
         return true;
     }

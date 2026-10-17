@@ -141,6 +141,18 @@ public final class Mining {
                 worked = true;
                 break;
             }
+            // the stone for the steps and the floor is the stone he has just dug, from his own pockets, not from the
+            // stores up top (empty of it: the steps were passed over, the shaft left a row of bare ledges)
+            if (step.kind() != Blueprints.Kind.DIG) {
+                var inv = v.getInventory();
+                for (int i = 0; i < inv.size(); i++) {
+                    net.minecraft.item.ItemStack st = inv.getStack(i);
+                    if (st.isOf(net.minecraft.item.Items.COBBLESTONE) || st.isOf(net.minecraft.item.Items.COBBLED_DEEPSLATE)) {
+                        Workforce.addToTreasury(village, st.split(Math.min(st.getCount(), 4)));
+                        break;
+                    }
+                }
+            }
             Builder.COLLECTOR = v;
             Builder.Result r;
             try {
