@@ -235,6 +235,10 @@ public final class Watch {
             if (world.getBlockState(q.down()).isOf(Blocks.DIRT_PATH)) score += 4; // the side of the street: where lamps belong
         }
         if (open < 4) return Integer.MIN_VALUE; // never plugging a passage
+        // by a path people walk: not dotted about the grass at random
+        boolean path = false;
+        for (BlockPos q : BlockPos.iterate(p.add(-2, -2, -2), p.add(2, 0, 2))) if (world.getBlockState(q).isOf(Blocks.DIRT_PATH)) path = true;
+        if (!path) return Integer.MIN_VALUE;
         for (BlockPos q : BlockPos.iterate(p.add(-3, -1, -3), p.add(3, 2, 3))) {
             BlockState s = world.getBlockState(q);
             if (s.getBlock() instanceof net.minecraft.block.DoorBlock || s.isOf(Blocks.FARMLAND)) return Integer.MIN_VALUE; // a doorway, a field

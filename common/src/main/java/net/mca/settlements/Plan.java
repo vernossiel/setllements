@@ -152,6 +152,11 @@ public final class Plan {
     public static VillagerEntityMCA elder(ServerWorld world, Village v) {
         // always the same one (the first by id), so the office does not pass from hand to hand
         List<VillagerEntityMCA> folk = v.getResidents(world);
+        // the one who holds the office keeps it: a newcomer whose id came first took it over, and the old elder was
+        // sent out to fish
+        VillagerEntityMCA holder = folk.stream().filter(r -> r.isElder() && !r.isBaby() && !r.isGuard() && r.isAlive())
+                .min(Comparator.comparing(r -> r.getUuid())).orElse(null);
+        if (holder != null) return holder;
         return folk.stream()
                 .filter(r -> !r.isBaby() && !r.isGuard() && r.isAlive())
                 .min(Comparator.comparing(r -> r.getUuid()))

@@ -100,7 +100,7 @@ public final class GuardAI {
         LivingEntity current = brain.getOptionalMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
         if (current instanceof PlayerEntity p) {
             // no grudge against a player in creative, or one just beaten and let go
-            if (p.isSpectator() || Justice.spared(p)) {
+            if (p.isSpectator() || Justice.spared(p) || Justice.held(p)) { // (nor one serving his time in the stocks, however he stands with the village)
                 brain.forget(MemoryModuleType.ATTACK_TARGET);
                 current = null;
             } else if (p.getHealth() <= 6f && g.squaredDistanceTo(p) < 20 * 20 && g.canSee(p) && Justice.subdue(g, p)) {
@@ -137,6 +137,7 @@ public final class GuardAI {
 
         // a player who attacked the village, or an outlaw: on sight
         PlayerEntity outlaw = Life.hostilePlayer(world, village, g, SIGHT);
+        if (outlaw != null && Justice.held(outlaw)) outlaw = null;
         if (outlaw != null) {
             brain.remember(MemoryModuleType.ATTACK_TARGET, outlaw, 200);
             Speech.say(g, "settlements.say.guard.charge", outlaw.getName());

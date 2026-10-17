@@ -84,6 +84,15 @@ public final class Workforce {
         Pose.tick(v);
         Anim.tick(v);
         Move.shutBehind(v); // the door he came through shut behind him, first of all, whatever he does next (at bedtime too: a door left open let the zombies in on a sleeper)
+        // a player talking to him (MCA's window open): he stands and faces him, whatever his work or his round would have
+        // him do (the elder walked off to his lectern in the middle of a word)
+        var talker = v.getInteractions().getInteractingPlayer().orElse(null);
+        if (talker != null && talker.squaredDistanceTo(v) < 6 * 6) {
+            v.getNavigation().stop();
+            Move.stay(v);
+            Gaze.at(v, talker, 30f, 30f);
+            return;
+        }
         // a guard on a player's case: he goes to him and stays by him, nothing else (a fight aside)
         if (v.isGuard() && v.getWorld() instanceof net.minecraft.server.world.ServerWorld jw && Justice.duty(v, jw)) return;
         if (Witness.busy(v)) return; // having it out with a thief he caught (see Witness)

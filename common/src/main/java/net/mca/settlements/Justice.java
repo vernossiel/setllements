@@ -762,6 +762,12 @@ public final class Justice {
         return c != null && c.stage != Stage.SERVING && c.stage != Stage.EXILED;
     }
 
+    /** Serving his time (the stocks, the cell): nobody lays a hand on him, whatever he did before. */
+    public static boolean held(PlayerEntity p) {
+        Case c = CASES.get(p.getUuid());
+        return c != null && c.stage == Stage.SERVING;
+    }
+
     /** Beaten down and thrown out a moment ago: the guards let him crawl away. */
     public static boolean spared(PlayerEntity p) {
         Long until = SPARED.get(p.getUuid());
@@ -873,9 +879,7 @@ public final class Justice {
 
     private static void sentence(ServerWorld world, ServerPlayerEntity p, Case c) {
         Village village = VillageManager.get(world).getOrEmpty(c.villageId).orElse(null);
-        for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(64), VillagerEntityMCA::isGuard)) {
-            if (g.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).orElse(null) == p) g.getBrain().forget(MemoryModuleType.ATTACK_TARGET);
-        }
+        standOff(world, p); // the fight is over: every guard lets go of him, the bows too
         long nowT = world.getTime();
         if (nowT - LAST_OFFENCE.getOrDefault(p.getUuid(), nowT) > 24000L * 3) RECORD.remove(p.getUuid());
         // a fine for a shove or a loaf is not a record; a beating or a real theft is
