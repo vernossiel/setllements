@@ -524,7 +524,7 @@ public final class Blueprints {
         List<Step> l = new ArrayList<>();
         int bottom = -MINE_DEPTH + 1, z0 = MINE_DEPTH + 5 + 8 * (k - 1);
         for (int z = z0; z < z0 + 8; z++) {
-            for (int x = 0; x < 2; x++) for (int h = 0; h < 3; h++) l.add(new Step(x, bottom + h, z, Kind.DIG));
+            for (int x = 0; x < 2; x++) for (int h = 2; h >= 0; h--) l.add(new Step(x, bottom + h, z, Kind.DIG)); // top down: the block at his feet is hidden behind the one above it
         }
         for (int h = 0; h < 3; h++) {
             l.add(new Step(-1, bottom + h, z0, Kind.PILLAR));
@@ -534,7 +534,7 @@ public final class Blueprints {
         l.add(new Step(0, bottom + 1, z0 + 2, Kind.TORCH, W));
         int bz = z0 + 4;
         for (int i = 1; i <= 10; i++) {
-            for (int h = 0; h < 2; h++) {
+            for (int h = 1; h >= 0; h--) {
                 l.add(new Step(-i, bottom + h, bz, Kind.DIG));
                 l.add(new Step(1 + i, bottom + h, bz, Kind.DIG));
             }
@@ -637,7 +637,7 @@ public final class Blueprints {
         l.add(new Step(0, 2, 1, Kind.LANTERN));
         for (int i = 0; i < depth; i++) {
             for (int x = 0; x < 2; x++) {
-                for (int h = 0; h <= 2; h++) l.add(new Step(x, -i + h, i, Kind.DIG));
+                for (int h = 2; h >= 0; h--) l.add(new Step(x, -i + h, i, Kind.DIG)); // from the top down, as a man cuts a stair (bottom first, the rock above hid it and he stood a day before it)
                 l.add(new Step(x, -i - 1, i, Kind.DIG));
                 l.add(new Step(x, -i - 1, i, Kind.STAIRS_N));
             }
@@ -646,7 +646,7 @@ public final class Blueprints {
         int floor = -depth, bottom = floor + 1;
         for (int x = -1; x <= 3; x++) {
             for (int z = depth; z <= depth + 4; z++) {
-                for (int h = 0; h < 3; h++) l.add(new Step(x, bottom + h, z, Kind.DIG));
+                for (int h = 2; h >= 0; h--) l.add(new Step(x, bottom + h, z, Kind.DIG));
                 l.add(new Step(x, floor, z, Kind.STONE));
             }
         }
