@@ -73,6 +73,17 @@ public final class Housing {
                     .map(p -> p.getPos()).filter(b::containsPos).filter(p -> safe(world, p)).sorted(Comparator.comparingLong(BlockPos::asLong)).toList();
             if (!beds.isEmpty()) houses.put(b, beds);
         }
+        // a bed in the village that no building the village knows holds (a vanilla house MCA's scan turned down): the
+        // house is put to MCA again, leniently, so its people have a home (three of six were homeless with beds to spare)
+        long nowT = world.getTime();
+        for (var poiE : poi.getInSquare(t -> t.matchesKey(PointOfInterestTypes.HOME), heart, Math.min(reach, 56), PointOfInterestStorage.OccupationStatus.ANY).toList()) {
+            BlockPos bp = poiE.getPos();
+            if (v.getBuildingAt(bp).isPresent() || Math.abs(bp.getY() - heart.getY()) > 14) continue;
+            if (nowT < LOOSE.getOrDefault(bp.asLong(), 0L)) continue;
+            LOOSE.put(bp.asLong(), nowT + 20 * 600);
+            var res = net.mca.server.world.data.VillageManager.get(world).processBuilding(bp, true, false);
+            net.mca.MCA.LOGGER.info("[Settlements] {}: bed at {} in no known building, put to MCA again: {}", v.getName(), bp.toShortString(), res);
+        }
         Set<Building> taken = new HashSet<>();
         List<List<VillagerEntityMCA>> unhoused = new ArrayList<>();
         // households already together in one house with beds enough keep it
@@ -161,7 +172,8 @@ public final class Housing {
      * A house with a wall gone - an old one half pulled down, one cut into by a road - lets the night in to the bed:
      * three in a row died in one such house at the edge of the plains. Reckoned once a day per bed.
      */
-    static final Map<BlockPos, BlockPos> LEAK = new HashMap<>(); // bed -> the open-sky cell its room was found to reach (for /settlements bedcheck)
+    static final Map<BlockPos, BlockPos> LEAK = new HashMap<>();
+    private static final Map<Long, Long> LOOSE = new HashMap<>(); // bed -> when it may be put to MCA again // bed -> the open-sky cell its room was found to reach (for /settlements bedcheck)
 
     /** The same, looked at afresh (for /settlements bedcheck). */
     static boolean safeNow(ServerWorld world, BlockPos bed) {
