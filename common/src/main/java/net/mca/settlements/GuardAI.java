@@ -70,6 +70,29 @@ public final class GuardAI {
         return null;
     }
 
+    private static void closeQuarters(VillagerEntityMCA g, LivingEntity foe) {
+        var hand = g.getDominantHand();
+        var held = g.getStackInHand(hand);
+        boolean close = foe != null && foe.isAlive() && g.squaredDistanceTo(foe) < 3.2 * 3.2;
+        boolean far = foe == null || !foe.isAlive() || g.squaredDistanceTo(foe) > 5.5 * 5.5;
+        var inv = g.getInventory();
+        if (close && held.isOf(net.minecraft.item.Items.BOW)) {
+            int sword = -1;
+            for (int i = 0; i < inv.size(); i++) if (inv.getStack(i).getItem() instanceof net.minecraft.item.SwordItem) sword = i;
+            net.minecraft.item.ItemStack blade = sword >= 0 ? inv.removeStack(sword) : new net.minecraft.item.ItemStack(net.minecraft.item.Items.STONE_SWORD); // (every archer carries a short blade)
+            inv.addStack(held.copy());
+            g.setStackInHand(hand, blade);
+        } else if (far && held.getItem() instanceof net.minecraft.item.SwordItem) {
+            for (int i = 0; i < inv.size(); i++) {
+                if (!inv.getStack(i).isOf(net.minecraft.item.Items.BOW)) continue;
+                net.minecraft.item.ItemStack bow = inv.removeStack(i);
+                inv.addStack(held.copy());
+                g.setStackInHand(hand, bow);
+                return;
+            }
+        }
+    }
+
     public static void tick(VillagerEntityMCA g, Village village, ServerWorld world, long time) {
         if (g.getVillagerBrain().isPanicking()) return;
         BlockPos center = new BlockPos(village.getCenter());
@@ -85,15 +108,9 @@ public final class GuardAI {
             }
         }
 
-        // an archer keeps his distance: a foe come close, he backs off a few steps to shoot, he does not bash him with the bow
-        if (current != null && isArcher(g) && g.isHolding(net.minecraft.item.Items.BOW) && g.squaredDistanceTo(current) < 4.5 * 4.5) {
-            Vec3d away = net.minecraft.entity.ai.NoPenaltyTargeting.findFrom(g, 8, 4, current.getPos());
-            if (away != null) {
-                brain.forget(MemoryModuleType.WALK_TARGET);
-                g.getNavigation().startMovingTo(away.x, away.y, away.z, 0.9);
-                return;
-            }
-        }
+        // an archer with a foe at arm's length draws his short sword instead of punching with the bow; once there is room
+        // again, the bow back in his hand
+        if (isArcher(g)) closeQuarters(g, current);
 
         // the one he is after has shut himself in, or gone up where there is no way: in through the barricade, a block
         // at a time; up a tree, a shout to come down (the archers see to the rest)

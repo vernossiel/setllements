@@ -40,14 +40,15 @@ public class BowTask<E extends MobEntity & CrossbowUser> extends MultiTickTask<E
 
         //keep distance
         float backward = 0.0f;
+        // (Settlements) a step back only when the foe is really close, not shuffling backwards the whole fight
         if (d > this.squaredRange * 1.25F) {
             backward = 0.5f;
-        } else if (d < this.squaredRange * 0.75F) {
-            backward = -0.5f;
+        } else if (d < 6 * 6) {
+            backward = -0.4f;
         }
 
-        //strafe
-        float strafe = (float)(Math.cos(time / 20.0f) * 0.5);
+        //strafe: a slow side step now and then
+        float strafe = (float)(Math.cos(time / 40.0f) * 0.25);
         entity.getMoveControl().strafeTo(backward, strafe);
         entity.lookAtEntity(target, 30.0F, 30.0F);
 

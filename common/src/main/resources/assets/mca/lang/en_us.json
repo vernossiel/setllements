@@ -1558,6 +1558,8 @@
   "settlements.justice.jailed": "You're in jail for %s seconds. Run and it'll be worse.",
   "settlements.justice.stocks": "You're in the stocks on the square for %s seconds.",
   "settlements.justice.stocks.died": "You died while held. Nobody counts it as an escape: your time is served.",
+  "settlements.justice.confiscated": "Taken off you and back to the village: %s.",
+  "settlements.justice.confiscated.none": "The stolen goods were not found on you.",
   "settlements.justice.released": "Your time is up. You're free. Behave yourself.",
   "settlements.justice.exiled": "The village exiles you for a day. Come back and the guards won't spare you.",
   "settlements.justice.stage.reported": "reported",

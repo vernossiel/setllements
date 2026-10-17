@@ -626,6 +626,7 @@ public final class Justice {
         if (world.random.nextDouble() < pleadChance(p, village, c)) {
             if (c.stage == Stage.DEMAND || c.value < 6) {
                 talk(world, village, guard, p, "settlements.justice.plead.ok", world.getTime());
+                if (!c.stolen.isEmpty()) takeBack(p, c, village); // let off, but the goods go back where they came from
                 village.pushHearts(p, -2);
                 CASES.remove(p.getUuid());
                 p.sendMessage(Text.translatable("settlements.justice.settled").formatted(Formatting.GREEN), true);
@@ -858,7 +859,18 @@ public final class Justice {
             CASES.remove(p.getUuid());
             return;
         }
-        if (!c.stolen.isEmpty()) takeBack(p, c, village); // confiscated
+        if (!c.stolen.isEmpty()) {
+            Map<Item, Integer> had = new HashMap<>(c.stolen);
+            takeBack(p, c, village); // confiscated
+            // what was taken off him, said out loud; what he no longer has on him is still owed
+            MutableText list = Text.empty();
+            had.forEach((item, n) -> {
+                int got = n - c.stolen.getOrDefault(item, 0);
+                if (got > 0) list.append(Text.literal(list.getSiblings().isEmpty() ? "" : ", ")).append(Text.literal(got + " ")).append(item.getName());
+            });
+            if (!list.getSiblings().isEmpty()) p.sendMessage(Text.translatable("settlements.justice.confiscated", list).formatted(Formatting.GOLD), false);
+            else p.sendMessage(Text.translatable("settlements.justice.confiscated.none").formatted(Formatting.GOLD), false);
+        }
         if (serious && record >= 3) { // the third serious offence in a few days: out of the village
             exile(world, village, p, c, 1);
             return;
