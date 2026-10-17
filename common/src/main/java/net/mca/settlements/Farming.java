@@ -240,15 +240,21 @@ public final class Farming {
 
     private static Block takeSeed(VillagerEntityMCA v, Village village) {
         var inv = v.getInventory();
+        boolean hungry = Forage.hungry(village);
         for (int i = 0; i < inv.size(); i++) {
             ItemStack s = inv.getStack(i);
             Block b = SOW.get(s.getItem());
+            if (b != null && hungry && s.isOf(Items.WHEAT_SEEDS) && (count(village, Items.CARROT) > 0 || count(village, Items.POTATO) > 0)) continue; // the store's carrots first
             if (b != null) {
                 s.decrement(1);
                 return b;
             }
         }
-        for (Map.Entry<Item, Block> e : SOW.entrySet()) if (take(village, e.getKey(), 1)) return e.getValue();
+        // a hungry village sows what feeds it soonest: a carrot comes up as two to five that are eaten as they are,
+        // where wheat is a quarter of a loaf a stalk (the savanna, on poor land, starved on wheat with carrots in store)
+        Item[] order = Forage.hungry(village) ? new Item[]{Items.CARROT, Items.POTATO, Items.BEETROOT_SEEDS, Items.WHEAT_SEEDS}
+                : new Item[]{Items.WHEAT_SEEDS, Items.CARROT, Items.POTATO, Items.BEETROOT_SEEDS};
+        for (Item i : order) if (take(village, i, 1)) return SOW.get(i);
         return null;
     }
 
