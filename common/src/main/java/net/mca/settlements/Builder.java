@@ -324,7 +324,10 @@ public final class Builder {
                 }
                 case "housing" -> {
                     for (House h : village.houses) {
-                        if (h.floors() < 3 && h.d() >= 7 && planks >= 130) {
+                        // a floor goes only on the plain house it was drawn for: put on a porch or an annex house it stood
+                        // askew on the walls below, and the repairs (going by the old plan) roofed over its stairs again
+                        boolean plain = village.built.stream().anyMatch(b -> b.origin().equals(h.origin()) && b.type().equals("house"));
+                        if (plain && h.floors() < 3 && h.d() >= 7 && planks >= 130) {
                             village.buildType = "upgrade";
                             village.buildOrigin = h.origin();
                             village.buildW = h.w();
