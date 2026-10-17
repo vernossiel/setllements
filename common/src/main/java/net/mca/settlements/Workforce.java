@@ -18,6 +18,7 @@ public final class Workforce {
     private static final int HUNGER_EAT_AT = 600;   // try to eat above this
     private static final int HUNGER_STOP_AT = 900;  // refuses to work above this
     private static final int START_WORK_ENERGY = 400;
+    private static final java.util.Set<java.util.UUID> TIRED = new java.util.HashSet<>();
     private static final int REST_DAY_EVERY = 7;    // one day in seven is a rest day
     private static final long WORK_START = 1000, WORK_END = 11500;
 
@@ -320,10 +321,14 @@ public final class Workforce {
             }
             return;
         }
-        if (v.settlementsEnergy < START_WORK_ENERGY) {
+        // sat down to get his strength back, he gets it back: up again only well over the mark (at the mark itself he
+        // was up and down every few seconds, a step of work, a breath, a step of work)
+        if (v.settlementsEnergy < START_WORK_ENERGY || TIRED.contains(v.getUuid()) && v.settlementsEnergy < START_WORK_ENERGY + 200) {
+            TIRED.add(v.getUuid());
             Doing.set(v, "settlements.doing.tired");
             return;
         }
+        TIRED.remove(v.getUuid());
         if (!Persona.working(v, time)) Doing.set(v, "settlements.doing.overtime"); // stayed on: the work cannot wait
         // and a moment's pause now and then: nobody works like a machine
         STAGE.put(v.getUuid(), "pause");
