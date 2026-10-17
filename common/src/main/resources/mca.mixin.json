@@ -31,12 +31,19 @@
     "MixinVillagerEntityInvoker",
     "MixinVillagerProfession",
     "MixinZombieEntity",
-    "MixinZombieVillagerEntity"
+    "MixinZombieVillagerEntity",
+    "MixinSpawnHelper"
   ],
   "client": [
-    "client.MixinArmorFeatureRenderer", "client.MixinBipedEntityModelStocks", "client.MixinGameRenderer", "client.MixinHeldItemFeatureRenderer",
-    "client.MixinLivingEntityRenderer", "client.MixinPlayerEntityClient",
-    "client.MixinPlayerEntityRenderer", "client.MixinSoundLoader", "client.MixinTranslationStorage"
+    "client.MixinArmorFeatureRenderer",
+    "client.MixinBipedEntityModelStocks",
+    "client.MixinGameRenderer",
+    "client.MixinHeldItemFeatureRenderer",
+    "client.MixinLivingEntityRenderer",
+    "client.MixinPlayerEntityClient",
+    "client.MixinPlayerEntityRenderer",
+    "client.MixinSoundLoader",
+    "client.MixinTranslationStorage"
   ],
   "injectors": {
     "defaultRequire": 1
