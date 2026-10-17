@@ -50,6 +50,7 @@ public final class Mining {
             return true; // still at the rock
         }
         Dig.gather(v, 3); // what he broke goes into his pockets, then to the stores
+        if (climbOut(v, world)) return true;
         Orders.Order order = Orders.take(v, village, Needs.Need.COBBLE); // the builder's order for stone
         // the stone wanted, or ore: the miner's real work is the ore, and he goes on after it with stone enough in the stores
         if (village.mineLevel > MAX_LEVEL || order == null && Builder.stockCobble(village) >= STONE_QUOTA && !oreWanted(village)) return false;
@@ -115,6 +116,8 @@ public final class Mining {
             Doing.count("m.prospect");
             return true; // a vein: after it first
         }
+
+        if (redo(v, village, world, o)) return true; // the shed or a step left for want of planks or stone, now there is some
 
         boolean worked = false;
         int ops = 0, skips = 0;
@@ -218,6 +221,7 @@ public final class Mining {
                 // no planks for the shed, a post or a beam: the digging goes on without it (the builders can add it later)
                 if (step.kind() == Blueprints.Kind.DIG) break;
                 if (world.random.nextInt(20) == 0) Speech.say(v, "settlements.say.mine.noplanks");
+                SKIPPED.computeIfAbsent(village.getId(), k -> new java.util.LinkedHashSet<>()).add(((long) village.mineLevel << 32) | village.mineStep); // to come back to
                 Doing.set(v, "settlements.doing.mine.noplanks");
                 Doing.count("m.noplanks");
                 village.mineStep++;
@@ -239,6 +243,93 @@ public final class Mining {
     }
 
 
+    /** Per village: the steps of the shed and the shaft passed over for want of planks or stone ({level, step} packed). */
+    private static final Map<Integer, java.util.LinkedHashSet<Long>> SKIPPED = new HashMap<>();
+
+    /**
+     * The shed and the steps he had to leave go in when the stuff for them is there: the shed stood half built for
+     * good, its door open, and the stair a row of bare ledges. True while at it.
+     */
+    private static boolean redo(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos o) {
+        var left = SKIPPED.get(village.getId());
+        if (left == null || left.isEmpty() || world.getTime() % 20 != 0 && v.getRandom().nextInt(3) != 0) return false;
+        var it = left.iterator();
+        while (it.hasNext()) {
+            long k = it.next();
+            int level = (int) (k >>> 32), idx = (int) k;
+            List<Step> steps = LEVELS.computeIfAbsent(level, l -> l == 0 ? Blueprints.mine() : Blueprints.mineExtension(l));
+            if (idx >= steps.size()) {
+                it.remove();
+                continue;
+            }
+            Step step = steps.get(idx);
+            BlockPos target = o.add(step.dx(), step.dy(), step.dz());
+            if (!world.getBlockState(target).isAir() && !world.getBlockState(target).isReplaceable()) {
+                it.remove(); // put in meanwhile (the builders, a player)
+                continue;
+            }
+            if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 20) {
+                if (Math.abs(target.getY() - v.getBlockY()) > 3) return false; // not on his way: when he passes it
+                Move.to(v, target.getX() + 0.5, v.getY(), target.getZ() + 0.5, 0.6);
+                return true;
+            }
+            Builder.COLLECTOR = v;
+            Builder.Result r;
+            try {
+                r = Builder.execute(world, village, step, target, 0);
+            } finally {
+                Builder.COLLECTOR = null;
+            }
+            if (r == Builder.Result.WAIT) return false; // still none: on with the digging
+            it.remove();
+            if (r == Builder.Result.PLACED) {
+                Gear.face(v, target);
+                v.swingHand(v.getDominantHand());
+                Doing.count("m.redo");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Down a hole with rock all round him and the sky (or the drift) open above: up out of it as a player would, a
+     * jump and a block of the stone in his pockets under his feet, block by block.
+     */
+    private static boolean climbOut(VillagerEntityMCA v, ServerWorld world) {
+        if (!v.isOnGround()) return false;
+        BlockPos feet = v.getBlockPos();
+        for (Direction d : Direction.Type.HORIZONTAL) {
+            if (!world.getBlockState(feet.offset(d)).isSolidBlock(world, feet.offset(d))) return false;
+            if (!world.getBlockState(feet.offset(d).up()).isSolidBlock(world, feet.offset(d).up())) return false;
+        }
+        if (!world.getBlockState(feet.up(2)).isAir()) return false;
+        // a way out within a few blocks up: the floor of the drift beside the hole
+        boolean way = false;
+        for (int h = 2; h <= 5 && !way; h++) {
+            for (Direction d : Direction.Type.HORIZONTAL) {
+                BlockPos q = feet.up(h).offset(d);
+                if (world.getBlockState(q).isAir() && world.getBlockState(q.up()).isAir() && floor(world, q.down())) way = true;
+            }
+            if (!world.getBlockState(feet.up(h)).isAir()) break;
+        }
+        if (!way) return false;
+        var inv = v.getInventory();
+        for (int i = 0; i < inv.size(); i++) {
+            net.minecraft.item.ItemStack st = inv.getStack(i);
+            if (!st.isOf(net.minecraft.item.Items.COBBLESTONE) && !st.isOf(net.minecraft.item.Items.COBBLED_DEEPSLATE) && !st.isOf(net.minecraft.item.Items.DIRT)) continue;
+            v.getNavigation().stop();
+            v.refreshPositionAndAngles(v.getX(), feet.getY() + 1, v.getZ(), v.getYaw(), v.getPitch()); // the jump
+            world.setBlockState(feet, net.minecraft.block.Block.getBlockFromItem(st.getItem()).getDefaultState());
+            world.playSound(null, feet, net.minecraft.sound.SoundEvents.BLOCK_STONE_PLACE, net.minecraft.sound.SoundCategory.BLOCKS, 1f, 1f);
+            v.swingHand(v.getDominantHand());
+            st.decrement(1);
+            Doing.count("m.climbout");
+            return true;
+        }
+        return false;
+    }
+
     static boolean ore(BlockState s) {
         return s.isIn(BlockTags.COAL_ORES) || s.isIn(BlockTags.IRON_ORES) || s.isIn(BlockTags.COPPER_ORES) || s.isIn(BlockTags.GOLD_ORES)
                 || s.isIn(BlockTags.REDSTONE_ORES) || s.isIn(BlockTags.LAPIS_ORES) || s.isIn(BlockTags.DIAMOND_ORES) || s.isIn(BlockTags.EMERALD_ORES);
@@ -258,12 +349,13 @@ public final class Mining {
         BlockPos feet = v.getBlockPos();
         BlockPos shown = null, hidden = null;
         double sd = Double.MAX_VALUE, hd = Double.MAX_VALUE;
-        for (BlockPos p : BlockPos.iterate(feet.add(-8, -1, -8), feet.add(8, 3, 8))) {
+        for (BlockPos p : BlockPos.iterate(feet.add(-8, 0, -8), feet.add(8, 3, 8))) {
             BlockState s = world.getBlockState(p);
             if (!ore(s)) continue;
             double d = p.getSquaredDistance(feet);
             boolean open = false;
             for (Direction dir : Direction.values()) if (world.getBlockState(p.offset(dir)).isAir()) open = true;
+            if (p.getY() < feet.getY()) continue; // not the floor under him: a vein going down took him down after it, block by block, into a pit with no way up
             if (open && d <= 20 && Dig.sees(v, p)) {
                 if (d < sd) {
                     sd = d;
