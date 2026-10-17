@@ -550,6 +550,12 @@ public final class Blueprints {
 
     /** Footprint {w, d} of a project type before rotation. */
     public static int[] footprint(String type, int w, int d) {
+        // a MineColonies building is its template's size, whatever was asked (the hall was founded with 0 x 0: turned
+        // about that, it went up off its own site, and its entry in the register covered nothing)
+        if (type != null && Templates.isTemplate(type)) {
+            Templates.Template t = Templates.of(type);
+            if (t != null) return new int[]{t.w(), t.d()};
+        }
         int[] variant = Variants.footprint(type);
         if (variant != null) return variant;
         return switch (type) {
