@@ -744,6 +744,7 @@ public final class Justice {
         if (c != null && c.stage == Stage.SERVING) return 0f;
         // blood on his hands: one who has killed the village's people is fought to the death, no crawling off
         if (c != null && c.crime == Crime.MURDER) return damage;
+        if (spared(p)) return 0f; // beaten and let go: no blow, no arrow, while he gets himself away
         if (detaining(c)) return Math.min(damage, Math.max(1f, p.getHealth() - 5f));
         // let go once and come back after all: this time the guards do not hold back
         Long warned = WARNED.get(p.getUuid());
@@ -824,6 +825,7 @@ public final class Justice {
         WARNED.put(p.getUuid(), world.getTime() + 20 * 90 + 24000L * 3); // the village remembers him for three days
         for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(64), VillagerEntityMCA::isGuard)) {
             if (g.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).orElse(null) == p) g.getBrain().forget(MemoryModuleType.ATTACK_TARGET);
+            if (g.getTarget() == p) g.setTarget(null); // (the bow kept drawing on the old target)
         }
         VillagerEntityMCA g = nearestGuard(world, p, 24);
         if (g != null && p instanceof ServerPlayerEntity sp) {
@@ -989,6 +991,7 @@ public final class Justice {
 
     /** Out of the village for {@code days}: told to his face by a guard (or the elder), and the village hears of it. */
     private static void exile(ServerWorld world, Village village, ServerPlayerEntity p, Case c, int days) {
+        if (!c.stolen.isEmpty() && p.isAlive()) takeBack(p, c, village); // what he took stays here
         c.stage = Stage.EXILED;
         c.until = world.getTime() + 24000L * days;
         c.lastTalk = world.getTime();

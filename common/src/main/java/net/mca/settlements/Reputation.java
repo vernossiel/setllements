@@ -230,13 +230,26 @@ public final class Reputation {
         }
     }
 
+    /** Some part of him in sight, not only his eyes: his body or his hands at the chest through a door or over a fence. */
+    private static boolean sees(VillagerEntityMCA v, net.minecraft.entity.player.PlayerEntity p) {
+        net.minecraft.util.math.Vec3d eye = v.getEyePos();
+        for (double y : new double[]{p.getBodyY(0.5), p.getY() + 0.3}) {
+            net.minecraft.util.math.Vec3d to = new net.minecraft.util.math.Vec3d(p.getX(), y, p.getZ());
+            if (eye.distanceTo(to) > 16) continue;
+            var hit = v.getWorld().raycast(new net.minecraft.world.RaycastContext(eye, to, net.minecraft.world.RaycastContext.ShapeType.COLLIDER,
+                    net.minecraft.world.RaycastContext.FluidHandling.NONE, v));
+            if (hit.getType() == net.minecraft.util.hit.HitResult.Type.MISS) return true;
+        }
+        return false;
+    }
+
     static void steal(ServerPlayerEntity player, Village village, double value, Map<Item, Integer> items) {
         VillagerEntityMCA witness = null;
         double best = WITNESS_RANGE * WITNESS_RANGE;
         for (VillagerEntityMCA v : player.getWorld().getEntitiesByClass(VillagerEntityMCA.class, player.getBoundingBox().expand(WITNESS_RANGE),
                 o -> !o.isBaby() && !o.isSleeping() && o.isAlive())) {
             double d = v.squaredDistanceTo(player);
-            if (d < best && v.canSee(player)) {
+            if (d < best && (v.canSee(player) || sees(v, player) || d < 3.5 * 3.5)) { // (a metre off through a doorway, or the lid heard right behind the wall)
                 best = d;
                 witness = v;
             }
@@ -346,9 +359,10 @@ public final class Reputation {
             }
             int rep = v.getReputation(p);
             if (st == null || st[0] != v.getId()) {
-                // the village's name as he comes in, nothing more: how it takes him he sees in how its people take him
+                // the village's name as he comes in, its rank, and how it stands with him
                 p.sendMessage(Text.empty().append(Text.literal(v.getName() + " \u00B7 ").formatted(net.minecraft.util.Formatting.GOLD))
-                        .append(Text.translatable("settlements.level." + Plan.level(v).name().toLowerCase())), true);
+                        .append(Text.translatable("settlements.level." + Plan.level(v).name().toLowerCase())).append(Text.literal(" \u00B7 "))
+                        .append(bar(rep)).append(Text.literal(" ")).append(tierName(rep)), true);
             }
             HUD.put(p.getUuid(), new int[]{v.getId(), rep});
         }

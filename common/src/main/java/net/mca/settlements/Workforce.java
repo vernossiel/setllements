@@ -150,6 +150,7 @@ public final class Workforce {
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld gw) {
             Gaze.tick(v, gw); // eyes on what goes on about him; his work, below, takes them back
             if (Notice.tick(v, gw)) return; // a player building something near: he stands and looks
+            if (village != null && Finds.tick(v, village, gw)) return; // money lying in the street: picked up for the coffers
             Weather.lantern(v, gw); // a lantern in the dark
             boolean free = !Persona.working(v, time) || v.settlementsIdleWork > 30;
             if (village != null && Weather.shelter(v, village, gw, free)) return; // in out of the rain
