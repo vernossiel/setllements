@@ -33,7 +33,8 @@
     "MixinZombieEntity",
     "MixinZombieVillagerEntity",
     "MixinSpawnHelper",
-    "MixinFarmlandBlock"
+    "MixinFarmlandBlock",
+    "MixinFishingBobberEntity"
   ],
   "client": [
     "client.MixinArmorFeatureRenderer",
@@ -43,6 +44,7 @@
     "client.MixinLivingEntityRenderer",
     "client.MixinPlayerEntityClient",
     "client.MixinPlayerEntityRenderer",
+    "client.MixinFishingBobberEntityRenderer",
     "client.MixinSoundLoader",
     "client.MixinTranslationStorage"
   ],

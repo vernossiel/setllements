@@ -94,6 +94,7 @@ public class FishingTask extends AbstractChoreTask {
             double fx = targetWater.getX() + 0.5, fy = targetWater.getY() + 0.9, fz = targetWater.getZ() + 0.5;
             if (!hasCastRod) {
                 villager.swingHand(villager.getDominantHand());
+                cast(world, villager, fx, targetWater.getY() + 0.9, fz);
                 world.playSound(null, villager.getBlockPos(), net.minecraft.sound.SoundEvents.ENTITY_FISHING_BOBBER_THROW, net.minecraft.sound.SoundCategory.NEUTRAL, 0.5f, 0.4f);
                 world.spawnParticles(net.minecraft.particle.ParticleTypes.SPLASH, fx, fy, fz, 6, 0.1, 0, 0.1, 0.05);
                 hasCastRod = true;
@@ -101,9 +102,11 @@ public class FishingTask extends AbstractChoreTask {
 
             ticks++;
             if (ticks % 40 == 0) world.spawnParticles(net.minecraft.particle.ParticleTypes.FISHING, fx, fy, fz, 2, 0.05, 0, 0.05, 0.0); // the float bobbing
+            if (bobber != null && ticks % 20 == 0) bobber.refreshPositionAndAngles(fx, targetWater.getY() + 0.9 - (ticks % 40 == 0 ? 0.04 : 0), fz, 0, 0);
 
             if (ticks >= villager.getWorld().random.nextInt(200) + 200) {
                 world.spawnParticles(net.minecraft.particle.ParticleTypes.BUBBLE, fx, fy - 0.3, fz, 8, 0.2, 0.1, 0.2, 0.05); // a bite
+                if (bobber != null) bobber.refreshPositionAndAngles(fx, targetWater.getY() + 0.6, fz, 0, 0); // the float pulled under
                 world.playSound(null, targetWater, net.minecraft.sound.SoundEvents.ENTITY_FISHING_BOBBER_SPLASH, net.minecraft.sound.SoundCategory.NEUTRAL, 0.4f, 1f);
                 if (villager.getWorld().random.nextFloat() >= 0.35F) {
                     ItemStack stack = list.get(villager.getRandom().nextInt(list.size())).copy();
@@ -122,6 +125,7 @@ public class FishingTask extends AbstractChoreTask {
                 world.playSound(null, villager.getBlockPos(), net.minecraft.sound.SoundEvents.ENTITY_FISHING_BOBBER_RETRIEVE, net.minecraft.sound.SoundCategory.NEUTRAL, 0.5f, 1f);
                 hasCastRod = false; // and cast again
                 ticks = 0;
+                reelIn();
             }
         } else {
             villager.moveTowards(targetWater);
@@ -146,8 +150,26 @@ public class FishingTask extends AbstractChoreTask {
         return true;
     }
 
+    /** (Settlements) His float, out on the water while the line is cast (a real one, drawn with its line to his rod). */
+    private net.minecraft.entity.projectile.FishingBobberEntity bobber;
+
+    private void cast(ServerWorld world, VillagerEntityMCA villager, double x, double y, double z) {
+        reelIn();
+        bobber = new net.minecraft.entity.projectile.FishingBobberEntity(net.minecraft.entity.EntityType.FISHING_BOBBER, world);
+        bobber.setOwner(villager);
+        bobber.refreshPositionAndAngles(x, y, z, 0, 0);
+        bobber.setVelocity(net.minecraft.util.math.Vec3d.ZERO);
+        world.spawnEntity(bobber);
+    }
+
+    private void reelIn() {
+        if (bobber != null) bobber.discard();
+        bobber = null;
+    }
+
     @Override
     protected void finishRunning(ServerWorld world, VillagerEntityMCA villager, long time) {
+        reelIn();
         ItemStack stack = villager.getStackInHand(villager.getDominantHand());
         if (!stack.isEmpty()) {
             villager.setStackInHand(villager.getDominantHand(), ItemStack.EMPTY);
