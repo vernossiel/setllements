@@ -177,7 +177,13 @@ public final class Bed {
                     ROOF.put(v.getUuid(), roof);
                 }
             }
-        } else v.getNavigation().stop();
+        } else {
+            v.getNavigation().stop();
+            // in under the roof for the night with no bed of his own: down on the floor by the wall, dozing sitting up
+            long t = world.getTimeOfDay() % 24000L;
+            if ((t >= 12800 || t < 500) && !Seat.seated(v) && !world.isSkyVisible(v.getBlockPos().up())) Seat.sitHere(v, v.getBodyYaw());
+            Doing.set(v, "settlements.doing.bed.floor");
+        }
         return true;
     }
 

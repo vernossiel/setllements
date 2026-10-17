@@ -114,7 +114,10 @@ public final class Housing {
                     bedMoved = true;
                     net.mca.MCA.LOGGER.info("[Settlements] {}: {} homeless and no town hall of its own to bed them in", v.getName(), h.size());
                 }
-                if (hb != null && !bedMoved && hallBeds(world, hb) < MAX_HALL_BEDS && !FAILED.contains(v.getId())) {
+                // (no beds are put down in the hall any more: it is small, and beds all over its floor left no room in
+                // it; the homeless spend the night on its floor, sitting up by the wall, see Bed - and a house for them
+                // stays first in line for the builders)
+                if (HALL_BEDS && hb != null && !bedMoved && hallBeds(world, hb) < MAX_HALL_BEDS && !FAILED.contains(v.getId())) {
                     VillagerEntityMCA m = h.stream().filter(x -> !inHall(world, hb, x)).findFirst().orElse(null);
                     BlockPos nb = m == null ? null : hallBed(world, v, hb, heart);
                     if (m != null) net.mca.MCA.LOGGER.info("[Settlements] {}: hall bed for {}: {}", v.getName(), m.getName().getString(), nb == null ? "none (" + LAST_NO + ")" : nb.toShortString());
@@ -296,6 +299,8 @@ public final class Housing {
     /** His bed now in the household's house. */
     /** The most beds the hall takes: it is a hall, not a dormitory. */
     private static final int MAX_HALL_BEDS = 8;
+    /** Beds put down in the hall for the homeless: off (the player found the hall crammed with them). */
+    private static final boolean HALL_BEDS = false;
     /** Villages where a bed put down in the hall did not become anybody's (till the server restarts). */
     private static final Set<Integer> FAILED = new HashSet<>();
     private static String LAST_NO = "";

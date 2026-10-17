@@ -73,6 +73,43 @@ public final class Move {
             v.getBrain().forget(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET);
     }
 
+    /**
+     * A player held in the stocks cannot step aside: whoever walks into him goes round, off the platform, instead of
+     * pushing on into him (the pathfinder counts his cell as free).
+     */
+    public static void makeWay(VillagerEntityMCA v) {
+        if (v.age % 5 != 0 || v.hasVehicle()) return;
+        for (var p : v.getWorld().getPlayers()) {
+            if (!Seat.inStocks(p) || Math.abs(p.getY() - v.getY()) > 2) continue;
+            double dx = v.getX() - p.getX(), dz = v.getZ() - p.getZ(), d = Math.sqrt(dx * dx + dz * dz);
+            if (d > 1.4) continue;
+            if (d < 0.05) { dx = 1; dz = 0; d = 1; }
+            BlockPos away = BlockPos.ofFloored(p.getX() + dx / d * 3.5, v.getY(), p.getZ() + dz / d * 3.5);
+            v.getBrain().forget(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET);
+            v.getNavigation().startMovingTo(away.getX() + 0.5, away.getY(), away.getZ() + 0.5, 0.6);
+            v.addVelocity(dx / d * 0.15, 0, dz / d * 0.15);
+            remember(v, away);
+            return;
+        }
+    }
+
+    /**
+     * A shut door or gate on the way he is walking: opened as he comes to it (and shut behind him, see shutBehind).
+     * MCA's door task opens only the doors on a path the brain made; ours, our errands and a guard's chase, walked
+     * into them and stood at them.
+     */
+    public static void doorsAhead(VillagerEntityMCA v) {
+        if (v.age % 4 != 0 || !(v.getWorld() instanceof ServerWorld world)) return;
+        var path = v.getNavigation().getCurrentPath();
+        if (path == null || path.isFinished()) return;
+        for (int i = path.getCurrentNodeIndex(); i < Math.min(path.getLength(), path.getCurrentNodeIndex() + 2); i++) {
+            BlockPos p = path.getNodePos(i);
+            if (v.squaredDistanceTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5) > 2.5 * 2.5 || !opens(world, p)) continue;
+            open(v, world, p);
+            return;
+        }
+    }
+
     /** Standing where he is on an errand of ours (see hold): nothing else walks him off. */
     public static void stay(VillagerEntityMCA v) {
         remember(v, v.getBlockPos());

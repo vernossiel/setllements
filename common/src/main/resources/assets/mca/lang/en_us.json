@@ -1557,6 +1557,7 @@
   "settlements.justice.subdued": "That's it, %s. You're under arrest.",
   "settlements.justice.jailed": "You're in jail for %s seconds. Run and it'll be worse.",
   "settlements.justice.stocks": "You're in the stocks on the square for %s seconds.",
+  "settlements.justice.stocks.died": "You died while held. Nobody counts it as an escape: your time is served.",
   "settlements.justice.released": "Your time is up. You're free. Behave yourself.",
   "settlements.justice.exiled": "The village exiles you for a day. Come back and the guards won't spare you.",
   "settlements.justice.stage.reported": "reported",
@@ -4172,5 +4173,6 @@
   "settlements.say.guard.breakin": "You won't hide in there, %s!",
   "settlements.say.guard.breakin.f": "You won't hide in there, %s!",
   "settlements.say.guard.comedown": "Come down, %s! You'll have to sooner or later.",
-  "settlements.say.guard.comedown.f": "Come down, %s! You'll have to sooner or later."
+  "settlements.say.guard.comedown.f": "Come down, %s! You'll have to sooner or later.",
+  "settlements.doing.bed.floor": "the night on the floor in the hall: no house of his own yet"
 }

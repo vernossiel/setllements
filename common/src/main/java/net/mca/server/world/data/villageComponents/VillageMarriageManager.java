@@ -23,6 +23,8 @@ public class VillageMarriageManager {
         if (world.random.nextFloat() >= Config.getInstance().marriageChancePerMinute) {
             return;
         }
+        long tod = world.getTimeOfDay() % 24000L;
+        if (tod >= 11000 || tod < 1000) return; // nobody weds at night: the wedding is in the daytime, with the village on the square
 
         //list all lonely villagers
         List<VillagerEntityMCA> allVillagers = village.getResidents(world);

@@ -1554,6 +1554,7 @@
   "settlements.justice.subdued": "Всё, %s, хватит. Ты арестован.",
   "settlements.justice.jailed": "Ты в тюрьме. Срок: %s сек. Сбежишь — будет хуже.",
   "settlements.justice.stocks": "Ты в колодках на площади. Срок: %s сек.",
+  "settlements.justice.stocks.died": "Ты погиб, пока тебя держали под стражей. Побегом это никто не считает: срок отбыт.",
   "settlements.justice.released": "Срок вышел. Ты свободен. Веди себя прилично.",
   "settlements.justice.exiled": "Деревня изгоняет тебя на сутки. Вернёшься — стража не пощадит.",
   "settlements.justice.stage.reported": "о тебе доложили",
@@ -4169,5 +4170,6 @@
   "settlements.say.guard.breakin": "Не отсидишься, %s!",
   "settlements.say.guard.breakin.f": "Не отсидишься, %s!",
   "settlements.say.guard.comedown": "Слезай, %s! Всё равно ведь слезешь.",
-  "settlements.say.guard.comedown.f": "Слезай, %s! Всё равно ведь слезешь."
+  "settlements.say.guard.comedown.f": "Слезай, %s! Всё равно ведь слезешь.",
+  "settlements.doing.bed.floor": "ночует на полу в ратуше: своего дома пока нет"
 }

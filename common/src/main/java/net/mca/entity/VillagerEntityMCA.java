@@ -956,7 +956,11 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
 
     @Override
     public void tick() {
-        if (!getWorld().isClient) net.mca.settlements.Move.hold(this); // on an errand of ours, MCA's own wandering keeps out of his way
+        if (!getWorld().isClient) {
+            net.mca.settlements.Move.hold(this); // on an errand of ours, MCA's own wandering keeps out of his way
+            net.mca.settlements.Move.makeWay(this);
+            net.mca.settlements.Move.doorsAhead(this);
+        }
         super.tick();
 
         // update visual age
@@ -1647,6 +1651,13 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
 
     @Override
     public void attack(LivingEntity target, float pullProgress) {
+        // a guard's arrow is held to what his blow would be (see Justice.blow): at his last strength he is taken, not shot dead
+        float share = 1f;
+        if (isGuard() && target instanceof PlayerEntity p) {
+            if (net.mca.settlements.Justice.subdue(this, p)) return;
+            share = net.mca.settlements.Justice.blow(p, 6f) / 6f; // an arrow lands about six
+            if (share <= 0f) return;
+        }
         setTarget(target);
         attackedEntity(target);
 
@@ -1660,6 +1671,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
             double z = target.getZ() - this.getZ();
             double vel = Math.sqrt(x * x + z * z);
             persistentProjectileEntity.setVelocity(x, y + vel * 0.20000000298023224D, z, 1.6F, 3);
+            if (share < 1f) persistentProjectileEntity.setDamage(persistentProjectileEntity.getDamage() * share);
             this.playSound(SoundEvents.ENTITY_SKELETON_SHOOT, 1.0F, 1.0F / (this.getRandom().nextFloat() * 0.4F + 0.8F));
             this.getWorld().spawnEntity(persistentProjectileEntity);
         }

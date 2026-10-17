@@ -54,6 +54,8 @@ public final class Justice {
         boolean shown; // the guard's demand window has been put before him
         boolean inStocks; // held in the stocks: he does not break out of those, he is put back
         boolean pleaded, bribed; // each tried once a case
+        boolean denied; // denied it before witnesses: not offered again
+        int life = -1; // the player entity held (a new one after he dies and comes back)
         boolean offered; // a rogue has offered to get him out
 
         Case(UUID player) {
@@ -227,6 +229,12 @@ public final class Justice {
                 it.remove();
                 continue;
             }
+            if ((p.isCreative() || p.isSpectator()) && c.stage != Stage.SERVING && c.stage != Stage.EXILED) {
+                // out of the game for now (no guard can lay a hand on him): his case waits as it is, no time runs out on it
+                c.deadline += 20;
+                c.since += 20;
+                continue;
+            }
             VillagerEntityMCA guard = c.stage == Stage.SERVING || c.stage == Stage.EXILED ? nearestGuard(world, p, 64) : onCase(world, p, 64);
             switch (c.stage) {
                 case REPORTED -> {
@@ -280,10 +288,25 @@ public final class Justice {
                     if (now >= c.deadline) resist(p);
                 }
                 case RESISTING -> {
-                    // the guards are on him (GuardAI); he is beaten down, then arrested (see subdue)
+                    // the guards are on him (GuardAI); he is beaten down, then arrested (see subdue). One whose hold on him
+                    // was lost (he was out of reach a while, out of sight) takes him on again: not a guard who only trails him
+                    if (spared(p)) continue;
+                    for (VillagerEntityMCA g : world.getEntitiesByClass(VillagerEntityMCA.class, p.getBoundingBox().expand(32), o -> o.isGuard() && o.isAlive() && !o.isSleeping())) {
+                        if (g.getBrain().getOptionalMemory(MemoryModuleType.ATTACK_TARGET).isEmpty() && g.canSee(p))
+                            g.getBrain().remember(MemoryModuleType.ATTACK_TARGET, p, 1200);
+                    }
                 }
                 case SERVING -> {
                     if (now >= c.until) {
+                        release(world, village, p, c);
+                        it.remove();
+                        continue;
+                    }
+                    if (p.isDead()) continue;
+                    if (c.life != -1 && c.life != p.getId()) {
+                        // he died where he was held (a mob, an arrow from the dark): not a runaway - the village could not keep him safe, the time is served
+                        p.sendMessage(Text.translatable("settlements.justice.stocks.died").formatted(Formatting.GOLD), false);
+                        c.hold = null; // (he is let be where he came back, not led out of the jail)
                         release(world, village, p, c);
                         it.remove();
                         continue;
@@ -401,25 +424,24 @@ public final class Justice {
     }
 
     private static void demand(ServerWorld world, Village village, VillagerEntityMCA guard, ServerPlayerEntity p, Case c) {
+        demand(world, village, guard, p, c, null);
+    }
+
+    /** The demand put before him; after an answer that settled nothing, at once, with the guard's words to it ({@code lead}) first. */
+    private static void demand(ServerWorld world, Village village, VillagerEntityMCA guard, ServerPlayerEntity p, Case c, Text lead) {
         String key = "settlements.justice.demand." + c.crime.name().toLowerCase();
-        talk(world, village, guard, p, key, world.getTime());
+        if (lead == null) talk(world, village, guard, p, key, world.getTime());
         Text money = !c.stolen.isEmpty() ? Text.translatable("settlements.justice.fine_or_return", fine(c)) : Text.translatable("settlements.justice.fine", fine(c));
         java.util.List<String> o = new java.util.ArrayList<>();
         if (!c.stolen.isEmpty()) o.add("return");
         o.add("pay");
         if (!c.pleaded) o.add("plead");
         if (!c.bribed) o.add("bribe");
-        o.add("deny");
+        if (!c.denied) o.add("deny");
         o.add("leave");
-        String[] options = o.toArray(new String[0]);
-        if (!c.shown) { // face to face, the first time: a window with his words and the answers
-            c.shown = true;
-            window(guard, village, p, List.of(Text.translatable(key, p.getName()), Text.empty(), money.copy().formatted(Formatting.YELLOW)), options,
-                    (int) Math.max(0, (c.deadline - world.getTime()) / 20));
-        } else { // reminded: the same words and answers again, not a line more in the chat
-            window(guard, village, p, List.of(Text.translatable(key, p.getName()), Text.empty(), money.copy().formatted(Formatting.YELLOW)), options,
-                    (int) Math.max(0, (c.deadline - world.getTime()) / 20));
-        }
+        c.shown = true;
+        window(guard, village, p, List.of(lead != null ? lead : Text.translatable(key, p.getName()), Text.empty(), money.copy().formatted(Formatting.YELLOW)),
+                o.toArray(new String[0]), (int) Math.max(0, (c.deadline - world.getTime()) / 20));
     }
 
     /** The guard's demand or arrest, in a window of its own over the game (the chat has the same, to answer later). */
@@ -470,8 +492,17 @@ public final class Justice {
             p.sendMessage(Text.translatable("settlements.justice.settled").formatted(Formatting.GREEN), false);
         } else {
             p.sendMessage(Text.translatable("settlements.theft.partial", (int) Math.ceil(Math.max(0, c.value - returned))), false);
+            again(p, c, Text.translatable("settlements.theft.partial", (int) Math.ceil(Math.max(0, c.value - returned))));
         }
         return 1;
+    }
+
+    /** An answer that came to nothing (not enough money, not all of it given back): the demand again at once, not at the next reminder. */
+    private static void again(ServerPlayerEntity p, Case c, Text lead) {
+        if (c.stage != Stage.DEMAND) return;
+        ServerWorld world = p.getServerWorld();
+        Village village = VillageManager.get(world).getOrEmpty(c.villageId).orElse(null);
+        if (village != null) demand(world, village, nearestGuard(world, p, 32), p, c, lead);
     }
 
     /** The stolen goods out of the player's pockets, back into the stores. */
@@ -521,6 +552,7 @@ public final class Justice {
         int fine = fine(c);
         if (Money.count(p.getInventory()) < fine) {
             p.sendMessage(Text.translatable("settlements.justice.cannot_pay", fine).formatted(Formatting.RED), false);
+            again(p, c, Text.translatable("settlements.justice.cannot_pay", fine));
             return 0;
         }
         Village village = VillageManager.get(p.getServerWorld()).getOrEmpty(c.villageId).orElse(null);
@@ -545,6 +577,8 @@ public final class Justice {
             // there were witnesses: no use denying it
             talk(world, village, guard, p, "settlements.justice.deny_witnessed", world.getTime());
             c.deadline = Math.min(c.deadline, world.getTime() + 20 * 20);
+            c.denied = true;
+            demand(world, village, guard, p, c, Text.translatable("settlements.justice.deny_witnessed", p.getName()));
         } else {
             talk(world, village, guard, p, "settlements.justice.deny_accepted", world.getTime());
             if (village != null) village.pushHearts(p, -3);
@@ -593,14 +627,12 @@ public final class Justice {
                 talk(world, village, guard, p, "settlements.justice.plead.fine", world.getTime());
                 c.stage = Stage.DEMAND;
                 c.deadline = world.getTime() + 20 * 60;
-                c.shown = false;
-                demand(world, village, guard, p, c);
+                demand(world, village, guard, p, c, Text.translatable("settlements.justice.plead.fine", p.getName()));
             }
         } else {
             talk(world, village, guard, p, "settlements.justice.plead.no", world.getTime());
             c.value *= 1.5;
-            c.shown = false;
-            if (c.stage == Stage.DEMAND) demand(world, village, guard, p, c);
+            if (c.stage == Stage.DEMAND) demand(world, village, guard, p, c, Text.translatable("settlements.justice.plead.no", p.getName()));
             else {
                 c.deadline = Math.min(c.deadline, world.getTime() + 20 * 10);
                 if (c.stage == Stage.ARREST && guard != null) // and what now: the choice again, what is left of it
@@ -647,8 +679,7 @@ public final class Justice {
             talk(world, village, guard, p, "settlements.justice.bribe.no", world.getTime());
             village.pushHearts(p, -5);
             c.value += cost * 6 / 9.0; // the cost is in nuggets now: the same weight as before
-            c.shown = false;
-            if (c.stage == Stage.DEMAND) demand(world, village, guard, p, c);
+            if (c.stage == Stage.DEMAND) demand(world, village, guard, p, c, Text.translatable("settlements.justice.bribe.no", p.getName()));
             else if (c.stage == Stage.ARREST && guard != null)
                 arrestWindow(guard, village, p, c, Math.max(5, (int) ((c.deadline - world.getTime()) / 20)), Text.translatable("settlements.justice.bribe.no", p.getName()));
         }
@@ -833,6 +864,7 @@ public final class Justice {
             BlockPos cell = jail.point(jc[0], jc[1], jc[2]);
             p.teleport(world, cell.getX() + 0.5, cell.getY(), cell.getZ() + 0.5, p.getYaw(), p.getPitch());
             c.hold = cell;
+            c.life = p.getId();
             p.sendMessage(Text.translatable("settlements.justice.jailed", seconds).formatted(Formatting.GOLD), false);
             Life.news(village, "crime.jailed", p.getName().getString());
         } else {
@@ -845,6 +877,7 @@ public final class Justice {
             p.addStatusEffect(new StatusEffectInstance(StatusEffects.MINING_FATIGUE, ticks, 4, false, false));
             p.addStatusEffect(new StatusEffectInstance(StatusEffects.WEAKNESS, ticks, 4, false, false));
             c.hold = spot;
+            c.life = p.getId();
             p.sendMessage(Text.translatable("settlements.justice.stocks", seconds).formatted(Formatting.GOLD), false);
             Life.news(village, "crime.stocks", p.getName().getString());
             stocksWindow(world, village, p, c);
