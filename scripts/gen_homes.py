@@ -949,7 +949,10 @@ def home(spec, seed):
 
 
 def trim_top(h):
-    """The house's height cut down to what it uses."""
+    """The house's height cut down to what it uses; and no lantern hung from thin air (a room open to the roof)."""
+    for (x, y, z), b in list(h.cells.items()):
+        if "lantern[hanging=true" in b and h.cells.get((x, y + 1, z), "minecraft:air") == "minecraft:air":
+            h.cells[(x, y, z)] = "minecraft:air"
     ys = [y for (x, y, z), b in h.cells.items() if b != "minecraft:air"]
     top = max(ys) + 1
     h.cells = {k: v for k, v in h.cells.items() if k[1] <= top}
@@ -1604,8 +1607,10 @@ def staddle_granary(level):
     cx = (x0 + x1) // 2
     h.put(cx, 4, z1, door("north", "lower", "left"))
     h.put(cx, 5, z1, door("north", "upper", "left"))
-    for k, y in ((1, 3), (2, 2), (3, 1)):  # steps up to the door
+    for k, y in ((1, 3), (2, 2), (3, 1)):  # steps up to the door, each on its timber
         h.put(cx, y, z1 + k, st("north"))
+        for yy in range(1, y):
+            h.put(cx, yy, z1 + k, PLANK)
     room = Room(h, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 4, random.Random(level))
     room.keep(cx, z1 - 1)
     for it in ["hay"] * (2 + level) + ["barrel"] * (1 + level) + ["composter"]:
@@ -1660,7 +1665,6 @@ def saw_shed(level):
         h.put(x0 + 1, 2, z0 + 2, chest("east"))
         h.put(x0 + 1, 2, z0 + 3, CRAFT)
         h.put(x0 + 2, 4, cz, lantern(True))
-        h.put(x0 + 1, 2, z0 + 1, "minecraft:air")
     h.put(cx, 4, cz, lantern(True))
     clear(h, 0, W + 1, 0, D + 1, 1, 15)
     roof_x(h, 0, W + 1, x0, x1, D + 2, 5, "spruce", "minecraft:spruce_planks")
@@ -1691,7 +1695,8 @@ def mason_yard(level):
             h.put(x0, y, z, COB)
             h.put(x1, y, z, COB)
         for x in range(x0 + 3, x1, 3):
-            h.put(x, y, z0 + 4, log())
+            if y < 4:
+                h.put(x, y, z0 + 4, log())
     for x in range(x0, x1 + 1):
         for z in range(z0, z0 + 5):
             pass
@@ -1714,10 +1719,13 @@ def mason_yard(level):
     h.put(px - 3, 4, pz, "minecraft:stone_bricks")
     clear(h, 0, W + 1, 0, D + 1, 1, 15)
     # the shed's roof only (a lean-to of stone over the back of the yard)
-    for i, z in enumerate(range(z0 - 1, z0 + 6)):
-        y = 6 - (i // 2)
+    mat = "spruce" if level < 3 else "deepslate_tile"
+    for i, z in enumerate(range(z0 - 1, z0 + 6)):  # on the walls at the back, a half block down on the posts at the front
         for x in range(x0 - 1, x1 + 2):
-            h.roof(x, y, z, rstairs("spruce" if level < 3 else "deepslate_tile", "north") if i % 2 == 1 else rslab("spruce" if level < 3 else "deepslate_tile").replace("bottom", "top"))
+            if i < 4:
+                h.roof(x, 5, z, rslab(mat))
+            else:
+                h.roof(x, 4, z, rslab(mat).replace("bottom", "top"))
     trim_top(h)
     return h
 
@@ -1864,8 +1872,8 @@ def post_mill():
     # the trestle: the post up the middle, its four legs out on stones
     wcol(h, cx, 3, 1, 4, log())
     for (x, z) in ((x0, z0), (x1, z0), (x0, z1), (x1, z1)):
-        h.put(x, 1, z, COB)
-        h.put(x, 2, z, fence())
+        h.put(x, 1, z, COB)          # each leg on its stone, up to the floor of the body (it hung in the air on its post)
+        wcol(h, x, z, 2, 4, log())
     for (x, z) in ((cx - 1, 3), (cx + 1, 3), (cx, 2), (cx, 4)):
         h.put(x, 3, z, fence(e=x < cx, w=x > cx, n=z > 3, s=z < 3))
     # the body on top of it
@@ -1938,13 +1946,13 @@ def lean_forge():
     h.box(1, 0, 1, 5, 0, 5, COB)
     h.box(1, 1, 1, 5, 1, 4, "minecraft:cobblestone")
     for x in range(1, 6):
-        for y in range(2, 4):
+        for y in range(2, 5):  # the back wall up to the roof
             h.put(x, y, 1, COB)
     h.put(3, 2, 2, furnace("south"))
     h.put(2, 2, 2, COB)
     h.put(4, 2, 2, COB)
-    for x in (2, 3, 4):
-        h.put(x, 4, 2, cst("north", "top"))
+    for x in (2, 3, 4):  # the hood over the fire, under the roof
+        h.put(x, 3, 2, cst("north", "top"))
     wcol(h, 1, 3, 2, 3, log())
     wcol(h, 5, 3, 2, 3, log())
     h.put(3, 2, 4, "minecraft:anvil[facing=east]")
@@ -1952,12 +1960,13 @@ def lean_forge():
     h.put(1, 2, 2, "minecraft:grindstone[face=floor,facing=south]")
     h.put(5, 2, 2, chest("south"))
     clear(h, 0, 6, 0, 6, 1, 9)
-    for x in range(0, 7):  # the lean-to: high at the hearth, low over the posts
-        h.roof(x, 4, 1, slab("bottom", "spruce")) if False else None
-        h.roof(x, 5, 0, rstairs("spruce", "south"))
+    for x in range(0, 7):  # the lean-to: high at the hearth, a half block down over the anvil, low over the posts, whole
+        h.roof(x, 5, 0, slab("bottom", "spruce"))
         h.roof(x, 5, 1, slab("bottom", "spruce"))
-        h.roof(x, 4, 2, rstairs("spruce", "north", "top")) if False else None
-        h.roof(x, 4, 3, rstairs("spruce", "north"))
+        h.roof(x, 4, 2, slab("top", "spruce"))
+        h.roof(x, 4, 3, slab("bottom", "spruce"))
+        h.roof(x, 4, 4, slab("bottom", "spruce"))
+        h.roof(x, 4, 5, slab("bottom", "spruce"))
     for y in range(2, 8):
         h.put(3, y, 0, COB)
     h.put(3, 8, 0, cap(COB))
