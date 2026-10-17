@@ -70,7 +70,12 @@ public final class Festival {
         }
         long tod = timeOfDay % 24000L;
         if (w != null && (tod >= 11800 || tod < 300)) return false; // no dancing on the square after dark: the guests go home (a wedding feast ran into the night and the zombies came)
-        if (w != null) return wedding(v, world, w);
+        if (w != null) {
+            boolean at = wedding(v, world, w);
+            // at the wedding he is at the wedding: not fishing in the middle of it (MCA's chores ran on regardless)
+            if (at && v.getVillagerBrain().getCurrentJob() != net.mca.entity.ai.Chore.NONE) v.getVillagerBrain().abandonJob();
+            return at;
+        }
         if (Forage.hungry(village)) return false; // a hungry village has no time for fairs: there is food to get in
         if (service(timeOfDay) && Buildings.has(village, "chapel")) return church(v, village, world);
         // a fair wants a market, or a village big enough to make one on the square

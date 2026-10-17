@@ -77,6 +77,8 @@ public class FishingTask extends AbstractChoreTask {
             List<BlockPos> nearbyStaticLiquid = TaskUtils.getNearbyBlocks(villager.getBlockPos(), villager.getWorld(), blockState -> blockState.isOf(Blocks.WATER), 12, 3);
             targetWater = nearbyStaticLiquid.stream()
                     .filter((p) -> villager.getWorld().getBlockState(p).getBlock() == Blocks.WATER)
+                    // (Settlements) still water open to the sky, not a waterfall or a puddle under a roof
+                    .filter((p) -> villager.getWorld().getFluidState(p).isStill() && villager.getWorld().getBlockState(p.up()).isAir())
                     .min(Comparator.comparingDouble(d -> villager.squaredDistanceTo(d.getX(), d.getY(), d.getZ()))).orElse(null);
 
             if (targetWater == null) {
@@ -86,21 +88,38 @@ public class FishingTask extends AbstractChoreTask {
             villager.getNavigation().stop();
             villager.lookAt(targetWater);
 
+            // (Settlements) the cast, the float on the water, a bite, the fish flying out: to be seen, not a wave of the
+            // hand and a fish in the bag
+            double fx = targetWater.getX() + 0.5, fy = targetWater.getY() + 0.9, fz = targetWater.getZ() + 0.5;
             if (!hasCastRod) {
                 villager.swingHand(villager.getDominantHand());
+                world.playSound(null, villager.getBlockPos(), net.minecraft.sound.SoundEvents.ENTITY_FISHING_BOBBER_THROW, net.minecraft.sound.SoundCategory.NEUTRAL, 0.5f, 0.4f);
+                world.spawnParticles(net.minecraft.particle.ParticleTypes.SPLASH, fx, fy, fz, 6, 0.1, 0, 0.1, 0.05);
                 hasCastRod = true;
             }
 
             ticks++;
+            if (ticks % 40 == 0) world.spawnParticles(net.minecraft.particle.ParticleTypes.FISHING, fx, fy, fz, 2, 0.05, 0, 0.05, 0.0); // the float bobbing
 
             if (ticks >= villager.getWorld().random.nextInt(200) + 200) {
+                world.spawnParticles(net.minecraft.particle.ParticleTypes.BUBBLE, fx, fy - 0.3, fz, 8, 0.2, 0.1, 0.2, 0.05); // a bite
+                world.playSound(null, targetWater, net.minecraft.sound.SoundEvents.ENTITY_FISHING_BOBBER_SPLASH, net.minecraft.sound.SoundCategory.NEUTRAL, 0.4f, 1f);
                 if (villager.getWorld().random.nextFloat() >= 0.35F) {
                     ItemStack stack = list.get(villager.getRandom().nextInt(list.size())).copy();
 
                     villager.swingHand(villager.getDominantHand());
-                    villager.getInventory().addStack(stack);
+                    // the catch flies out of the water to him, and he picks it up
+                    net.minecraft.entity.ItemEntity fish = new net.minecraft.entity.ItemEntity(world, fx, fy, fz, stack);
+                    double dx = villager.getX() - fx, dy = villager.getY() - fy, dz = villager.getZ() - fz;
+                    fish.setVelocity(dx * 0.1, dy * 0.1 + Math.sqrt(Math.sqrt(dx * dx + dy * dy + dz * dz)) * 0.08, dz * 0.1);
+                    fish.setPickupDelay(10);
+                    world.spawnEntity(fish);
                     villager.getMainHandStack().damage(1, villager, e -> e.sendEquipmentBreakStatus(e.getDominantSlot()));
+                } else {
+                    villager.swingHand(villager.getDominantHand()); // it got away
                 }
+                world.playSound(null, villager.getBlockPos(), net.minecraft.sound.SoundEvents.ENTITY_FISHING_BOBBER_RETRIEVE, net.minecraft.sound.SoundCategory.NEUTRAL, 0.5f, 1f);
+                hasCastRod = false; // and cast again
                 ticks = 0;
             }
         } else {
