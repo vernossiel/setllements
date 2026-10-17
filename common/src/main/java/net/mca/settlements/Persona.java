@@ -107,8 +107,9 @@ public final class Persona {
 
     /** His working hours today (nobody works on the rest day). */
     public static boolean working(VillagerEntityMCA v, long time) {
-        if (Workforce.restsToday(v, time)) return false;
         long t = time % 24000L;
+        if (Builder.rush(v)) return t >= 500 && t < 11800; // the homeless wait on him
+        if (Workforce.restsToday(v, time)) return false;
         return t >= workStart(v) && t < workEnd(v);
     }
 
@@ -122,6 +123,7 @@ public final class Persona {
     /** Whether he turns up at the elder's morning gathering today: the dutiful and the sociable mostly do. */
     public static boolean attends(VillagerEntityMCA v, long day) {
         if (v.isElder()) return true;
+        if (Builder.rush(v)) return false;
         Traits t = of(v);
         double chance = clamp(0.15 + 0.45 * t.diligence() + 0.3 * t.sociability(), 0.1, 0.95);
         return (noise(seed(v.getUuid()) ^ day * 0x632BE59BD9B4E019L, 7) + 1) / 2 < chance;

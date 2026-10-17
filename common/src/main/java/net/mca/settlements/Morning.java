@@ -40,7 +40,7 @@ public final class Morning {
         // breakfast first, if there is anything to eat
         if (sec == 2 && Workforce.hasMeal(v, village) && Workforce.startEating(v, village, 0)) return true;
         // out to the well (or the fire), a stretch, a wash, a chat
-        long linger = 25 + (long) ((1.2 - tr.diligence()) * 40) + (long) (tr.sociability() * 30);
+        long linger = Builder.rush(v) ? 6 : 25 + (long) ((1.2 - tr.diligence()) * 40) + (long) (tr.sociability() * 30);
         if (sec < 4 + linger) {
             BlockPos spot = village == null ? null : wellOrFire(village, world);
             if (spot != null && v.squaredDistanceTo(Vec3d.ofCenter(spot)) > 16) {

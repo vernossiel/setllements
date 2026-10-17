@@ -917,6 +917,18 @@ public final class Builder {
     private record Lead(java.util.UUID id, long at) {
     }
 
+    /**
+     * A builder with people sleeping on the hall floor and their house in hand: no lingering at the well, no
+     * gathering at the elder's, no rest day; from early morning to sundown at it. (A house took four days, the
+     * builders at it a quarter of the day.)
+     */
+    public static boolean rush(VillagerEntityMCA v) {
+        if (v.getProfession() != net.minecraft.village.VillagerProfession.CARTOGRAPHER) return false;
+        Village village = v.getResidency().getHomeVillage().orElse(null);
+        return village != null && village.buildOrigin != null && village.buildType != null && Tiers.isHome(village.buildType)
+                && Housing.homeless(village) > 0;
+    }
+
     /** Builders up on the work (the last time): a step down off a wall onto the floor of the building hurts nobody. */
     private static final Map<java.util.UUID, Long> ON_SITE = new HashMap<>();
 
@@ -988,10 +1000,13 @@ public final class Builder {
         BlockPos leadAt = origin.add(rc[0], now.dy(), rc[1]);
         Lead l = LEAD.get(village.getId());
         net.minecraft.entity.Entity leader = l == null ? null : world.getEntity(l.id());
+        boolean triedHigh = false;
         for (int i = cur + 4; i < Math.min(steps.size(), cur + 80); i++) {
             if (done.contains(i)) continue;
             Step s = steps.get(i);
-            if (s.kind() == Kind.DIG || group(s.kind()) != group(now.kind()) || s.dy() > now.dy() + 1 || s.dy() >= 3) continue;
+            // (up the walls too, as the leader goes: kept to the ground, the second builder paved the road all
+            // afternoon while the house went up a block at a time)
+            if (s.kind() == Kind.DIG || group(s.kind()) != group(now.kind()) || s.dy() > now.dy() + 1) continue;
             int[] rp = Blueprints.rotate(s.dx(), s.dz(), fp[0], fp[1], village.buildRot);
             BlockPos t = origin.add(rp[0], s.dy(), rp[1]);
             int hx = t.getX() - leadAt.getX(), hz = t.getZ() - leadAt.getZ();
@@ -1003,6 +1018,14 @@ public final class Builder {
             }
             double bx = t.getX() + 0.5 - v.getX(), bz = t.getZ() + 0.5 - v.getZ();
             if (!Scaffold.inReach(v, t) || !Dig.sees(v, t)) {
+                if (s.dy() >= 3) {
+                    if (triedHigh) continue; // (one look for a way up a second: each costs a search for a path)
+                    triedHigh = true;
+                    Built site = new Built(village.buildType, origin, village.buildW, village.buildD, Math.max(1, village.buildF), village.buildRot);
+                    ON_SITE.put(v.getUuid(), world.getTime());
+                    if (Scaffold.approach(v, village, world, t, site, planned(village, steps, origin))) return true;
+                    continue; // no way up to this one
+                }
                 if (bx * bx + bz * bz < 4) continue; // right by it and still cannot get at it: another one
                 Move.to(v, t.getX() + 0.5, origin.getY(), t.getZ() + 0.5, 0.6);
                 return true;
