@@ -42,10 +42,14 @@ public final class Worksite {
         }
         if (++v.settlementsIdleSec < IDLE_LIMIT) return;
         v.settlementsIdleSec = 0;
+        // a fisherman by good water is at work, a catch or not (a bite every quarter minute, a third of them lost: half a
+        // minute with nothing in the bag had him put down his rod and stand idle a minute, again and again, the village starving)
+        if (chore == Chore.FISH && byWater(world, v.getBlockPos())) return;
 
         BlockPos found = switch (chore) {
             case CHOP -> findTree(world, v.getBlockPos());
             case HARVEST -> findCrop(world, v.getBlockPos());
+            case FISH -> findShore(world, v.getBlockPos()); // a pond or a river further off: he walks to its bank
             default -> null;
         };
         if (found != null) {
@@ -79,6 +83,46 @@ public final class Worksite {
                         best = p;
                     }
                     break;
+                }
+            }
+        }
+        return best;
+    }
+
+    private static boolean byWater(ServerWorld world, BlockPos at) {
+        for (BlockPos q : BlockPos.iterate(at.add(-5, -3, -5), at.add(5, 1, 5))) {
+            if (world.getFluidState(q).isStill() && world.getBlockState(q).isOf(net.minecraft.block.Blocks.WATER) && world.getBlockState(q.up()).isAir()
+                    && net.mca.entity.ai.brain.tasks.chore.FishingTask.fishable(world, q.toImmutable())) return true;
+        }
+        return false;
+    }
+
+    /** The nearest dry bank of good fishing water (see FishingTask.fishable) within reach of the village. */
+    private static BlockPos findShore(ServerWorld world, BlockPos center) {
+        BlockPos best = null;
+        double bestD = Double.MAX_VALUE;
+        for (int dx = -RADIUS; dx <= RADIUS; dx += 2) {
+            for (int dz = -RADIUS; dz <= RADIUS; dz += 2) {
+                int x = center.getX() + dx, z = center.getZ() + dz;
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+                double d = dx * dx + dz * dz;
+                if (d >= bestD) continue;
+                BlockPos w = new BlockPos(x, world.getTopY(Heightmap.Type.MOTION_BLOCKING, x, z) - 1, z);
+                if (!world.getBlockState(w).isOf(net.minecraft.block.Blocks.WATER) || !world.getFluidState(w).isStill()
+                        || !net.mca.entity.ai.brain.tasks.chore.FishingTask.fishable(world, w)) continue;
+                for (net.minecraft.util.math.Direction dir : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+                    for (int step = 1; step <= 4; step++) { // the bank: dry ground a few steps off the water's edge
+                        BlockPos g = w.offset(dir, step);
+                        int top = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, g.getX(), g.getZ());
+                        BlockPos ground = new BlockPos(g.getX(), top - 1, g.getZ());
+                        if (Math.abs(top - 1 - w.getY()) > 2) break;
+                        if (!world.getFluidState(ground).isEmpty()) continue;
+                        if (!world.getBlockState(ground).isSolidBlock(world, ground)) break;
+                        bestD = d;
+                        best = ground.up();
+                        break;
+                    }
+                    if (best != null && bestD == d) break;
                 }
             }
         }

@@ -136,10 +136,22 @@ public final class Unstick {
         v.fallDistance = 0;
     }
 
+    /** The last place each was making for (the brain forgets it the moment it finds no way there). */
+    private static final java.util.Map<java.util.UUID, BlockPos> LAST_GOAL = new java.util.HashMap<>();
+
     private static Optional<BlockPos> target(VillagerEntityMCA v) {
         Optional<BlockPos> walk = v.getBrain().getOptionalMemory(MemoryModuleType.WALK_TARGET).map(w -> w.getLookTarget().getBlockPos());
-        if (walk.isPresent()) return walk;
+        if (walk.isPresent()) {
+            LAST_GOAL.put(v.getUuid(), walk.get());
+            return walk;
+        }
+        if (cantReach(v)) return Optional.ofNullable(LAST_GOAL.get(v.getUuid()));
         return Optional.ofNullable(v.getNavigation().getTargetPos());
+    }
+
+    /** The path finder gave up on where he wanted to go, a moment ago. */
+    private static boolean cantReach(VillagerEntityMCA v) {
+        return v.getBrain().getOptionalMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE).map(t -> v.getWorld().getTime() - t < 200).orElse(false);
     }
 
     /** Once per second. */
@@ -195,7 +207,10 @@ public final class Unstick {
         if (Move.goal(v) != null) return; // errands are walked by Move, which works its way by hand
         Optional<BlockPos> goal = target(v);
         Vec3d pos = v.getPos();
-        boolean wants = goal.isPresent() && goal.get().getSquaredDistance(v.getBlockPos()) > 6 && v.getNavigation().isFollowingPath();
+        // on his way and getting nowhere - or wanting to be somewhere the path finder finds no way to at all (down the
+        // ladder from an upper floor: no path, so he stood up there for good, never counted as stuck)
+        boolean wants = goal.isPresent() && goal.get().getSquaredDistance(v.getBlockPos()) > 6
+                && (v.getNavigation().isFollowingPath() || v.getNavigation().isIdle() && cantReach(v) && goal.get().getY() <= v.getBlockY() - 3);
         if (!wants) {
             v.settlementsStuckSec = 0;
             v.settlementsLastPos = pos;

@@ -2183,12 +2183,16 @@ public final class Builder {
                 if (!FREE && !take(village, s -> s.isOf(Items.GOLD_INGOT), 4)) return null;
                 return Blocks.AIR.getDefaultState(); // marker, the frame is hung in execute()
             case THATCH: {
-                // the land's roofing: straw (wheat or a bale), sod in the north (earth), bamboo in the jungle; boards if none
+                // the land's roofing: straw bales, sod in the north (earth), bamboo in the jungle; boards if there is not
+                // enough for the whole roof - decided once for the roof, not block by block (half a roof of straw and half
+                // of boards); and the wheat is the village's bread, not roofing
                 Block th = pal.thatch();
-                if (th == Blocks.HAY_BLOCK && (take(village, s -> s.isOf(Items.HAY_BLOCK), 1) || take(village, s -> s.isOf(Items.WHEAT), 2))) return th.getDefaultState();
-                if (th == Blocks.MOSS_BLOCK && (FREE || take(village, s -> s.isOf(Items.DIRT) || s.isOf(Items.MOSS_BLOCK) || s.isOf(Items.GRASS_BLOCK), 1))) return th.getDefaultState();
-                if (th == Blocks.BAMBOO_BLOCK && (FREE || take(village, s -> s.isOf(Items.BAMBOO), 4) || take(village, s -> s.isOf(Items.BAMBOO_BLOCK), 1))) return th.getDefaultState();
                 if (FREE) return th.getDefaultState();
+                Predicate<ItemStack> stock = th == Blocks.HAY_BLOCK ? s -> s.isOf(Items.HAY_BLOCK)
+                        : th == Blocks.MOSS_BLOCK ? s -> s.isOf(Items.DIRT) || s.isOf(Items.MOSS_BLOCK) || s.isOf(Items.GRASS_BLOCK)
+                        : s -> s.isOf(Items.BAMBOO_BLOCK);
+                BlockState made = betterOr(village, Kind.THATCH, "thatch", stock, th.getDefaultState());
+                if (made != null) return made;
                 return plank(village, pal.roofPlanks());
             }
             case DAUB: {

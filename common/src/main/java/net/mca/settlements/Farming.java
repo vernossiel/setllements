@@ -177,6 +177,56 @@ public final class Farming {
         return s.isAir() ? 2 : 0;
     }
 
+    private static final Map<java.util.UUID, BlockPos> DRY = new java.util.HashMap<>();
+    private static final Map<java.util.UUID, Long> DRY_LOOKED = new java.util.HashMap<>();
+
+    /**
+     * Nothing to reap or sow: the dry beds watered (a bed far from water dries out and its crop comes on three times
+     * slower - the village went hungry with the farmer 'waiting for the crop' all day over dry earth). True while at it.
+     */
+    public static boolean water(VillagerEntityMCA v, Village village, ServerWorld world) {
+        if (village == null || Dig.busy(v)) return false;
+        BlockPos t = DRY.get(v.getUuid());
+        if (t != null && !(world.getBlockState(t).isOf(Blocks.FARMLAND) && world.getBlockState(t).get(net.minecraft.block.FarmlandBlock.MOISTURE) < 3)) t = null;
+        if (t == null) {
+            if (world.getTime() < DRY_LOOKED.getOrDefault(v.getUuid(), 0L)) return false;
+            DRY_LOOKED.put(v.getUuid(), world.getTime() + 200); // the beds looked over: again in a while
+            BlockPos feet = v.getBlockPos();
+            double bd = Double.MAX_VALUE;
+            for (BlockPos p : BlockPos.iterate(feet.add(-24, -4, -24), feet.add(24, 3, 24))) {
+                BlockState s = world.getBlockState(p);
+                if (!s.isOf(Blocks.FARMLAND) || s.get(net.minecraft.block.FarmlandBlock.MOISTURE) >= 3) continue;
+                if (!(world.getBlockState(p.up()).getBlock() instanceof CropBlock)) continue; // a bare bed waits for its seed
+                double d = p.getSquaredDistance(feet);
+                if (d < bd) {
+                    bd = d;
+                    t = p.toImmutable();
+                }
+            }
+            if (t == null) {
+                DRY.remove(v.getUuid());
+                return false;
+            }
+            DRY.put(v.getUuid(), t);
+        }
+        Doing.set(v, "settlements.doing.farm.water");
+        if (v.squaredDistanceTo(t.getX() + 0.5, t.getY() + 1, t.getZ() + 0.5) > 6.25) {
+            Move.to(v, t.getX() + 0.5, t.getY() + 1, t.getZ() + 0.5, 0.55);
+            return true;
+        }
+        v.getNavigation().stop();
+        Gear.face(v, t);
+        v.swingHand(v.getDominantHand());
+        for (BlockPos q : BlockPos.iterate(t.add(-2, -1, -2), t.add(2, 1, 2))) {
+            BlockState s = world.getBlockState(q);
+            if (s.isOf(Blocks.FARMLAND)) world.setBlockState(q, s.with(net.minecraft.block.FarmlandBlock.MOISTURE, 7), Block.NOTIFY_LISTENERS);
+        }
+        world.spawnParticles(net.minecraft.particle.ParticleTypes.SPLASH, t.getX() + 0.5, t.getY() + 1.1, t.getZ() + 0.5, 20, 1.2, 0.1, 1.2, 0.1);
+        world.playSound(null, t, SoundEvents.ITEM_BUCKET_EMPTY, SoundCategory.BLOCKS, 0.6f, 1.2f);
+        DRY.remove(v.getUuid());
+        return true;
+    }
+
     /** Earth beside a bed of the field, near water: where the field can grow by a bed. */
     private static boolean newBed(ServerWorld world, BlockPos p) {
         BlockState s = world.getBlockState(p);

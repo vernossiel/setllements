@@ -74,7 +74,7 @@ public class FishingTask extends AbstractChoreTask {
         }
 
         if (targetWater == null) {
-            List<BlockPos> nearbyStaticLiquid = TaskUtils.getNearbyBlocks(villager.getBlockPos(), villager.getWorld(), blockState -> blockState.isOf(Blocks.WATER), 12, 3);
+            List<BlockPos> nearbyStaticLiquid = TaskUtils.getNearbyBlocks(villager.getBlockPos(), villager.getWorld(), blockState -> blockState.isOf(Blocks.WATER), 16, 4);
             targetWater = nearbyStaticLiquid.stream()
                     .filter((p) -> villager.getWorld().getBlockState(p).getBlock() == Blocks.WATER)
                     // (Settlements) still water open to the sky, not a waterfall or a puddle under a roof; a pond or a river,
@@ -134,7 +134,7 @@ public class FishingTask extends AbstractChoreTask {
     }
 
     /** (Settlements) Open water to fish in: a good stretch of still water about it; not a field's ditch, not by a fall. */
-    private static boolean fishable(net.minecraft.world.World world, BlockPos p) {
+    public static boolean fishable(net.minecraft.world.World world, BlockPos p) {
         int still = 0;
         for (BlockPos q : BlockPos.iterate(p.add(-3, 0, -3), p.add(3, 0, 3))) {
             var f = world.getFluidState(q);

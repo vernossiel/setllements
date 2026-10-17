@@ -2005,6 +2005,7 @@
   "settlements.say.shaken.2": "За что он так?",
   "settlements.say.shaken.3": "Я пока туда не пойду.",
   "settlements.say.shaken": "Он ушёл? Скажите, что ушёл.",
+  "settlements.doing.farm.water": "поливает пересохшие грядки",
   "settlements.doing.farm.waiting": "поля в порядке: ждёт, пока поспеет урожай",
   "settlements.justice.title": "Стража деревни",
   "settlements.justice.timer": "На ответ: %s с",
