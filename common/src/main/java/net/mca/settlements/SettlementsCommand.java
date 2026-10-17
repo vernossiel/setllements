@@ -187,18 +187,20 @@ public final class SettlementsCommand {
                                     int tier = java.util.List.of(Works.TIER_NAMES).indexOf(t);
                                     if (tier < 0) return say(c, "Tiers: poor, ordinary, wealthy, city");
                                     java.util.List<String> list = new java.util.ArrayList<>();
-                                    for (String kind : Tiers.kinds()) for (String design : Tiers.row(kind, tier)) if (!list.contains(design)) list.add(design);
-                                    return placeRow(c, list, "Every building of a " + t + " village");
+                                    String style = here(c);
+                                    for (String kind : Tiers.kinds()) for (String design : Tiers.row(kind, tier))
+                                        for (String d : Templates.expand(design, style)) if (!list.contains(d)) list.add(d);
+                                    return placeRow(c, list, "Every building of a " + t + " village (" + style + ")");
                                 })))
                         .then(CommandManager.literal("templates").then(CommandManager.argument("style", StringArgumentType.word())
-                                .suggests((c, b) -> net.minecraft.command.CommandSource.suggestMatching(java.util.List.of("medievaloak", "medievalbirch", "medievaldarkoak", "nordic", "sandstone"), b))
+                                .suggests((c, b) -> net.minecraft.command.CommandSource.suggestMatching(java.util.List.of("medievaloak", "medievalbirch", "medievaldarkoak", "nordic", "sandstone", "badlands"), b))
                                 .executes(c -> {
                                     // the MineColonies buildings we carry, one style at a time (there are too many for one row)
                                     String style = StringArgumentType.getString(c, "style");
                                     java.util.List<String> list = new java.util.ArrayList<>();
                                     for (String t : Templates.all(style)) list.add(Templates.design(t));
-                                    if (list.isEmpty()) return say(c, "No templates in style " + style + ". Styles: medievaloak, medievalbirch, medievaldarkoak, nordic, sandstone");
-                                    return placeRow(c, list, "MineColonies " + style + " (" + list.size() + ")");
+                                    if (list.isEmpty()) return say(c, "No templates in style " + style + ". Styles: medievaloak, medievalbirch, medievaldarkoak, nordic, sandstone, badlands");
+                                    return placeRow(c, list, "Templates " + style + " (" + list.size() + ", MineColonies' and ours)");
                                 })))
                         .then(CommandManager.literal("kind").then(CommandManager.argument("kind", StringArgumentType.word())
                                 .suggests((c, b) -> net.minecraft.command.CommandSource.suggestMatching(Tiers.kinds(), b))
@@ -206,8 +208,10 @@ public final class SettlementsCommand {
                                     String kind = StringArgumentType.getString(c, "kind");
                                     if (!Tiers.kinds().contains(kind)) return say(c, "Kinds: " + String.join(", ", Tiers.kinds()));
                                     java.util.List<String> list = new java.util.ArrayList<>();
-                                    for (int tier = 0; tier <= Tiers.CITY; tier++) for (String design : Tiers.row(kind, tier)) if (!list.contains(design)) list.add(design);
-                                    return placeRow(c, list, kind + " from the poorest to the city's");
+                                    String style = here(c);
+                                    for (int tier = 0; tier <= Tiers.CITY; tier++) for (String design : Tiers.row(kind, tier))
+                                        for (String d : Templates.expand(design, style)) if (!list.contains(d)) list.add(d);
+                                    return placeRow(c, list, kind + " from the poorest to the city's (" + style + ")");
                                 })))
                         .executes(c -> {
                     var player = c.getSource().getPlayerOrThrow();
@@ -458,10 +462,18 @@ public final class SettlementsCommand {
         var player = c.getSource().getPlayerOrThrow();
         int x = player.getBlockX() + 4, y = player.getBlockY(), z = player.getBlockZ() + 6;
         for (String type : types) {
-            int[] f = Builder.footprintOf(type, 0);
-            Builder.placeForLook((ServerWorld) player.getWorld(), type, new net.minecraft.util.math.BlockPos(x, y, z), 0);
+            int rot = (Templates.entryTurn(type) + 2) & 3; // each with its door to the one looking (north)
+            int[] f = Builder.footprintOf(type, rot);
+            Builder.placeForLook((ServerWorld) player.getWorld(), type, new net.minecraft.util.math.BlockPos(x, y, z), rot);
             x += f[0] + 5;
         }
-        return say(c, title + ", west to east: " + String.join(", ", types) + ". Doors face south.");
+        return say(c, title + ", west to east: " + String.join(", ", types) + ". Doors face you (north).");
+    }
+
+    /** The building style of the land the player stands in. */
+    private static String here(com.mojang.brigadier.context.CommandContext<net.minecraft.server.command.ServerCommandSource> c)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        var player = c.getSource().getPlayerOrThrow();
+        return Templates.styleAt((ServerWorld) player.getWorld(), player.getBlockPos());
     }
 }

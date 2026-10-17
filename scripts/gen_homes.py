@@ -1915,7 +1915,7 @@ def post_mill():
     sails(h, cx, 9, z0 - 1, R, cloth=False) if False else None
     # (the sails on the back of the body, away from the door and its steps)
     h.put(cx, 8, z0 - 1, log("z")) if False else None
-    sails(h, cx, 8, 0, 4, cloth=False)
+    sails(h, cx, 8, 0, 4, cloth=True)
     trim_top(h)
     return h
 

@@ -1483,6 +1483,8 @@ public final class Builder {
         if (b instanceof ChestBlock || b instanceof BarrelBlock || b == Blocks.CRAFTING_TABLE || b instanceof LecternBlock || b == Blocks.BOOKSHELF
                 || b == Blocks.CARTOGRAPHY_TABLE || b == Blocks.FLETCHING_TABLE || b == Blocks.SMITHING_TABLE || b == Blocks.LOOM || b instanceof ComposterBlock)
             return takePlanks(village, b instanceof ChestBlock || b instanceof BarrelBlock ? 8 : 4) ? s : SKIP;
+        // a mill's sails: cloth if there is wool, boards if not (bare spars stood in the air), whatever the village's station
+        if (s.isIn(BlockTags.WOOL) && !fit) return take(village, WOOL, 1) ? s : takePlanks(village, 1) ? pal.planks().getDefaultState() : null;
         if (s.isIn(BlockTags.WOOL) || s.isIn(BlockTags.WOOL_CARPETS) || b instanceof BedBlock || s.isIn(BlockTags.BANNERS))
             return tier > Tiers.POOR || b instanceof BedBlock ? (take(village, WOOL, 1) ? s : fit ? SKIP : null) : SKIP;
         if (b == Blocks.IRON_BARS || b instanceof ChainBlock || b instanceof AbstractCauldronBlock || b instanceof AnvilBlock

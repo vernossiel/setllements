@@ -66,7 +66,12 @@ public final class Templates {
     static String style(Village village) {
         ServerWorld world = village.getWorld();
         if (world == null) return "medievaloak";
-        String biome = world.getBiome(new BlockPos(village.getCenter())).getKey().map(k -> k.getValue().getPath()).orElse("plains");
+        return styleAt(world, new BlockPos(village.getCenter()));
+    }
+
+    /** The MineColonies style that suits the land at a spot. */
+    public static String styleAt(ServerWorld world, BlockPos at) {
+        String biome = world.getBiome(at).getKey().map(k -> k.getValue().getPath()).orElse("plains");
         if (biome.contains("badlands")) return "badlands"; // terracotta and red sandstone (MineColonies' desert buildings stand in for the rest)
         if (biome.contains("desert")) return "sandstone";
         if (biome.contains("snow") || biome.contains("taiga") || biome.contains("frozen") || biome.contains("ice") || biome.contains("grove")
@@ -137,6 +142,25 @@ public final class Templates {
         String base = placeholder.substring(0, i), name = placeholder.substring(i + 4);
         String style = style(village);
         if (style == null) return found;
+        for (String st : styles(style)) {
+            for (String file : aliases(name)) {
+                String type = base + "-mc." + st + "." + file;
+                if (of(type) != null && !found.contains(type)) found.add(type);
+            }
+            if (!found.isEmpty()) break;
+        }
+        return found;
+    }
+
+    /** Every concrete design a placeholder stands for in a style (for the showcase), the placeholder itself if none. */
+    public static List<String> expand(String placeholder, String style) {
+        List<String> found = new ArrayList<>();
+        int i = placeholder.indexOf("-mc:");
+        if (i < 0) {
+            found.add(placeholder);
+            return found;
+        }
+        String base = placeholder.substring(0, i), name = placeholder.substring(i + 4);
         for (String st : styles(style)) {
             for (String file : aliases(name)) {
                 String type = base + "-mc." + st + "." + file;
