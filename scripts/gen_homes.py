@@ -1144,6 +1144,83 @@ def hall(level):
     return h
 
 
+# ---------- houses of more than one block: an L, the wing off the front of the main house ----------
+
+def lhome(name, main, wing, side="east"):
+    """The main house with a wing coming forward from one end of its front: the wing's own door to the street, a door
+    between them inside, the wing's roof running into the main one (a cross gable)."""
+    seed = sum(map(ord, name))
+    Wm, Dm, Ww = main["W"], main["D"], wing["W"]
+    ox = Wm - Ww if side == "east" else 0  # where the wing's walls start, in the main house's terms
+    lo, hi = ox + 1, ox + Ww               # the wing's walls along x
+    # the main door on the front the wing leaves free
+    free = list(range(2, lo - 1)) if side == "east" else list(range(hi + 2, Wm))
+    main = dict(main)
+    main["door_off"] = free[len(free) // 2] - (1 + Wm) // 2 if free else 0
+    hm = home(main, seed)
+    loft_for(hm, main, random.Random(seed + 1))
+    hw = home(wing, seed + 7)
+    loft_for(hw, wing, random.Random(seed + 8))
+    oz = Dm - 1
+    h = House(max(hm.w, ox + hw.w), max(hm.d, oz + hw.d), max(hm.h, hw.h))
+    h.cells = dict(hm.cells)
+    h.roofs = set(hm.roofs)
+    for (x, y, z), b in hw.cells.items():
+        mx, mz = x + ox, z + oz
+        if 1 <= mx <= Wm and 1 <= mz <= Dm - 1:
+            continue  # inside the main house: the main house's
+        if b == "minecraft:air" and h.cells.get((mx, y, mz), "minecraft:air") != "minecraft:air":
+            continue  # (the wing's empty air does not take the main roof away)
+        h.cells[(mx, y, mz)] = b
+        if (x, y, z) in hw.roofs:
+            h.roofs.add((mx, y, mz))
+    # the wall between them: no window looking into the other room, a door through it in the middle
+    for x in range(lo, hi + 1):
+        for y in range(2, 6):
+            if "pane" in h.cells.get((x, y, Dm), ""):
+                h.cells[(x, y, Dm)] = PLANK
+    cx = (lo + hi) // 2
+    h.cells[(cx, 2, Dm)] = door("north", "lower", "left")
+    h.cells[(cx, 3, Dm)] = door("north", "upper", "left")
+    for z in (Dm - 1, Dm + 1):
+        for y in (2, 3):
+            b = h.cells.get((cx, y, z), "minecraft:air")
+            if b != "minecraft:air" and "ladder" not in b:
+                h.cells[(cx, y, z)] = "minecraft:air"
+    trim_top(h)
+    return h
+
+
+LHOMES = {
+    "dwelling1e": (dict(W=7, D=5, ridge="x", walls=["planks"], post="log", footing="cobble", floor="minecraft:coarse_dirt",
+                        roof="oak", rooms=[[{"x": (2, 6), "items": ["bed:brown", "chest", "craft", "barrel", "torches"]}]]),
+                   dict(W=5, D=5, ridge="z", walls=["planks"], post="log", footing="cobble", floor="minecraft:coarse_dirt",
+                        roof="oak", rooms=[[{"x": (2, 4), "items": ["furnace", "composter", "torches"]}]]), "east"),
+    "dwelling2e": (dict(W=9, D=7, ridge="x", walls=["logs"], post="log", footing="cobble", roof="spruce", gable="minecraft:spruce_planks",
+                        shutters=True, chimney="west",
+                        rooms=[[{"x": (2, 8), "items": ["furnace", "craft", "barrel", "chest", "table", "pot:poppy", "torches"]}]]),
+                   dict(W=5, D=7, ridge="z", walls=["logs"], post="log", footing="cobble", roof="spruce", gable="minecraft:spruce_planks",
+                        shutters=True, rooms=[[{"x": (2, 4), "items": ["bed:red", "bed:red", "chest", "torches"]}]]), "east"),
+    "dwelling3e": (dict(W=11, D=9, ridge="x", floors=2, walls=["cobble", "planks"], post="log", studs=5, footing="stonebrick",
+                        roof="dark_oak", chimney="west", shutters=True, sills=True,
+                        rooms=[[{"x": (2, 10), "items": ["chest", "chest", "barrel", "books", "table3", "rug:green", "lanterns"]}],
+                               [{"x": (2, 5), "items": ["bed:blue", "bed:blue", "chest", "torches"]},
+                                {"x": (7, 10), "items": ["bed:red", "chest", "books", "pot:allium", "rug:red", "torches"]}]]),
+                   dict(W=7, D=7, ridge="z", walls=["cobble"], post="log", footing="stonebrick", roof="dark_oak", shutters=True,
+                        rooms=[[{"x": (2, 6), "items": ["smoker", "furnace", "cauldron", "craft", "barrel", "table", "torches"]}]]), "west"),
+    "dwelling4e": (dict(W=13, D=9, ridge="x", floors=2, walls=["stonebrick", "daub"], post="minecraft:dark_oak_log[axis=y]", studs=3,
+                        footing="stonebrick", roof="deepslate_tile", gable="minecraft:calcite", chimney="west", chimney_mat=SBRICK,
+                        shutters=True, sills=True, trim="dark_oak", floor="minecraft:spruce_planks",
+                        rooms=[[{"x": (2, 12), "items": ["books", "books", "books", "chest", "chest", "table5", "rug:green", "pot:fern", "lanterns"]}],
+                               [{"x": (2, 6), "items": ["bed:cyan", "bed:cyan", "chest", "torches"]},
+                                {"x": (8, 12), "items": ["bed:red", "bed:red", "chest", "books", "rug:red", "lanterns"]}]]),
+                   dict(W=9, D=9, ridge="z", floors=2, walls=["stonebrick", "daub"], post="minecraft:dark_oak_log[axis=y]", studs=3,
+                        footing="stonebrick", roof="deepslate_tile", gable="minecraft:calcite", shutters=True, sills=True, trim="dark_oak",
+                        floor="minecraft:spruce_planks",
+                        rooms=[[{"x": (2, 8), "items": ["smoker", "furnace", "cauldron", "craft", "barrel", "barrel", "table2", "torches"]}],
+                               [{"x": (2, 8), "items": ["bed:yellow", "bed:yellow", "chest", "loom", "pot:red_tulip", "torches"]}]]), "east"),
+}
+
 CREDIT = "Settlements' own design, drawn after the MineColonies residences (github.com/ldtteam/minecolonies)"
 STYLES = {"medievaloak": "oak", "medievalbirch": "birch", "medievaldarkoak": "dark_oak", "nordic": "spruce", "sandstone": "oak"}
 DESIGNS = {"dwelling1": hut, "dwelling2": cottage, "dwelling3": townhouse, "dwelling4": manor, "dwelling5": manor}
@@ -1151,6 +1228,10 @@ for n, spec in HOMES.items():
     DESIGNS[n] = (lambda n=n, spec=spec: build_home(n, spec))
     if n.startswith("dwelling4"):
         DESIGNS["dwelling5" + n[-1]] = (lambda n=n, spec=spec: build_home(n, spec))
+for n, (m, wg, side) in LHOMES.items():
+    DESIGNS[n] = (lambda n=n, m=m, wg=wg, side=side: lhome(n, m, wg, side))
+    if n.startswith("dwelling4"):
+        DESIGNS["dwelling5e"] = (lambda n=n, m=m, wg=wg, side=side: lhome(n, m, wg, side))
 for lv in (1, 2, 3):
     DESIGNS[f"hall{lv}"] = (lambda lv=lv: hall(lv))
 index = []

@@ -91,9 +91,11 @@ public final class Templates {
     private static String[] aliases(String name) {
         String n = name.replaceAll("\\d", ""), lv = name.replaceAll("\\D", "");
         return switch (n) {
-            case "home" -> new String[]{"residence" + lv, "residencetower" + lv, "residencelarge" + lv, "residenceluxuryred" + lv, "residenceluxuryblue" + lv,
-                    "dwelling" + lv, "dwelling" + lv + "b", "dwelling" + lv + "c", "dwelling" + lv + "d"}; // (our own: four for each station, the cramped hut to the town house)
-            case "townhall" -> new String[]{"townhall" + lv, "hall" + lv, "hall" + lv}; // (and our own halls for the hamlet, the village, the wealthy village)
+            // a hamlet's huts are ours (a MineColonies residence is a proper house already: the village's)
+            case "hut" -> new String[]{"dwelling" + lv, "dwelling" + lv + "b", "dwelling" + lv + "c", "dwelling" + lv + "d", "dwelling" + lv + "e"};
+            case "home" -> lv.equals("1") ? new String[]{"residence1", "residencetower1"}
+                    : new String[]{"residence" + lv, "residencetower" + lv, "residencelarge" + lv, "residenceluxuryred" + lv, "residenceluxuryblue" + lv,
+                    "dwelling" + lv, "dwelling" + lv + "b", "dwelling" + lv + "c", "dwelling" + lv + "d", "dwelling" + lv + "e"}; // (ours among them: five for each station)
             case "bakery" -> new String[]{"baker" + lv, "bakery" + lv};
             default -> new String[]{name};
         };
@@ -102,8 +104,8 @@ public final class Templates {
     /** The logical name of a template file ("residencetower3" -> "home3"). */
     static String logical(String file) {
         String n = file.replaceAll("\\d", ""), lv = file.replaceAll("\\D", "");
+        if (n.startsWith("dwelling") && lv.equals("1")) return "hut1";
         if (n.startsWith("residence") || n.startsWith("dwelling")) return "home" + lv;
-        if (n.equals("hall")) return "townhall" + lv;
         if (n.equals("baker")) return "bakery" + lv;
         return file;
     }
@@ -121,6 +123,21 @@ public final class Templates {
         }
         if (found.isEmpty()) return null;
         return found.get(Math.floorMod((int) (village.getId() * 31L + found.size() * 7L + (village.getWorld() == null ? 0 : village.getWorld().getTime() / 24000L)), found.size()));
+    }
+
+    /** Every concrete design a placeholder can stand for in this village's style (see resolve). */
+    public static List<String> resolveAll(String placeholder, Village village) {
+        List<String> found = new ArrayList<>();
+        int i = placeholder.indexOf("-mc:");
+        if (i < 0) return found;
+        String base = placeholder.substring(0, i), name = placeholder.substring(i + 4);
+        String style = style(village);
+        if (style == null) return found;
+        for (String file : aliases(name)) {
+            String type = base + "-mc." + style + "." + file;
+            if (of(type) != null && !found.contains(type)) found.add(type);
+        }
+        return found;
     }
 
     /** Every template there is, as "style/file" (from the index written with them), optionally of one style only. */

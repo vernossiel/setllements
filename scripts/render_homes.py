@@ -43,7 +43,7 @@ def colour(name):
     for k, c in COL:
         if k in name:
             return c
-    return (200, 0, 200)
+    return (165, 160, 150)
 
 
 def load(path):

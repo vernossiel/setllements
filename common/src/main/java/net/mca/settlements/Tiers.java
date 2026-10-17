@@ -34,9 +34,10 @@ public final class Tiers {
     /** Designs per kind of building, for each station from poor to city. */
     private static final Map<String, String[][]> TIERS = Map.ofEntries(
             // the hall: a meeting house for the hamlet, a hall with the elder's chamber for the village, a great hall of
-            // stone and plaster for the wealthy village (our own, see templates "hall"); the town's is MineColonies' castle
-            Map.entry("townhall", new String[][]{a("townhall-mc:townhall1"), a("townhall-mc:townhall2", "townhall-mc:townhall2", "townhall"),
-                    a("townhall-mc:townhall3", "townhall-mc:townhall3", "townhall-3"), a("townhall-4", "townhall-mc:townhall4", "townhall-mc:townhall5")}),
+            // stone and plaster for the wealthy village (our own, see templates "hall"), MineColonies' tower hall and stone hall
+            // among them; the town's is MineColonies' castle
+            Map.entry("townhall", new String[][]{a("townhall-mc:hall1"), a("townhall-mc:hall2", "townhall-mc:hall2", "townhall-mc:townhall1"),
+                    a("townhall-mc:hall3", "townhall-mc:hall3", "townhall-mc:townhall3"), a("townhall-mc:townhall4", "townhall-mc:townhall5", "townhall-4")}),
             Map.entry("jail", new String[][]{a("jail-2"), a("jail-ordinary"), a("jail-wealthy"), a("jail-city")}),
             Map.entry("tavern", new String[][]{a("tavern-poor"), a("tavern-ordinary", "tavern-mc:tavern1"), a("tavern-wealthy", "tavern-mc:tavern2"), a("tavern-city", "tavern-mc:tavern3")}),
             Map.entry("storage", new String[][]{a("storage-poor"), a("storage-ordinary"), a("storage-wealthy", "storage-mc:warehouse3"), a("storage-city", "storage-mc:warehouse4", "storage-mc:warehouse5")}),
@@ -53,7 +54,7 @@ public final class Tiers {
             Map.entry("charcoal", new String[][]{a("charcoal"), a("charcoal"), a("charcoal-2"), a("charcoal-city")}),
             Map.entry("armory", new String[][]{a("armory-poor"), a("armory"), a("armory-wealthy"), a("armory-city")}),
             Map.entry("shop", new String[][]{a(), a(), a("shop-general", "shop-bakery", "shop-mc:bakery3"), a("shop-bakery", "shop-weaver", "shop-general", "shop-apothecary", "shop-mc:bakery5")}),
-            Map.entry("home", new String[][]{a("home-mc:home1", "home-mc:home1", "home-mc:home1", "cruck", "hut"),
+            Map.entry("home", new String[][]{a("home-mc:hut1", "home-mc:hut1", "home-mc:hut1", "cruck", "hut"),
                     a("home-mc:home2", "home-mc:home2", "home-mc:home1", "home-mc:home2", "house", "cottage"),
                     a("home-mc:home3", "home-mc:home3", "home-mc:home4", "home-mc:home3", "wealden", "manor"),
                     a("home-mc:home5", "home-mc:home4", "home-mc:home5", "home-mc:home5", "rowhouse")})
@@ -119,6 +120,21 @@ public final class Tiers {
         }
         if (type.equals("townhall")) return "townhall"; // no hall in the land's style: the plain one, not a big one at random
         return Buildings.variant(type, random);
+    }
+
+    /** Every design of this kind for a village at this station (the first station down that has any), resolved. */
+    public static List<String> designs(String type, int tier, Village village) {
+        List<String> out = new ArrayList<>();
+        String[][] rows = TIERS.get(type);
+        if (rows == null) return out;
+        for (int t = Math.min(tier, CITY); t >= 0 && out.isEmpty(); t--) {
+            for (String d : rows[t]) {
+                if (!Templates.placeholder(d)) {
+                    if (!out.contains(d)) out.add(d);
+                } else for (String r : Templates.resolveAll(d, village)) if (!out.contains(r)) out.add(r);
+            }
+        }
+        return out;
     }
 
     /** The lowest station a design belongs to, -1 for designs that have none. */

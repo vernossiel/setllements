@@ -208,35 +208,48 @@ public final class Rebuild {
         java.util.UUID payer = village.commissions.remove(old.origin().asLong());
         int tier = payer != null ? commissionTier(village) : Prosperity.tier(village); // a house paid for is built a station better than the village's
         boolean home = Tiers.isHome(old.type());
-        String type = Tiers.design(home ? "home" : Buildings.base(old.type()), tier, world.random, village);
-        if (Tiers.tierOf(type) <= Tiers.tierOf(old.type())) {
+        // the design for it: one of the station's, at random; and when that will not go in where the old one stood
+        // (a great hall among the houses), the others of the station, the smaller first, and each a few blocks this way
+        // or that - not given up at the first try
+        String kind = home ? "home" : Buildings.base(old.type());
+        List<String> options = new ArrayList<>(Tiers.designs(kind, tier, village));
+        options.removeIf(d -> Tiers.tierOf(d) <= Tiers.tierOf(old.type()));
+        String chosen = Tiers.design(kind, tier, world.random, village);
+        options.sort(java.util.Comparator.comparingInt(d -> { int[] m = dims(d); int[] f = Blueprints.footprint(d, m[0], m[1]); return f[0] * f[1]; }));
+        if (options.remove(chosen)) options.add(0, chosen);
+        if (options.isEmpty()) {
             SKIPPED.add(renoKey(village, old));
             refund(village, world, payer);
             return false;
         }
-        int[] dm = type.equals("house") ? new int[]{9, 8, 2} : dims(type);
-        int[] fp = Blueprints.footprint(type, dm[0], dm[1]);
-        int rot = (old.rot() - Templates.entryTurn(old.type()) + Templates.entryTurn(type)) & 3; // the new door where the old one faced
-        int fw = (rot & 1) == 0 ? fp[0] : fp[1], fd = (rot & 1) == 0 ? fp[1] : fp[0];
-        int cx = old.origin().getX() + old.fw() / 2, cz = old.origin().getZ() + old.fd() / 2;
-        int x0 = cx - fw / 2, z0 = cz - fd / 2;
         int y = old.origin().getY();
-        // the new building must not run into anything else of the village
-        for (int x = x0 - 1; x <= x0 + fw; x++) {
-            for (int z = z0 - 1; z <= z0 + fd; z++) {
-                BlockPos p = new BlockPos(x, y, z);
-                boolean clash = false;
-                for (Built b : village.built) if (b != old && b.contains(p)) clash = true;
-                for (Building other : village.getBuildings().values()) {
-                    if (!other.getBuildingType().grouped() && other.containsPos(p) && !old.contains(other.getCenter())) clash = true;
-                }
-                if (clash) {
-                    SKIPPED.add(renoKey(village, old));
-                    if (payer != null) village.commissionElsewhere = payer; // no room here: a new house on a new site, and they move
-                    payer = null;
-                    return false;
-                }
+        int cx = old.origin().getX() + old.fw() / 2, cz = old.origin().getZ() + old.fd() / 2;
+        String type = null;
+        int[] dm = null;
+        int rot = 0, fw = 0, fd = 0, x0 = 0, z0 = 0;
+        search:
+        for (String cand : options) {
+            int[] cdm = cand.equals("house") ? new int[]{9, 8, 2} : dims(cand);
+            int[] cfp = Blueprints.footprint(cand, cdm[0], cdm[1]);
+            int crot = (old.rot() - Templates.entryTurn(old.type()) + Templates.entryTurn(cand)) & 3; // the new door where the old one faced
+            int cfw = (crot & 1) == 0 ? cfp[0] : cfp[1], cfd = (crot & 1) == 0 ? cfp[1] : cfp[0];
+            for (int[] off : SHIFTS) {
+                int ox = cx - cfw / 2 + off[0], oz = cz - cfd / 2 + off[1];
+                if (!room(village, old, ox, oz, cfw, cfd, y)) continue;
+                type = cand;
+                dm = cdm;
+                rot = crot;
+                fw = cfw;
+                fd = cfd;
+                x0 = ox;
+                z0 = oz;
+                break search;
             }
+        }
+        if (type == null) {
+            SKIPPED.add(renoKey(village, old));
+            if (payer != null) village.commissionElsewhere = payer; // no room here: a new house on a new site, and they move
+            return false;
         }
         // the old one leaves the books
         village.built.remove(old);
@@ -274,6 +287,32 @@ public final class Rebuild {
         PLANS.remove(village.getId());
         village.markDirty();
         Builder.announceProject = "renovate";
+        return true;
+    }
+
+    /** Where a new building may stand in place of the old one: on the spot, then shifted up to six blocks. */
+    private static final int[][] SHIFTS = shifts();
+
+    private static int[][] shifts() {
+        List<int[]> l = new ArrayList<>();
+        for (int r = 0; r <= 6; r += 2)
+            for (int dx = -r; dx <= r; dx += 2)
+                for (int dz = -r; dz <= r; dz += 2)
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) == r) l.add(new int[]{dx, dz});
+        return l.toArray(new int[0][]);
+    }
+
+    /** Nothing else of the village in the way of a building here (the old one, coming down, aside). */
+    private static boolean room(Village village, Built old, int x0, int z0, int fw, int fd, int y) {
+        for (int x = x0 - 1; x <= x0 + fw; x++) {
+            for (int z = z0 - 1; z <= z0 + fd; z++) {
+                BlockPos p = new BlockPos(x, y, z);
+                for (Built b : village.built) if (b != old && b.contains(p)) return false;
+                for (Building other : village.getBuildings().values()) {
+                    if (!other.getBuildingType().grouped() && other.containsPos(p) && !old.contains(other.getCenter())) return false;
+                }
+            }
+        }
         return true;
     }
 
