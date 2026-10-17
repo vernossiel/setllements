@@ -410,38 +410,91 @@ public final class Lumberjack {
         }
         Block sapling = Registries.BLOCK.get(new Identifier(wood + "_sapling"));
         if (sapling == Blocks.AIR) sapling = Blocks.OAK_SAPLING;
-        world.setBlockState(base, sapling.getDefaultState());
         Village home = v.getResidency().getHomeVillage().orElse(null);
+        // a tree felled out in the wild is not planted again out there: its sapling goes into the village's own grove
+        // by the hall, where the next one will be at hand (see plantGrove)
+        if (home != null && base.getSquaredDistance(heart(home)) > 40 * 40) {
+            plantGrove(v, home, world, sapling);
+            return;
+        }
+        world.setBlockState(base, sapling.getDefaultState());
         if (home != null) Grove.remember(home, base);
         Speech.say(v, "settlements.say.lumber.plant");
     }
 
-    /** Saplings from the branches go into the ground close to the village, so that wood grows where it is needed. */
+    private static BlockPos heart(Village village) {
+        return village.hallPos != null ? village.hallPos : new BlockPos(village.getCenter());
+    }
+
+    /** Saplings from the branches go into the village's grove, so that wood grows where it is needed. */
     private static void plantGrove(VillagerEntityMCA v, Village village, ServerWorld world) {
-        BlockPos c = new BlockPos(village.getCenter());
-        for (int attempt = 0; attempt < 12; attempt++) {
-            int dist = 14 + world.random.nextInt(16);
-            double angle = world.random.nextDouble() * Math.PI * 2;
-            int x = c.getX() + (int) (Math.cos(angle) * dist), z = c.getZ() + (int) (Math.sin(angle) * dist);
-            if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
-            int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
-            BlockPos p = new BlockPos(x, y, z);
-            BlockState ground = world.getBlockState(p.down());
-            if (!(ground.isOf(Blocks.GRASS_BLOCK) || ground.isOf(Blocks.DIRT) || ground.isOf(Blocks.PODZOL))) continue;
-            if (!world.getBlockState(p).isAir()) continue;
-            boolean crowded = false;
-            for (int[] plot : village.plots) {
-                if (x >= plot[0] - 2 && x <= plot[0] + plot[2] + 2 && z >= plot[1] - 2 && z <= plot[1] + plot[3] + 2) crowded = true;
+        plantGrove(v, village, world, Blocks.OAK_SAPLING);
+    }
+
+    /**
+     * The village's grove: one stand of trees of its own near the hall, planted in rows three blocks apart, not
+     * saplings dotted about all round the village. Its place is chosen with the first sapling (open grass 16 to 30
+     * blocks from the hall, on its level, off the plots and buildings); each sapling after goes into the next free
+     * spot in the rows, the grove growing outward from the middle.
+     */
+    private static void plantGrove(VillagerEntityMCA v, Village village, ServerWorld world, Block sapling) {
+        BlockPos c = heart(village);
+        BlockPos anchor = null;
+        double ad = Double.MAX_VALUE;
+        for (BlockPos g : village.grove) { // the grove there is: its spot nearest the hall
+            double d = g.getSquaredDistance(c);
+            if (d > 12 * 12 && d < 40 * 40 && d < ad) {
+                ad = d;
+                anchor = g;
             }
-            for (BlockPos q : BlockPos.iterate(p.add(-2, 0, -2), p.add(2, 2, 2))) {
-                if (!world.getBlockState(q).isAir() && !world.getBlockState(q).isReplaceable()) crowded = true;
-            }
-            if (crowded) continue;
-            world.setBlockState(p, Blocks.OAK_SAPLING.getDefaultState());
-            Grove.remember(village, p);
-            village.groveSaplings++;
-            village.markDirty();
-            return;
         }
+        if (anchor == null) {
+            for (int attempt = 0; attempt < 40 && anchor == null; attempt++) {
+                int dist = 16 + world.random.nextInt(15);
+                double angle = world.random.nextDouble() * Math.PI * 2;
+                int x = c.getX() + (int) (Math.cos(angle) * dist), z = c.getZ() + (int) (Math.sin(angle) * dist);
+                BlockPos p = groveSpot(world, village, x, z, c);
+                if (p == null) continue;
+                // room for a stand: most of the ground about it fit for trees too
+                int fit = 0;
+                for (int dx = -6; dx <= 6; dx += 3) for (int dz = -6; dz <= 6; dz += 3) if (groveSpot(world, village, x + dx, z + dz, c) != null) fit++;
+                if (fit >= 12) anchor = p;
+            }
+        }
+        if (anchor == null) return;
+        // the free spot in the rows nearest the middle of the grove
+        for (int r = 0; r <= 4; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != r) continue;
+                    BlockPos p = groveSpot(world, village, anchor.getX() + dx * 3, anchor.getZ() + dz * 3, c);
+                    if (p == null || !world.getBlockState(p).isAir()) continue;
+                    world.setBlockState(p, sapling.getDefaultState());
+                    Grove.remember(village, p);
+                    village.groveSaplings++;
+                    village.markDirty();
+                    Speech.say(v, "settlements.say.lumber.plant");
+                    return;
+                }
+            }
+        }
+    }
+
+    /** Ground at x, z a sapling can go into for the grove, or null: grass or earth, open sky, on the hall's level, nothing built or laid out there. */
+    private static BlockPos groveSpot(ServerWorld world, Village village, int x, int z, BlockPos c) {
+        if (!world.isChunkLoaded(x >> 4, z >> 4)) return null;
+        int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+        BlockPos p = new BlockPos(x, y, z);
+        if (Math.abs(y - c.getY()) > 6) return null;
+        BlockState ground = world.getBlockState(p.down());
+        if (!(ground.isOf(Blocks.GRASS_BLOCK) || ground.isOf(Blocks.DIRT) || ground.isOf(Blocks.PODZOL) || ground.isOf(Blocks.COARSE_DIRT))) return null;
+        BlockState here = world.getBlockState(p);
+        if (!here.isAir() && !(here.getBlock() instanceof net.minecraft.block.SaplingBlock) && !here.isIn(BlockTags.LOGS)) return null;
+        for (int[] plot : village.plots) {
+            if (x >= plot[0] - 2 && x <= plot[0] + plot[2] + 2 && z >= plot[1] - 2 && z <= plot[1] + plot[3] + 2) return null;
+        }
+        for (Built b : village.built) if (b.contains(p) || b.contains(p.add(2, 0, 0)) || b.contains(p.add(-2, 0, 0)) || b.contains(p.add(0, 0, 2)) || b.contains(p.add(0, 0, -2))) return null;
+        if (village.getBuildingAt(p).isPresent()) return null;
+        return p;
     }
 }
