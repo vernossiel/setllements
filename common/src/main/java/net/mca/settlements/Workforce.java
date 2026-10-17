@@ -305,7 +305,10 @@ public final class Workforce {
         // hunger stops a man's work - but not the work that brings in food: the hunt, the herd, the field
         boolean feeds = v.getProfession() == VillagerProfession.BUTCHER || v.getProfession() == VillagerProfession.SHEPHERD || v.getProfession() == VillagerProfession.FARMER
                 || v.getProfession() == VillagerProfession.LEATHERWORKER || v.getProfession() == net.mca.ProfessionsMCA.INNKEEPER.get();
-        if (!Mind.onDuty(v, village, time) && !Persona.working(v, time) || v.settlementsHunger >= HUNGER_STOP_AT && !feeds || v.getVillagerBrain().isPanicking()) {
+        // (a guard on the night watch is at work by night though the day's hours are over: before, he fell in here, was
+        // not put to bed for being on watch, nor sent on his round, and walked about 'going home' till the zombies had him)
+        boolean watch = v.isGuard() && GuardAI.onDuty(v, time);
+        if (!watch && !Mind.onDuty(v, village, time) && !Persona.working(v, time) || v.settlementsHunger >= HUNGER_STOP_AT && !feeds || v.getVillagerBrain().isPanicking()) {
             v.settlementsWorkSeconds = 0;
             Gear.pocket(v); // off work: the tools go back in the bag
             Doing.set(v, v.settlementsHunger >= HUNGER_STOP_AT ? "settlements.doing.hungry" : Persona.free(v, time) ? "settlements.doing.free" : "settlements.doing.home");
