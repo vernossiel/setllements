@@ -452,6 +452,9 @@ public final class Builder {
 
     private static final java.util.Map<Integer, long[]> STEP_AT = new java.util.HashMap<>(); // {step, since}
 
+    /** While the hall is first looked for: only a site close by the bell will do. */
+    private static boolean NEAR_ONLY = false;
+
     /** The last building no site was found for (said in /settle why). */
     private static String lastNoSite;
 
@@ -468,6 +471,11 @@ public final class Builder {
             floors = 1;
         }
         Layout.Slot slot = Layout.find(world, village, type, w, d, minRing, maxRing);
+        if (slot != null && NEAR_ONLY) {
+            BlockPos c = new BlockPos(village.getCenter());
+            BlockPos o = slot.origin();
+            if (Math.hypot(o.getX() + slot.fw() / 2.0 - c.getX(), o.getZ() + slot.fd() / 2.0 - c.getZ()) > 32 || Math.abs(o.getY() - c.getY()) > 12) slot = null;
+        }
         if (slot == null) {
             lastNoSite = type;
             return false;
@@ -961,10 +969,17 @@ public final class Builder {
         String t = village.buildType;
         BlockPos o = village.buildOrigin;
         int st = village.buildStep, w = village.buildW, d = village.buildD, f = village.buildF, r = village.buildRot;
-        boolean started = startRing(village, world, "townhall", 0, 0, 0, 0, 3);
-        // hills and forest: the founders level a site among the houses rather than go off to level ground (the hall
-        // went up 40 to 55 blocks off, and with it the night's shelter; the village's people walked out to it and died)
+        // close by the bell first (the inner rings), then a site the founders level among the houses for the plain hall,
+        // and only then further out: a big hall up the mountain forty blocks above the houses is no shelter at night
+        NEAR_ONLY = true;
+        boolean started;
+        try {
+            started = startRing(village, world, "townhall", 0, 0, 0, 0, 3);
+        } finally {
+            NEAR_ONLY = false;
+        }
         if (!started) started = roughSite(village, world);
+        if (!started) started = startRing(village, world, "townhall", 0, 0, 0, 0, 3);
         if (!started) {
             Layout.Slot hs = Layout.center(world, village, "townhall");
             started = hs != null && startAt(village, "townhall", 0, 0, 0, hs);
