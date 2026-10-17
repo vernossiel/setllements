@@ -87,6 +87,7 @@ public final class Bed {
     public static boolean shelter(VillagerEntityMCA v, net.mca.server.world.data.Village village, ServerWorld world) {
         GlobalPos home = v.getResidency().getHome().orElse(null);
         BlockPos bed = home != null && home.getDimension() == world.getRegistryKey() && world.getBlockState(home.getPos()).getBlock() instanceof BedBlock ? home.getPos() : null;
+        if (bed != null && !Housing.safe(world, bed)) bed = null; // not set down in a room the night walks into
         v.getNavigation().stop();
         if (v.hasVehicle()) v.stopRiding();
         if (bed != null && world.getEntitiesByClass(VillagerEntityMCA.class, new net.minecraft.util.math.Box(bed), o -> o != v && o.isSleeping()).isEmpty()) {
@@ -122,6 +123,7 @@ public final class Bed {
         Doing.set(v, "settlements.doing.bed");
         // a bed there is no way to (a shut-in house, a door that is not there): after a few tries, the hall tonight
         if (bed != null && village != null && !Housing.allowed(village, bed)) bed = null; // a bed off in the valley is no bed tonight
+        if (bed != null && !Housing.safe(world, bed)) bed = null; // nor one in a room with a wall gone: the hall tonight
         long night = world.getTimeOfDay() / 24000L;
         if (bed != null && NO_WAY.getOrDefault(v.getUuid(), -1L) == night) bed = null;
         if (bed != null && v.squaredDistanceTo(Vec3d.ofCenter(bed)) > 2.2 * 2.2 && now - since >= 20 * 8) {

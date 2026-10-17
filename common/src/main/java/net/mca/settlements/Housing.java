@@ -70,7 +70,7 @@ public final class Housing {
                     || Math.abs(b.getCenter().getY() - heart.getY()) > 14) && !byBell(v, b.getCenter())) continue; // nor one down in the valley below
             int r = Math.max(4, b.getSize());
             List<BlockPos> beds = poi.getInSquare(t -> t.matchesKey(PointOfInterestTypes.HOME), b.getCenter(), r, PointOfInterestStorage.OccupationStatus.ANY)
-                    .map(p -> p.getPos()).filter(b::containsPos).sorted(Comparator.comparingLong(BlockPos::asLong)).toList();
+                    .map(p -> p.getPos()).filter(b::containsPos).filter(p -> safe(world, p)).sorted(Comparator.comparingLong(BlockPos::asLong)).toList();
             if (!beds.isEmpty()) houses.put(b, beds);
         }
         Set<Building> taken = new HashSet<>();
@@ -146,6 +146,47 @@ public final class Housing {
         }
         HOMELESS.put(v.getId(), homeless);
         EMPTY.put(v.getId(), (int) houses.keySet().stream().filter(b -> !taken.contains(b)).count());
+    }
+
+    private record Safe(boolean safe, long day) {
+    }
+
+    private static final Map<BlockPos, Safe> SAFE = new HashMap<>();
+
+    /**
+     * A bed in a room that shuts: from it nothing but closed doors lead out under the open sky (within a few steps).
+     * A house with a wall gone - an old one half pulled down, one cut into by a road - lets the night in to the bed:
+     * three in a row died in one such house at the edge of the plains. Reckoned once a day per bed.
+     */
+    public static boolean safe(ServerWorld world, BlockPos bed) {
+        long day = world.getTimeOfDay() / 24000L;
+        Safe c = SAFE.get(bed);
+        if (c != null && c.day() == day) return c.safe();
+        java.util.ArrayDeque<BlockPos> open = new java.util.ArrayDeque<>();
+        java.util.Set<BlockPos> seen = new java.util.HashSet<>();
+        boolean ok = true;
+        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+            BlockPos q = bed.offset(d);
+            if (Move.passable(world, q) && seen.add(q)) open.add(q);
+        }
+        while (!open.isEmpty() && ok) {
+            BlockPos p = open.poll();
+            if (world.isSkyVisible(p)) ok = false; // out under the sky without a door between
+            if (seen.size() > 160 || p.getSquaredDistance(bed) > 10 * 10) break; // a big house: room enough, call it shut
+            for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    BlockPos q = p.offset(d).up(dy);
+                    if (seen.contains(q)) continue;
+                    if (world.getBlockState(q).getBlock() instanceof net.minecraft.block.DoorBlock) continue; // a door shuts it
+                    if (Move.passable(world, q) && Move.passable(world, q.up())) {
+                        seen.add(q);
+                        open.add(q);
+                    }
+                }
+            }
+        }
+        SAFE.put(bed.toImmutable(), new Safe(ok, day));
+        return ok;
     }
 
     /** Whether a bed here can be a home: in a house the village built, or in another one near the hall and on its level. */
