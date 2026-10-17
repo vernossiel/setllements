@@ -19,6 +19,8 @@ import java.util.UUID;
 public final class Finds {
     private static final double RANGE = 10;
     private static final Map<UUID, UUID> CLAIMED = new HashMap<>(); // item -> the villager going for it
+    private static final Map<UUID, long[]> TRYING = new HashMap<>(); // villager -> {item entity id, since}
+    private static final java.util.Set<UUID> GIVEN_UP = new java.util.HashSet<>();
 
     private Finds() {
     }
@@ -43,7 +45,8 @@ public final class Finds {
         ItemEntity best = null;
         double bd = RANGE * RANGE;
         for (ItemEntity e : world.getEntitiesByClass(ItemEntity.class, v.getBoundingBox().expand(RANGE, 4, RANGE),
-                e -> e.isAlive() && e.age > 40 && valuable(e.getStack()) && world.getClosestPlayer(e, 3) == null && !Move.unreachable(world, e.getBlockPos()))) { // (no way to it: a builder stood stuck reaching for a nugget) // (not what a player stands over: his own, likely)
+                e -> e.isAlive() && e.age > 40 && valuable(e.getStack()) && world.getClosestPlayer(e, 3) == null && !Move.unreachable(world, e.getBlockPos())
+                        && !GIVEN_UP.contains(e.getUuid()))) { // (no way to it: a builder stood stuck reaching for a nugget) // (not what a player stands over: his own, likely)
             UUID by = CLAIMED.get(e.getUuid());
             if (by != null && !by.equals(v.getUuid()) && world.getEntity(by) instanceof VillagerEntityMCA o && o.isAlive() && o.squaredDistanceTo(e) < RANGE * RANGE * 2) continue;
             double d = v.squaredDistanceTo(e);
@@ -55,6 +58,19 @@ public final class Finds {
         if (best == null) return false;
         if (CLAIMED.put(best.getUuid(), v.getUuid()) == null && world.random.nextInt(4) == 0) Speech.say(v, "settlements.say.finds");
         Doing.set(v, "settlements.doing.finds");
+        // a quarter of a minute after the one thing and not got it (down a hole, on a roof): it is left lying (the miner
+        // spent his days going after one stone)
+        long now = world.getTime();
+        long[] t = TRYING.computeIfAbsent(v.getUuid(), k -> new long[]{-1, 0});
+        if (t[0] != best.getId()) {
+            t[0] = best.getId();
+            t[1] = now;
+        } else if (now - t[1] > 300) {
+            GIVEN_UP.add(best.getUuid());
+            if (GIVEN_UP.size() > 500) GIVEN_UP.clear();
+            CLAIMED.remove(best.getUuid());
+            return false;
+        }
         if (bd > 1.6 * 1.6) {
             Gaze.at(v, best.getX(), best.getY(), best.getZ());
             Move.to(v, best.getX(), best.getY(), best.getZ(), 0.6);
