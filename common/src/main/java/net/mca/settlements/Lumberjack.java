@@ -85,6 +85,7 @@ public final class Lumberjack {
         if (world.getTime() < v.settlementsNoWorkUntil) return false; // no trees around, look again later
 
         // out looking for a wood further away
+        if (v.settlementsExplore != null && village != null) v.settlementsExplore = null; // (an old far-off target from before: forgotten)
         if (v.settlementsExplore != null && v.lumberTarget == null) {
             BlockPos e = v.settlementsExplore;
             // a wood he cannot get to in a minute and a half is given up: he looks around where he is
@@ -146,26 +147,16 @@ public final class Lumberjack {
                     return false;
                 }
             }
-            if (trees.size() <= (force ? 0 : MIN_TREES_LEFT) && v.settlementsExploreTries < 6) {
-                // no wood worth cutting around here: go further and look again
-                BlockPos from = village != null ? new BlockPos(village.getCenter()) : v.getBlockPos();
-                for (int attempt = 0; attempt < 8; attempt++) {
-                    double a = world.random.nextDouble() * Math.PI * 2;
-                    int dist = 48 + world.random.nextInt(40) + 16 * v.settlementsExploreTries;
-                    int x = from.getX() + (int) (Math.cos(a) * dist), z = from.getZ() + (int) (Math.sin(a) * dist);
-                    if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
-                    v.settlementsExplore = new BlockPos(x, world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z), z);
-                    v.settlementsExploreTries++;
-                    Speech.say(v, "settlements.say.lumber.explore");
-                    Doing.set(v, "settlements.doing.lumber.explore");
-                    if (village != null) Escort.ask(v, village, 20 * 150); // far from the village: a guard comes along
-                    return false;
-                }
-            }
+            // (no going off further and further into the wild to look for a wood: two woodsmen walked a hundred and fifty
+            // blocks out and were never seen again. Trees are looked for round the hall; none there, the grove is planted)
             if (trees.size() <= (force ? 0 : MIN_TREES_LEFT)) {
                 v.settlementsExploreTries = 0;
                 // leave the forest alone; with no forest at all the village has to ask for wood
                 v.settlementsNoWorkUntil = world.getTime() + 1200;
+                if (village != null && Grove.growing(world, village) < 12) { // the wood the village will need: planted by the hall
+                    plantGrove(v, village, world);
+                    plantGrove(v, village, world);
+                }
                 if (!force) {
                     Speech.say(v, trees.isEmpty() ? "settlements.say.lumber.none" : "settlements.say.lumber.sparse");
                     if (trees.isEmpty()) Needs.set(v, Needs.Need.PLANKS);
