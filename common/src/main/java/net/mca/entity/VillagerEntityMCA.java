@@ -935,6 +935,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
             // Every 1 second
             mcaBrain.think();
             net.mca.settlements.Climb.tick(this);
+            net.mca.settlements.Route.climbTick(this);
             net.mca.settlements.Dig.tick(this);
             if (age % 20 == 0) net.mca.settlements.Workforce.tick(this);
             net.mca.settlements.Gaze.head(this); // eyes held on what he is looking at, the head turning to it smoothly

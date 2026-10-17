@@ -81,6 +81,8 @@ public final class Move {
         var nav = v.getNavigation();
         var path = nav.getCurrentPath();
         if (path != null && !path.isFinished() && nav.isFollowingPath() && path.getTarget().isWithinDistance(goal, 1.5)) return true;
+        // on his own route there (see Route): not thrown off it each second for the path finder's way that does not get there
+        if (Route.active(v, goal)) return true;
         return nav.startMovingTo(x, y, z, speed);
     }
 
@@ -319,6 +321,12 @@ public final class Move {
             if (there) Route.forget(v);
             return false;
         }
+        // the path finder has no way there at all (a ladder, a door it will not take, a gap), or his own route is already
+        // under way: his own route at once, not after three seconds stood still - and not three seconds' pause at every
+        // bit of it either (that was the stopping and starting)
+        var np = v.getNavigation().getCurrentPath();
+        if (Route.active(v, goal) || np == null || !np.reachesTarget() && np.getTarget().getSquaredDistance(goal) > 4)
+            v.settlementsHandSec = Math.max(v.settlementsHandSec, HAND_AFTER - 1);
         if (++v.settlementsHandSec < HAND_AFTER) return false;
         // the ordinary path finder got him nowhere: he works out the way himself (see Route); the old straight-line
         // shoving below is only for climbing out of a pit
@@ -437,7 +445,7 @@ public final class Move {
         }
     }
 
-    private static boolean pillar(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos feet) {
+    static boolean pillar(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos feet) {
         // in his own mine he takes the stairs, he does not build himself a column out of it
         if (village != null && village.mineOrigin != null && Mining.inShaft(v, village.mineOrigin) && Mining.shaftWalk(v, village.mineOrigin, true)) return true;
         if (!passable(world, feet.up(2))) {
@@ -456,7 +464,7 @@ public final class Move {
         return false;
     }
 
-    private static void step(VillagerEntityMCA v, BlockPos cell) {
+    static void step(VillagerEntityMCA v, BlockPos cell) {
         if (cell.getY() > v.getBlockPos().getY()) v.getJumpControl().setActive();
         v.getMoveControl().moveTo(cell.getX() + 0.5, cell.getY(), cell.getZ() + 0.5, PACE);
     }

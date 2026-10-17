@@ -36,7 +36,7 @@ public final class Route {
     }
 
     /** What has to be done to enter a cell of the route. */
-    enum Act { WALK, DIG, BRIDGE }
+    enum Act { WALK, DIG, BRIDGE, PILLAR, DIGDOWN }
 
     record Hop(BlockPos pos, Act act) {
     }
@@ -50,12 +50,40 @@ public final class Route {
         Vec3d last;
         BlockPos segmentEnd;
         int awaySec;
+        long touched;   // the last second he was on it
     }
 
     private static final Map<UUID, State> STATE = new HashMap<>();
 
     public static void forget(VillagerEntityMCA v) {
         STATE.remove(v.getUuid());
+    }
+
+    /** Whether he is on his own route to (about) this goal now: nothing else is to set him another way meanwhile. */
+    public static boolean active(VillagerEntityMCA v, BlockPos goal) {
+        State s = STATE.get(v.getUuid());
+        return s != null && s.goal != null && s.goal.isWithinDistance(goal, 1.5) && (s.path != null || s.awaySec > 0)
+                && v.getWorld().getTime() - s.touched < 60;
+    }
+
+    /**
+     * Every tick: on a ladder (or vine, or scaffolding) with the route going on up it, he climbs - holds on and pulls
+     * himself up, as a player holds the jump key; going down he lets himself down it. The path finder's walking alone
+     * stood him at the foot of it.
+     */
+    public static void climbTick(VillagerEntityMCA v) {
+        if (v.getWorld().isClient || !v.isClimbing()) return;
+        State s = STATE.get(v.getUuid());
+        if (s == null || s.path == null) return;
+        BlockPos feet = v.getBlockPos();
+        for (int j = Math.max(0, s.i - 1); j < Math.min(s.path.size(), s.i + 4); j++) {
+            BlockPos hp = s.path.get(j).pos();
+            if (hp.getX() == feet.getX() && hp.getZ() == feet.getZ() && hp.getY() > feet.getY()) {
+                v.getJumpControl().setActive();
+                v.fallDistance = 0;
+                return;
+            }
+        }
     }
 
     // ---------- the ground ----------
@@ -203,7 +231,24 @@ public final class Route {
         // up and down ladders, vines and scaffolding
         if ((climbable(world, p) || climbable(world, p.up())) && open(world, p.up()) && open(world, p.up(2))) add(out, c, p.up(), 1.5, goal, Act.WALK);
         if (climbable(world, p.down()) && open(world, p.down())) add(out, c, p.down(), 1.2, goal, Act.WALK);
+        if (work && !climbable(world, p) && !water(world, p)) {
+            // up where there is no other way, as a player does: a jump and a block put under his feet (taken down after)
+            BlockPos under = p.down();
+            if (goal.getY() > p.getY() + 1 && open(world, p.up(2)) && !world.getBlockState(under).getCollisionShape(world, under).isEmpty())
+                add(out, c, p.up(), 6, goal, Act.PILLAR);
+            // and down where there is no other way: the earth under him dug out, a block at a time, into what lies below
+            BlockPos floor2 = p.down(2);
+            if (goal.getY() < p.getY() - 1 && Move.diggable(world, village, under) && !water(world, floor2) && !wetNear(world, under)
+                    && !world.getBlockState(floor2).getCollisionShape(world, floor2).isEmpty() && !dangerous(world.getBlockState(floor2)))
+                add(out, c, under, 5, goal, Act.DIGDOWN);
+        }
         return out;
+    }
+
+    /** Water or lava beside a block: dug out, it would let it in. */
+    private static boolean wetNear(ServerWorld world, BlockPos p) {
+        for (Direction d : Direction.values()) if (!world.getFluidState(p.offset(d)).isEmpty()) return true;
+        return false;
     }
 
     private static void add(List<Node> out, Node c, BlockPos n, double cost, BlockPos goal, Act act) {
@@ -219,6 +264,7 @@ public final class Route {
      */
     public static boolean tick(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos goal) {
         State s = STATE.computeIfAbsent(v.getUuid(), k -> new State());
+        s.touched = world.getTime();
         if (!goal.equals(s.goal)) {
             s.goal = goal.toImmutable();
             s.path = null;
@@ -245,6 +291,7 @@ public final class Route {
             if (s.level == 3) {
                 Vec3d away = net.minecraft.entity.ai.NoPenaltyTargeting.find(v, 10, 4);
                 if (away != null) {
+                    Doing.count("nav.away");
                     v.getNavigation().startMovingTo(away.x, away.y, away.z, 0.5);
                     s.awaySec = 8;
                     return true;
@@ -254,8 +301,16 @@ public final class Route {
             if (s.level >= 4) {
                 // the very last resort: set down by the goal (never in the air or the rock), or the errand is given up
                 // (never before a player's eyes: there he gives the errand up for now, as a man who finds no way does)
-                if (v.getBlockPos().getSquaredDistance(goal) < 64 * 64 && Bed.unseen(v, world) && Move.putSafely(v, goal)) Speech.sayAny(v, "settlements.say.way.round", 3);
-                else v.settlementsGoal = null;
+                if (v.getBlockPos().getSquaredDistance(goal) < 64 * 64 && Bed.unseen(v, world) && Move.putSafely(v, goal)) {
+                    Speech.sayAny(v, "settlements.say.way.round", 3);
+                    Doing.count("nav.put");
+                } else {
+                    // no way there: he says so and lets it be; whatever wanted it looks for something else (see Move.unreachable)
+                    Speech.sayAny(v, "settlements.say.way.none", 3);
+                    Doing.count("nav.giveup");
+                    v.settlementsGoal = null;
+                    v.getNavigation().stop();
+                }
                 STATE.remove(v.getUuid());
                 return true;
             }
@@ -264,6 +319,7 @@ public final class Route {
             s.path = find(world, village, v.getBlockPos(), goal, s.level >= 2);
             s.i = 0;
             s.segmentEnd = null;
+            Doing.count(s.path == null ? "nav.none" : "nav.route" + (s.level >= 2 ? ".work" : ""));
             if (s.path == null) {
                 s.still = 6; // nothing at this level: straight to the next one
                 return true;
@@ -297,6 +353,7 @@ public final class Route {
                     if (v.squaredDistanceTo(Vec3d.ofCenter(b)) > 16 || !Dig.sees(v, b)) break;
                     Gear.face(v, b);
                     Dig.start(v, b); // a crack at a time, like anyone with a shovel
+                    Doing.count("nav.dig");
                     return true;
                 }
                 if (open(world, next.pos()) && open(world, next.pos().up())) walk(v, s, s.i);
@@ -305,6 +362,7 @@ public final class Route {
             case BRIDGE -> {
                 BlockPos under = next.pos().down();
                 if (world.getBlockState(under).isReplaceable() && v.squaredDistanceTo(Vec3d.ofCenter(under)) <= 16) {
+                    Doing.count("nav.bridge");
                     if (!Move.place(v, village, world, under)) { // nothing to lay: no bridge this way
                         s.path = null;
                         s.level = Math.max(s.level, 3);
@@ -312,6 +370,36 @@ public final class Route {
                     }
                 }
                 walk(v, s, s.i);
+                return true;
+            }
+            case PILLAR -> {
+                BlockPos base = next.pos().down();
+                if (feet.equals(base)) {
+                    v.getNavigation().stop();
+                    if (Move.pillar(v, village, world, feet)) Doing.count("nav.pillar");
+                    else { // nothing to put under him, or no room overhead: not this way
+                        s.path = null;
+                        s.level = Math.max(s.level, 3);
+                    }
+                } else Move.step(v, base);
+                return true;
+            }
+            case DIGDOWN -> {
+                BlockPos base = next.pos().up();
+                if (open(world, next.pos())) { // dug: down into it
+                    Move.step(v, next.pos());
+                    return true;
+                }
+                if (!Move.diggable(world, village, next.pos())) {
+                    s.path = null;
+                    return true;
+                }
+                if (feet.equals(base)) {
+                    v.getNavigation().stop();
+                    Gear.face(v, next.pos());
+                    Dig.start(v, next.pos());
+                    Doing.count("nav.digdown");
+                } else Move.step(v, base);
                 return true;
             }
             default -> {
