@@ -332,7 +332,7 @@ public final class Workforce {
             return;
         }
         TIRED.remove(v.getUuid());
-        if (!Persona.working(v, time)) Doing.set(v, "settlements.doing.overtime"); // stayed on: the work cannot wait
+        if (!Persona.working(v, time) && !watch) Doing.set(v, "settlements.doing.overtime"); // stayed on: the work cannot wait (the night watch is not overtime)
         // and a moment's pause now and then: nobody works like a machine
         STAGE.put(v.getUuid(), "pause");
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld pw && Trade.pausing(v, village, pw)) return;
