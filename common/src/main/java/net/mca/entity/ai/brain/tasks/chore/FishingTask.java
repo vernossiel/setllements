@@ -77,8 +77,9 @@ public class FishingTask extends AbstractChoreTask {
             List<BlockPos> nearbyStaticLiquid = TaskUtils.getNearbyBlocks(villager.getBlockPos(), villager.getWorld(), blockState -> blockState.isOf(Blocks.WATER), 12, 3);
             targetWater = nearbyStaticLiquid.stream()
                     .filter((p) -> villager.getWorld().getBlockState(p).getBlock() == Blocks.WATER)
-                    // (Settlements) still water open to the sky, not a waterfall or a puddle under a roof
-                    .filter((p) -> villager.getWorld().getFluidState(p).isStill() && villager.getWorld().getBlockState(p.up()).isAir())
+                    // (Settlements) still water open to the sky, not a waterfall or a puddle under a roof; a pond or a river,
+                    // not a field's ditch or the pool at the foot of a fall
+                    .filter((p) -> villager.getWorld().getFluidState(p).isStill() && villager.getWorld().getBlockState(p.up()).isAir() && fishable(villager.getWorld(), p))
                     .min(Comparator.comparingDouble(d -> villager.squaredDistanceTo(d.getX(), d.getY(), d.getZ()))).orElse(null);
 
             if (targetWater == null) {
@@ -126,6 +127,23 @@ public class FishingTask extends AbstractChoreTask {
             villager.moveTowards(targetWater);
         }
 
+    }
+
+    /** (Settlements) Open water to fish in: a good stretch of still water about it; not a field's ditch, not by a fall. */
+    private static boolean fishable(net.minecraft.world.World world, BlockPos p) {
+        int still = 0;
+        for (BlockPos q : BlockPos.iterate(p.add(-3, 0, -3), p.add(3, 0, 3))) {
+            var f = world.getFluidState(q);
+            if (f.isStill() && f.isIn(net.minecraft.registry.tag.FluidTags.WATER)) still++;
+        }
+        if (still < 16) return false;
+        for (BlockPos q : BlockPos.iterate(p.add(-2, -1, -2), p.add(2, 3, 2))) {
+            var st = world.getBlockState(q);
+            if (st.isOf(Blocks.FARMLAND) || st.getBlock() instanceof net.minecraft.block.CropBlock) return false;
+            var f = world.getFluidState(q);
+            if (!f.isEmpty() && !f.isStill()) return false; // falling or running water: a fall, a spring
+        }
+        return true;
     }
 
     @Override
