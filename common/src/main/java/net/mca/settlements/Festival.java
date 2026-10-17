@@ -21,6 +21,14 @@ public final class Festival {
     }
 
     private static final Map<Integer, Wedding> WEDDINGS = new HashMap<>();
+    private static final int WEDDING_SECONDS = 120;
+    private static final Map<Integer, Long> LAST_WEDDING = new HashMap<>(); // village -> the day of its last wedding
+
+    /** A wedding at most every third day in a village: two in a day, and nobody did a stroke of work. */
+    public static boolean weddingDue(Village village, ServerWorld world) {
+        Long last = LAST_WEDDING.get(village.getId());
+        return last == null || world.getTimeOfDay() / 24000L - last >= 3;
+    }
     private static final Map<Integer, BlockPos> SQUARE = new HashMap<>();
     private static final Map<Integer, Long> SQUARE_AT = new HashMap<>();
 
@@ -40,7 +48,8 @@ public final class Festival {
     /** Two of the village have married (see VillageMarriageManager). */
     public static void wedding(Village village, ServerWorld world, VillagerEntityMCA a, VillagerEntityMCA b) {
         BlockPos at = square(world, village); // the open ground on the square
-        WEDDINGS.put(village.getId(), new Wedding(a.getUuid(), b.getUuid(), at, world.getTime() + 20 * 150));
+        WEDDINGS.put(village.getId(), new Wedding(a.getUuid(), b.getUuid(), at, world.getTime() + 20 * WEDDING_SECONDS));
+        LAST_WEDDING.put(village.getId(), world.getTimeOfDay() / 24000L);
         Life.news(village, "wedding", a.getName().getString() + ", " + b.getName().getString());
     }
 
@@ -152,6 +161,13 @@ public final class Festival {
             if (world.random.nextInt(20) == 0) Speech.sayAny(v, "settlements.say.fest.marry", 3);
             return true;
         }
+        // a guest comes for the vows and the cheering and then goes back to his day, each when it suits him: not the whole
+        // village standing in a ring clapping for hours (the couple's family and the close friends stay longest)
+        long start = w.until() - 20L * WEDDING_SECONDS;
+        boolean close = v.getRelationships().getFamilyEntry().isRelative(w.a()) || v.getRelationships().getFamilyEntry().isRelative(w.b());
+        long stay = close ? WEDDING_SECONDS : 30 + Math.floorMod(v.getUuid().hashCode(), 50);
+        if (world.getTime() - start > 20 * stay) return false;
+        if (!close && v.squaredDistanceTo(c) > 40 * 40) return false; // working out in the fields or the woods: not called in for it
         Doing.set(v, "settlements.doing.fest.guest");
         // the guests in a ring about them
         double angle = (v.getUuid().hashCode() & 0xffff) / 65536.0 * Math.PI * 2;
@@ -162,9 +178,10 @@ public final class Festival {
         }
         v.getNavigation().stop();
         Gaze.at(v, c.x, c.y + 1.4, c.z);
-        if (world.random.nextInt(4) == 0) Anim.set(v, Anim.Act.CLAP, 60); // clapping
-        if (world.random.nextInt(14) == 0) Pose.jump(v); // and a jump for joy
-        if (world.random.nextInt(30) == 0) Speech.sayAny(v, "settlements.say.fest.cheer", 4);
+        // now and then a clap or a cheer, not all the time; the rest of it looking on, turned to a neighbour
+        if (world.random.nextInt(12) == 0) Anim.set(v, Anim.Act.CLAP, 40);
+        if (world.random.nextInt(40) == 0) Pose.jump(v); // and a jump for joy
+        if (world.random.nextInt(60) == 0) Speech.sayAny(v, "settlements.say.fest.cheer", 4);
         return true;
     }
 

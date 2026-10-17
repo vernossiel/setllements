@@ -25,6 +25,7 @@ public class VillageMarriageManager {
         }
         long tod = world.getTimeOfDay() % 24000L;
         if (tod >= 11000 || tod < 1000) return; // nobody weds at night: the wedding is in the daytime, with the village on the square
+        if (!net.mca.settlements.Festival.weddingDue(village, world)) return; // one wedding in a few days, not two in one
 
         //list all lonely villagers
         List<VillagerEntityMCA> allVillagers = village.getResidents(world);

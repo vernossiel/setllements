@@ -77,7 +77,10 @@ public final class Lumberjack {
         if (gathering != null) {
             if (world.getTime() < gathering && Dig.collect(v, 12)) return true;
             GATHER.remove(v.getUuid());
-            v.setStackInHand(v.getDominantHand(), ItemStack.EMPTY);
+            // the logs gathered: the axe back in his hand, not an empty hand
+            ItemStack axe = ItemStack.EMPTY;
+            for (int i = 0; i < v.getInventory().size(); i++) if (v.getInventory().getStack(i).getItem() instanceof net.minecraft.item.AxeItem) axe = v.getInventory().getStack(i).copy();
+            v.setStackInHand(v.getDominantHand(), axe);
         }
         if (world.getTime() < v.settlementsNoWorkUntil) return false; // no trees around, look again later
 

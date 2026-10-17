@@ -65,14 +65,33 @@ public final class Dig {
             return;
         }
         ItemStack tool = v.getMainHandStack();
+        // the right tool in his hand for it, from his bag, if he has one (the axe and the pick vanished from their hands)
+        if (tool.getMiningSpeedMultiplier(s) <= 1f) {
+            var inv = v.getInventory();
+            for (int i = 0; i < inv.size(); i++) {
+                ItemStack t = inv.getStack(i);
+                if (!t.isEmpty() && t.getMiningSpeedMultiplier(s) > 1f) {
+                    v.setStackInHand(v.getDominantHand(), t.copy());
+                    tool = v.getMainHandStack();
+                    break;
+                }
+            }
+        }
         boolean right = !s.isToolRequired() || tool.isSuitableFor(s);
         float speed = Math.max(1f, tool.getMiningSpeedMultiplier(s));
         float delta = hardness == 0 ? 1f : speed / hardness / (right ? 30f : 100f);
         delta *= (float) Math.max(0.6, Math.min(1.6, Trade.pace(v)));
         v.settlementsDigProgress += delta;
+        // at the block, the whole time he works it: not looking round at a passer-by, not walking off towards him
+        v.getBrain().forget(net.minecraft.entity.ai.brain.MemoryModuleType.LOOK_TARGET);
+        v.getBrain().forget(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET);
+        v.getNavigation().stop();
         v.getLookControl().lookAt(p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5);
-        if (v.age % 10 == 0) Anim.set(v, s.isIn(net.minecraft.registry.tag.BlockTags.AXE_MINEABLE) ? Anim.Act.CHOP
-                : s.isIn(net.minecraft.registry.tag.BlockTags.PICKAXE_MINEABLE) ? Anim.Act.MINE : Anim.Act.DIG, 15);
+        double fx = p.getX() + 0.5 - v.getX(), fz = p.getZ() + 0.5 - v.getZ();
+        float yaw = (float) (Math.toDegrees(Math.atan2(fz, fx)) - 90.0);
+        v.setBodyYaw(yaw);
+        v.setHeadYaw(yaw);
+        // the blows: a swing of the arm, as a player strikes (the both-arms chopping pose looked like a zombie's)
         if (v.age % 5 == 0) {
             v.swingHand(v.getDominantHand());
             world.playSound(null, p, s.getSoundGroup().getHitSound(), SoundCategory.BLOCKS, 0.25f, 0.5f);
