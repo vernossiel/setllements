@@ -53,7 +53,7 @@ public final class Bed {
                         BlockPos q = hall.point(dx, dy, dz);
                         if (!Move.passable(world, q) || !Move.passable(world, q.up()) || !world.getBlockState(q.down()).isSolidBlock(world, q.down())) continue;
                         if (world.isSkyVisible(q)) continue;
-                        int sky = world.getLightLevel(net.minecraft.world.LightType.SKY, q);
+                        int sky = world.getLightLevel(net.minecraft.world.LightType.SKY, q) + (nearDoor(world, q) ? 8 : 0); // (by the door counts as open)
                         double d = village.hallPos != null ? q.getSquaredDistance(village.hallPos) : 0;
                         if (sky < bestSky || sky == bestSky && d < bestD) {
                             bestSky = sky;
@@ -209,12 +209,17 @@ public final class Bed {
             BlockPos c = b.getCenter();
             if (!Housing.allowed(village, c)) continue;
             // a spot inside to stand on: floor under it, under the roof
+            // the most sheltered: away from the door (one sat the night just inside it and was killed through it), least sky
             BlockPos in = null;
-            for (BlockPos q : BlockPos.iterateOutwards(c, 3, 3, 3)) {
+            double inScore = Double.MAX_VALUE;
+            for (BlockPos q : BlockPos.iterateOutwards(c, 4, 3, 4)) {
                 if (b.containsPos(q) && !world.isSkyVisible(q) && Move.passable(world, q) && Move.passable(world, q.up())
                         && world.getBlockState(q.down()).isSolidBlock(world, q.down())) {
-                    in = q.toImmutable();
-                    break;
+                    double sc = world.getLightLevel(net.minecraft.world.LightType.SKY, q) * 10 + (nearDoor(world, q) ? 200 : 0) + Math.sqrt(q.getSquaredDistance(c));
+                    if (sc < inScore) {
+                        inScore = sc;
+                        in = q.toImmutable();
+                    }
                 }
             }
             if (in == null) continue;
@@ -225,6 +230,15 @@ public final class Bed {
             }
         }
         return best;
+    }
+
+    /** A door or a gap to the outside within two blocks: not a place to sit out the night. */
+    private static boolean nearDoor(ServerWorld world, BlockPos q) {
+        for (BlockPos o : BlockPos.iterate(q.add(-2, 0, -2), q.add(2, 1, 2))) {
+            if (world.getBlockState(o).getBlock() instanceof net.minecraft.block.DoorBlock) return true;
+            if (Move.passable(world, o) && world.isSkyVisible(o)) return true;
+        }
+        return false;
     }
 
     /** The nearest spot under a roof he can stand in, within sixteen blocks. */
