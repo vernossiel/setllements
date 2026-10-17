@@ -111,7 +111,7 @@ public final class Seat {
         BlockPos p = v.getBlockPos();
         double h = seatHeight(world, p);
         if (Double.isNaN(h)) h = seatHeight(world, p.down());
-        if (Double.isNaN(h)) h = v.getY();
+        if (Double.isNaN(h)) h = Math.floor(v.getY()) + 0.3; // on a bare floor: low, but his feet not down in the block
         sit(v, p.getX() + 0.5, h, p.getZ() + 0.5, yaw);
     }
 

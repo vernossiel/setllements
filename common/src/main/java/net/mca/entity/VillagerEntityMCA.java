@@ -695,6 +695,12 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
 
     @Override
     public final boolean damage(DamageSource source, float damageAmount) {
+        // Settlements: stuck in a block (sat down on a bare floor, stood up into it; pushed into a wall): up and out to
+        // the nearest open spot, nobody chokes to death in his own hall
+        if (!getWorld().isClient && source.isOf(net.minecraft.entity.damage.DamageTypes.IN_WALL)) {
+            net.mca.settlements.Seat.stand(this);
+            if (net.mca.settlements.Move.putSafely(this, getBlockPos().up())) return false;
+        }
         // Settlements: the village's own fire does not kill its people. Stepped onto a campfire, a villager jumps off
         // it and the flames on his clothes are beaten out, instead of standing in it till he is dead.
         if (!getWorld().isClient && (source.isOf(net.minecraft.entity.damage.DamageTypes.IN_FIRE) || source.isOf(net.minecraft.entity.damage.DamageTypes.ON_FIRE))) {
