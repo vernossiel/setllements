@@ -53,6 +53,28 @@ public final class Scaffold {
     private static BlockPos columnFor(ServerWorld world, VillagerEntityMCA v, BlockPos target, Built site) {
         BlockPos best = null;
         double bd = Double.MAX_VALUE;
+        // a column put up already that reaches this block too: back up that one, not a new column for every block
+        // (a heap of scaffolding round every building, and the builder forever climbing up and down)
+        Village home = v.getResidency().getHomeVillage().orElse(null);
+        Set<BlockPos> up = home == null ? null : PUT_UP.get(home.getId());
+        if (up != null) {
+            java.util.Map<Long, Integer> foot = new java.util.HashMap<>(); // column -> its lowest block
+            for (BlockPos q : up) foot.merge(((long) q.getX() << 32) ^ (q.getZ() & 0xFFFFFFFFL), q.getY(), Math::min);
+            for (var e : foot.entrySet()) {
+                int cx = (int) (e.getKey() >> 32), cz = (int) (long) e.getKey().intValue();
+                double dx = target.getX() + 0.5 - (cx + 0.5), dz = target.getZ() + 0.5 - (cz + 0.5);
+                if (dx * dx + dz * dz > (REACH - 0.5) * (REACH - 0.5)) continue;
+                BlockPos c = new BlockPos(cx, target.getY() - 1, cz);
+                if (site != null && insideWalls(site, c)) continue;
+                if (!open(world, c) && !world.getBlockState(c).isOf(Blocks.SCAFFOLDING) || !open(world, c.up())) continue;
+                double dist = dx * dx + dz * dz;
+                if (dist < bd) {
+                    bd = dist;
+                    best = new BlockPos(cx, e.getValue(), cz);
+                }
+            }
+            if (best != null) return best;
+        }
         for (int r = 1; r <= 2; r++) {
             for (Direction d : Direction.Type.HORIZONTAL) {
                 BlockPos c = target.offset(d, r);
