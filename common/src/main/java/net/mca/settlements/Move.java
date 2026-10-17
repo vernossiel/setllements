@@ -542,16 +542,31 @@ public final class Move {
         OPENED.put(v.getUuid(), p.toImmutable());
     }
 
+    /** Every wooden door standing open within a few blocks of him with nobody in it, shut (one spending the night by a door sees to it). */
+    public static void shutDoorsAbout(VillagerEntityMCA v, int r) {
+        if (!(v.getWorld() instanceof ServerWorld world)) return;
+        for (BlockPos q : BlockPos.iterate(v.getBlockPos().add(-r, -1, -r), v.getBlockPos().add(r, 1, r))) {
+            BlockState s = world.getBlockState(q);
+            if (!(s.getBlock() instanceof net.minecraft.block.DoorBlock door) || !door.getBlockSetType().canOpenByHand() || !s.get(net.minecraft.block.DoorBlock.OPEN)) continue;
+            if (s.get(net.minecraft.block.DoorBlock.HALF) != net.minecraft.block.enums.DoubleBlockHalf.LOWER) continue;
+            if (!world.getOtherEntities(null, new net.minecraft.util.math.Box(q).stretch(0, 1, 0), e -> e instanceof net.minecraft.entity.LivingEntity).isEmpty()) continue;
+            door.setOpen(v, world, s, q.toImmutable(), false);
+        }
+    }
+
     /** Once a second: the gate or door he went through is shut again once he is past it (the animals stay in). */
     public static void shutBehind(VillagerEntityMCA v) {
         BlockPos p = OPENED.get(v.getUuid());
         if (p == null || !(v.getWorld() instanceof ServerWorld world)) return;
         double d = v.squaredDistanceTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5);
-        if (d < 2.6) return; // still in it
-        OPENED.remove(v.getUuid());
-        if (d > 64) return; // long gone: somebody else may shut it
+        if (d < 0.8 * 0.8) return; // still in the doorway (not merely near it: one sitting the night by the door kept the hall open to the zombies)
+        if (d > 64) {
+            OPENED.remove(v.getUuid()); // long gone: somebody else may shut it
+            return;
+        }
         BlockState s = world.getBlockState(p);
-        if (!world.getOtherEntities(null, new net.minecraft.util.math.Box(p), e -> e instanceof net.minecraft.entity.LivingEntity).isEmpty()) return;
+        if (!world.getOtherEntities(null, new net.minecraft.util.math.Box(p), e -> e instanceof net.minecraft.entity.LivingEntity).isEmpty()) return; // somebody in it: the next second
+        OPENED.remove(v.getUuid());
         if (s.getBlock() instanceof net.minecraft.block.FenceGateBlock && s.get(net.minecraft.block.FenceGateBlock.OPEN)) {
             world.setBlockState(p, s.with(net.minecraft.block.FenceGateBlock.OPEN, false), net.minecraft.block.Block.NOTIFY_LISTENERS | net.minecraft.block.Block.REDRAW_ON_MAIN_THREAD);
             world.playSound(null, p, net.minecraft.sound.SoundEvents.BLOCK_FENCE_GATE_CLOSE, SoundCategory.BLOCKS, 1f, 1f);

@@ -187,6 +187,7 @@ public final class Bed {
             // in under the roof for the night with no bed of his own: down on the floor by the wall, dozing sitting up
             long t = world.getTimeOfDay() % 24000L;
             if ((t >= 12800 || t < 500) && !Seat.seated(v) && !world.isSkyVisible(v.getBlockPos().up())) Seat.sitHere(v, v.getBodyYaw());
+            if (world.getTime() / 20 % 5 == 0) Move.shutDoorsAbout(v, 5); // the door of the place he shelters in, shut for the night
             Doing.set(v, "settlements.doing.bed.floor");
         }
         return true;
