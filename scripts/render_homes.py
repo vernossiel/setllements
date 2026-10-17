@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 S = 18  # half the width of a block on the picture
 
 COL = [
+    ("red_sandstone", (184, 98, 40)), ("chiseled_sandstone", (206, 192, 140)), ("cut_sandstone", (210, 196, 146)), ("smooth_sandstone", (224, 212, 168)), ("sandstone", (216, 203, 155)), ("_wall[", (120, 120, 120)),
     ("dark_oak_log", (58, 42, 26)), ("dark_oak", (74, 50, 30)), ("spruce_log", (70, 52, 32)), ("spruce", (112, 84, 52)),
     ("deepslate_tile", (62, 62, 68)), ("cracked_stone", (118, 118, 118)), ("mud_bricks", (138, 106, 82)), ("packed_mud", (142, 106, 78)),
     ("stone_brick", (128, 128, 128)), ("mud_brick", (138, 106, 82)), ("minecraft:bricks", (152, 82, 66)), ("bell", (226, 186, 64)), ("wall_banner", (176, 40, 40)), ("loom", (150, 120, 90)),

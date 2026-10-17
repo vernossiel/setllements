@@ -10,10 +10,55 @@ OUT = sys.argv[1]
 KEEP = 65535
 
 
+DESERT = {  # what the desert builds with instead: sandstone in its kinds, adobe; the wood only for doors and furniture
+    "minecraft:oak_planks": "minecraft:sandstone", "minecraft:spruce_planks": "minecraft:cut_sandstone",
+    "minecraft:dark_oak_planks": "minecraft:cut_red_sandstone", "minecraft:oak_log": "minecraft:cut_sandstone",
+    "minecraft:stripped_oak_log": "minecraft:smooth_sandstone", "minecraft:dark_oak_log": "minecraft:cut_red_sandstone",
+    "minecraft:cobblestone": "minecraft:sandstone", "minecraft:mossy_cobblestone": "minecraft:sandstone",
+    "minecraft:stone_bricks": "minecraft:cut_sandstone", "minecraft:mossy_stone_bricks": "minecraft:cut_sandstone",
+    "minecraft:cracked_stone_bricks": "minecraft:cut_sandstone", "minecraft:polished_andesite": "minecraft:smooth_sandstone",
+    "minecraft:calcite": "minecraft:smooth_sandstone", "minecraft:packed_mud": "minecraft:mud_bricks",
+    "minecraft:bricks": "minecraft:smooth_red_sandstone", "minecraft:coarse_dirt": "minecraft:smooth_sandstone",
+    "minecraft:oak_stairs": "minecraft:smooth_sandstone_stairs", "minecraft:spruce_stairs": "minecraft:smooth_sandstone_stairs",
+    "minecraft:dark_oak_stairs": "minecraft:smooth_red_sandstone_stairs", "minecraft:deepslate_tile_stairs": "minecraft:smooth_red_sandstone_stairs",
+    "minecraft:cobblestone_stairs": "minecraft:sandstone_stairs", "minecraft:stone_brick_stairs": "minecraft:sandstone_stairs",
+    "minecraft:oak_slab": "minecraft:smooth_sandstone_slab", "minecraft:spruce_slab": "minecraft:smooth_sandstone_slab",
+    "minecraft:dark_oak_slab": "minecraft:smooth_red_sandstone_slab", "minecraft:deepslate_tile_slab": "minecraft:smooth_red_sandstone_slab",
+    "minecraft:cobblestone_wall": "minecraft:sandstone_wall", "minecraft:mossy_cobblestone_wall": "minecraft:sandstone_wall",
+    "minecraft:stone_brick_wall": "minecraft:sandstone_wall", "minecraft:brick_wall": "minecraft:red_sandstone_wall",
+    "minecraft:spruce_trapdoor": "minecraft:oak_trapdoor", "minecraft:dark_oak_trapdoor": "minecraft:oak_trapdoor",
+}
+KEEP_PROPS = ("_stairs", "_slab", "_wall", "_trapdoor")
+
+
+WOODEN = ("minecraft:oak_stairs", "minecraft:spruce_stairs", "minecraft:dark_oak_stairs", "minecraft:oak_slab", "minecraft:spruce_slab", "minecraft:dark_oak_slab")
+
+
+def to_desert(b, roof):
+    bid = b.split("[")[0]
+    if bid not in DESERT or bid in WOODEN and not roof:
+        return b
+    nb = DESERT[bid]
+    if "[" in b and nb.endswith(KEEP_PROPS):
+        return nb + "[" + b.split("[", 1)[1]
+    return nb
+
+
+def cap(material):
+    """The top of a chimney: a wall block of its stone, narrower than the stack, as a chimney pot."""
+    return {COB: "minecraft:cobblestone_wall", MOSSY: "minecraft:mossy_cobblestone_wall", SBRICK: "minecraft:stone_brick_wall",
+            "minecraft:bricks": "minecraft:brick_wall"}.get(material, "minecraft:cobblestone_wall") + "[east=none,north=none,south=none,up=true,waterlogged=false,west=none]"
+
+
 class House:
     def __init__(self, w, d, h):
         self.w, self.d, self.h = w, d, h
         self.cells = {}
+        self.roofs = set()  # the cells of the roof (and the sills): stone ones in the desert, the chairs left wooden
+
+    def roof(self, x, y, z, b):
+        self.put(x, y, z, b)
+        self.roofs.add((x, y, z))
 
     def put(self, x, y, z, b):
         assert 0 <= x < self.w and 0 <= y < self.h and 0 <= z < self.d, (x, y, z, b)
@@ -25,7 +70,7 @@ class House:
                 for z in range(z0, z1 + 1):
                     self.put(x, y, z, b)
 
-    def write(self, name, wood, credit):
+    def write(self, name, wood, credit, desert=False):
         pal = ["minecraft:air"]
         idx = {"minecraft:air": 0}
         data = []
@@ -36,6 +81,8 @@ class House:
                     if b is None:
                         data.append(KEEP if y == 0 else 0)
                         continue
+                    if desert:
+                        b = to_desert(b, (x, y, z) in self.roofs)
                     if wood != "oak":  # the timber of the style (only oak itself: dark oak and the accents stay as drawn)
                         b = b.replace("minecraft:oak_", f"minecraft:{wood}_").replace("minecraft:stripped_oak_", f"minecraft:stripped_{wood}_")
                         b = b.replace("minecraft:potted_oak_", "minecraft:potted_oak_")
@@ -168,10 +215,10 @@ def roof(h, x0, x1, gx0, gx1, depth, eave, gable=PLANK, ridge_mat="oak"):
             break
         for x in range(x0, x1 + 1):
             if zn == zs:
-                h.put(x, y, zn, slab("bottom", ridge_mat))
+                h.roof(x, y, zn, slab("bottom", ridge_mat))
             else:
-                h.put(x, y, zn, st("south"))
-                h.put(x, y, zs, st("north"))
+                h.roof(x, y, zn, st("south"))
+                h.roof(x, y, zs, st("north"))
         if zn < zs:
             for z in range(zn + 1, zs):
                 for gx in (gx0, gx1):
@@ -383,7 +430,7 @@ def townhouse():
     top = roof(h, 0, W + 1, x0, x1, D + 2, 9)
     for y in range(9, top + 2):                      # the chimney up through the eaves, above the ridge
         h.put(x1 + 1, y, 5, COB)
-    h.put(x1 + 1, top + 2, 5, "minecraft:campfire[facing=north,lit=true,signal_fire=false,waterlogged=false]")
+    h.put(x1 + 1, top + 2, 5, cap(COB))
     return h
 
 
@@ -515,7 +562,7 @@ def manor():
     top = roof(h, 0, W + 1, x0, x1, D + 2, 10)
     for y in range(10, top + 2):
         h.put(x1 + 1, y, 6, SBRICK)
-    h.put(x1 + 1, top + 2, 6, "minecraft:campfire[facing=north,lit=true,signal_fire=false,waterlogged=false]")
+    h.put(x1 + 1, top + 2, 6, cap(SBRICK))
     return h
 
 
@@ -573,10 +620,10 @@ def roof_x(h, x0, x1, gx0, gx1, depth, eave, mat, gable):
             break
         for x in range(x0, x1 + 1):
             if zn == zs:
-                h.put(x, y, zn, rslab(mat))
+                h.roof(x, y, zn, rslab(mat))
             else:
-                h.put(x, y, zn, rstairs(mat, "south"))
-                h.put(x, y, zs, rstairs(mat, "north"))
+                h.roof(x, y, zn, rstairs(mat, "south"))
+                h.roof(x, y, zs, rstairs(mat, "north"))
         for z in range(zn + 1, zs):
             for gx in (gx0, gx1):
                 if h.cells.get((gx, y, z), "minecraft:air") == "minecraft:air":
@@ -594,10 +641,10 @@ def roof_z(h, z0, z1, gz0, gz1, width, eave, mat, gable):
             break
         for z in range(z0, z1 + 1):
             if xw == xe:
-                h.put(xw, y, z, rslab(mat))
+                h.roof(xw, y, z, rslab(mat))
             else:
-                h.put(xw, y, z, rstairs(mat, "east"))
-                h.put(xe, y, z, rstairs(mat, "west"))
+                h.roof(xw, y, z, rstairs(mat, "east"))
+                h.roof(xe, y, z, rstairs(mat, "west"))
         for x in range(xw + 1, xe):
             for gz in (gz0, gz1):
                 if h.cells.get((x, y, gz), "minecraft:air") == "minecraft:air":
@@ -801,7 +848,7 @@ def home(spec, seed):
                         if h.cells.get((sx, wy, out), "minecraft:air") == "minecraft:air":
                             h.put(sx, wy, out, f"minecraft:{tr}_trapdoor[facing={f},half=bottom,open=true,powered=false,waterlogged=false]")
                 if sills and 0 <= out < h.d and h.cells.get((x, wy - 1, out), "minecraft:air") == "minecraft:air":
-                    h.put(x, wy - 1, out, f"minecraft:{tr}_stairs[facing={OPP[f]},half=top,shape=straight,waterlogged=false]")
+                    h.roof(x, wy - 1, out, f"minecraft:{tr}_stairs[facing={OPP[f]},half=top,shape=straight,waterlogged=false]")
         for z in range(z0 + 2, z1 - 1, sp):
             for x, out, f in ((x0, x0 - 1, "west"), (x1, x1 + 1, "east")):
                 if chim and ((chim == "east" and x == x1) or (chim == "west" and x == x0)) and abs(z - (z0 + z1) // 2) <= 1:
@@ -834,7 +881,7 @@ def home(spec, seed):
         apex = roof_z(h, 0, D + 1, z0, z1, W + 2, eave, rmat, gable)
     if porch and ridge == "z":  # (the eaves run along the sides: the porch gets a little roof of its own)
         for px in range(dx - 2, dx + 3 + (1 if spec.get("double") else 0)):
-            h.put(px, sy0 + 3, z1 + 1, rslab(rmat))
+            h.roof(px, sy0 + 3, z1 + 1, rslab(rmat))
     # a chimney up the side wall, above the roof, smoking
     if chim:
         cx = x1 + 1 if chim == "east" else x0 - 1
@@ -842,7 +889,7 @@ def home(spec, seed):
         cm = spec.get("chimney_mat", COB)
         for yy in range(0, apex + 2):
             h.put(cx, yy, cz, cm)
-        h.put(cx, apex + 2, cz, "minecraft:campfire[facing=north,lit=true,signal_fire=false,waterlogged=false]")
+        h.put(cx, apex + 2, cz, cap(cm))  # the chimney pot on top (a fire up there showed: a pipe with a campfire on it)
     # the rooms
     for k, (sy, hgt, mat) in enumerate(storeys):
         plan = spec["rooms"][k] if k < len(spec["rooms"]) else []
@@ -1098,7 +1145,7 @@ def hall(level):
 
 
 CREDIT = "Settlements' own design, drawn after the MineColonies residences (github.com/ldtteam/minecolonies)"
-STYLES = {"medievaloak": "oak", "medievalbirch": "birch", "medievaldarkoak": "dark_oak", "nordic": "spruce"}
+STYLES = {"medievaloak": "oak", "medievalbirch": "birch", "medievaldarkoak": "dark_oak", "nordic": "spruce", "sandstone": "oak"}
 DESIGNS = {"dwelling1": hut, "dwelling2": cottage, "dwelling3": townhouse, "dwelling4": manor, "dwelling5": manor}
 for n, spec in HOMES.items():
     DESIGNS[n] = (lambda n=n, spec=spec: build_home(n, spec))
@@ -1112,7 +1159,7 @@ for name, make in DESIGNS.items():
     h = make()
     made[name] = h
     for style, wood in STYLES.items():
-        j = h.write(name, wood, CREDIT)
+        j = h.write(name, wood, CREDIT, desert=style == "sandstone")
         os.makedirs(os.path.join(OUT, style), exist_ok=True)
         with open(os.path.join(OUT, style, name + ".json"), "w") as f:
             json.dump(j, f, separators=(",", ":"))

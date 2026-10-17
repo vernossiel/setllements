@@ -82,6 +82,7 @@ public final class Templates {
             case "medievaloak" -> "oak";
             case "medievalbirch" -> "birch";
             case "medievaldarkoak" -> "dark_oak";
+            case "sandstone" -> "oak"; // (its doors, shutters and furniture: in whatever wood the desert village has)
             default -> null;
         };
     }
@@ -271,6 +272,13 @@ public final class Templates {
 
     /** The style's own timber becomes the village's wood. */
     static BlockState reskin(BlockState s, Palette pal, String style) {
+        // the stone of the land too: the cobble of a design laid in mossy cobble in the jungle, mud brick in the swamp,
+        // stone brick among the cherries (the desert's designs are drawn in sandstone already)
+        if (!style.equals("sandstone") && pal.stone() != Blocks.COBBLESTONE && pal.stone() != Blocks.SANDSTONE) {
+            Block b = s.getBlock();
+            if (b == Blocks.COBBLESTONE) return pal.stone().getDefaultState();
+            if (b == Blocks.COBBLESTONE_STAIRS) return pal.stoneStairs().getStateWithProperties(s);
+        }
         String from = styleWood(style);
         if (from == null || pal.wood().equals(from)) return s;
         Identifier id = Registries.BLOCK.getId(s.getBlock());

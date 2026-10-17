@@ -1485,6 +1485,14 @@ public final class Builder {
         if (b == Blocks.IRON_BARS || b instanceof ChainBlock || b instanceof AbstractCauldronBlock || b instanceof AnvilBlock
                 || b == Blocks.BLAST_FURNACE || b == Blocks.HOPPER) return take(village, x -> x.isOf(Items.IRON_INGOT), 1) ? s : SKIP;
         if (b instanceof AbstractFurnaceBlock || b instanceof StonecutterBlock || b instanceof GrindstoneBlock) return take(village, COBBLE, 4) ? s : SKIP;
+        // the desert builds of sandstone, paid in sandstone or its sand (there is no cobble to be had there); adobe of earth
+        String bid = Registries.BLOCK.getId(b).getPath();
+        if (bid.contains("sandstone"))
+            return take(village, x -> x.isOf(Items.SANDSTONE) || x.isOf(Items.CUT_SANDSTONE) || x.isOf(Items.SMOOTH_SANDSTONE) || x.isOf(Items.RED_SANDSTONE), 1)
+                    || take(village, x -> x.isOf(Items.SAND) || x.isOf(Items.RED_SAND), 2) || take(village, COBBLE, 1) ? s : fit ? SKIP : null;
+        if (b == Blocks.MUD_BRICKS || b == Blocks.PACKED_MUD || b == Blocks.MUD_BRICK_STAIRS || b == Blocks.MUD_BRICK_SLAB)
+            return take(village, x -> x.isOf(Items.MUD_BRICKS) || x.isOf(Items.PACKED_MUD) || x.isOf(Items.DIRT) || x.isOf(Items.MUD), 1)
+                    || take(village, COBBLE, 1) ? s : fit ? SKIP : null;
         if (s.isIn(BlockTags.PICKAXE_MINEABLE) && !s.isIn(BlockTags.NEEDS_IRON_TOOL) && !s.isIn(BlockTags.NEEDS_DIAMOND_TOOL))
             return take(village, COBBLE, 1) ? s : fit ? SKIP : null; // stonework: dressed from cobble
         return fit ? SKIP : take(village, COBBLE, 1) ? s : null;
