@@ -15,7 +15,7 @@ import java.util.Map;
  */
 public final class Safety {
     /** How far beyond the village's buildings the ground is its own. */
-    public static final int MARGIN = 32; // a zombie scents a villager from thirty-odd blocks: risen just past a narrower border, it walked in
+    public static final int MARGIN = 48; // a zombie scents a villager from thirty-five blocks: risen just past a narrower border (16, then 32), it walked in
     private static final Map<Long, long[]> CACHE = new HashMap<>(); // chunk -> {inside 1/0, till}
 
     private Safety() {
