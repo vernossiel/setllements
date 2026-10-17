@@ -50,6 +50,34 @@ public final class Scaffold {
      * A column beside the target, outside the building, where a man standing at the target's height has it in
      * front of him: open from the ground up to his head.
      */
+    private static BlockPos existing(ServerWorld world, VillagerEntityMCA v, BlockPos target, Built site) {
+        BlockPos best = null;
+        double bd = Double.MAX_VALUE;
+        // a column put up already that reaches this block too: back up that one, not a new column for every block
+        // (a heap of scaffolding round every building, and the builder forever climbing up and down)
+        Village home = v.getResidency().getHomeVillage().orElse(null);
+        Set<BlockPos> up = home == null ? null : PUT_UP.get(home.getId());
+        if (up != null) {
+            java.util.Map<Long, Integer> foot = new java.util.HashMap<>(); // column -> its lowest block
+            for (BlockPos q : up) foot.merge(((long) q.getX() << 32) ^ (q.getZ() & 0xFFFFFFFFL), q.getY(), Math::min);
+            for (var e : foot.entrySet()) {
+                int cx = (int) (e.getKey() >> 32), cz = (int) (long) e.getKey().intValue();
+                double dx = target.getX() + 0.5 - (cx + 0.5), dz = target.getZ() + 0.5 - (cz + 0.5);
+                if (dx * dx + dz * dz > (REACH - 0.5) * (REACH - 0.5)) continue;
+                BlockPos c = new BlockPos(cx, target.getY() - 1, cz);
+                if (site != null && insideWalls(site, c)) continue;
+                if (!open(world, c) && !world.getBlockState(c).isOf(Blocks.SCAFFOLDING) || !open(world, c.up())) continue;
+                double dist = dx * dx + dz * dz;
+                if (dist < bd) {
+                    bd = dist;
+                    best = new BlockPos(cx, e.getValue(), cz);
+                }
+            }
+            if (best != null) return best;
+        }
+        return null;
+    }
+
     private static BlockPos columnFor(ServerWorld world, VillagerEntityMCA v, BlockPos target, Built site) {
         BlockPos best = null;
         double bd = Double.MAX_VALUE;
@@ -158,7 +186,9 @@ public final class Scaffold {
         }
         // as a player does: up where he stands, if from there the block is within his reach (no walking off to a column
         // chosen beforehand that he may never get to); else the nearest column that will do
-        BlockPos col = here(world, v, target, site);
+        // a column put up already that reaches it first (a new one for every block: the house stood in a forest of them)
+        BlockPos col = existing(world, v, target, site);
+        if (col == null) col = here(world, v, target, site);
         if (col == null) col = columnFor(world, v, target, site);
         if (col == null) {
             Doing.count("c.nocolumn");

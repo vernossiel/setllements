@@ -85,6 +85,20 @@ public final class Unstick {
         return true;
     }
 
+    /** On the scaffolding, up on the work, or within a building site of the village going up. */
+    private static boolean atWork(ServerWorld world, Village village, VillagerEntityMCA v) {
+        if (world.getBlockState(v.getBlockPos().down()).isOf(net.minecraft.block.Blocks.SCAFFOLDING) || Builder.upOnWork(v)) return true;
+        return village != null && village.buildOrigin != null && site(village).expand(3).contains(v.getPos());
+    }
+
+    /** The box of the village's building in hand. */
+    private static net.minecraft.util.math.Box site(Village village) {
+        int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
+        int w = (village.buildRot & 1) == 0 ? fp[0] : fp[1], d = (village.buildRot & 1) == 0 ? fp[1] : fp[0];
+        BlockPos o = village.buildOrigin;
+        return new net.minecraft.util.math.Box(o.getX() - 1, o.getY() - 2, o.getZ() - 1, o.getX() + w + 1, o.getY() + 24, o.getZ() + d + 1);
+    }
+
     /** The block of the wall to break through: before him at feet or head height, not the village's, nothing hard. */
     private static BlockPos wallBlock(ServerWorld world, Village village, VillagerEntityMCA v) {
         BlockPos feet = v.getBlockPos();
@@ -95,6 +109,7 @@ public final class Unstick {
                 if (st.isAir() || !st.getFluidState().isEmpty() || st.getBlock() instanceof net.minecraft.block.BlockWithEntity) continue;
                 float hard = st.getHardness(world, q);
                 if (hard < 0 || hard > 3.0f) continue; // no obsidian, no iron
+                if (village != null && village.buildOrigin != null && site(village).contains(net.minecraft.util.math.Vec3d.ofCenter(q))) continue; // the house going up
                 if (playerPut(q)) return q.toImmutable(); // the cobble put across his door: out with it, whatever house it stands in
                 if (village != null && Protection.severity(world, village, q, st) > 0) continue; // the village's own
                 if (village != null) for (Built b : village.built) if (b.contains(q)) { st = null; break; }
@@ -112,6 +127,7 @@ public final class Unstick {
     private static void climbOut(ServerWorld world, VillagerEntityMCA v) {
         BlockPos feet = v.getBlockPos();
         if (!Move.passable(world, feet.up(2))) return; // a roof over him: not a pit
+        if (!Layout.land(world.getBlockState(feet.down()))) return; // the floor of a pit is the earth: not a scaffold, a floor, a roof
         v.getNavigation().stop();
         world.setBlockState(feet, net.minecraft.block.Blocks.DIRT.getDefaultState());
         world.playSound(null, feet, net.minecraft.sound.SoundEvents.BLOCK_GRAVEL_PLACE, net.minecraft.sound.SoundCategory.BLOCKS, 0.8f, 1f);
@@ -156,6 +172,12 @@ public final class Unstick {
             }
         }
 
+        // at work on a building (up on its scaffold, inside its walls going up): that is no trap. Taken for one, he broke
+        // the walls he had just laid and piled earth under himself into pillars
+        if (atWork(world, village, v)) {
+            v.settlementsTrappedSec = 0;
+            return;
+        }
         // walled in (somebody shut him in a box of his own blocks): a shout for help, then he breaks his way out
         // through what is not the village's, a crack at a time, instead of pillaring up and running round in it
         if (trapped(world, village, v)) {
