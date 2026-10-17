@@ -705,6 +705,13 @@ public final class Workforce {
             ItemStack s = v.getInventory().getStack(i);
             if (eatable(s)) meal = s.split(1);
         }
+        if (meal.isEmpty() && village != null && village.storageBuffer.stream().anyMatch(Workforce::eatable)) {
+            // from the stores - fetched there, not out of thin air wherever he stands: he walks to the store chest first
+            if (!Haul.reach(v, village)) {
+                Doing.set(v, "settlements.doing.eat.fetch");
+                return true;
+            }
+        }
         if (meal.isEmpty() && village != null) {
             // from the stores, paid for: the well-off take the best there is, the rest the cheapest
             boolean best = Purse.welloff(v);
@@ -720,6 +727,8 @@ public final class Workforce {
             }
             if (pick != null) {
                 meal = pick.split(1);
+                // and a bite for later in his bag, so the next meal at work is his own (paid for as well)
+                if (!pick.isEmpty() && Purse.pay(v, village, pick)) v.getInventory().addStack(pick.split(1));
                 village.storageBuffer.removeIf(ItemStack::isEmpty);
                 village.markDirty();
             }

@@ -76,8 +76,14 @@ public final class Mood {
                 if (s.at() == null || came.contains(v.getUuid()) || !free && world.random.nextInt(3) != 0) return false;
                 if (v.squaredDistanceTo(Vec3d.ofCenter(s.at())) > 48 * 48) return false;
                 Doing.set(v, "settlements.doing.mood.look");
-                if (v.squaredDistanceTo(Vec3d.ofCenter(s.at())) > 8 * 8) {
-                    Move.to(v, s.at().getX() + 0.5, s.at().getY(), s.at().getZ() + 0.5, 0.5);
+                // each to a place of his own a few steps off, round it, where he can see it whole: not all of them to its
+                // door at once (the whole village crowded into the doorway of the new hall)
+                double ang = (v.getUuid().hashCode() & 0xffff) / 65536.0 * Math.PI * 2;
+                int sx = s.at().getX() + (int) Math.round(Math.cos(ang) * 7), sz = s.at().getZ() + (int) Math.round(Math.sin(ang) * 7);
+                int sy = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, sx, sz);
+                if (v.squaredDistanceTo(sx + 0.5, sy, sz + 0.5) > 2.5 * 2.5 && v.squaredDistanceTo(Vec3d.ofCenter(s.at())) > 5 * 5
+                        || v.squaredDistanceTo(Vec3d.ofCenter(s.at())) < 4 * 4) {
+                    if (!Move.to(v, sx + 0.5, sy, sz + 0.5, 0.5)) came.add(v.getUuid()); // no way there: he has seen enough of it
                     return true;
                 }
                 v.getNavigation().stop();

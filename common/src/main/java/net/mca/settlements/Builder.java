@@ -624,7 +624,14 @@ public final class Builder {
     }
 
     private static boolean startAt(Village village, String type, int w, int d, int floors, Layout.Slot slot) {
-        if (village.getWorld() != null) levelSite(village.getWorld(), village, slot.origin(), slot.fw(), slot.fd());
+        if (village.getWorld() != null) {
+            String clash = Layout.clash(village.getWorld(), village, slot.origin().getX(), slot.origin().getZ(), slot.fw(), slot.fd());
+            if (clash != null) { // built inside another: never (the record says what stood in the way)
+                net.mca.MCA.LOGGER.info("[Settlements] {}: {} at {} not begun: runs into {}", village.getName(), type, slot.origin().toShortString(), clash);
+                return false;
+            }
+            levelSite(village.getWorld(), village, slot.origin(), slot.fw(), slot.fd());
+        }
         village.buildType = type;
         village.buildOrigin = slot.origin();
         village.buildRot = slot.rot();
@@ -641,6 +648,7 @@ public final class Builder {
     /** Free-standing projects without a ring slot, like the mine at the edge of the village. */
     private static boolean start(Village village, ServerWorld world, String type, int w, int d, int floors) {
         BlockPos site = findSite(world, village, w, d);
+        if (site != null && Layout.clash(world, village, site.getX(), site.getZ(), Math.max(1, w), Math.max(1, d)) != null) site = null;
         if (site == null) return false;
         int[] sfp = Blueprints.footprint(type, w, d);
         levelSite(world, village, site, sfp[0], sfp[1]); // the ground made level, as for any other site
@@ -1214,7 +1222,7 @@ public final class Builder {
                 for (House h : village.houses) {
                     if (Math.abs(h.origin().getX() - x) < h.w() + fp[0] + 2 && Math.abs(h.origin().getZ() - z) < h.d() + fp[1] + 2) taken = true;
                 }
-                if (taken) continue;
+                if (taken || Layout.clash(world, village, x - 1, z - 1, fp[0] + 2, fp[1] + 2) != null) continue; // (nor over a field, a yard or a house the village knows)
                 // level it: earth up to the floor, nothing natural above it
                 for (int dx = -1; dx <= fp[0]; dx++) {
                     for (int dz = -1; dz <= fp[1]; dz++) {

@@ -327,6 +327,29 @@ public final class Layout {
         return new BlockPos(x, ys.isEmpty() ? maxY : ys.get(ys.size() / 2), z);
     }
 
+    /**
+     * What a site at x, z of w by d runs into, or null if nothing: a building the village counts, its own or one it laid
+     * out, a field, a door, a bed, a fence. The last word before any building is begun (two went up inside each other).
+     */
+    static String clash(ServerWorld world, Village village, int x, int z, int w, int d) {
+        if (!freeOfBuildings(village, x, z, w, d)) return "a building or plot";
+        for (int dx = 0; dx < w; dx++) {
+            for (int dz = 0; dz < d; dz++) {
+                int top = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x + dx, z + dz);
+                for (int y = top; y >= top - 4; y--) {
+                    BlockPos q = new BlockPos(x + dx, y, z + dz);
+                    BlockState st = world.getBlockState(q);
+                    var b = st.getBlock();
+                    if (st.isOf(net.minecraft.block.Blocks.FARMLAND) || b instanceof net.minecraft.block.CropBlock) return "a field at " + q.toShortString();
+                    if (b instanceof net.minecraft.block.DoorBlock || b instanceof net.minecraft.block.BedBlock || b instanceof net.minecraft.block.FenceBlock
+                            || b instanceof net.minecraft.block.FenceGateBlock || b instanceof net.minecraft.block.ChestBlock || b instanceof net.minecraft.block.LecternBlock)
+                        return b.getName().getString() + " at " + q.toShortString();
+                }
+            }
+        }
+        return null;
+    }
+
     /** The plot is clear: off the streets, off other plots and off what is built already (with room between). */
     private static boolean free(Village village, int x, int z, int w, int d) {
         return free(village, reach(village), x, z, w, d);
@@ -343,7 +366,7 @@ public final class Layout {
         return freeOfBuildings(village, x, z, w, d);
     }
 
-    private static boolean freeOfBuildings(Village village, int x, int z, int w, int d) {
+    static boolean freeOfBuildings(Village village, int x, int z, int w, int d) {
         for (int[] p : village.plots) {
             if (x - MARGIN < p[0] + p[2] && x + w + MARGIN > p[0] && z - MARGIN < p[1] + p[3] && z + d + MARGIN > p[1]) return false;
         }

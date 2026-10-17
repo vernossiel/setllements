@@ -4172,6 +4172,7 @@
   "settlements.say.finds": "No sense leaving that lying about. To the stores.",
   "settlements.doing.finds": "picking up what lies about",
   "settlements.doing.fight": "fighting %s off alongside the guards",
+  "settlements.doing.eat.fetch": "going to the stores for something to eat",
   "settlements.say.trapped": "Hey! Somebody let me out of here!",
   "settlements.say.trapped.f": "Hey! Somebody let me out of here!",
   "settlements.doing.trapped": "shut in: calling for help, breaking his way out",

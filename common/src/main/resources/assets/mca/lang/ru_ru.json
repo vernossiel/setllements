@@ -4169,6 +4169,7 @@
   "settlements.say.finds": "Чего добру пропадать. На склад.",
   "settlements.doing.finds": "подбирает то, что лежит без дела",
   "settlements.doing.fight": "вместе со стражей даёт отпор %s",
+  "settlements.doing.eat.fetch": "идёт на склад за едой",
   "settlements.say.trapped": "Эй! Выпустите меня отсюда!",
   "settlements.say.trapped.f": "Эй! Выпустите меня отсюда!",
   "settlements.doing.trapped": "заперт: зовёт на помощь, пробивается наружу",
