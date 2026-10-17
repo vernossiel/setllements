@@ -269,7 +269,8 @@ public final class Mining {
                     sd = d;
                     shown = p.toImmutable();
                 }
-            } else if (p.getY() >= feet.getY() && p.getY() <= feet.getY() + 1 && d < hd) {
+            } else if (p.getY() >= feet.getY() && p.getY() <= feet.getY() + 1 && d < hd
+                    && Math.abs(p.getX() - feet.getX()) + Math.abs(p.getZ() - feet.getZ()) <= 4) { // a short way in after it, no more (passages ran off all over)
                 hd = d;
                 hidden = p.toImmutable();
             }
@@ -284,7 +285,7 @@ public final class Mining {
                 double kd = 12 * 12;
                 for (BlockPos p : known) {
                     double d = p.getSquaredDistance(feet);
-                    if (d < kd && Math.abs(p.getY() - feet.getY()) <= 1) {
+                    if (d < kd && Math.abs(p.getY() - feet.getY()) <= 1 && Math.abs(p.getX() - feet.getX()) + Math.abs(p.getZ() - feet.getZ()) <= 4) {
                         kd = d;
                         hidden = p;
                     }

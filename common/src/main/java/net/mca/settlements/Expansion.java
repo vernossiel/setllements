@@ -115,7 +115,7 @@ public final class Expansion {
             }
             if (crowded) continue;
 
-            if (!Builder.buildInstantly(world, parent, origin, Blueprints.house(6, 7, 1))) continue;
+            if (!Builder.buildInstantly(world, parent, origin, Blueprints.house(7, 7, 1))) continue;
 
             if (own) { // the parent's own people move out: gone from it, at the new house by the time anyone looks
                 for (int i = 0; i < going.size(); i++) {

@@ -70,8 +70,19 @@ public final class Blueprints {
         int top = floors * LEVEL_HEIGHT;
         plane(l, w, d, top, Kind.ROOF, -1);
         gable(l, w, d, top, false);
+        attic(l, w, top);
         outside(l, w, d, top, grand, chimney);
         return l;
+    }
+
+    /**
+     * The way up into the loft under the roof: a hatch in the ceiling of the top floor, by the middle of the back wall,
+     * and a ladder up to it on that wall (there was none: a loft nobody could get into).
+     */
+    static void attic(List<Step> l, int w, int top) {
+        int x = w / 2 - 1; // beside the middle: there is a window in the middle of the back wall, and a ladder wants a wall
+        l.add(new Step(x, top, 1, Kind.CLEAR));
+        for (int y = top - LEVEL_HEIGHT + 1; y <= top + 1; y++) l.add(new Step(x, y, 1, Kind.LADDER));
     }
 
     /** One more floor on top of an existing house of {@code floors} floors. */
@@ -87,10 +98,13 @@ public final class Blueprints {
             l.add(new Step(w, y, d / 2, Kind.CLEAR)); // and the old chimney top (older houses had it mid-wall)
             l.add(new Step(w, y, CHIMNEY_Z, Kind.CLEAR));
         }
+        int oldAttic = floors * LEVEL_HEIGHT;
+        for (int y = oldAttic - LEVEL_HEIGHT + 1; y <= oldAttic + 1; y++) l.add(new Step(w / 2 - 1, y, 1, Kind.CLEAR)); // the old ladder
         level(l, w, d, floors, true, grand, true, false);
         int top = (floors + 1) * LEVEL_HEIGHT;
         plane(l, w, d, top, Kind.ROOF, -1);
         gable(l, w, d, top, false);
+        attic(l, w, top);
         for (int y = 1; y <= top + 2 + w / 2; y++) l.add(new Step(w, y, CHIMNEY_Z, Kind.CHIMNEY));
         l.add(new Step(w, top + 3 + w / 2, CHIMNEY_Z, Kind.SMOKE));
         return l;
@@ -205,13 +219,13 @@ public final class Blueprints {
                     l.add(new Step(bx, base + 1, d >= 7 ? d - 2 : 3, Kind.SMOKER));
                     if (d >= 7 && w / 2 + 1 < bx) l.add(new Step(w / 2 + 1, base + 1, 1, Kind.BOOKSHELF));
                     if (!stairsFromBelow && w >= 7) l.add(new Step(3, base + 1, 1, Kind.BARREL));
-                    int tz = d >= 6 ? 3 : 2; // a free row behind the table
-                    if (w >= 7) {
-                        l.add(new Step(w / 2, base + 1, tz, Kind.FENCE));
-                        l.add(new Step(w / 2, base + 2, tz, Kind.PLATE));
-                        if (w / 2 - 1 > 2) l.add(new Step(w / 2 - 1, base + 1, tz, Kind.SEAT_W));
-                        if (w / 2 + 1 < bx) l.add(new Step(w / 2 + 1, base + 1, tz, Kind.SEAT_E));
-                        if (d >= 7) l.add(new Step(w / 2, base + 1, tz + 1, Kind.PEW, N)); // a stool at the front of the table
+                    // the table by the side wall, out of the way in from the door (a table leg and a stool stood right in
+                    // the doorway); chairs at its two ends
+                    int tx = w - 3, tz = 2; // by the bed and the bookcase, at the back of the room
+                    if (w >= 7 && d >= 6) {
+                        l.add(new Step(tx, base + 1, tz, Kind.FENCE));
+                        l.add(new Step(tx, base + 2, tz, Kind.PLATE));
+                        l.add(new Step(tx, base + 1, tz + 1, Kind.PEW, N));
                     }
                 }
                 default -> { // a store room: chests and barrels, a lantern from the ceiling

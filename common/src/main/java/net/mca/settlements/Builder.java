@@ -500,6 +500,7 @@ public final class Builder {
     private static String lastNoSite;
 
     private static boolean startRing(Village village, ServerWorld world, String type, int w, int d, int floors, int minRing, int maxRing) {
+        if (type.equals("house") && w > 0) w |= 1; // an odd width: the door in the middle of the front, the windows even either side of it
         if (!Templates.placeholder(type)) type = Tiers.design(type, Prosperity.tier(village), world.random, village); // the design that suits the village's station
         if (Templates.placeholder(type)) {
             // a MineColonies building: in the style of the village's land (or our own design where none suits)
