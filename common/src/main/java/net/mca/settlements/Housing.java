@@ -362,15 +362,18 @@ public final class Housing {
         if (far != null && world.getBlockState(far).getBlock() instanceof net.minecraft.block.BedBlock b) {
             bed = b.getDefaultState();
             world.breakBlock(far, false); // (both halves go)
-        } else if (Builder.takeItem(v, st -> st.isIn(net.minecraft.registry.tag.ItemTags.WOOL), 3)) {
-            if (!Builder.takeItem(v, st -> st.isIn(net.minecraft.registry.tag.ItemTags.PLANKS), 3)) {
-                net.mca.settlements.Workforce.addToTreasury(v, new net.minecraft.item.ItemStack(net.minecraft.item.Items.WHITE_WOOL, 3)); // (the wool back: no planks)
-                return null;
+        } else if (Crafts.count(v, st -> st.isIn(net.minecraft.registry.tag.ItemTags.PLANKS)) >= 3 || Crafts.count(v, st -> st.isIn(net.minecraft.registry.tag.ItemTags.LOGS)) >= 1) {
+            // a bed of planks and wool; or, no sheep yet, a straw pallet: a bale of hay or an armful of wheat
+            boolean made = Builder.takeItem(v, st -> st.isIn(net.minecraft.registry.tag.ItemTags.WOOL), 3)
+                    || Builder.takeItem(v, st -> st.isOf(net.minecraft.item.Items.HAY_BLOCK), 1)
+                    || Builder.takeItem(v, st -> st.isOf(net.minecraft.item.Items.WHEAT), 9);
+            if (made) {
+                if (!Builder.takeItem(v, st -> st.isIn(net.minecraft.registry.tag.ItemTags.PLANKS), 3)) Builder.takeItem(v, st -> st.isIn(net.minecraft.registry.tag.ItemTags.LOGS), 1); // (a log does for three planks)
+                bed = net.minecraft.block.Blocks.WHITE_BED.getDefaultState();
             }
-            bed = net.minecraft.block.Blocks.WHITE_BED.getDefaultState();
         }
         if (bed == null) {
-            LAST_NO = "no empty bed far off, no wool and planks";
+            LAST_NO = "no empty bed far off, no planks, or no wool, hay or wheat";
             return null;
         }
         BlockPos head = foot.offset(facing);
