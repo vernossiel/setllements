@@ -35,6 +35,11 @@ public final class Housing {
     }
 
     /** Households of the village with no house of their own, as last reckoned. */
+    /** A household lives split over several houses for want of one big enough: a house is wanted all the same. */
+    public static boolean split(Village v) {
+        return SPLIT.contains(v.getId());
+    }
+
     public static int homeless(Village v) {
         return HOMELESS.getOrDefault(v.getId(), 0);
     }
@@ -55,6 +60,7 @@ public final class Housing {
                 m.getBrain().forget(MemoryModuleType.HOME);
             }
         }
+        SPLIT.remove(v.getId());
         List<List<VillagerEntityMCA>> households = households(folk);
         // the houses: buildings with beds in them
         Map<Building, List<BlockPos>> houses = new HashMap<>();
@@ -112,6 +118,23 @@ public final class Housing {
                 if (best != null) break;
                 if (taken.contains(e.getKey()) || e.getValue().size() < h.size() || promisedToOther(v, e.getKey(), h)) continue;
                 if (best == null || e.getValue().size() < houses.get(best).size()) best = e.getKey();
+            }
+            if (best == null && h.size() > 1) {
+                // no house holds them all (a couple and the old village's one-bed houses): for now each gets a bed in a
+                // house of his own nearby, rather than all of them on the hall floor (and they still want a house, see Plan)
+                List<Building> free = new ArrayList<>();
+                for (Map.Entry<Building, List<BlockPos>> e : houses.entrySet()) {
+                    if (!taken.contains(e.getKey()) && !promisedToOther(v, e.getKey(), h)) free.add(e.getKey());
+                }
+                if (free.size() >= h.size()) {
+                    free.sort(Comparator.comparingInt((Building b) -> houses.get(b).size()));
+                    for (int i = 0; i < h.size(); i++) {
+                        taken.add(free.get(i));
+                        move(world, h.get(i), houses.get(free.get(i)).get(0));
+                    }
+                    SPLIT.add(v.getId());
+                    continue;
+                }
             }
             if (best == null) {
                 // no house for them: they sleep in the town hall, on a bed carried in from a house too far off to be
@@ -173,7 +196,8 @@ public final class Housing {
      * three in a row died in one such house at the edge of the plains. Reckoned once a day per bed.
      */
     static final Map<BlockPos, BlockPos> LEAK = new HashMap<>();
-    private static final Map<Long, Long> LOOSE = new HashMap<>(); // bed -> when it may be put to MCA again // bed -> the open-sky cell its room was found to reach (for /settlements bedcheck)
+    private static final Map<Long, Long> LOOSE = new HashMap<>(); // bed -> when it may be put to MCA again
+    private static final Set<Integer> SPLIT = new HashSet<>(); // villages with a household split over houses for want of a big one // bed -> the open-sky cell its room was found to reach (for /settlements bedcheck)
 
     /** The same, looked at afresh (for /settlements bedcheck). */
     static boolean safeNow(ServerWorld world, BlockPos bed) {
