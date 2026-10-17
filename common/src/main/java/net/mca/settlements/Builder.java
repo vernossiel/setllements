@@ -841,7 +841,8 @@ public final class Builder {
                 st[1] = world.getTime();
                 // (the ground is not dug out where the step is the ground itself: a field's earth, a pond, a cut)
                 boolean ground = step.kind() == Kind.FARMLAND || step.kind() == Kind.WATER || step.kind() == Kind.DIG || step.kind() == Kind.CLEAR;
-                if (!ground && (Layout.land(world.getBlockState(target)) || world.getBlockState(target).isReplaceable())) world.breakBlock(target, true, v);
+                // (only something there to break: an empty spot is no obstacle, and breaking nothing held a house at one step for a day)
+                if (!ground && !world.getBlockState(target).isAir() && (Layout.land(world.getBlockState(target)) || world.getBlockState(target).isReplaceable())) world.breakBlock(target, true, v);
                 else village.buildStep++;
                 continue;
             }
@@ -856,10 +857,15 @@ public final class Builder {
             // turned to the spot first, then the block goes in: not facing it, this beat he only turns (the head
             // leads, the body follows), and lays it on the next
             float want = (float) (net.minecraft.util.math.MathHelper.atan2(target.getZ() + 0.5 - v.getZ(), target.getX() + 0.5 - v.getX()) * (180 / Math.PI)) - 90f;
-            if (Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(want - v.getBodyYaw())) > 35 && !FREE) {
+            // (one turn to it for each block: something kept turning him back, and he stood a day turning to one block)
+            long turnKey = ((long) village.getId() << 32) | village.buildStep;
+            if (Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(want - v.getBodyYaw())) > 35 && !FREE && TURNED.getOrDefault(v.getUuid(), -1L) != turnKey) {
+                TURNED.put(v.getUuid(), turnKey);
                 v.getNavigation().stop();
                 Gaze.at(v, target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
-                v.setBodyYaw(v.getBodyYaw() + net.minecraft.util.math.MathHelper.clamp(net.minecraft.util.math.MathHelper.wrapDegrees(want - v.getBodyYaw()), -90f, 90f));
+                v.setBodyYaw(want);
+                v.setHeadYaw(want);
+                v.setYaw(want);
                 return true;
             }
             Gear.face(v, target);
@@ -1393,7 +1399,8 @@ public final class Builder {
         return laid;
     }
 
-    private static final Map<Integer, Object[]> PARKED = new HashMap<>(); // village -> the project put aside for the hall's repair
+    private static final Map<Integer, Object[]> PARKED = new HashMap<>();
+    private static final Map<java.util.UUID, Long> TURNED = new HashMap<>(); // builder -> the step he last turned to // village -> the project put aside for the hall's repair
 
     private static void finish(Village village) {
         BlockPos o = village.buildOrigin;
