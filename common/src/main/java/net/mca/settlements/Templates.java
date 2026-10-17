@@ -144,7 +144,8 @@ public final class Templates {
         try (InputStream in = Templates.class.getResourceAsStream(ROOT + id + ".json")) {
             if (in != null) {
                 com.google.gson.JsonObject j = com.google.gson.JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
-                int w = j.get("w").getAsInt(), d = j.get("d").getAsInt(), h = j.get("h").getAsInt(), ground = j.get("ground").getAsInt();
+                int w = j.get("w").getAsInt(), d = j.get("d").getAsInt(), h = j.get("h").getAsInt();
+                int ground = j.get("ground").getAsInt();
                 com.google.gson.JsonArray pa = j.getAsJsonArray("palette");
                 BlockState[] palette = new BlockState[pa.size()];
                 for (int k = 0; k < palette.length; k++) palette[k] = parse(pa.get(k).getAsString());
@@ -152,6 +153,20 @@ public final class Templates {
                 ByteBuffer bb = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN);
                 short[] data = new short[w * d * h];
                 for (int k = 0; k < data.length; k++) data[k] = bb.getShort();
+                // the floor goes on the ground: a template whose bottom layers are the ground as it is, or only a few
+                // posts, has its "ground" at the first layer with a real floor in it (the founders' hall of three styles
+                // stood three blocks up in the air on its posts)
+                for (int y = 0; y < h; y++) {
+                    int solid = 0;
+                    for (int k = y * w * d; k < (y + 1) * w * d; k++) {
+                        int i = data[k] & 0xFFFF;
+                        if (i != 0xFFFF && !palette[i].isAir()) solid++;
+                    }
+                    if (solid >= 0.15 * w * d) {
+                        ground = Math.max(ground, y);
+                        break;
+                    }
+                }
                 t = new Template(id, w, d, h, ground, palette, data, j.has("credit") ? j.get("credit").getAsString() : "");
             }
         } catch (Exception e) {
