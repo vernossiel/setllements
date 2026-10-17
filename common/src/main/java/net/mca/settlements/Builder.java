@@ -369,7 +369,8 @@ public final class Builder {
                     if (startRing(village, world, "armory", 0, 0, 0, 0, 3)) return true;
                 }
                 case "tower" -> {
-                    if (startRing(village, world, "tower", 0, 0, 0, 4, 5)) return true;
+                    // the first one near the middle, where the archer can see the houses from it; the others out on the edges
+                    if (village.towers < 1 ? startRing(village, world, "tower", 0, 0, 0, 1, 3) : startRing(village, world, "tower", 0, 0, 0, 4, 5)) return true;
                 }
                 case "townhall" -> {
                     if (startRing(village, world, "townhall", 0, 0, 0, 0, 3)) return true;

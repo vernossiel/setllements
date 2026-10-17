@@ -50,7 +50,10 @@ public final class Plan {
             new Goal("smithy", Level.VILLAGE, v -> !v.smithyBuilt && v.storageBuilt, 100, 12, 40, 0),
             new Goal("tavern", Level.VILLAGE, v -> v.tavern == null && v.storageBuilt && v.getPopulation() >= 6, 160, 12, 0, 0),
             new Goal("armory", Level.VILLAGE, v -> v.smithyBuilt && !v.armoryBuilt && v.getPopulation() >= 6, 150, 0, 0, 0),
-            new Goal("tower", Level.VILLAGE, v -> v.towers < (Prosperity.tier(v) >= Tiers.CITY ? 4 : 2) && v.getPopulation() >= 8, 150, 60, 0, 0),
+            // the first tower already in a hamlet of five, for its archers: they keep the night watch from its deck, not
+            // standing out on open ground for the skeletons (the rest once it is a village)
+            new Goal("tower", Level.HAMLET, v -> v.towers < (Prosperity.tier(v) >= Tiers.CITY ? 4 : 2)
+                    && (v.getPopulation() >= 8 && Plan.level(v) != Level.HAMLET || v.towers < 1 && v.getPopulation() >= 5), 150, 60, 0, 0),
             new Goal("shop", Level.VILLAGE, v -> Prosperity.tier(v) >= Tiers.WEALTHY && Buildings.count(v, "shop") < (Prosperity.tier(v) >= Tiers.CITY ? 1 + v.getPopulation() / 6 : 1), 140, 40, 0, 4),
             new Goal("newhome", Level.HAMLET, v -> v.commissionElsewhere != null, 165, 0, 0, 0),
             new Goal("renovate", Level.HAMLET, v -> (v.getPopulation() >= 6 && Plan.level(v) != Level.HAMLET || !v.commissions.isEmpty()) && Rebuild.renovation(v) != null, 160, 40, 0, 0),
