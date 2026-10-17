@@ -153,6 +153,16 @@ public final class Scaffold {
         }
         if (!onIt) {
             Doing.count("c.col.walk");
+            // a quarter of a minute and not at the foot of it: set down there (he walked at one the whole day)
+            long[] w = WALKING.computeIfAbsent(v.getUuid(), k -> new long[]{Long.MIN_VALUE, 0});
+            if (w[0] != col.asLong()) {
+                w[0] = col.asLong();
+                w[1] = world.getTime();
+            } else if (world.getTime() - w[1] > 300) {
+                WALKING.remove(v.getUuid());
+                Doing.count("c.col.put");
+                if (Move.putSafely(v, col)) return true;
+            }
             Move.to(v, col.getX() + 0.5, col.getY(), col.getZ() + 0.5, 0.6);
             return true;
         }

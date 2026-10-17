@@ -74,7 +74,7 @@ public final class Mining {
             // down the stairs of the shaft, step by step; a mouth he cannot get into (the shed in the way, a hole
             // beside it) does not keep him there all day: after a minute he is set down at the working face
             Doing.count("m.shaft");
-            if (v.settlementsStuck++ > 60 && world.isChunkLoaded(stand.getX() >> 4, stand.getZ() >> 4)) {
+            if (v.settlementsStuck++ > 15 && world.isChunkLoaded(stand.getX() >> 4, stand.getZ() >> 4)) { // (a quarter of a minute; it was a minute at every trip down, a third of his day)
                 Doing.count("m.put.shaft");
                 if (!Move.putSafely(v, stand)) lostWay(village);
                 v.settlementsStuck = 0;
@@ -89,7 +89,7 @@ public final class Mining {
         if (v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > 25) {
             // walk down; if the stairs do not work out, go straight to the face
             Doing.count("m.walk");
-            if (v.settlementsStuck++ > 45 && world.isChunkLoaded(stand.getX() >> 4, stand.getZ() >> 4)) {
+            if (v.settlementsStuck++ > 15 && world.isChunkLoaded(stand.getX() >> 4, stand.getZ() >> 4)) {
                 Doing.count("m.put.face");
                 // set down on the floor of the drift, never in the air or the rock; no floor down there to stand on
                 // (the way down was never finished): the mine is gone over again from the top, the gaps dug out
