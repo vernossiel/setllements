@@ -24,6 +24,8 @@ public final class Mining {
     static final int QUOTA = STONE_QUOTA;
     private static final Map<Integer, List<Step>> LEVELS = new HashMap<>();
     private static final Map<java.util.UUID, long[]> SHED = new HashMap<>(); // miner -> {step, since}
+    private static final Map<java.util.UUID, long[]> VEIN = new HashMap<>(); // miner -> {the ore he is cutting a way to, since}
+    private static final java.util.Set<Long> GIVEN_UP = new java.util.HashSet<>(); // ores he could not get to
 
     private Mining() {
     }
@@ -285,15 +287,30 @@ public final class Mining {
         }
         BlockPos dig = shown;
         if (dig == null && hidden != null) {
+            // one vein at a time, and not for ever: forty seconds after it with nothing to show, he leaves it be
+            long now = world.getTime();
+            long[] t = VEIN.computeIfAbsent(v.getUuid(), k -> new long[]{Long.MIN_VALUE, 0});
+            if (t[0] != hidden.asLong()) {
+                t[0] = hidden.asLong();
+                t[1] = now;
+            } else if (now - t[1] > 800) {
+                if (v.getResidency().getHomeVillage().isPresent()) v.getResidency().getHomeVillage().get().knownOres.remove(hidden);
+                GIVEN_UP.add(hidden.asLong());
+                VEIN.remove(v.getUuid());
+                return false;
+            }
+            if (GIVEN_UP.contains(hidden.asLong())) return false;
             // a side passage to it, two high, straight along one axis and then the other
-            BlockPos c = feet;
+            BlockPos c = feet, back = feet;
             while (!c.equals(hidden.withY(feet.getY())) && dig == null) {
                 int dx = Integer.signum(hidden.getX() - c.getX()), dz = Integer.signum(hidden.getZ() - c.getZ());
+                back = c;
                 c = dx != 0 ? c.add(dx, 0, 0) : c.add(0, 0, dz);
                 for (BlockPos cell : new BlockPos[]{c.up(), c}) {
                     if (world.getBlockState(cell).isAir()) continue;
                     if (v.squaredDistanceTo(cell.getX() + 0.5, cell.getY() + 0.5, cell.getZ() + 0.5) > 20 || !Dig.sees(v, cell)) {
-                        Move.to(v, c.getX() + 0.5, c.getY(), c.getZ() + 0.5, 0.55); // further in along the passage
+                        // to the end of the passage cut so far (it was the rock itself he was sent to walk into, all day)
+                        Move.to(v, back.getX() + 0.5, back.getY(), back.getZ() + 0.5, 0.55);
                         return true;
                     }
                     dig = cell;

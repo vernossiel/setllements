@@ -229,6 +229,26 @@ public final class SettlementsCommand {
                     Builder.opsPerSecond = IntegerArgumentType.getInteger(c, "ops");
                     return say(c, "Builder and miner speed: " + Builder.opsPerSecond + " blocks per second (default 2)");
                 })))
+                .then(CommandManager.literal("blocks").then(CommandManager.argument("from", net.minecraft.command.argument.BlockPosArgumentType.blockPos())
+                        .then(CommandManager.argument("to", net.minecraft.command.argument.BlockPosArgumentType.blockPos()).executes(c -> {
+                            // testing: the blocks of a box, a row per x and y, for looking at what was built where
+                            var a = net.minecraft.command.argument.BlockPosArgumentType.getLoadedBlockPos(c, "from");
+                            var b = net.minecraft.command.argument.BlockPosArgumentType.getLoadedBlockPos(c, "to");
+                            var w = c.getSource().getWorld();
+                            for (int y = Math.max(a.getY(), b.getY()); y >= Math.min(a.getY(), b.getY()); y--) {
+                                for (int x = Math.min(a.getX(), b.getX()); x <= Math.max(a.getX(), b.getX()); x++) {
+                                    StringBuilder row = new StringBuilder("y" + y + " x" + x + ":");
+                                    for (int z = Math.min(a.getZ(), b.getZ()); z <= Math.max(a.getZ(), b.getZ()); z++) {
+                                        var st = w.getBlockState(new net.minecraft.util.math.BlockPos(x, y, z));
+                                        String id = net.minecraft.registry.Registries.BLOCK.getId(st.getBlock()).getPath();
+                                        if (st.getBlock() instanceof net.minecraft.block.StairsBlock) id += "/" + st.get(net.minecraft.block.StairsBlock.FACING).asString().charAt(0);
+                                        row.append(' ').append(id);
+                                    }
+                                    c.getSource().sendFeedback(() -> net.minecraft.text.Text.literal(row.toString()), false);
+                                }
+                            }
+                            return 1;
+                        }))))
                 .then(CommandManager.literal("scan").executes(c -> {
                     int n = Registration.reportAround(c.getSource().getWorld(), c.getSource().getPlayerOrThrow().getBlockPos(), 64);
                     return say(c, "Handed " + n + " beds to the village scanner. Wait a few seconds, then try /settlements status.");
