@@ -172,7 +172,7 @@ public final class Farming {
     /** 1 a ripe crop, 2 a bare bed, 3 a growing crop (fed only when there is bone meal to spare), 0 nothing. */
     private static int want(ServerWorld world, BlockPos crop) {
         BlockState s = world.getBlockState(crop), under = world.getBlockState(crop.down());
-        if (!under.isOf(Blocks.FARMLAND)) return newBed(world, crop.down()) && s.isAir() ? 4 : 0;
+        if (!under.isOf(Blocks.FARMLAND)) return (newBed(world, crop.down()) || GARDEN.contains(crop.down().asLong())) && s.isAir() ? 4 : 0;
         if (s.getBlock() instanceof CropBlock c) return c.isMature(s) ? 1 : 3;
         return s.isAir() ? 2 : 0;
     }
@@ -212,6 +212,9 @@ public final class Farming {
                     int w = want(world, p);
                     if (w != 0 && Move.unreachable(world, p)) break; // no way up to it: the other beds first
                     if (w == 4) {
+                        boolean plot = village.getBuildingAt(p).isPresent(); // a new bed: not into a plot or a building
+                        for (int[] pl : village.plots) if (x >= pl[0] - 1 && x <= pl[0] + pl[2] && z >= pl[1] - 1 && z <= pl[1] + pl[3]) plot = true;
+                        if (plot) break;
                         double d = v.squaredDistanceTo(x + 0.5, yy, z + 0.5);
                         if (seed && d < bedD) {
                             bedD = d;
@@ -230,7 +233,42 @@ public final class Farming {
             }
         }
         // nothing to do in the fields: they are made bigger, a bed at a time, while there is seed and use for more
+        if (best == null && bed == null && seed && beds < most && Forage.hungry(village)) {
+            // the fields fenced in and nowhere to dig another bed, and the village going hungry: a new garden by the water,
+            // its first bed now, the rest beside it after (the farmer stood waiting on his crop while they starved)
+            bed = gardenSpot(world, village, c);
+            if (bed != null) GARDEN.add(bed.down().asLong());
+        }
         return best != null ? best : beds < most ? bed : null;
+    }
+
+    /** Where a new garden was begun: its first bed may be dug though nothing is tilled beside it yet. */
+    private static final java.util.Set<Long> GARDEN = new java.util.HashSet<>();
+
+    /** Grass by the water near the village, clear of buildings, plots, roads and fences: the place for a new garden. */
+    private static BlockPos gardenSpot(ServerWorld world, Village village, BlockPos c) {
+        for (int r = 6; r <= 32; r += 2) {
+            for (int a = 0; a < r * 4; a++) {
+                double ang = a * Math.PI * 2 / (r * 4);
+                int x = c.getX() + (int) Math.round(Math.cos(ang) * r), z = c.getZ() + (int) Math.round(Math.sin(ang) * r);
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+                int y = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+                BlockPos p = new BlockPos(x, y, z);
+                BlockState g = world.getBlockState(p.down());
+                if (!(g.isOf(Blocks.GRASS_BLOCK) || g.isOf(Blocks.DIRT)) || !world.getBlockState(p).isReplaceable() || !nearWater(world, p.down())) continue;
+                if (!world.isSkyVisible(p) || village.getBuildingAt(p).isPresent()) continue;
+                boolean clear = true;
+                for (int[] pl : village.plots) if (x >= pl[0] - 2 && x <= pl[0] + pl[2] + 1 && z >= pl[1] - 2 && z <= pl[1] + pl[3] + 1) clear = false;
+                for (Built b : village.built) if (b.contains(p)) clear = false;
+                for (BlockPos q : BlockPos.iterate(p.add(-2, -1, -2), p.add(2, 1, 2))) {
+                    var qb = world.getBlockState(q);
+                    if (qb.isOf(Blocks.DIRT_PATH) || qb.getBlock() instanceof net.minecraft.block.FenceBlock || qb.getBlock() instanceof net.minecraft.block.DoorBlock
+                            || qb.isIn(net.minecraft.registry.tag.BlockTags.LOGS)) clear = false;
+                }
+                if (clear) return p.toImmutable();
+            }
+        }
+        return null;
     }
 
     /** Within the fence, not on it or outside it. */

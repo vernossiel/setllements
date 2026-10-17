@@ -149,8 +149,17 @@ public final class Staffing {
         for (net.minecraft.item.ItemStack s : v.storageBuffer) if (s.isFood()) food += s.getCount();
         boolean hungry = food < p * 3;
         List<Role> roles = new ArrayList<>(); // in order of importance
-        roles.add(new Role(VillagerProfession.CARTOGRAPHER, Math.max(1, Math.min(4, p / 3)))); // a second pair of hands from six people on: one builder alone took days over a house
+        // hungry: food first. One builder, the rest of the hands to whatever feeds people in this country - the fields,
+        // the water, the woods and their game, the pen (a village of seven starved four days with one farmer, its
+        // second builder at a house and its hunter taken off to the quarry)
+        int sea = water(world, v), woodland = forest(world, v);
+        roles.add(new Role(VillagerProfession.CARTOGRAPHER, hungry ? 1 : Math.max(1, Math.min(4, p / 3)))); // a second pair of hands from six people on: one builder alone took days over a house
         if (p >= 3) roles.add(new Role(VillagerProfession.FARMER, Math.max(1, p / 6) + (hungry ? 1 : 0)));
+        if (hungry && p >= 3) {
+            if (sea >= 24) roles.add(new Role(VillagerProfession.FISHERMAN, 1));
+            if (woodland >= 12 || sea < 24) roles.add(new Role(VillagerProfession.LEATHERWORKER, 1)); // the hunter
+            if (v.penCenter != null) roles.add(new Role(VillagerProfession.SHEPHERD, 1));
+        }
         // lumberjacks after the woods there are: a desert or a steppe village keeps one, who goes far for wood
         int woods = forest(world, v);
         int lumber = woods >= 40 ? Math.max(1, p / 4) : woods >= 12 ? Math.max(1, p / 8) : 1;

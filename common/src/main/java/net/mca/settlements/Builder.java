@@ -295,6 +295,17 @@ public final class Builder {
                 }
             }
         }
+        // nor into a cave or a ravine: all of the rock the shaft and its galleries go through is whole before it is dug
+        // (two men fell to their deaths where a shaft ran out into a gorge)
+        int hollow = 0;
+        for (int x = -2; x <= 3; x++) {
+            for (int z = 0; z <= depth + 6; z++) {
+                for (int y = -3; y >= -depth - 4; y--) { // (below the top of the ground: a slope is no cave)
+                    BlockPos p = o.add(x, y, z);
+                    if (world.getBlockState(p).isAir() && ++hollow > 3) return false;
+                }
+            }
+        }
         return true;
     }
 

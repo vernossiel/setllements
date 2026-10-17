@@ -44,12 +44,26 @@ public final class Weather {
      * Once a second; true while he is getting out of the rain or waiting it out under a roof. {@code free}: he has
      * nothing pressing (off work, or idle); a thunderstorm sends in all but the watch.
      */
+    private static final java.util.Map<java.util.UUID, Long> STORM = new java.util.HashMap<>(); // worker -> when the storm sent him in
+
     public static boolean shelter(VillagerEntityMCA v, Village village, ServerWorld world, boolean free) {
         if (!world.isRaining() || v.isSleeping() || v.isGuard()) {
             COVER.remove(v.getUuid());
+            STORM.remove(v.getUuid());
             return false;
         }
         if (!free && !world.isThundering()) return false;
+        // a storm that does not let up: two minutes under a roof, then back to the work, wet or not (a thunderstorm
+        // lasted the whole day, and the whole village sat it out with no food in the stores)
+        if (!free) {
+            long now = world.getTime();
+            long since = STORM.computeIfAbsent(v.getUuid(), k -> now);
+            if (now - since > 20 * 120) {
+                if (now - since > 20 * 900) STORM.put(v.getUuid(), now); // (a quarter of an hour on: in again for a while)
+                COVER.remove(v.getUuid());
+                return false;
+            }
+        } else STORM.remove(v.getUuid());
         if (!world.hasRain(v.getBlockPos().up()) && COVER.containsKey(v.getUuid())) { // under cover: he waits there, looking out
             v.getNavigation().stop();
             Doing.set(v, "settlements.doing.weather.wait");

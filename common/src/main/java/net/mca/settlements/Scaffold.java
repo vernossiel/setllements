@@ -291,7 +291,10 @@ public final class Scaffold {
     /** Somewhere to stand: solid under foot (not scaffolding), open for his feet and head, and nothing to go there. */
     private static boolean stand(ServerWorld world, BlockPos p, Set<Long> planned) {
         BlockState under = world.getBlockState(p.down());
-        if (!under.isSolidBlock(world, p.down()) || under.isOf(Blocks.SCAFFOLDING)) return false;
+        // (the steps of the roof and its slabs too: up on the roof itself, as a man lays its ridge; with nothing but
+        // full blocks to stand on he stood three days below the last row of it)
+        boolean step = under.getBlock() instanceof net.minecraft.block.StairsBlock || under.getBlock() instanceof net.minecraft.block.SlabBlock;
+        if (!under.isSolidBlock(world, p.down()) && !step || under.isOf(Blocks.SCAFFOLDING)) return false;
         if (!open(world, p) || !open(world, p.up())) return false;
         return planned == null || !planned.contains(p.asLong()) && !planned.contains(p.up().asLong());
     }
