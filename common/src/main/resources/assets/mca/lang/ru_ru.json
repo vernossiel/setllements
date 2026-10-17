@@ -1926,6 +1926,8 @@
   "settlements.recall.helped.1": "А, %s, помню, помню — выручил.",
   "settlements.recall.helped.2": "%s! Рады видеть.",
   "settlements.plan.say.wait": "Материал (%s) уже везут. Пока помощу дорогу.",
+  "settlements.plan.say.dig": "Камня нет и шахтёра нет — сам накопаю в шахте.",
+  "settlements.plan.doing.dig": "план: нет ни камня, ни шахтёра — копает в шахте сам",
   "settlements.plan.say.gather": "Никто не везёт (%s) — сам добуду.",
   "settlements.plan.say.ask": "Может, путник поможет с этим (%s)...",
   "settlements.plan.say.elder": "Пойду скажу старейшине, что стоим без (%s).",

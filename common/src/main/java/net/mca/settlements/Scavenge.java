@@ -77,7 +77,12 @@ public final class Scavenge {
         }
 
         // 2. only wood will do: fell a tree
-        if (!anyBlock && need == Needs.Need.PLANKS && Lumberjack.work(v, village, true)) return true;
+        // (on his way to the tree is at it too: taken for nothing done, the builder's own felling was set aside for a minute
+        // and a half each time he set off, and with no woodsman in the village he never got to a tree at all)
+        if (!anyBlock && need == Needs.Need.PLANKS) {
+            if (!Gear.has(v, net.minecraft.item.AxeItem.class)) Gear.equipTool(v, village, net.mca.entity.ai.Chore.CHOP);
+            if (Lumberjack.work(v, village, true) || v.lumberTarget != null) return true;
+        }
 
         // 3. dig the ground and stone around (enough is enough: no craters around the village)
         if (anyBlock && stockFiller(village) >= 256) return false;

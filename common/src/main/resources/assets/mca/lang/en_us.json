@@ -1929,6 +1929,8 @@
   "settlements.recall.helped.1": "Ah, %s, I remember - you saved us.",
   "settlements.recall.helped.2": "%s! Good to see you.",
   "settlements.plan.say.wait": "The %s is on its way. I'll pave meanwhile.",
+  "settlements.plan.say.dig": "No stone and no miner - I'll dig it out of the mine myself.",
+  "settlements.plan.doing.dig": "plan: no stone and no miner - digging it in the mine himself",
   "settlements.plan.say.gather": "Nobody's bringing the %s - I'll get it myself.",
   "settlements.plan.say.ask": "Maybe the traveller can help with the %s...",
   "settlements.plan.say.elder": "I'll tell the elder we're stuck without %s.",

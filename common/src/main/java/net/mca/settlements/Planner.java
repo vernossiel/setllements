@@ -175,6 +175,22 @@ public final class Planner {
                     return Scavenge.work(v, village, world, need, need == Needs.Need.COBBLE); // short of wood: a tree felled, not earth dug (walls are no longer patched with it)
                 }
             },
+            // no stone lying about or showing, and no miner in the village: down the mine himself, as the miner would
+            // (the builder stood a day asking the elder for stone, with the shaft beside the hall)
+            new Step() {
+                public String key() {
+                    return "dig";
+                }
+
+                public boolean possible(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
+                    return need == Needs.Need.COBBLE && !Staffing.has(world, village, net.minecraft.village.VillagerProfession.MASON);
+                }
+
+                public boolean run(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
+                    if (Builder.stockCobble(village) >= 64) return false; // enough for now: back to the building
+                    return Chain.mine(v, village, world, world.getTimeOfDay()) || Move.goal(v) != null;
+                }
+            },
             // a friend of the village stands near: he asks
             new Step() {
                 public String key() {

@@ -253,7 +253,8 @@ public final class Route {
             }
             if (s.level >= 4) {
                 // the very last resort: set down by the goal (never in the air or the rock), or the errand is given up
-                if (v.getBlockPos().getSquaredDistance(goal) < 64 * 64 && Move.putSafely(v, goal)) Speech.sayAny(v, "settlements.say.way.round", 3);
+                // (never before a player's eyes: there he gives the errand up for now, as a man who finds no way does)
+                if (v.getBlockPos().getSquaredDistance(goal) < 64 * 64 && Bed.unseen(v, world) && Move.putSafely(v, goal)) Speech.sayAny(v, "settlements.say.way.round", 3);
                 else v.settlementsGoal = null;
                 STATE.remove(v.getUuid());
                 return true;
