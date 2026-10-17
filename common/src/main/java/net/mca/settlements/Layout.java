@@ -135,7 +135,7 @@ public final class Layout {
                 int x = lot.x() - fw / 2, z = lot.z() - fd / 2;
                 if (!free(village, x, z, fw, fd) || !freeOfBuildings(village, x, z, fw, fd)) continue;
                 BlockPos origin = flat(world, x, z, fw, fd, pass);
-                if (origin != null) return new Slot(origin, lot.rot(), fw, fd);
+                if (origin != null && reachable(village, type, origin)) return new Slot(origin, lot.rot(), fw, fd);
                 if (++tried > 400) return null; // enough looking for one time
             }
         }
@@ -190,7 +190,7 @@ public final class Layout {
             for (Lot lot : open) {
                 int fw = (lot.rot() & 1) == 0 ? fp[0] : fp[1], fd = (lot.rot() & 1) == 0 ? fp[1] : fp[0];
                 BlockPos origin = flat(world, lot.x(), lot.z(), fw, fd, pass);
-                if (origin != null) return new Slot(origin, lot.rot(), fw, fd);
+                if (origin != null && reachable(village, type, origin)) return new Slot(origin, lot.rot(), fw, fd);
             }
         }
         return null;
@@ -215,10 +215,23 @@ public final class Layout {
                 int x = c.getX() + (int) dx - fw / 2, z = c.getZ() + (int) dz - fd / 2;
                 if (!free(village, x, z, fw, fd)) continue;
                 BlockPos origin = flat(world, x, z, fw, fd, pass);
-                if (origin != null) return new Slot(origin, rot, fw, fd);
+                if (origin != null && reachable(village, type, origin)) return new Slot(origin, rot, fw, fd);
             }
         }
         return null;
+    }
+
+    /**
+     * Not up on a plateau or down a ravine from the village: a farm built thirty blocks above the houses, on a cliff
+     * top, was never reached by its farmer (he stood under the cliff all day and the village starved). A mine may sit
+     * on the hill it digs into.
+     */
+    private static final int MAX_RISE = 12;
+
+    private static boolean reachable(Village village, String type, BlockPos origin) {
+        if (type.equals("mine")) return true;
+        int y = village.hallPos != null ? village.hallPos.getY() : village.getCenter().getY();
+        return Math.abs(origin.getY() - y) <= MAX_RISE;
     }
 
     /** The plaza itself: the plan stands on the village center. */

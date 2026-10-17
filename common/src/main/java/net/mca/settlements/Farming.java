@@ -205,6 +205,7 @@ public final class Farming {
                     BlockPos p = new BlockPos(x, yy, z);
                     if (world.getBlockState(p.down()).isOf(Blocks.FARMLAND)) beds++;
                     int w = want(world, p);
+                    if (w != 0 && Move.unreachable(world, p)) break; // no way up to it: the other beds first
                     if (w == 4) {
                         double d = v.squaredDistanceTo(x + 0.5, yy, z + 0.5);
                         if (seed && d < bedD) {

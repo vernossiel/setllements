@@ -34,6 +34,20 @@ public final class Move {
 
     private static final java.util.Map<java.util.UUID, long[]> TRYING = new java.util.HashMap<>(); // villager -> {goal, since}
 
+    private static final java.util.Map<Long, Long> UNREACHABLE = new java.util.HashMap<>(); // spot -> given up till
+
+    /** A spot somebody tried to walk to for most of a minute and found no way to (see to), within a block. */
+    public static boolean unreachable(net.minecraft.world.World world, BlockPos p) {
+        if (UNREACHABLE.isEmpty()) return false;
+        long now = world.getTime();
+        if (UNREACHABLE.size() > 500) UNREACHABLE.values().removeIf(t -> t < now);
+        for (BlockPos q : BlockPos.iterate(p.add(-1, -1, -1), p.add(1, 1, 1))) {
+            Long t = UNREACHABLE.get(q.asLong());
+            if (t != null && t > now) return true;
+        }
+        return false;
+    }
+
     public static boolean to(VillagerEntityMCA v, double x, double y, double z, double speed) {
         speed = Math.min(speed, PACE) * Gaze.pace(v); // the tired drag their feet, the keen step out
         BlockPos goal = BlockPos.ofFloored(x, y, z);
@@ -47,6 +61,15 @@ public final class Move {
                 && (v.getNavigation().getCurrentPath() == null || !v.getNavigation().getCurrentPath().reachesTarget())) { // (a way that gets there, he keeps walking)
             v.getNavigation().stop();
             return true;
+        }
+        // asked for most of a minute and no way there at all (up a cliff, across a ravine): the spot is given up for a
+        // day, so the work that wanted it looks for another (see unreachable)
+        if (tr != null && now - tr[1] > 20 * 45 && v.squaredDistanceTo(x, y, z) > 2.5 * 2.5
+                && (v.getNavigation().getCurrentPath() == null || !v.getNavigation().getCurrentPath().reachesTarget())) {
+            UNREACHABLE.put(goal.asLong(), now + 24000L);
+            TRYING.remove(v.getUuid());
+            v.getNavigation().stop();
+            return false;
         }
         // already on his way there: he keeps walking the path he has, not stopping each second to work out a new one
         var nav = v.getNavigation();
