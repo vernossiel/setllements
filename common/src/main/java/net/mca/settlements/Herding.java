@@ -66,7 +66,7 @@ public final class Herding {
     }
 
     static boolean kind(AnimalEntity a) {
-        return a instanceof SheepEntity || a instanceof CowEntity || a instanceof PigEntity || a instanceof ChickenEntity;
+        return a instanceof SheepEntity || a instanceof CowEntity || a instanceof PigEntity; // (hens run about the yards as they like: nobody leads a hen to the pen on a rope)
     }
 
     /**

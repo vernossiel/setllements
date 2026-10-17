@@ -138,7 +138,9 @@ public final class Staffing {
         VillagerEntityMCA elder = Plan.elder(world, v);
         for (VillagerEntityMCA r : adults) r.setElder(r == elder);
         // the elder governs; he does not go down the mine or into the woods
-        if (elder != null && isOurRole(elder.getProfession())) {
+        // (any trade: a weaponsmith made elder kept his grindstone, and the game's own schedule ran him to it and back
+        // between the village's business all day)
+        if (elder != null && elder.getProfession() != VillagerProfession.NONE) {
             elder.setProfession(VillagerProfession.NONE);
             elder.reinitializeBrain(world);
         }

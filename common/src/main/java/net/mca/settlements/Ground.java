@@ -97,12 +97,16 @@ public final class Ground {
                         for (int oz = -1; oz <= 1; oz++) {
                             if (ox == 0 && oz == 0) continue;
                             int nh = top(world, x + ox, z + oz);
+                            // only the land counts: a wall or a roof beside it is no bank of earth (the gap between two
+                            // houses was taken for a hole, and filled with earth up to their eaves)
+                            if (!natural(world.getBlockState(new BlockPos(x + ox, nh - 1, z + oz)))) continue;
                             n++;
                             if (nh > h) higher++;
                             if (nh < h - 1) lower++;
                         }
                     }
                     BlockPos ground = at.down();
+                    if (n < 6) continue; // walled about by buildings: not the village's ground to shape
                     if (higher >= 6 && world.getBlockState(at).isReplaceable() && world.getFluidState(at).isEmpty() && natural(world.getBlockState(ground))) {
                         TODO.put(village.getId(), at);
                         FILL.put(village.getId(), true);
