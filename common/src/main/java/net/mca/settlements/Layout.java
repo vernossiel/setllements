@@ -336,6 +336,8 @@ public final class Layout {
         for (int dx = 0; dx < w; dx++) {
             for (int dz = 0; dz < d; dz++) {
                 int top = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x + dx, z + dz);
+                // nothing over water: a hall half its length out over the pond, its walls standing in it
+                if (!world.getFluidState(new BlockPos(x + dx, top - 1, z + dz)).isEmpty()) return "water at " + new BlockPos(x + dx, top - 1, z + dz).toShortString();
                 for (int y = top; y >= top - 4; y--) {
                     BlockPos q = new BlockPos(x + dx, y, z + dz);
                     BlockState st = world.getBlockState(q);

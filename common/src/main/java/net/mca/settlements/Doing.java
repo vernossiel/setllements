@@ -42,12 +42,13 @@ public final class Doing {
 
     /** Once a second, before the new second's note is written: last second's note of a builder, counted. */
     static void tally(VillagerEntityMCA v) {
-        if (v.getProfession() != net.minecraft.village.VillagerProfession.CARTOGRAPHER) return;
+        boolean miner = v.getProfession() == net.minecraft.village.VillagerProfession.MASON;
+        if (v.getProfession() != net.minecraft.village.VillagerProfession.CARTOGRAPHER && !miner) return;
         long tod = v.getWorld().getTimeOfDay() % 24000L;
         if (tod >= 12000) return;
         Note n = NOTES.get(v.getUuid());
         String k = v.isSleeping() ? "sleep" : v.settlementsEatTicks > 0 ? "eating" : n == null || v.getWorld().getTime() - n.at() > 40 ? "none" : n.key().replace("settlements.doing.", "");
-        TALLY.merge(k, 1, Integer::sum);
+        TALLY.merge(miner ? "M." + k : k, 1, Integer::sum);
     }
 
     /** One more of something a builder does within his work (a block laid, a turn, a walk), for the same record. */
@@ -57,7 +58,7 @@ public final class Doing {
 
     /** Where the builders' day went, most first; and the count starts afresh. */
     public static String daySummary() {
-        String s = TALLY.entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue()).limit(16)
+        String s = TALLY.entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue()).limit(30)
                 .map(e -> e.getKey() + "=" + e.getValue()).collect(java.util.stream.Collectors.joining(" "));
         TALLY.clear();
         return s;

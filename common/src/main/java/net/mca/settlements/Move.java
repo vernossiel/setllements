@@ -502,8 +502,12 @@ public final class Move {
         for (BlockPos p : BlockPos.iterate(at.add(-2, -2, -2), at.add(2, 2, 2))) {
             BlockState floor = world.getBlockState(p.down());
             if (!passable(world, p) || !passable(world, p.up()) || !world.getFluidState(p).isEmpty()) continue;
-            if (!floor.isSideSolidFullSquare(world, p.down(), Direction.UP) && !floor.isOf(Blocks.SCAFFOLDING)) continue;
-            double d = p.getSquaredDistance(at);
+            if (!floor.isSideSolidFullSquare(world, p.down(), Direction.UP) && !floor.isOf(Blocks.SCAFFOLDING)
+                    && !(floor.getBlock() instanceof net.minecraft.block.StairsBlock) && !(floor.getBlock() instanceof net.minecraft.block.SlabBlock)) continue; // (the mine's steps too: no floor found there, the whole mine was started over)
+            // the same level first: a block up or down counts as four aside (taking the nearest in a straight line, a man
+            // squeezed in a doorway came out on the roof of the house)
+            double d = p.getSquaredDistance(at.getX(), p.getY(), at.getZ()) + 4.0 * (p.getY() - at.getY()) * (p.getY() - at.getY())
+                    + (world.isSkyVisible(p) && !world.isSkyVisible(at) ? 6 : 0); // and inside stays inside
             if (d < bd) {
                 bd = d;
                 best = p.toImmutable();
@@ -566,13 +570,16 @@ public final class Move {
         BlockPos p = OPENED.get(v.getUuid());
         if (p == null || !(v.getWorld() instanceof ServerWorld world)) return;
         double d = v.squaredDistanceTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5);
-        if (d < 0.8 * 0.8) return; // still in the doorway (not merely near it: one sitting the night by the door kept the hall open to the zombies)
+        if (d < 1.3 * 1.3) return; // still in the doorway, or on its step (shut on his heels, it caught him in it)
         if (d > 64) {
             OPENED.remove(v.getUuid()); // long gone: somebody else may shut it
             return;
         }
         BlockState s = world.getBlockState(p);
         if (!world.getOtherEntities(null, new net.minecraft.util.math.Box(p), e -> e instanceof net.minecraft.entity.LivingEntity).isEmpty()) return; // somebody in it: the next second
+        // nor in the face of the next man coming through: they stood at it, one opening and the other shutting it
+        if (!world.getEntitiesByClass(VillagerEntityMCA.class, new net.minecraft.util.math.Box(p).expand(2.5, 1, 2.5), o -> o != v && o.isAlive() && !o.isSleeping()
+                && o.getNavigation().isFollowingPath()).isEmpty()) return;
         OPENED.remove(v.getUuid());
         if (s.getBlock() instanceof net.minecraft.block.FenceGateBlock && s.get(net.minecraft.block.FenceGateBlock.OPEN)) {
             world.setBlockState(p, s.with(net.minecraft.block.FenceGateBlock.OPEN, false), net.minecraft.block.Block.NOTIFY_LISTENERS | net.minecraft.block.Block.REDRAW_ON_MAIN_THREAD);

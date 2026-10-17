@@ -158,7 +158,7 @@ public final class Planner {
                 public boolean run(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
                     // not standing about while another brings it: he goes for it himself as well (the roads only when there
                     // is nothing to fetch near)
-                    return Scavenge.work(v, village, world, need, true) || Ground.work(v, village, world) || Repair.roadWork(v, village, world);
+                    return Scavenge.work(v, village, world, need, need == Needs.Need.COBBLE) || Ground.work(v, village, world) || Repair.roadWork(v, village, world);
                 }
             },
             // nobody on it: he gets it himself, from what lies about or grows near
@@ -172,7 +172,7 @@ public final class Planner {
                 }
 
                 public boolean run(VillagerEntityMCA v, Village village, ServerWorld world, Needs.Need need) {
-                    return Scavenge.work(v, village, world, need, true);
+                    return Scavenge.work(v, village, world, need, need == Needs.Need.COBBLE); // short of wood: a tree felled, not earth dug (walls are no longer patched with it)
                 }
             },
             // a friend of the village stands near: he asks

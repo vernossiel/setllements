@@ -41,7 +41,10 @@ public final class Mining {
             Speech.say(v, "settlements.say.build.mine");
         }
         Workforce.craftTorches(village); // the mine needs light: torches from charcoal burnt out of logs
-        if (Dig.busy(v)) return true; // still at the rock
+        if (Dig.busy(v)) {
+            Doing.count("m.digging");
+            return true; // still at the rock
+        }
         Dig.gather(v, 3); // what he broke goes into his pockets, then to the stores
         Orders.Order order = Orders.take(v, village, Needs.Need.COBBLE); // the builder's order for stone
         // the stone wanted, or ore: the miner's real work is the ore, and he goes on after it with stone enough in the stores
@@ -68,7 +71,9 @@ public final class Mining {
                 && stand.getY() < o.getY() - 2 && v.getY() > stand.getY() + 2) {
             // down the stairs of the shaft, step by step; a mouth he cannot get into (the shed in the way, a hole
             // beside it) does not keep him there all day: after a minute he is set down at the working face
+            Doing.count("m.shaft");
             if (v.settlementsStuck++ > 60 && world.isChunkLoaded(stand.getX() >> 4, stand.getZ() >> 4)) {
+                Doing.count("m.put.shaft");
                 if (!Move.putSafely(v, stand)) lostWay(village);
                 v.settlementsStuck = 0;
                 return false;
@@ -77,7 +82,9 @@ public final class Mining {
         }
         if (v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > 25) {
             // walk down; if the stairs do not work out, go straight to the face
+            Doing.count("m.walk");
             if (v.settlementsStuck++ > 45 && world.isChunkLoaded(stand.getX() >> 4, stand.getZ() >> 4)) {
+                Doing.count("m.put.face");
                 // set down on the floor of the drift, never in the air or the rock; no floor down there to stand on
                 // (the way down was never finished): the mine is gone over again from the top, the gaps dug out
                 if (!Move.putSafely(v, stand)) lostWay(village);
@@ -96,7 +103,10 @@ public final class Mining {
             }
         }
 
-        if (v.getY() < o.getY() - 3 && prospect(v, world)) return true; // a vein: after it first
+        if (v.getY() < o.getY() - 3 && prospect(v, world)) {
+            Doing.count("m.prospect");
+            return true; // a vein: after it first
+        }
 
         boolean worked = false;
         int ops = 0, skips = 0;
@@ -105,7 +115,10 @@ public final class Mining {
         while (ops < budget && skips < 60 && village.mineStep < steps.size()) {
             Step step = steps.get(village.mineStep);
             BlockPos target = o.add(step.dx(), step.dy(), step.dz());
-            if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 20) break; // within arm's reach
+            if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 20) {
+                Doing.count("m.outofreach");
+                break; // within arm's reach
+            }
             var here = world.getBlockState(target);
             if (step.kind() == Blueprints.Kind.DIG && (here.isIn(net.minecraft.registry.tag.BlockTags.IRON_ORES) || here.isIn(net.minecraft.registry.tag.BlockTags.COAL_ORES)
                     || here.isIn(net.minecraft.registry.tag.BlockTags.GOLD_ORES) || here.isIn(net.minecraft.registry.tag.BlockTags.DIAMOND_ORES)
@@ -131,6 +144,7 @@ public final class Mining {
                     continue;
                 }
                 if (!Dig.sees(v, target)) { // not from here: to the face first
+                    Doing.count("m.unseen");
                     Move.to(v, target.getX() + 0.5, target.getY(), target.getZ() + 0.5, 0.6);
                     break;
                 }
@@ -138,6 +152,7 @@ public final class Mining {
                 Gear.face(v, target);
                 Move.clearFalling(world, target, drop -> v.getInventory().addStack(drop));
                 Dig.start(v, target); // block by block, with the pick, as anyone would
+                Doing.count("m.dig");
                 worked = true;
                 break;
             }
@@ -176,12 +191,14 @@ public final class Mining {
                 if (step.kind() == Blueprints.Kind.DIG) break;
                 if (world.random.nextInt(20) == 0) Speech.say(v, "settlements.say.mine.noplanks");
                 Doing.set(v, "settlements.doing.mine.noplanks");
+                Doing.count("m.noplanks");
                 village.mineStep++;
                 skips++;
                 continue;
             }
             village.mineStep++;
             if (r == Builder.Result.PLACED) {
+                Doing.count("m.placed");
                 ops++;
                 worked = true;
                 v.swingHand(v.getDominantHand());
@@ -287,6 +304,12 @@ public final class Mining {
      * to step, as anyone would on a stair. True while on the way.
      */
     /** The workings cannot be got to: back to the top of the plan, where what is dug already is passed over quickly. */
+    /** Something to stand on: a full block, a step or a slab. */
+    static boolean floor(ServerWorld world, BlockPos p) {
+        var st = world.getBlockState(p);
+        return st.isSolidBlock(world, p) || st.getBlock() instanceof net.minecraft.block.StairsBlock || st.getBlock() instanceof net.minecraft.block.SlabBlock;
+    }
+
     private static void lostWay(Village village) {
         village.mineLevel = 0;
         village.mineStep = 0;
@@ -347,7 +370,9 @@ public final class Mining {
             for (int i = Math.min(village.mineStep, steps.size()) - 1; i >= Math.max(0, village.mineStep - 40); i--) {
                 Step prev = steps.get(i);
                 BlockPos p = o.add(prev.dx(), prev.dy(), prev.dz());
-                if (world.getBlockState(p).isAir() && world.getBlockState(p.up()).isAir() && world.getBlockState(p.down()).isSolidBlock(world, p.down())) return p;
+                // (a step is a floor too: taking only full blocks, the miner was sent to stand forty steps back up the
+                // shaft, out of reach of the face, and walked up and down it all day)
+                if (world.getBlockState(p).isAir() && world.getBlockState(p.up()).isAir() && floor(world, p.down())) return p;
             }
             Step prev = steps.get(Math.min(village.mineStep, steps.size()) - 1);
             return o.add(prev.dx(), prev.dy(), prev.dz());

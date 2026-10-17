@@ -699,7 +699,7 @@ public class VillagerEntityMCA extends VillagerEntity implements VillagerLike<Vi
         // the nearest open spot, nobody chokes to death in his own hall
         if (!getWorld().isClient && source.isOf(net.minecraft.entity.damage.DamageTypes.IN_WALL)) {
             net.mca.settlements.Seat.stand(this);
-            if (net.mca.settlements.Move.putSafely(this, getBlockPos().up())) return false;
+            if (net.mca.settlements.Move.putSafely(this, getBlockPos())) return false; // (from where he stands, not a block up: that was the roof)
         }
         // Settlements: no blow through a wall. A monster's melee reach is only a distance: a zombie at the outside of
         // a house struck the sleeper in the bed on the other side of the planks (they were killed in their beds so)

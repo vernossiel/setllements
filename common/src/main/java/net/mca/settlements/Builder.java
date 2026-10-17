@@ -757,7 +757,7 @@ public final class Builder {
             Needs.Need blocker = Plan.firstBlocker(village);
             markShort(village, blocker, blocker == Needs.Need.PLANKS || blocker == Needs.Need.COBBLE);
             Life.askForHelp(v, village, world, blocker);
-            if (blocker != Needs.Need.NONE && Scavenge.work(v, village, world, blocker, blocker == Needs.Need.PLANKS || blocker == Needs.Need.COBBLE)) {
+            if (blocker != Needs.Need.NONE && Scavenge.work(v, village, world, blocker, blocker == Needs.Need.COBBLE)) {
                 if (Needs.get(v) != Needs.Need.FOOD) Needs.set(v, Needs.Need.NONE);
                 Speech.say(v, "settlements.say.build.scavenge");
                 return true;

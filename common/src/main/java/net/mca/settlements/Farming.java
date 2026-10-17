@@ -181,6 +181,11 @@ public final class Farming {
     private static boolean newBed(ServerWorld world, BlockPos p) {
         BlockState s = world.getBlockState(p);
         if (!(s.isOf(Blocks.DIRT) || s.isOf(Blocks.GRASS_BLOCK))) return false;
+        // the fence is the edge of the field: no beds dug outside it, along it (a row of them ran round the outside)
+        for (BlockPos q : BlockPos.iterate(p.add(-1, 0, -1), p.add(1, 2, 1))) {
+            var b = world.getBlockState(q).getBlock();
+            if (b instanceof net.minecraft.block.FenceBlock || b instanceof net.minecraft.block.FenceGateBlock || b instanceof net.minecraft.block.WallBlock) return false;
+        }
         boolean beside = false;
         for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) if (world.getBlockState(p.offset(d)).isOf(Blocks.FARMLAND)) beside = true;
         return beside; // sown at once, a bed keeps without water too (the crop only comes on slower)

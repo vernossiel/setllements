@@ -135,7 +135,7 @@ public final class Unstick {
         if (world.getBlockState(head).shouldSuffocate(world, head)) {
             if (breakable(world, village, head)) {
                 world.breakBlock(head, false, v);
-            } else {
+            } else if (!Move.putSafely(v, v.getBlockPos())) { // out beside, on his own level; up through it only when there is nothing beside
                 BlockPos up = head;
                 for (int i = 0; i < 6 && !world.getBlockState(up).isAir(); i++) up = up.up();
                 v.refreshPositionAndAngles(up.getX() + 0.5, up.getY(), up.getZ() + 0.5, v.getYaw(), 0);
