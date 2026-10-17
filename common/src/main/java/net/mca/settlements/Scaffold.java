@@ -96,6 +96,25 @@ public final class Scaffold {
         return best;
     }
 
+    /** His own spot as the foot of a column, when the target is within reach sideways from it and the way up is open. */
+    private static BlockPos here(ServerWorld world, VillagerEntityMCA v, BlockPos target, Built site) {
+        BlockPos feet = v.getBlockPos();
+        if (onScaffold(world, v)) { // on a column already: its foot
+            BlockPos f = feet.down();
+            while (world.getBlockState(f.down()).isOf(Blocks.SCAFFOLDING)) f = f.down();
+            feet = f;
+        }
+        double dx = target.getX() + 0.5 - (feet.getX() + 0.5), dz = target.getZ() + 0.5 - (feet.getZ() + 0.5);
+        if (dx * dx + dz * dz > (REACH - 0.5) * (REACH - 0.5) || dx * dx + dz * dz < 0.5) return null;
+        if (site != null && insideWalls(site, feet)) return null;
+        for (int y = feet.getY(); y <= target.getY(); y++) {
+            BlockPos q = new BlockPos(feet.getX(), y, feet.getZ());
+            if (!open(world, q) && !world.getBlockState(q).isOf(Blocks.SCAFFOLDING) && !q.equals(v.getBlockPos())) return null;
+        }
+        if (!world.getBlockState(feet.down()).isSolidBlock(world, feet.down()) && !world.getBlockState(feet.down()).isOf(Blocks.SCAFFOLDING)) return null;
+        return feet.toImmutable();
+    }
+
     private static boolean insideWalls(Built site, BlockPos p) {
         BlockPos o = site.origin();
         return p.getX() > o.getX() && p.getX() < o.getX() + site.fw() - 1 && p.getZ() > o.getZ() && p.getZ() < o.getZ() + site.fd() - 1;
@@ -137,7 +156,10 @@ public final class Scaffold {
             Gaze.at(v, target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
             return true;
         }
-        BlockPos col = columnFor(world, v, target, site);
+        // as a player does: up where he stands, if from there the block is within his reach (no walking off to a column
+        // chosen beforehand that he may never get to); else the nearest column that will do
+        BlockPos col = here(world, v, target, site);
+        if (col == null) col = columnFor(world, v, target, site);
         if (col == null) {
             Doing.count("c.nocolumn");
             return false;
