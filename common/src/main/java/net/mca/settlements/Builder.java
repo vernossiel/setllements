@@ -379,7 +379,9 @@ public final class Builder {
                         // a floor goes only on the plain house it was drawn for: put on a porch or an annex house it stood
                         // askew on the walls below, and the repairs (going by the old plan) roofed over its stairs again
                         boolean plain = village.built.stream().anyMatch(b -> b.origin().equals(h.origin()) && b.type().equals("house"));
-                        if (plain && h.floors() < 3 && h.d() >= 7 && planks >= 130) {
+                        // (no more storeys put on the old drawn houses: a new home goes up instead - ten days went on
+                        // a second floor and a loft for an old house with a ladder up through it)
+                        if (false && plain && h.floors() < 3 && h.d() >= 7 && planks >= 130) {
                             village.buildType = "upgrade";
                             village.buildOrigin = h.origin();
                             village.buildW = h.w();
@@ -851,13 +853,18 @@ public final class Builder {
         boolean worked = false;
         int ops = 0, skips = 0;
         int checks = 0;
-        int budget = Prosperity.ops(v, village, opsPerSecond); // tired builders and struggling villages build slower
+        // tired builders and struggling villages build slower; nobody watching, faster (the days the village is left
+        // to itself must see a house up in a day or two, not ten)
+        int budget = Prosperity.ops(v, village, opsPerSecond * (Bed.unseen(v, world) ? 2.0 : 1.0));
         if (budget == 0) { Doing.count("b.slow"); return true; } // working, just slowly
         // a man lays one block at a time: two going up in the same instant looked like a machine (what is left over is
         // kept for the next beat, up to a block or two)
-        if (budget > 1) {
-            v.settlementsPace = Math.min(2.0, v.settlementsPace + budget - 1);
-            budget = 1;
+        // two a beat at most where a player sees him (a player lays more); where nobody does, the pace of the days
+        // nobody is about (it was one a second, and a house took ten days)
+        int cap = Bed.unseen(v, world) ? 4 : 2;
+        if (budget > cap) {
+            v.settlementsPace = Math.min(2.0, v.settlementsPace + budget - cap);
+            budget = cap;
         }
         while (ops < budget && skips < MAX_TRIVIAL_SKIPS && village.buildOrigin != null && village.buildStep < steps.size()) {
             if (ahead(village).remove(village.buildStep)) { // a helper laid this one already
@@ -917,6 +924,9 @@ public final class Builder {
                 continue;
             }
             if (LONG_ARM.getOrDefault(village.getId(), -1) == village.buildStep) far = false;
+            // before walking off to it: what else of this course of the work is within his reach from here goes in
+            // first, as a man lays the stretch of wall in front of him (he walked round the house for every block)
+            if (far && !mine && !border && layNear(v, village, world, steps, origin, step.dy())) return true;
             if (far) {
                 Move.to(v, (mine ? origin : target).getX() + 0.5, mine || border ? target.getY() : origin.getY(), (mine ? origin : target).getZ() + 0.5, 0.6);
                 if (mine) Doing.count("b.walk.mine");
@@ -936,7 +946,7 @@ public final class Builder {
             float want = (float) (net.minecraft.util.math.MathHelper.atan2(target.getZ() + 0.5 - v.getZ(), target.getX() + 0.5 - v.getX()) * (180 / Math.PI)) - 90f;
             // (one turn to it for each block: something kept turning him back, and he stood a day turning to one block)
             long turnKey = ((long) village.getId() << 32) | village.buildStep;
-            if (Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(want - v.getBodyYaw())) > 35 && !FREE && TURNED.getOrDefault(v.getUuid(), -1L) != turnKey) {
+            if (Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(want - v.getBodyYaw())) > 120 && !FREE && TURNED.getOrDefault(v.getUuid(), -1L) != turnKey) { // (only a turn right round costs a beat: a half turn is made as the block goes in)
                 TURNED.put(v.getUuid(), turnKey);
                 v.getNavigation().stop();
                 Gaze.at(v, target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
@@ -990,6 +1000,41 @@ public final class Builder {
         if (village.buildOrigin != null && village.buildStep >= steps.size()) finish(village);
         village.markDirty();
         return worked;
+    }
+
+    /**
+     * One block of the same course (the same height) further on in the plan, within his reach from where he stands,
+     * laid now out of turn (and passed over when its turn comes, as a helper's are). True when one went in.
+     */
+    private static boolean layNear(VillagerEntityMCA v, Village village, ServerWorld world, List<Step> steps, BlockPos origin, int dy) {
+        int[] fp = Blueprints.footprint(village.buildType, village.buildW, village.buildD);
+        Set<Integer> done = ahead(village);
+        for (int j = village.buildStep + 1; j < Math.min(steps.size(), village.buildStep + 64); j++) {
+            if (done.contains(j)) continue;
+            Step sj = steps.get(j);
+            if (sj.dy() != dy) {
+                if (sj.dy() > dy) break; // the next course up waits for this one
+                continue;
+            }
+            if (sj.kind() == Kind.CLEAR || sj.kind() == Kind.DIG) continue;
+            int[] rp = Blueprints.rotate(sj.dx(), sj.dz(), fp[0], fp[1], village.buildRot);
+            BlockPos t = origin.add(rp[0], sj.dy(), rp[1]);
+            if (!Scaffold.inReach(v, t) || !Dig.sees(v, t)) continue;
+            if (!world.getBlockState(t).isAir() && !world.getBlockState(t).isReplaceable()) continue;
+            Gear.face(v, t);
+            Result r = execute(world, village, sj, t, village.buildRot);
+            if (r != Result.PLACED) continue;
+            done.add(j);
+            Doing.count("b.placed.near");
+            Item held = world.getBlockState(t).getBlock().asItem();
+            if (held != Items.AIR) v.setStackInHand(v.getDominantHand(), new ItemStack(held));
+            v.swingHand(v.getDominantHand());
+            Anim.set(v, Anim.Act.BUILD, 30);
+            world.playSound(null, t, world.getBlockState(t).getSoundGroup().getPlaceSound(), net.minecraft.sound.SoundCategory.BLOCKS, 0.8f, 0.9f);
+            village.markDirty();
+            return true;
+        }
+        return false;
     }
 
     private record Lead(java.util.UUID id, long at) {
