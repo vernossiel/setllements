@@ -131,7 +131,9 @@ public final class Bed {
             // one onto a sleeper two blocks from it)
             return true;
         }
-        if (v.hasVehicle()) v.stopRiding();
+        // up from a seat he took in the day (not the place on the floor he has settled in for the night: he used to be
+        // stood up every second and sat down again on a new seat, all night long)
+        if (v.hasVehicle() && !(Seat.seated(v) && SETTLED.containsKey(v.getUuid()))) v.stopRiding();
         GlobalPos home = v.getResidency().getHome().orElse(null);
         BlockPos bed = home != null && home.getDimension() == world.getRegistryKey() && world.getBlockState(home.getPos()).getBlock() instanceof BedBlock ? home.getPos() : null;
         long now = world.getTime();
@@ -177,7 +179,17 @@ public final class Bed {
         BlockPos hall = refuge(v, village, world);
         if (hall == null) return false;
         if (NO_HALL.getOrDefault(v.getUuid(), -1L) == night) hall = ROOF.getOrDefault(v.getUuid(), hall); // no way up to the hall: the roof he found
-        if (v.squaredDistanceTo(Vec3d.ofCenter(hall)) > 3 * 3) {
+        // a place on the floor of his own near it, not on top of the others (all of them were sent to the one spot and
+        // sat the night in a heap, one on another)
+        BlockPos own = place(v, world, hall, night);
+        if (own != null) hall = own;
+        if (v.squaredDistanceTo(Vec3d.ofBottomCenter(hall)) > (own != null ? 1.0 : 3 * 3)) {
+            if (Seat.seated(v)) Seat.stand(v);
+            SETTLED.remove(v.getUuid());
+            if (own != null && v.squaredDistanceTo(Vec3d.ofBottomCenter(hall)) < 2.5 * 2.5 && !v.getNavigation().isFollowingPath() && !Moves.busy(v)) {
+                Moves.step(v, hall); // the last step onto his place
+                return true;
+            }
             Move.to(v, hall.getX() + 0.5, hall.getY(), hall.getZ() + 0.5, 0.55);
             var p = v.getNavigation().getCurrentPath();
             if (now - since >= 20 * 16 && NO_HALL.getOrDefault(v.getUuid(), -1L) != night && (p == null || !p.reachesTarget())) {
@@ -192,7 +204,8 @@ public final class Bed {
             v.getNavigation().stop();
             // in under the roof for the night with no bed of his own: down on the floor by the wall, dozing sitting up
             long t = world.getTimeOfDay() % 24000L;
-            if ((t >= 12800 || t < 500) && !Seat.seated(v) && !world.isSkyVisible(v.getBlockPos().up())) Seat.sitHere(v, v.getBodyYaw());
+            if ((t >= 12800 || t < 500) && !Seat.seated(v) && !world.isSkyVisible(v.getBlockPos().up()) && Seat.sitHere(v, v.getBodyYaw()))
+                SETTLED.put(v.getUuid(), night);
             Seat.doze(v, (t >= 13000 || t < 500) && Seat.seated(v) && v.getRecentDamageSource() == null
                     && world.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, v.getBoundingBox().expand(8, 3, 8), net.minecraft.entity.LivingEntity::isAlive).isEmpty()); // nodding off where he sits, woken by trouble
             Doing.set(v, "settlements.doing.bed.floor");
@@ -202,6 +215,36 @@ public final class Bed {
     }
 
     private static final Map<UUID, Long> NO_HALL = new HashMap<>();
+    private static final Map<UUID, Long> SETTLED = new HashMap<>(); // villager -> the night he sat down on the floor for
+    private static final Map<UUID, BlockPos> PLACE = new HashMap<>();
+    private static final Map<UUID, Long> PLACE_NIGHT = new HashMap<>();
+
+    /**
+     * His own place on the floor for the night near {@code at}: free floor under a roof, nobody else's place within a
+     * step of it, nobody standing on it, away from ladders and holes. Kept for the night once found; null if none.
+     */
+    private static BlockPos place(VillagerEntityMCA v, ServerWorld world, BlockPos at, long night) {
+        BlockPos mine = PLACE.get(v.getUuid());
+        if (mine != null && PLACE_NIGHT.getOrDefault(v.getUuid(), -1L) == night && mine.isWithinDistance(at, 8)) return mine;
+        BlockPos best = null;
+        for (BlockPos q : BlockPos.iterateOutwards(at, 6, 2, 6)) {
+            if (!Move.passable(world, q) || !Move.passable(world, q.up()) || !world.getBlockState(q.down()).isSolidBlock(world, q.down())) continue;
+            if (world.isSkyVisible(q) || byLadder(world, q) || !world.getFluidState(q).isEmpty()) continue;
+            boolean taken = false;
+            for (Map.Entry<UUID, BlockPos> e : PLACE.entrySet()) {
+                if (e.getKey().equals(v.getUuid()) || PLACE_NIGHT.getOrDefault(e.getKey(), -1L) != night) continue;
+                if (Math.abs(e.getValue().getX() - q.getX()) <= 1 && Math.abs(e.getValue().getZ() - q.getZ()) <= 1 && Math.abs(e.getValue().getY() - q.getY()) <= 1) taken = true;
+            }
+            if (taken || !world.getEntitiesByClass(VillagerEntityMCA.class, new net.minecraft.util.math.Box(q).expand(0.3, 0, 0.3), o -> o != v).isEmpty()) continue;
+            best = q.toImmutable();
+            break;
+        }
+        if (best != null) {
+            PLACE.put(v.getUuid(), best);
+            PLACE_NIGHT.put(v.getUuid(), night);
+        }
+        return best;
+    }
     private static final Map<UUID, BlockPos> ROOF = new HashMap<>();
 
     /** The nearest house of the village (on its level, near the hall) that he can walk into: the inside of it. */

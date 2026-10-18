@@ -68,6 +68,7 @@ public final class Move {
     }
 
     public static boolean to(VillagerEntityMCA v, double x, double y, double z, double speed) {
+        if (v.isSleeping()) return false; // woken first, or left to sleep
         speed = Math.min(speed, PACE) * Gaze.pace(v); // the tired drag their feet, the keen step out
         BlockPos goal = BlockPos.ofFloored(x, y, z);
         remember(v, goal);

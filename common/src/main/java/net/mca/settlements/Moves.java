@@ -83,6 +83,12 @@ public final class Moves {
     /** Every tick, server side. */
     public static void tick(VillagerEntityMCA v) {
         if (v.getWorld().isClient) return;
+        // asleep is asleep: nothing walks him about (an elder was seen running off still lying in her sleep)
+        if (v.isSleeping()) {
+            if (v.getNavigation().isFollowingPath()) v.getNavigation().stop();
+            MOVES.remove(v.getUuid());
+            return;
+        }
         Move m = MOVES.get(v.getUuid());
         if (m == null) return;
         if (!(v.getWorld() instanceof ServerWorld world) || !v.isAlive() || ++m.ticks > m.limit) {
