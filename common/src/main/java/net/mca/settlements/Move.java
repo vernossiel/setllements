@@ -489,7 +489,10 @@ public final class Move {
 
     static boolean pillar(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos feet) {
         // in his own mine he takes the stairs, he does not build himself a column out of it
-        if (village != null && village.mineOrigin != null && Mining.inShaft(v, village.mineOrigin)) return false; // (the route takes the stairs)
+        // (in his own mine he takes the stairs - and puts a lost step back, see Mining.keepStairs; only where the stair is
+        // gone and cannot be had does he climb out on a block of his own)
+        if (village != null && village.mineOrigin != null && Mining.inShaft(v, village.mineOrigin) && village.getWorld() != null
+                && Mining.keepStairs(v, village, village.getWorld())) return true;
         if (!passable(world, feet.up(2))) {
             if (diggable(world, village, feet.up(2))) {
                 dig(v, world, feet.up(2));

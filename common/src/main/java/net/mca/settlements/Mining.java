@@ -51,6 +51,7 @@ public final class Mining {
         }
         Dig.gather(v, 3); // what he broke goes into his pockets, then to the stores
         if (climbOut(v, world)) return true;
+        if (village.mineOrigin != null && keepStairs(v, village, world)) return true; // a step of the shaft gone: put back first
         Orders.Order order = Orders.take(v, village, Needs.Need.COBBLE); // the builder's order for stone
         // the stone wanted, or ore: the miner's real work is the ore, and he goes on after it with stone enough in the stores
         if (village.mineLevel > MAX_LEVEL || order == null && Builder.stockCobble(village) >= STONE_QUOTA && !oreWanted(village)) return false;
@@ -273,6 +274,49 @@ public final class Mining {
                 Gear.face(v, target);
                 v.swingHand(v.getDominantHand());
                 Doing.count("m.redo");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A step of the stair shaft gone (dug out by mistake, blown, taken by a player): put back as he passes it, from the
+     * stone in his pockets or the stores - the way out of the mine is kept whole. True while at it.
+     */
+    public static boolean keepStairs(VillagerEntityMCA v, Village village, ServerWorld world) {
+        BlockPos o = village.mineOrigin;
+        if (o == null || !inShaft(v, o) && v.squaredDistanceTo(o.getX() + 1, o.getY(), o.getZ()) > 6 * 6) return false;
+        List<Step> steps = LEVELS.computeIfAbsent(0, k -> Blueprints.mine());
+        int done = village.mineLevel > 0 ? steps.size() : village.mineStep;
+        for (int i = 0; i < Math.min(done, steps.size()); i++) {
+            Step step = steps.get(i);
+            if (step.kind() != Blueprints.Kind.STAIRS_N) continue;
+            BlockPos target = o.add(step.dx(), step.dy(), step.dz());
+            if (v.squaredDistanceTo(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5) > 20) continue;
+            BlockState here = world.getBlockState(target);
+            if (!here.isAir() && !here.isReplaceable()) continue; // standing (or rock: not dug out yet)
+            if (v.getBlockPos().equals(target)) continue; // (not into the cell he stands in)
+            var inv = v.getInventory(); // the stone for it from his pockets first, as for the steps when they were cut
+            for (int k = 0; k < inv.size(); k++) {
+                net.minecraft.item.ItemStack st = inv.getStack(k);
+                if (st.isOf(net.minecraft.item.Items.COBBLESTONE) || st.isOf(net.minecraft.item.Items.COBBLED_DEEPSLATE)) {
+                    Workforce.addToTreasury(village, st.split(1));
+                    break;
+                }
+            }
+            Builder.COLLECTOR = v;
+            Builder.Result r;
+            try {
+                r = Builder.execute(world, village, step, target, 0);
+            } finally {
+                Builder.COLLECTOR = null;
+            }
+            if (r == Builder.Result.PLACED) {
+                Gear.face(v, target);
+                v.swingHand(v.getDominantHand());
+                Doing.count("m.stair");
+                Speech.sayAny(v, "settlements.say.mine.stair", 3);
                 return true;
             }
         }
