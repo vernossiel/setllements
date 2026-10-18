@@ -4205,5 +4205,6 @@
   "settlements.say.mine.shedhelped": "There, the miner's shed is whole again.",
   "settlements.say.mine.shedhelped.1": "Done with the shed over the mine. He owes me one.",
   "settlements.say.mine.shedhelped.2": "That roof won't leak now.",
-  "settlements.doing.mine.helpshed": "putting in what the miner could not reach on his shed"
+  "settlements.doing.mine.helpshed": "putting in what the miner could not reach on his shed",
+  "settlements.doing.mine.quarry": "breaking stone up top while the other miner works the face"
 }

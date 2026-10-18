@@ -4208,5 +4208,6 @@
   "settlements.say.mine.shedhelped.f": "Ну вот, сарай над шахтой опять целый.",
   "settlements.say.mine.shedhelped.1.f": "Доделала сарай шахтёру. С него причитается.",
   "settlements.say.mine.shedhelped.2.f": "Теперь эта крыша не протечёт.",
-  "settlements.doing.mine.helpshed": "доделывает шахтёру сарай, куда тот не достал"
+  "settlements.doing.mine.helpshed": "доделывает шахтёру сарай, куда тот не достал",
+  "settlements.doing.mine.quarry": "ломает камень наверху, пока второй шахтёр в забое"
 }

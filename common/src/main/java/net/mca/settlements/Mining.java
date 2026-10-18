@@ -46,6 +46,14 @@ public final class Mining {
         }
         reserve(village);
         Workforce.craftTorches(village); // the mine needs light: torches from charcoal burnt out of logs
+        // one man at the face: the plan of the mine is one, and two miners at it each moved the other's work on - one
+        // went to where the face was a moment ago, the other to where it is now, back and forth all day. The second
+        // breaks stone up top for the stores and carries in what the first brings up.
+        if (!leads(v, village, world)) {
+            Doing.set(v, "settlements.doing.mine.quarry");
+            if (Haul.carry(v, village, Haul.load(v) >= 16)) return true;
+            return Scavenge.work(v, village, world, Needs.Need.COBBLE, true);
+        }
         if (Dig.busy(v)) {
             Doing.count("m.digging");
             return true; // still at the rock
@@ -134,8 +142,11 @@ public final class Mining {
                         skips++;
                         continue;
                     }
-                    // (no walking off to it: the way to a block inside the rock is through the rock, and his route
-                    // cut a long tunnel of its own through it, off the plan)
+                    // closer, to the spot he works from (an open cell of the drift): standing four or five blocks off it
+                    // he counted as there, and every block of the face was out of his reach. (Not to the block itself:
+                    // the way to a block inside the rock is through the rock - his route cut a tunnel of its own.)
+                    if (v.squaredDistanceTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > 1.5 * 1.5)
+                        Move.to(v, stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, 0.6);
                     break;
                 }
                 // the shed over the mouth: he goes round it to the block, as a builder would; the corner of its roof
@@ -251,6 +262,20 @@ public final class Mining {
         return worked;
     }
 
+
+    private static final Map<Integer, Object[]> LEAD = new HashMap<>(); // village -> {the miner at the face, last second}
+
+    /** Whether he is the one at the face (the first to come, as long as he keeps at it). */
+    private static boolean leads(VillagerEntityMCA v, Village village, ServerWorld world) {
+        Object[] l = LEAD.get(village.getId());
+        long now = world.getTime();
+        if (l == null || l[0].equals(v.getUuid()) || now - (long) l[1] > 20 * 30
+                || !(world.getEntity((java.util.UUID) l[0]) instanceof VillagerEntityMCA o) || !o.isAlive()) {
+            LEAD.put(village.getId(), new Object[]{v.getUuid(), now});
+            return true;
+        }
+        return false;
+    }
 
     /** Per village: the steps of the shed and the shaft passed over for want of planks or stone ({level, step} packed). */
     private static final Map<Integer, java.util.LinkedHashSet<Long>> SKIPPED = new HashMap<>();

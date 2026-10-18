@@ -56,6 +56,8 @@ public final class Housing {
         for (VillagerEntityMCA m : folk) {
             GlobalPos home = m.getResidency().getHome().orElse(null);
             if (home != null && (!allowed(v, home.getPos()) || !safe(world, home.getPos()))) { // (nor one in a room open to the night)
+                net.mca.MCA.LOGGER.info("[Settlements] {}: {} loses the bed at {} ({})", v.getName(), m.getName().getString(), home.getPos().toShortString(),
+                        !allowed(v, home.getPos()) ? "too far from the hall" : "the room is open to the night at " + (LEAK.get(home.getPos()) == null ? "?" : LEAK.get(home.getPos()).toShortString()));
                 m.releaseTicketFor(MemoryModuleType.HOME);
                 m.getBrain().forget(MemoryModuleType.HOME);
             }
