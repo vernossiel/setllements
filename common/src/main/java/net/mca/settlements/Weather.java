@@ -64,13 +64,14 @@ public final class Weather {
                 return false;
             }
         } else STORM.remove(v.getUuid());
-        if (!world.hasRain(v.getBlockPos().up()) && COVER.containsKey(v.getUuid())) { // under cover: he waits there, looking out
+        BlockPos at = COVER.get(v.getUuid());
+        if (!world.hasRain(v.getBlockPos().up()) && at != null && (v.getBlockPos().isWithinDistance(at, 1.5) || v.isOnGround() && !v.isClimbing() && steady(world, v.getBlockPos()))) { // under cover: he waits there, looking out
             v.getNavigation().stop();
             Doing.set(v, "settlements.doing.weather.wait");
             if (world.random.nextInt(90) == 0) Speech.sayAny(v, "settlements.say.weather.wait", 3);
             return true;
         }
-        if (!world.hasRain(v.getBlockPos().up())) return false; // dry already, and not sent: let him be
+        if (!world.hasRain(v.getBlockPos().up()) && at == null) return false; // dry already, and not sent: let him be
         BlockPos to = COVER.get(v.getUuid());
         if (to == null) {
             to = cover(v, world);
@@ -86,6 +87,24 @@ public final class Weather {
         return true;
     }
 
+    /**
+     * A spot one can stand out the rain on: not on a ladder or in a doorway, not on the brink of a drop, and under the
+     * roof properly, not just under its eaves. (The spot under the eaves at the top of the ladder to a door was
+     * chosen: they slid down the ladder into the rain, climbed up again, down again, all through the shower.)
+     */
+    private static boolean steady(ServerWorld world, BlockPos q) {
+        for (BlockPos o : BlockPos.iterate(q.add(-1, -1, -1), q.add(1, 1, 1))) {
+            var st = world.getBlockState(o);
+            if (st.isIn(net.minecraft.registry.tag.BlockTags.CLIMBABLE) || st.getBlock() instanceof net.minecraft.block.DoorBlock) return false;
+        }
+        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+            BlockPos n = q.offset(d);
+            if (Move.passable(world, n) && Move.passable(world, n.down())) return false; // a drop beside him
+            if (world.hasRain(n.up())) return false; // the rain a step off: the eaves, not the inside
+        }
+        return true;
+    }
+
     /** Home, if it is near; or else the nearest spot under a roof. */
     private static BlockPos cover(VillagerEntityMCA v, ServerWorld world) {
         GlobalPos h = v.getResidency().getHome().orElse(null);
@@ -97,7 +116,8 @@ public final class Weather {
             int top = world.getTopY(Heightmap.Type.MOTION_BLOCKING, p.getX(), p.getZ());
             for (int y = p.getY() - 2; y <= p.getY() + 3 && y < top - 1; y++) {
                 BlockPos q = new BlockPos(p.getX(), y, p.getZ());
-                if (!world.hasRain(q.up()) && Move.passable(world, q) && Move.passable(world, q.up()) && world.getBlockState(q.down()).isSolidBlock(world, q.down())) {
+                if (!world.hasRain(q.up()) && Move.passable(world, q) && Move.passable(world, q.up()) && world.getBlockState(q.down()).isSolidBlock(world, q.down())
+                        && steady(world, q)) {
                     double d = v.squaredDistanceTo(Vec3d.ofBottomCenter(q));
                     if (d < bd) {
                         bd = d;
