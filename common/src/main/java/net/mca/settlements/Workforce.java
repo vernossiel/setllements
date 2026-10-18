@@ -106,18 +106,18 @@ public final class Workforce {
             net.mca.server.world.data.Village rv = net.mca.server.world.data.Village.findNearest(v).orElse(null);
             if (Life.dread(v, rv, rw)) return; // a monster close by: away from it, shouting for the guards
             if (Rogue.tick(v, rv, rw)) return; // a rogue about his business, or in the stocks for it
-            if (rv != null && v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get() && Watch.tick(v, rv, rw)) return; // the night watch
+            if (rv != null && Staffing.WATCH && v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get() && Watch.tick(v, rv, rw)) return; // the night watch
             // no watchman yet (a small village): the guard on the evening shift puts up the lamps at dusk, and where there
             // is no guard either, the elder does it himself from the end of the working day
             long dusk = rw.getTimeOfDay() % 24000L;
             boolean lamplighter = rv != null && v.isGuard() && dusk >= 11500 && dusk < 13500
                     || rv != null && v.isElder() && dusk >= 10500 && dusk < 13300 && !Staffing.has(rw, rv, net.mca.ProfessionsMCA.GUARD.get());
-            if (rv != null && lamplighter && !Staffing.has(rw, rv, net.mca.ProfessionsMCA.WATCHMAN.get())
+            if (rv != null && lamplighter && Staffing.WATCH && !Staffing.has(rw, rv, net.mca.ProfessionsMCA.WATCHMAN.get())
                     && v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.ATTACK_TARGET).isEmpty() && Watch.lamps(v, rv, rw)) return;
         }
         // deep in the night nothing gets a villager out of bed - not hunger (it waits for breakfast), not a chat, not the
         // fright of the day: out in the dark is where the zombies get them. Only the night watch and the guard on duty walk about.
-        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld nw && !v.isGuard() && v.getProfession() != net.mca.ProfessionsMCA.WATCHMAN.get()) {
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld nw && !v.isGuard() && !(Staffing.WATCH && v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get())) {
             long tod = nw.getTimeOfDay() % 24000L;
             net.mca.server.world.data.Village nv = net.mca.server.world.data.Village.findNearest(v).or(() -> v.getResidency().getHomeVillage()).orElse(null);
             if (nv != null && tod >= 13500 && tod < 23300 && !Persona.working(v, nw.getTimeOfDay()) && Bed.tick(v, nv, nw)) {

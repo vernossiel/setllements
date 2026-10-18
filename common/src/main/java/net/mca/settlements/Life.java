@@ -680,7 +680,7 @@ public final class Life {
                     m -> m.isAlive() && m.getTarget() == v).isEmpty();
             if (inRoom) v.wakeUp();
         }
-        if (v.isGuard() || v.isSleeping() || v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get()) return false;
+        if (v.isGuard() || v.isSleeping() || Staffing.WATCH && v.getProfession() == net.mca.ProfessionsMCA.WATCHMAN.get()) return false;
         boolean indoors = !world.isSkyVisible(v.getBlockPos().up());
         net.minecraft.entity.mob.HostileEntity foe = world.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, v.getBoundingBox().expand(10, 4, 10),
                 m -> m.isAlive() && !(m instanceof net.minecraft.entity.mob.CreeperEntity && v.squaredDistanceTo(m) > 36) && v.canSee(m)).stream()
