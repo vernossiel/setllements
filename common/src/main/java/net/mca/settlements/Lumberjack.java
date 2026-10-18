@@ -228,7 +228,10 @@ public final class Lumberjack {
         BlockPos next = null;
         for (BlockPos p : trunk) {
             double lx = p.getX() + 0.5 - v.getX(), lz = p.getZ() + 0.5 - v.getZ(), ly = p.getY() - v.getY();
-            if (lx * lx + lz * lz <= 20 && ly >= -2 && ly <= 4 && Dig.sees(v, p) && !mateAt(world, v, p)) {
+            // within the reach the axe actually has (the dig is broken off past it): a log four up and four across was
+            // picked, the blow broken off at once, picked again - the same log begun thirty-nine times
+            double ey = p.getY() + 0.5 - v.getY();
+            if (lx * lx + lz * lz + ey * ey <= (Dig.REACH - 0.3) * (Dig.REACH - 0.3) && ly >= -2 && ly <= 4 && Dig.sees(v, p) && !mateAt(world, v, p)) {
                 next = p;
                 break;
             }

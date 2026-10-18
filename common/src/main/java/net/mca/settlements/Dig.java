@@ -14,7 +14,7 @@ import net.minecraft.util.math.BlockPos;
  * hardness against the tool in his hand (a log falls to an axe, stone needs a pick), and how good he is at his trade.
  */
 public final class Dig {
-    private static final double REACH = 5.0; // a man's reach, and a little for the swing
+    static final double REACH = 5.0; // a man's reach, and a little for the swing
 
     private Dig() {
     }

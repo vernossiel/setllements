@@ -186,6 +186,13 @@ public final class Bed {
         // a place on the floor of his own near it, not on top of the others (all of them were sent to the one spot and
         // sat the night in a heap, one on another)
         BlockPos own = place(v, world, hall, night);
+        if (own == null) {
+            // no roof to be had by the hall (its spot out in the open, or the floor all taken): the nearest house of
+            // the village, else the nearest roof at all - not the night sat outside the hall's door
+            BlockPos other = house(v, village, world);
+            if (other == null) other = roof(v, world);
+            if (other != null) own = place(v, world, other, night);
+        }
         if (own != null) hall = own;
         if (v.squaredDistanceTo(Vec3d.ofBottomCenter(hall)) > (own != null ? 1.0 : 3 * 3)) {
             if (Seat.seated(v)) Seat.stand(v);

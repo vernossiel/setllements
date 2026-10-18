@@ -1544,7 +1544,9 @@ public final class Builder {
                 || s.isIn(BlockTags.LEAVES) || b == Blocks.WATER || b == Blocks.SNOW || b == Blocks.SNOW_BLOCK) return s;
         if (b instanceof PaneBlock && b != Blocks.IRON_BARS || b instanceof AbstractGlassBlock) {
             if (tier != Tiers.POOR && (take(village, GLASS, 1) || take(village, x -> x.isOf(Items.SAND) || x.isOf(Items.RED_SAND), 1))) return s;
-            if (b instanceof PaneBlock && takePlanks(village, 1)) return pal.fence().getDefaultState();
+            // no glass to be had (a poor village): a wooden lattice in the window, not a hole in the wall (a house stood
+            // with its upstairs window just a gap)
+            if (takePlanks(village, 1)) return pal.fence().getDefaultState();
             return fit ? SKIP : null;
         }
         if (b instanceof LanternBlock) {

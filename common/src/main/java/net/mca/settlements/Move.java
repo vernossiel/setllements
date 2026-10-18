@@ -250,6 +250,9 @@ public final class Move {
         if (state == null) return false;
         world.setBlockState(p, state);
         Doing.event(v, "puts down", p, state);
+        // taken away again a minute after, with nobody on it (blocks of earth were left sticking out of the walls
+        // and the fields where somebody had climbed or bridged his way)
+        if (village != null) SCAFFOLD.add(new Scaffold(p.toImmutable(), world.getTime(), village.getId()));
         world.playSound(null, p, state.getSoundGroup().getPlaceSound(), SoundCategory.BLOCKS, 0.8f, 1.0f);
         v.swingHand(v.getDominantHand());
         if (village != null) village.markDirty();

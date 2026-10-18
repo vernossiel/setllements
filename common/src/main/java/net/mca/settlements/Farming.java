@@ -303,7 +303,7 @@ public final class Farming {
                         // a gap in a field (a bed gone back to grass among the others): dug and sown again in its turn,
                         // like a bare bed - not only once there is nothing else at all to do (with a crop always to
                         // feed, that was never, and the gaps stood grassed over for good)
-                        if (seed && gap(world, p.down()) && d + 200 < bd) {
+                        if (gap(world, p.down()) && d + 200 < bd) { // (seed or no seed: the field is kept whole, and sown when there is seed)
                             bd = d + 200;
                             best = p;
                         }

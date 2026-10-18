@@ -131,7 +131,22 @@ public final class Templates {
             if (!found.isEmpty()) break;
         }
         if (found.isEmpty()) return null;
-        return found.get(Math.floorMod((int) (village.getId() * 31L + found.size() * 7L + (village.getWorld() == null ? 0 : village.getWorld().getTime() / 24000L)), found.size()));
+        // the design the village has fewest of (a street of different houses, not the same one again and again: it
+        // was picked by the day, and a village building one house a day or two put up the same one each time)
+        int least = Integer.MAX_VALUE;
+        List<String> pick = new ArrayList<>();
+        for (String f : found) {
+            int n = 0;
+            for (Built b : village.built) if (b.type().equals(f)) n++;
+            if (f.equals(village.buildType)) n++;
+            if (n < least) {
+                least = n;
+                pick.clear();
+            }
+            if (n == least) pick.add(f);
+        }
+        java.util.Random r = new java.util.Random(village.getId() * 31L + village.built.size() * 7919L);
+        return pick.get(r.nextInt(pick.size()));
     }
 
     /** Every concrete design a placeholder can stand for in this village's style (see resolve). */

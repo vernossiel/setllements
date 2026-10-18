@@ -72,10 +72,18 @@ public final class Repair {
     public static void tick(ServerWorld world) {
         for (Village village : VillageManager.get(world)) {
             migrate(village);
-            if (village.built.isEmpty() || PENDING.containsKey(village.getId())) continue;
+            if (village.built.isEmpty()) continue;
             int i = CURSOR.merge(village.getId(), 1, Integer::sum) % village.built.size();
             Built b = village.built.get(i);
             if (!world.isChunkLoaded(b.origin().getX() >> 4, b.origin().getZ() >> 4)) continue;
+            Deque<int[]> roads = ROADS.computeIfAbsent(village.getId(), k -> new ArrayDeque<>());
+            // the mine has its road too, from the shed's doors (it is no building in the books, and had none)
+            if (village.mineOrigin != null && i == 0) queue(world, village, roads, village.mineOrigin.add(1, 0, -2));
+            if (PENDING.containsKey(village.getId())) { // a repair waiting: the roads are still seen to (none were, the whole while)
+                int[] fp0 = b.footprint();
+                queue(world, village, roads, b.point(fp0[0] / 2, 0, fp0[1]));
+                continue;
+            }
             List<Step> steps = b.steps();
             int missing = 0;
             for (Step s : steps) {
@@ -88,14 +96,17 @@ public final class Repair {
 
             // its road to the plaza
             int[] fp = b.footprint();
-            BlockPos front = b.point(fp[0] / 2, 0, fp[1]);
-            Deque<int[]> roads = ROADS.computeIfAbsent(village.getId(), k -> new ArrayDeque<>());
-            java.util.List<int[]> cells = new java.util.ArrayList<>(Roads.route(village, front));
-            if (village.built.stream().anyMatch(x -> Buildings.base(x.type()).equals("well"))) cells.addAll(Roads.plazaCells(village));
-            for (int[] cell : cells) {
-                if (roads.size() >= 48) break;
-                if (Roads.needs(world, village, cell) && roads.stream().noneMatch(c -> c[0] == cell[0] && c[1] == cell[1] && c.length == cell.length)) roads.add(cell);
-            }
+            queue(world, village, roads, b.point(fp[0] / 2, 0, fp[1]));
+        }
+    }
+
+    /** The road from a door to the plaza (and the plaza's ring), what of it wants laying, into the queue. */
+    private static void queue(ServerWorld world, Village village, Deque<int[]> roads, BlockPos front) {
+        java.util.List<int[]> cells = new java.util.ArrayList<>(Roads.route(village, front));
+        if (village.built.stream().anyMatch(x -> Buildings.base(x.type()).equals("well"))) cells.addAll(Roads.plazaCells(village));
+        for (int[] cell : cells) {
+            if (roads.size() >= 48) break;
+            if (Roads.needs(world, village, cell) && roads.stream().noneMatch(c -> c[0] == cell[0] && c[1] == cell[1] && c.length == cell.length)) roads.add(cell);
         }
     }
 

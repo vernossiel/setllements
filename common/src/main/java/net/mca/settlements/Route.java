@@ -59,6 +59,10 @@ public final class Route {
         boolean out;      // the route is the way out (of a house, a box, a pit); the goal after it
         double setOut;    // how far from the goal he was when he set out on this route
         final List<BlockPos> laid = new ArrayList<>(); // the steps he set down the side of a wall, to take away behind him
+        BlockPos stuckAt; // where he last had to try harder, and when: a new errand from the same spot starts there
+        long stuckTime;
+        double bestD = Double.MAX_VALUE; // the nearest he has come to the goal
+        long bestAt;      // and when
     }
 
     private static final Map<UUID, State> STATE = new HashMap<>();
@@ -440,10 +444,14 @@ public final class Route {
         if (s.goal == null || !s.goal.isWithinDistance(goal, 2.5)) { // (a goal that moves a little - someone he follows - keeps the route)
             s.goal = goal.toImmutable();
             s.path = null;
-            s.level = 0;
+            // (stuck on a roof, the errand changed from food to bed: the new one began again from trying nothing)
+            boolean sameSpot = s.stuckAt != null && world.getTime() - s.stuckTime < 20 * 90 && v.getBlockPos().isWithinDistance(s.stuckAt, 4);
+            s.level = sameSpot ? Math.min(s.level, 2) : 0;
             s.still = 0;
             s.awaySec = 0;
             s.out = false;
+            s.bestD = Double.MAX_VALUE;
+            s.bestAt = 0;
         } else s.goal = goal.toImmutable();
         // the steps he set down the side of the wall, taken away once he is down and off them
         for (java.util.Iterator<BlockPos> it = s.laid.iterator(); it.hasNext(); ) {
@@ -463,6 +471,21 @@ public final class Route {
         s.last = pos;
         if (moved || Dig.busy(v)) s.still = 0;
         else s.still++;
+        // moving is not getting there: back and forth on a roof, along the same stretch of wall, a dozen seconds and
+        // no nearer the goal counts as stuck too (a builder walked the upper floor of his house up and down a whole
+        // evening, always moving, so his route never tried harder - a step down the wall, a cut)
+        double dGoal = Math.sqrt(v.getBlockPos().getSquaredDistance(goal));
+        long tnow = world.getTime();
+        if (dGoal < s.bestD - 1) {
+            s.bestD = dGoal;
+            s.bestAt = tnow;
+        } else if (s.bestAt == 0) s.bestAt = tnow;
+        else if (tnow - s.bestAt > 20 * 12 && !Dig.busy(v) && !Moves.busy(v)) {
+            s.bestAt = tnow;
+            s.bestD = dGoal;
+            s.still = Math.max(s.still, 6);
+            Doing.count("nav.noprogress");
+        }
 
         // walking off a little, to come at it from elsewhere
         if (s.awaySec > 0) {
@@ -475,6 +498,8 @@ public final class Route {
             s.path = null;
             s.out = false;
             s.level++;
+            s.stuckAt = v.getBlockPos().toImmutable();
+            s.stuckTime = world.getTime();
             if (s.level == 3) {
                 Vec3d away = net.minecraft.entity.ai.NoPenaltyTargeting.find(v, 10, 4);
                 if (away != null) {
