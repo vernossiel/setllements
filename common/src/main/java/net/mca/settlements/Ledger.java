@@ -89,6 +89,13 @@ public final class Ledger {
     /** One day of the village unseen, in figures. */
     private static void day(ServerWorld world, Village v) {
         int[] r = v.ledgerRoles.length == N ? v.ledgerRoles : new int[N];
+        if (v.ledgerRoles.length != N) {
+            // never seen yet (a village founded far off, out of everybody's sight): its founders are a builder and a
+            // farmer - it had no workers in its books at all, and nothing went up there however long one stayed away
+            r[POP] = Math.max(2, v.getPopulation());
+            r[BUILD] = 1;
+            r[FARM] = 1;
+        }
         int pop = Math.max(1, Math.max(r[POP], v.getPopulation()) - v.owedLeavers + v.owedNewcomers);
         int fields = Math.min(v.farms, r[FARM] * 2);
         int bread = (int) Math.round(fields * (r[MILL] > 0 ? 14 : 8) * Harvest.factor(world, v)) + r[HERD] * 4 + r[HUNT] * 4 + r[FISH] * 6;
