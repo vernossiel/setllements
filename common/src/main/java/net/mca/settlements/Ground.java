@@ -92,6 +92,14 @@ public final class Ground {
                     int h = top(world, x, z);
                     if (Math.abs(h - c.getY()) > 12) continue;
                     BlockPos at = new BlockPos(x, h, z);
+                    // a pit before a door: the ground before it dug out two blocks and more below its sill, so that
+                    // nobody gets up to it from the road (a house stood shut to its people so); filled up, road or not
+                    if (beforeDoor(world, at) && world.getBlockState(at).isReplaceable() && world.getFluidState(at).isEmpty()
+                            && village.getBuildingAt(at).isEmpty()) {
+                        TODO.put(village.getId(), at);
+                        FILL.put(village.getId(), true);
+                        return true;
+                    }
                     if (!open(world, village, at)) continue;
                     int higher = 0, lower = 0, n = 0;
                     for (int ox = -1; ox <= 1; ox++) {
@@ -172,6 +180,16 @@ public final class Ground {
                     return true;
                 }
             }
+        }
+        return false;
+    }
+
+    /** A door within two blocks whose sill stands two to four blocks above this spot: a pit in the way to it. */
+    static boolean beforeDoor(ServerWorld world, BlockPos at) {
+        for (BlockPos q : BlockPos.iterate(at.add(-2, 2, -2), at.add(2, 4, 2))) {
+            BlockState st = world.getBlockState(q);
+            if (st.getBlock() instanceof net.minecraft.block.DoorBlock && st.get(net.minecraft.block.DoorBlock.HALF) == net.minecraft.block.enums.DoubleBlockHalf.LOWER
+                    && Math.abs(q.getX() - at.getX()) + Math.abs(q.getZ() - at.getZ()) <= 2) return true;
         }
         return false;
     }

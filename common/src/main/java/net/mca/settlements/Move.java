@@ -192,6 +192,10 @@ public final class Move {
                 || state.isOf(Blocks.GRAVEL) || state.isOf(Blocks.CLAY);
         if (!natural) return false;
         for (Direction d : Direction.values()) if (d != Direction.DOWN && !world.getFluidState(pos.offset(d)).isEmpty()) return false; // would let water in
+        // not the ground before a door: dug away, it left the door up out of reach over a pit
+        for (BlockPos q : BlockPos.iterate(pos.add(-2, -1, -2), pos.add(2, 3, 2))) {
+            if (world.getBlockState(q).getBlock() instanceof net.minecraft.block.DoorBlock) return false;
+        }
         return village == null || Protection.severity(world, village, pos, state) == 0 && !Protection.insideStructure(village, pos);
     }
 
