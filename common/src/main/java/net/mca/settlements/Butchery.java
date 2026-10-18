@@ -47,10 +47,10 @@ public final class Butchery {
             return false;
         }
         BlockPos home = new BlockPos(village.getCenter());
-        int range = food(village) == 0 ? 112 : 80;
+        int range = food(village) == 0 ? 160 : 128; // the game is out on the open land, a hundred blocks and more off
         AnimalEntity game = world.getEntitiesByClass(AnimalEntity.class, new Box(home).expand(range, 24, range),
                         a -> a.isAlive() && !a.isBaby() && !Herding.herd(a, village) && !a.isLeashed()
-                                && (a instanceof RabbitEntity || Herding.kind(a)) && !Herding.inPen(a, village.penCenter) && !Herding.fenced(world, a))
+                                && (a instanceof RabbitEntity || a instanceof ChickenEntity || Herding.kind(a)) && !Herding.inPen(a, village.penCenter) && !Herding.fenced(world, a))
                 .stream().min(Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
         if (game == null) {
             Doing.set(v, "settlements.doing.hunter.none");
@@ -98,7 +98,7 @@ public final class Butchery {
             int range = food(village) == 0 ? 96 : 56; // nothing at all in the larder: he goes further out after game
             AnimalEntity game = world.getEntitiesByClass(AnimalEntity.class, new Box(home).expand(range, 24, range),
                             a -> a.isAlive() && !a.isBaby() && !Herding.herd(a, village) && !a.isLeashed()
-                                    && (a instanceof RabbitEntity || Herding.kind(a)) && !Herding.inPen(a, village.penCenter) && !Herding.fenced(world, a))
+                                    && (a instanceof RabbitEntity || a instanceof ChickenEntity || Herding.kind(a)) && !Herding.inPen(a, village.penCenter) && !Herding.fenced(world, a))
                     .stream().min(Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
             if (game != null) {
                 Doing.set(v, "settlements.doing.butcher.hunt");

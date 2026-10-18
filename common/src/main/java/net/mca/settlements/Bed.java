@@ -109,6 +109,9 @@ public final class Bed {
         }
         BlockPos hall = refuge(v, village, world);
         if (hall == null) return false;
+        // already in under a roof for the night (on the floor of the hall, of a house): left there. He was set down
+        // again every half minute, each time somewhere else, and the village saw people blink about all night
+        if (Seat.seated(v) || v.getBlockPos().isWithinDistance(hall, 4) || !world.isSkyVisible(v.getBlockPos().up()) && Housing.safe(world, v.getBlockPos())) return true;
         v.requestTeleport(hall.getX() + 0.5, hall.getY(), hall.getZ() + 0.5);
         return true;
     }
@@ -193,6 +196,7 @@ public final class Bed {
             Seat.doze(v, (t >= 13000 || t < 500) && Seat.seated(v) && v.getRecentDamageSource() == null
                     && world.getEntitiesByClass(net.minecraft.entity.mob.HostileEntity.class, v.getBoundingBox().expand(8, 3, 8), net.minecraft.entity.LivingEntity::isAlive).isEmpty()); // nodding off where he sits, woken by trouble
             Doing.set(v, "settlements.doing.bed.floor");
+            SINCE.put(v.getUuid(), now); // settled for the night: nobody is to fetch him from here
         }
         return true;
     }

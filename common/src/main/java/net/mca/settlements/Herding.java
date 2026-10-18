@@ -104,7 +104,7 @@ public final class Herding {
     static List<AnimalEntity> animals(ServerWorld world, Village village) {
         BlockPos home = village.penCenter != null ? village.penCenter : new BlockPos(village.getCenter());
         List<AnimalEntity> out = new ArrayList<>();
-        for (AnimalEntity a : world.getEntitiesByClass(AnimalEntity.class, new Box(home).expand(64, 16, 64), a -> a.isAlive() && kind(a))) {
+        for (AnimalEntity a : world.getEntitiesByClass(AnimalEntity.class, new Box(home).expand(96, 16, 96), a -> a.isAlive() && kind(a))) {
             if (!herd(a, village) && inPen(a, village.penCenter)) a.addCommandTag(mark(village)); // in our pen: ours now
             if (herd(a, village)) out.add(a);
         }
@@ -288,7 +288,7 @@ public final class Herding {
         List<AnimalEntity> inside = herd.stream().filter(a -> inPen(a, pen)).toList();
         if (shear(v, village, world, inside)) return true;
         if (breed(v, village, inside)) return true;
-        if (herd.size() < 2) return tame(v, village, world, herd); // hardly any animals: he brings in wild ones for the herd
+        if (herd.size() < keep(village) * 2) return tame(v, village, world, herd); // too few animals: he brings in wild ones for the herd
         // with no butcher in the village he takes the surplus himself, and roasts it
         if (!Staffing.has(world, village, net.minecraft.village.VillagerProfession.BUTCHER) && Butchery.work(v, village, world)) return true;
         // nothing to do: he leans on the fence and watches them
@@ -306,7 +306,22 @@ public final class Herding {
     private static boolean tame(VillagerEntityMCA v, Village village, ServerWorld world, List<AnimalEntity> herd) {
         BlockPos home = village.penCenter != null ? village.penCenter : new BlockPos(village.getCenter());
         if (herd.size() >= keep(village) * 2) return false;
-        AnimalEntity wild = world.getEntitiesByClass(AnimalEntity.class, new Box(home).expand(48, 12, 48),
+        // the ones he has on the lead first: home with them to the pen (he used to leash one and go after the next,
+        // and the next, out on the hills)
+        List<AnimalEntity> led = world.getEntitiesByClass(AnimalEntity.class, v.getBoundingBox().expand(12), a -> a.isAlive() && a.isLeashed() && a.getHoldingEntity() == v);
+        if (!led.isEmpty()) {
+            Doing.set(v, "settlements.doing.herd.tame");
+            if (!inPen(v.getBlockPos(), home)) {
+                for (AnimalEntity a : led) if (a.squaredDistanceTo(v) > 36) a.getNavigation().startMovingTo(v, 1.1);
+                Move.to(v, home.getX() + 0.5, home.getY(), home.getZ() + 0.5, 0.45);
+                return true;
+            }
+            for (AnimalEntity a : led) a.detachLeash(true, false);
+            Speech.say(v, "settlements.say.herd.home");
+            return true;
+        }
+        // as far out as the land is about (the herds graze a hundred blocks and more off, on the open hills)
+        AnimalEntity wild = world.getEntitiesByClass(AnimalEntity.class, new Box(home).expand(160, 24, 160),
                         a -> a.isAlive() && kind(a) && !a.isBaby() && !herd(a, village) && !a.isLeashed())
                 .stream().min(Comparator.comparingDouble(v::squaredDistanceTo)).orElse(null);
         if (wild == null) {

@@ -468,7 +468,7 @@ public final class Workforce {
                 && v.getWorld() instanceof net.minecraft.server.world.ServerWorld aw && apprentice(v, village, aw)) return;
         // the farmer works the village's fields, ours and the old ones alike: reaps, sows, feeds the crop
         if (prof == VillagerProfession.FARMER && village != null && v.getWorld() instanceof net.minecraft.server.world.ServerWorld fw2
-                && (Farming.fields(v, village, fw2) || Farming.water(v, village, fw2))) {
+                && (Farming.fields(v, village, fw2) || Farming.seeds(v, village, fw2) || Farming.water(v, village, fw2))) {
             if (v.age % 400 == 0) Gear.equipTool(v, village, Chore.HARVEST);
             v.settlementsEnergy -= WORK_DRAIN + REST_GAIN;
             hunger(v, HUNGER_RISE);

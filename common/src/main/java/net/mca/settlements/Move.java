@@ -85,7 +85,7 @@ public final class Move {
         // day, so the work that wanted it looks for another (see unreachable)
         if (tr != null && now - tr[1] > 20 * 45 && v.squaredDistanceTo(x, y, z) > 2.5 * 2.5 && !Route.active(v, goal)
                 && (v.getNavigation().getCurrentPath() == null || !v.getNavigation().getCurrentPath().reachesTarget())) {
-            UNREACHABLE.put(goal.asLong(), now + 24000L);
+            UNREACHABLE.put(goal.asLong(), now + 6000L); // (a whole day was too long: a ripe bed, missed once, stood unreaped till it rotted)
             TRYING.remove(v.getUuid());
             v.getNavigation().stop();
             return false;

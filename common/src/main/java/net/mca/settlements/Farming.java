@@ -90,7 +90,7 @@ public final class Farming {
 
     private static final Map<java.util.UUID, BlockPos> TARGET = new java.util.HashMap<>();
     private static final Map<java.util.UUID, Long> LOOKED = new java.util.HashMap<>();
-    private static final int FIELD_RADIUS = 48;
+    private static final int FIELD_RADIUS = 64; // (at 48 a field out on the edge of a spread village stood ripe and never reaped)
 
     /**
      * A farmer's day on the village's fields, whoever laid them out (the old fields of the village too, not only the
@@ -272,6 +272,7 @@ public final class Farming {
                         }
                         break;
                     }
+                    if (w == 2 && !seed) BARE.put(village.getId(), world.getTime()); // a bed waiting for seed there is none of
                     if (w == 0 || w == 2 && !seed || w == 3 && !meal) continue;
                     double d = v.squaredDistanceTo(x + 0.5, yy, z + 0.5) + (w == 1 ? 0 : w == 2 ? 200 : 900);
                     if (d < bd) {
@@ -290,6 +291,53 @@ public final class Farming {
             if (bed != null) GARDEN.add(bed.down().asLong());
         }
         return best != null ? best : beds < most ? bed : null;
+    }
+
+    /** Village -> when a bare bed was last seen with no seed to sow it. */
+    private static final Map<Integer, Long> BARE = new java.util.HashMap<>();
+    private static final Map<java.util.UUID, BlockPos> GRASS = new java.util.HashMap<>();
+
+    /**
+     * No seed left and beds lying bare: he goes over the grass round the fields pulling it up for its seed, as a player
+     * does (the beds of a new field lay tilled and empty for days while the village went hungry). True while at it.
+     */
+    public static boolean seeds(VillagerEntityMCA v, Village village, ServerWorld world) {
+        if (village == null || world.getTime() - BARE.getOrDefault(village.getId(), -10000L) > 20 * 120) return false;
+        for (Item i : SOW.keySet()) if (count(village, i) > 0 || v.getInventory().count(i) > 0) {
+            BARE.remove(village.getId());
+            LOOKED.remove(v.getUuid()); // seed in hand: to the beds at once
+            return false;
+        }
+        BlockPos g = GRASS.get(v.getUuid());
+        if (g != null && !isGrass(world.getBlockState(g))) g = null;
+        if (g == null) {
+            for (BlockPos q : BlockPos.iterateOutwards(v.getBlockPos(), 20, 4, 20)) {
+                if (isGrass(world.getBlockState(q)) && !Move.unreachable(world, q)) {
+                    g = q.toImmutable();
+                    break;
+                }
+            }
+            if (g == null) return false;
+            GRASS.put(v.getUuid(), g);
+        }
+        Doing.set(v, "settlements.doing.farm.seeds");
+        if (v.squaredDistanceTo(g.getX() + 0.5, g.getY(), g.getZ() + 0.5) > 4) {
+            Move.to(v, g.getX() + 0.5, g.getY(), g.getZ() + 0.5, 0.55);
+            return true;
+        }
+        v.getNavigation().stop();
+        Gear.face(v, g);
+        Pose.crouch(v, 16);
+        v.swingHand(v.getDominantHand());
+        world.breakBlock(g, false, v);
+        // a handful of grass pulled over gives a seed more often than a player's single stroke (one in eight)
+        if (world.random.nextInt(3) == 0) v.getInventory().addStack(new ItemStack(Items.WHEAT_SEEDS, 1 + world.random.nextInt(2)));
+        GRASS.remove(v.getUuid());
+        return true;
+    }
+
+    private static boolean isGrass(BlockState s) {
+        return s.isOf(Blocks.GRASS) || s.isOf(Blocks.TALL_GRASS) || s.isOf(Blocks.FERN) || s.isOf(Blocks.LARGE_FERN);
     }
 
     /** Where a new garden was begun: its first bed may be dug though nothing is tilled beside it yet. */

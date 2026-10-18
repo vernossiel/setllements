@@ -24,6 +24,7 @@ public final class Mining {
     static final int QUOTA = STONE_QUOTA;
     private static final Map<Integer, List<Step>> LEVELS = new HashMap<>();
     private static final Map<java.util.UUID, long[]> SHED = new HashMap<>(); // miner -> {step, since}
+    private static final Map<java.util.UUID, long[]> FACE = new HashMap<>(); // miner -> {level<<32|step out of reach, since}
     private static final Map<java.util.UUID, long[]> VEIN = new HashMap<>(); // miner -> {the ore he is cutting a way to, since}
     private static final java.util.Set<Long> GIVEN_UP = new java.util.HashSet<>(); // ores he could not get to
 
@@ -52,6 +53,10 @@ public final class Mining {
         Dig.gather(v, 3); // what he broke goes into his pockets, then to the stores
         if (climbOut(v, world)) return true;
         if (village.mineOrigin != null && keepStairs(v, village, world)) return true; // a step of the shaft gone: put back first
+        if (village.mineOrigin != null && seal(v, village, world)) return true; // the shaft broken through to the open: walled up
+        // up top by the mouth: the shed whole and its doors hung, before he goes down (it was looked to only at the
+        // face, where he never is up top, and the shed stood half built for good)
+        if (village.mineOrigin != null && mouth(v, village, world, village.mineOrigin)) return true;
         Orders.Order order = Orders.take(v, village, Needs.Need.COBBLE); // the builder's order for stone
         // the stone wanted, or ore: the miner's real work is the ore, and he goes on after it with stone enough in the stores
         if (village.mineLevel > MAX_LEVEL || order == null && Builder.stockCobble(village) >= STONE_QUOTA && !oreWanted(village)) return false;
@@ -105,7 +110,6 @@ public final class Mining {
         }
 
         if (redo(v, village, world, o)) return true; // the shed or a step left for want of planks or stone, now there is some
-        if (mouth(v, village, world, o)) return true; // up top: the shed whole and its doors hung
 
         boolean worked = false;
         int ops = 0, skips = 0;
@@ -116,7 +120,23 @@ public final class Mining {
             BlockPos target = o.add(step.dx(), step.dy(), step.dz());
             if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 20) {
                 Doing.count("m.outofreach");
-                if (step.dy() < 0) break; // within arm's reach (down in the rock: the way to the face is walked above)
+                if (step.dy() < 0) {
+                    // down in the rock: on to it along what is dug (he stood out of reach of the face for days, the mine
+                    // stopped); a block not to be got near in a minute is passed over, the next one taken
+                    long[] fr = FACE.computeIfAbsent(v.getUuid(), k -> new long[]{-1, 0});
+                    long key = ((long) village.mineLevel << 32) | village.mineStep;
+                    if (fr[0] != key) {
+                        fr[0] = key;
+                        fr[1] = world.getTime();
+                    }
+                    if (world.getTime() - fr[1] > 20 * 60) {
+                        village.mineStep++;
+                        skips++;
+                        continue;
+                    }
+                    Move.to(v, target.getX() + 0.5, target.getY(), target.getZ() + 0.5, 0.6);
+                    break;
+                }
                 // the shed over the mouth: he goes round it to the block, as a builder would; the corner of its roof
                 // was out of reach from the mouth, and there he stood, day after day, the mine not begun
                 long[] sh = SHED.computeIfAbsent(v.getUuid(), k -> new long[]{-1, 0});
@@ -317,6 +337,50 @@ public final class Mining {
                 v.swingHand(v.getDominantHand());
                 Doing.count("m.stair");
                 Speech.sayAny(v, "settlements.say.mine.stair", 3);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The shaft kept shut: where its side or its roof has broken through to the open (the stair cut out of a hillside,
+     * into a cave, past the end of the shed), the gap is walled up with stone, as he passes it. The shaft had a hole
+     * to the grass beside the shed that anything could fall or walk into. True while at it.
+     */
+    static boolean seal(VillagerEntityMCA v, Village village, ServerWorld world) {
+        BlockPos o = village.mineOrigin;
+        if (o == null || !inShaft(v, o) && v.squaredDistanceTo(o.getX() + 1, o.getY(), o.getZ()) > 6 * 6) return false;
+        for (int i = 0; i < Blueprints.MINE_DEPTH; i++) {
+            if (!world.getBlockState(o.add(0, -i, i)).isAir()) continue; // not cut down to here yet
+            java.util.List<BlockPos> wall = new java.util.ArrayList<>();
+            for (int y = -i; y <= -i + 2; y++) {
+                if (y >= 0 && i <= 3) continue; // up there the shed's own walls
+                wall.add(o.add(-1, y, i));
+                wall.add(o.add(2, y, i));
+            }
+            if (i >= 4) for (int x = 0; x <= 1; x++) wall.add(o.add(x, -i + 3, i)); // the roof of the cut, past the shed
+            for (BlockPos g : wall) {
+                BlockState st = world.getBlockState(g);
+                if (!st.isAir() && !(st.isReplaceable() && st.getFluidState().isEmpty())) continue;
+                if (v.squaredDistanceTo(g.getX() + 0.5, g.getY() + 0.5, g.getZ() + 0.5) > 20) continue;
+                if (v.getBoundingBox().intersects(new net.minecraft.util.math.Box(g))) continue;
+                BlockState put = null;
+                var inv = v.getInventory();
+                for (int k = 0; k < inv.size() && put == null; k++) {
+                    net.minecraft.item.ItemStack it = inv.getStack(k);
+                    if (it.isOf(net.minecraft.item.Items.COBBLESTONE) || it.isOf(net.minecraft.item.Items.COBBLED_DEEPSLATE) || it.isOf(net.minecraft.item.Items.DIRT)) {
+                        put = net.minecraft.block.Block.getBlockFromItem(it.getItem()).getDefaultState();
+                        it.decrement(1);
+                    }
+                }
+                if (put == null && Builder.takeItem(village, it -> it.isOf(net.minecraft.item.Items.COBBLESTONE), 1)) put = net.minecraft.block.Blocks.COBBLESTONE.getDefaultState();
+                if (put == null) return false; // nothing to wall it up with now
+                Gear.face(v, g);
+                world.setBlockState(g, put);
+                world.playSound(null, g, put.getSoundGroup().getPlaceSound(), net.minecraft.sound.SoundCategory.BLOCKS, 0.8f, 1f);
+                v.swingHand(v.getDominantHand());
+                Doing.count("m.seal");
                 return true;
             }
         }

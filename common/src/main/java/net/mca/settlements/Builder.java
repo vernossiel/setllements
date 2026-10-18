@@ -262,19 +262,47 @@ public final class Builder {
         return count(v, x -> x.isOf(Items.IRON_INGOT) || x.isOf(Items.RAW_IRON));
     }
 
+    /** Wool for beds, or what stands in for it: a straw mattress (a hay bale, or three sheaves of wheat). */
     public static int stockWool(Village v) {
-        return count(v, WOOL);
+        return count(v, WOOL) + count(v, x -> x.isOf(Items.HAY_BLOCK)) + count(v, x -> x.isOf(Items.WHEAT)) / 3;
+    }
+
+    /**
+     * The filling of {@code n} beds: wool, or failing it straw - a hay bale or three sheaves a bed. (Houses waited on
+     * wool from sheep nobody could find; the village stood still four days with 900 boards in its stores.)
+     */
+    private static boolean takeBedding(Village v, int n) {
+        if (stockWool(v) < n) return false;
+        for (int i = 0; i < n; i++) {
+            if (!take(v, WOOL, 1) && !take(v, x -> x.isOf(Items.HAY_BLOCK), 1)) take(v, x -> x.isOf(Items.WHEAT), 3);
+        }
+        return true;
     }
 
     /** A place for the mine's entrance: used by the miner, who opens the mine himself. */
     public static BlockPos chooseMineSite(ServerWorld world, Village village) {
         // not where the shaft would run into water or lava (a lake, a lava pool on the surface, an aquifer)
-        for (int attempt = 0; attempt < 12; attempt++) {
+        // level ground under the shed and before its doors first: on a slope the first steps stood a block proud of the
+        // grass and the shaft broke out of the hillside beside the shed
+        BlockPos fallback = null;
+        for (int attempt = 0; attempt < 24; attempt++) {
             BlockPos o = findSite(world, village, 4, 4);
-            if (o == null) return null;
-            if (dryUnder(world, o) && clearOver(world, village, o)) return o;
+            if (o == null) break;
+            if (!dryUnder(world, o) || !clearOver(world, village, o)) continue;
+            if (flatMouth(world, o)) return o;
+            if (fallback == null) fallback = o;
         }
-        return null;
+        return fallback;
+    }
+
+    /** The ground under the shed, its porch and the first steps all at the one level. */
+    private static boolean flatMouth(ServerWorld world, BlockPos o) {
+        for (int x = -1; x <= 2; x++) {
+            for (int z = -2; z <= 4; z++) {
+                if (Layout.ground(world, o.getX() + x, o.getZ() + z) != o.getY()) return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -371,8 +399,8 @@ public final class Builder {
                     // mansions and town houses when it is wealthy
                     int tier = Prosperity.tier(village);
                     int wealth = Math.min(2, tier);
-                    String kind = tier == Tiers.ORDINARY && lv == Plan.Level.HAMLET ? new String[]{"house", "longhouse", "twin", "porch"}[rand.nextInt(4)]
-                            : Tiers.design("home", tier, rand, null);
+                    // (the hamlet's homes too: it used to put up the old drawn houses, the new ones never)
+                    String kind = Tiers.design("home", tier, rand, null);
                     int need = switch (kind) {
                         case "mansion", "wealden" -> 340;
                         case "rowhouse" -> 220;
@@ -1437,7 +1465,7 @@ public final class Builder {
 
     /** Places a whole plan at once, paying from the treasury. Used for the settlers' starter house. */
     public static boolean buildInstantly(ServerWorld world, Village payer, BlockPos origin, List<Step> steps) {
-        if (planks(payer) < 120 || count(payer, WOOL) < 3) return false;
+        if (planks(payer) < 120 || stockWool(payer) < 1) return false;
         for (Step step : steps) {
             Result r = execute(world, payer, step, origin.add(step.dx(), step.dy(), step.dz()), 0);
             if (r == Result.ABORT) return false;
@@ -1486,7 +1514,8 @@ public final class Builder {
         // a mill's sails: cloth if there is wool, boards if not (bare spars stood in the air), whatever the village's station
         if (s.isIn(BlockTags.WOOL) && !fit) return take(village, WOOL, 1) ? s : takePlanks(village, 1) ? pal.planks().getDefaultState() : null;
         if (s.isIn(BlockTags.WOOL) || s.isIn(BlockTags.WOOL_CARPETS) || b instanceof BedBlock || s.isIn(BlockTags.BANNERS))
-            return tier > Tiers.POOR || b instanceof BedBlock ? (take(village, WOOL, 1) ? s : fit ? SKIP : null) : SKIP;
+            return b instanceof BedBlock ? (takeBedding(village, 1) ? s : fit ? SKIP : null)
+                    : tier > Tiers.POOR ? (take(village, WOOL, 1) ? s : fit ? SKIP : null) : SKIP;
         if (b == Blocks.IRON_BARS || b instanceof ChainBlock || b instanceof AbstractCauldronBlock || b instanceof AnvilBlock
                 || b == Blocks.BLAST_FURNACE || b == Blocks.HOPPER) return take(village, x -> x.isOf(Items.IRON_INGOT), 1) ? s : SKIP;
         if (b instanceof AbstractFurnaceBlock || b instanceof StonecutterBlock || b instanceof GrindstoneBlock) return take(village, COBBLE, 4) ? s : SKIP;
@@ -2088,8 +2117,17 @@ public final class Builder {
                 }
                 return null;
             }
-            case SMOKE:
-                return Blocks.CAMPFIRE.getDefaultState().with(CampfireBlock.SIGNAL_FIRE, false);
+            case SMOKE: { // the chimney's top: a stone wall post, as on the old villages' chimneys (no fire burning up there)
+                Block st = pal.stone();
+                Block wall = st == Blocks.SANDSTONE || st == Blocks.CUT_SANDSTONE || st == Blocks.SMOOTH_SANDSTONE ? Blocks.SANDSTONE_WALL
+                        : st == Blocks.RED_SANDSTONE || st == Blocks.CUT_RED_SANDSTONE ? Blocks.RED_SANDSTONE_WALL
+                        : st == Blocks.MOSSY_COBBLESTONE ? Blocks.MOSSY_COBBLESTONE_WALL
+                        : st == Blocks.STONE_BRICKS ? Blocks.STONE_BRICK_WALL
+                        : st == Blocks.MUD_BRICKS || st == Blocks.PACKED_MUD ? Blocks.MUD_BRICK_WALL
+                        : Blocks.COBBLESTONE_WALL;
+                if (!FREE && !take(village, COBBLE, 1)) return null;
+                return wall.getDefaultState();
+            }
             case STEP: {
                 if (!take(village, COBBLE, 1) && !takePlanks(village, 1)) return null;
                 return pal.stoneStairs().getDefaultState().with(StairsBlock.FACING, face(step, rot));
@@ -2170,8 +2208,8 @@ public final class Builder {
                 if (!takePlanks(village, 8)) return null;
                 return Blocks.CHEST.getDefaultState().with(ChestBlock.FACING, turn(Direction.SOUTH, rot));
             case BED_FOOT: {
-                if (planks(village) < 3 || count(village, WOOL) < 3) return null;
-                take(village, WOOL, 3);
+                if (planks(village) < 3 || stockWool(village) < 1) return null;
+                takeBedding(village, 1);
                 takePlanks(village, 3);
                 return Blocks.RED_BED.getDefaultState().with(BedBlock.FACING, turn(Direction.SOUTH, rot)).with(BedBlock.PART, BedPart.FOOT);
             }
@@ -2252,8 +2290,7 @@ public final class Builder {
                 Direction facing = turn(kind == Kind.RSTAIR_S ? Direction.SOUTH : Direction.NORTH, rot);
                 if (tier >= Tiers.CITY && take(village, COBBLE, 1)) return pal.tileStairs().getDefaultState().with(StairsBlock.FACING, facing);
                 if (takePlanks(village, 1)) return pal.roofStairs().getDefaultState().with(StairsBlock.FACING, facing);
-                if (!take(village, COBBLE, 1)) return null;
-                return pal.stoneStairs().getDefaultState().with(StairsBlock.FACING, facing);
+                return null; // a wooden roof waits for its boards: no stone steps patched in among the wooden ones
             }
             case ARMOR_STAND: {
                 if (!takePlanks(village, 4)) return null;
@@ -2275,8 +2312,7 @@ public final class Builder {
                 // roofs and indoor stairs: wood, the roof in its darker wood
                 Block wood = kind == Kind.STAIRS_S ? pal.stairs() : pal.roofStairs();
                 if (takePlanks(village, 1)) return wood.getDefaultState().with(StairsBlock.FACING, facing);
-                if (!take(village, COBBLE, 1)) return null;
-                return pal.stoneStairs().getDefaultState().with(StairsBlock.FACING, facing);
+                return null; // waits for boards (stone steps in a wooden roof, one or two among the rest, looked a botch)
             }
             case BOOKSHELF:
                 if (!takePlanks(village, 6)) return null;
