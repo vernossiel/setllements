@@ -33,6 +33,7 @@
     "MixinZombieEntity",
     "MixinZombieVillagerEntity",
     "MixinSpawnHelper",
+    "MixinZombieSiegeManager",
     "MixinFarmlandBlock",
     "MixinFishingBobberEntity"
   ],

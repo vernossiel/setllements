@@ -92,11 +92,12 @@ public final class Scaffold {
     }
 
     /** A column with nothing left to build within reach of it: it has done its work. */
-    private static boolean spent(BlockPos foot, Set<Long> planned) {
+    private static boolean spent(ServerWorld world, BlockPos foot, Set<Long> planned) {
         if (planned == null) return false;
         for (long l : planned) {
             BlockPos q = BlockPos.fromLong(l);
-            if (q.getY() >= foot.getY() + 2 && Math.abs(q.getX() - foot.getX()) <= REACH && Math.abs(q.getZ() - foot.getZ()) <= REACH) return false;
+            if (q.getY() >= foot.getY() + 2 && Math.abs(q.getX() - foot.getX()) <= REACH && Math.abs(q.getZ() - foot.getZ()) <= REACH
+                    && world.getBlockState(q).isReplaceable()) return false; // (laid already counts as done: the list is kept a while)
         }
         return true;
     }
@@ -104,7 +105,7 @@ public final class Scaffold {
     /** How many columns of scaffolding about this site are still of use (the spent ones come down, see tidy). */
     private static int columns(ServerWorld world, Built site, Set<Long> planned) {
         int n = 0;
-        for (BlockPos f : feet(world, site)) if (!spent(f, planned)) n++;
+        for (BlockPos f : feet(world, site)) if (!spent(world, f, planned)) n++;
         return n;
     }
 
@@ -115,12 +116,28 @@ public final class Scaffold {
      */
     static boolean tidy(VillagerEntityMCA v, ServerWorld world, Built site, Set<Long> planned) {
         if (onScaffold(world, v) || !v.isOnGround()) return false;
+        BlockPos far = null;
+        double fd = 16 * 16;
         for (BlockPos f : feet(world, site)) {
-            if (v.squaredDistanceTo(f.getX() + 0.5, f.getY(), f.getZ() + 0.5) > 3.5 * 3.5 || !spent(f, planned)) continue;
+            if (!spent(world, f, planned)) continue;
+            double d = v.squaredDistanceTo(f.getX() + 0.5, f.getY(), f.getZ() + 0.5);
+            if (d > 3.5 * 3.5) {
+                if (d < fd) {
+                    fd = d;
+                    far = f;
+                }
+                continue;
+            }
             Gear.face(v, f);
             v.swingHand(v.getDominantHand());
             world.breakBlock(f, true, v); // the column above falls with its foot, and he picks it up
             Doing.count("c.tidy");
+            return true;
+        }
+        // one done with across the site: he goes over and takes it down, not leaving the house stood in its scaffold
+        if (far != null && !BAD.contains(far.asLong())) {
+            Doing.count("c.tidy.walk");
+            if (!Move.to(v, far.getX() + 0.5, far.getY(), far.getZ() + 0.5, 0.6)) BAD.add(far.asLong());
             return true;
         }
         return false;

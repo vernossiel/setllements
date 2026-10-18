@@ -366,7 +366,14 @@ public final class Lumberjack {
         seen.add(base);
         while (!queue.isEmpty() && out.size() < 400) { // a giant spruce is a hundred logs and more
             BlockPos p = queue.poll();
-            if (!world.getBlockState(p).isIn(BlockTags.LOGS)) continue;
+            BlockState ps = world.getBlockState(p);
+            if (!ps.isIn(BlockTags.LOGS)) continue;
+            // not what lies beside the tree on the ground: a log laid on its side at the foot of it (the border of a
+            // field), or one by farmland or water. The trunk ran on along the logs round a field next to a tree,
+            // he cut them all, and the field's water ran out over the village.
+            if (!p.equals(base) && p.getY() <= base.getY() + 1 && ps.contains(net.minecraft.state.property.Properties.AXIS)
+                    && ps.get(net.minecraft.state.property.Properties.AXIS) != net.minecraft.util.math.Direction.Axis.Y) continue;
+            if (byField(world, p)) continue;
             out.add(p);
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dy = 0; dy <= 1; dy++) {
@@ -379,6 +386,16 @@ public final class Lumberjack {
         }
         out.sort((a, b) -> Integer.compare(a.getY(), b.getY()));
         return out;
+    }
+
+    /** Farmland or water beside or under a log: it belongs to a field or a pond, not to a tree. */
+    private static boolean byField(ServerWorld world, BlockPos p) {
+        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.values()) {
+            if (d == net.minecraft.util.math.Direction.UP) continue;
+            BlockPos n = p.offset(d);
+            if (world.getBlockState(n).isOf(net.minecraft.block.Blocks.FARMLAND) || !world.getFluidState(n).isEmpty()) return true;
+        }
+        return false;
     }
 
     /** A new tree for the one that was cut: the sapling matching the log. */

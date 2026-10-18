@@ -82,6 +82,7 @@ public final class Ground {
     private static boolean look(Village village, ServerWorld world) {
         BlockPos c = new BlockPos(village.getCenter());
         int r = Math.min(48, Math.max(16, Bounds.radius(village)));
+        if (spill(village, world, c, r)) return true;
         for (int ring = 1; ring <= r; ring++) {
             for (int dx = -ring; dx <= ring; dx++) {
                 for (int dz = -ring; dz <= ring; dz++) {
@@ -106,8 +107,22 @@ public final class Ground {
                         }
                     }
                     BlockPos ground = at.down();
-                    if (n < 6) continue; // walled about by buildings: not the village's ground to shape
-                    if (higher >= 6 && world.getBlockState(at).isReplaceable() && world.getFluidState(at).isEmpty() && natural(world.getBlockState(ground))) {
+                    // a trench (two wide, or along a road) as well as a pit: the ground two blocks round counted, the
+                    // road's own cells with it (a ditch dug beside the road was left open: its banks were the road)
+                    int far = 0, farN = 0;
+                    for (int ox = -2; ox <= 2; ox++) {
+                        for (int oz = -2; oz <= 2; oz++) {
+                            if (ox == 0 && oz == 0) continue;
+                            int nh = top(world, x + ox, z + oz);
+                            BlockState nb = world.getBlockState(new BlockPos(x + ox, nh - 1, z + oz));
+                            if (!natural(nb) && !nb.isOf(Blocks.DIRT_PATH)) continue;
+                            farN++;
+                            if (nh > h) far++;
+                        }
+                    }
+                    boolean ditch = farN >= 12 && far * 10 >= farN * 6 && natural(world.getBlockState(ground));
+                    if (n < 6 && !ditch) continue; // walled about by buildings: not the village's ground to shape
+                    if ((higher >= 6 || ditch) && world.getBlockState(at).isReplaceable() && world.getFluidState(at).isEmpty() && natural(world.getBlockState(ground))) {
                         TODO.put(village.getId(), at);
                         FILL.put(village.getId(), true);
                         return true;
@@ -117,6 +132,44 @@ public final class Ground {
                         FILL.put(village.getId(), false);
                         return true;
                     }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Water running out over the ground (a field's bank broken, a pond's edge dug away): the gap it runs out of is
+     * filled with earth, next to the still water first, and the rest of it dries up of itself. A field's water ran
+     * out over half the village and nobody stopped it.
+     */
+    private static boolean spill(Village village, ServerWorld world, BlockPos c, int r) {
+        for (int ring = 1; ring <= r; ring++) {
+            for (int dx = -ring; dx <= ring; dx++) {
+                for (int dz = -ring; dz <= ring; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) continue;
+                    int x = c.getX() + dx, z = c.getZ() + dz;
+                    if (!world.isChunkLoaded(x >> 4, z >> 4)) continue;
+                    BlockPos w = new BlockPos(x, top(world, x, z) - 1, z);
+                    var f = world.getFluidState(w);
+                    if (!f.isIn(net.minecraft.registry.tag.FluidTags.WATER) || f.isStill()) continue;
+                    if (Math.abs(w.getY() - c.getY()) > 12) continue;
+                    // the cell the water leaves its pool by: running water with still water beside it, on the level
+                    boolean mouth = false;
+                    for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+                        var nf = world.getFluidState(w.offset(d));
+                        if (nf.isIn(net.minecraft.registry.tag.FluidTags.WATER) && nf.isStill()) mouth = true;
+                    }
+                    if (!mouth || !world.getBlockState(w.down()).isSolidBlock(world, w.down())) continue;
+                    boolean ours = false; // not a stream of the land's own running through: only where it spilled on the village's ground
+                    for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+                        BlockState g = world.getBlockState(w.offset(d).down());
+                        if (g.isOf(Blocks.FARMLAND) || g.isOf(Blocks.DIRT_PATH) || g.isOf(Blocks.GRASS_BLOCK)) ours = true;
+                    }
+                    if (!ours) continue;
+                    TODO.put(village.getId(), w);
+                    FILL.put(village.getId(), true);
+                    return true;
                 }
             }
         }

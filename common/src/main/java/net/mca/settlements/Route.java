@@ -58,9 +58,11 @@ public final class Route {
         long touched;     // the last second he was on it
         boolean out;      // the route is the way out (of a house, a box, a pit); the goal after it
         double setOut;    // how far from the goal he was when he set out on this route
+        final List<BlockPos> laid = new ArrayList<>(); // the steps he set down the side of a wall, to take away behind him
     }
 
     private static final Map<UUID, State> STATE = new HashMap<>();
+    private static final java.util.Set<UUID> CROUCHED = new java.util.HashSet<>(); // let down through scaffolding by climbTick
 
     public static void forget(VillagerEntityMCA v) {
         STATE.remove(v.getUuid());
@@ -79,10 +81,19 @@ public final class Route {
      * stood him at the foot of it.
      */
     public static void climbTick(VillagerEntityMCA v) {
-        if (v.getWorld().isClient || !v.isClimbing()) return;
-        State s = STATE.get(v.getUuid());
-        if (s == null || s.path == null) return;
+        if (v.getWorld().isClient) return;
         BlockPos feet = v.getBlockPos();
+        // standing on top of a scaffold column counts too: down into it is a crouch (no other way through its top)
+        boolean onScaffold = v.getWorld().getBlockState(feet).isOf(Blocks.SCAFFOLDING) || v.getWorld().getBlockState(feet.down()).isOf(Blocks.SCAFFOLDING);
+        if (!v.isClimbing() && !onScaffold) {
+            if (CROUCHED.remove(v.getUuid())) v.setSneaking(false);
+            return;
+        }
+        State s = STATE.get(v.getUuid());
+        if (s == null || s.path == null) {
+            if (CROUCHED.remove(v.getUuid())) v.setSneaking(false);
+            return;
+        }
         // where on the route he hangs (the hop at his feet), and which way the next one goes: up he pulls himself, down
         // he lets go. (He used to look back two hops too: going down, the hop he had just left above him had him climb
         // back up it, and he bobbed at the top of the ladder all night.)
@@ -94,6 +105,12 @@ public final class Route {
             }
         }
         BlockPos next = at >= 0 && at + 1 < s.path.size() ? s.path.get(at + 1).pos() : at < 0 && s.i < s.path.size() ? s.path.get(s.i).pos() : null;
+        boolean down = next != null && next.getX() == feet.getX() && next.getZ() == feet.getZ() && next.getY() < feet.getY();
+        // through scaffolding a body goes down only crouched, as a player holds sneak; up it, or off it, he stands
+        if (down && onScaffold) {
+            v.setSneaking(true);
+            CROUCHED.add(v.getUuid());
+        } else if (CROUCHED.remove(v.getUuid())) v.setSneaking(false);
         if (next == null || next.getX() != feet.getX() || next.getZ() != feet.getZ()) return;
         v.fallDistance = 0;
         if (next.getY() > feet.getY()) v.getJumpControl().setActive();
@@ -319,6 +336,14 @@ public final class Route {
                 if (!landed && work && !gr.water(n.down()) && world.getBlockState(n.down()).isReplaceable()) {
                     add(out, c, n, BRIDGE, goal, Act.BRIDGE); // a gap: a block laid over it
                 }
+                // high up with no way down (a roof, the top of a wall, the scaffold taken down from under him): a step
+                // down out over the edge, a block set against the wall under it, as a player stairs his way down -
+                // the blocks taken away again behind him. (A builder walked the roof up and down all evening, 'off to
+                // the stores for material', with no way off it.)
+                if (!landed && work && (goal == null || goal.getY() < p.getY()) && gr.open(n.down()) && !gr.water(n.down()) && !gr.water(n.down(2))
+                        && world.getBlockState(n.down(2)).isReplaceable() && !dangerous(world.getBlockState(n.down(2))) && propped(gr, n.down(2))) {
+                    add(out, c, n.down(), BRIDGE + 2, goal, Act.BRIDGE);
+                }
                 continue;
             }
             if (work) {
@@ -361,6 +386,13 @@ public final class Route {
         return out;
     }
 
+    /** Something beside or under a cell to set a block against. */
+    private static boolean propped(Ground gr, BlockPos p) {
+        if (gr.solid(p.down())) return true;
+        for (Direction d : Direction.Type.HORIZONTAL) if (gr.solid(p.offset(d))) return true;
+        return false;
+    }
+
     /** Water or lava beside a block: dug out, it would let it in. */
     private static boolean wetNear(ServerWorld world, BlockPos p) {
         for (Direction d : Direction.values()) if (!world.getFluidState(p.offset(d)).isEmpty()) return true;
@@ -395,6 +427,19 @@ public final class Route {
             s.awaySec = 0;
             s.out = false;
         } else s.goal = goal.toImmutable();
+        // the steps he set down the side of the wall, taken away once he is down and off them
+        for (java.util.Iterator<BlockPos> it = s.laid.iterator(); it.hasNext(); ) {
+            BlockPos b = it.next();
+            if (v.getBlockPos().getSquaredDistance(b) < 3 * 3 && v.getY() > b.getY() - 3) continue;
+            if (world.getEntitiesByClass(net.minecraft.entity.LivingEntity.class, new net.minecraft.util.math.Box(b.up()), e -> true).isEmpty()) {
+                BlockState was = world.getBlockState(b);
+                if (!was.isAir() && was.getHardness(world, b) >= 0) {
+                    world.breakBlock(b, false, v);
+                    if (village != null) Workforce.addToTreasury(village, new net.minecraft.item.ItemStack(was.getBlock().asItem()));
+                }
+            }
+            it.remove();
+        }
         Vec3d pos = v.getPos();
         boolean moved = s.last != null && pos.squaredDistanceTo(s.last) > 0.3;
         s.last = pos;
@@ -512,6 +557,7 @@ public final class Route {
                         s.level = Math.max(s.level, 3);
                         return true;
                     }
+                    if (next.pos().getY() < feet.getY()) s.laid.add(under.toImmutable()); // a step down: taken away after
                 }
                 walk(v, s, s.i);
                 return true;

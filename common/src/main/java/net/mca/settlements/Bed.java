@@ -145,8 +145,11 @@ public final class Bed {
         long night = world.getTimeOfDay() / 24000L;
         if (bed != null && NO_WAY.getOrDefault(v.getUuid(), -1L) == night) bed = null;
         if (bed != null && v.squaredDistanceTo(Vec3d.ofCenter(bed)) > 2.2 * 2.2 && now - since >= 20 * 8) {
+            // no way to it on his own route (it gave up), or none on the path finder's: a path that only ends near the
+            // bed is no way to it - it ended outside the wall of the room, two blocks off, and he pushed into the
+            // wall all night "on his way to bed"
             var p = v.getNavigation().getCurrentPath();
-            if (p == null || !p.reachesTarget() && p.getTarget().getSquaredDistance(bed) > 4) {
+            if (!Route.active(v, bed) && (p == null || !p.reachesTarget())) {
                 NO_WAY.put(v.getUuid(), night);
                 bed = null;
             }
@@ -165,7 +168,8 @@ public final class Bed {
         }
         if (bed != null && now - since < 20 * 90) {
             if (v.squaredDistanceTo(Vec3d.ofCenter(bed)) > 2.2 * 2.2) {
-                Move.to(v, bed.getX() + 0.5, bed.getY(), bed.getZ() + 0.5, 0.55);
+                // his own route: round by the door, as a man goes to his bed (the path finder ran him at the wall)
+                if (village == null || !Route.tick(v, village, world, bed)) Move.to(v, bed.getX() + 0.5, bed.getY(), bed.getZ() + 0.5, 0.55);
                 return true;
             }
             if (Home.evening(v, village, world, bed)) return true; // first he sees to his house: his savings, something new for it

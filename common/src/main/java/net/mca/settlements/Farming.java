@@ -47,9 +47,9 @@ public final class Farming {
         BlockPos feet = v.getBlockPos();
         BlockPos till = null, sow = null, feed = null;
         for (BlockPos p : BlockPos.iterate(feet.getX() - 4, y, feet.getZ() - 4, feet.getX() + 4, y, feet.getZ() + 4)) {
-            if (!inside(farm, p) || !world.getBlockState(p.up()).isAir() && !(world.getBlockState(p.up()).getBlock() instanceof CropBlock)) continue;
+            if (!inside(farm, p) || !world.getBlockState(p.up()).isAir() && !(world.getBlockState(p.up()).getBlock() instanceof CropBlock) && !weed(world.getBlockState(p.up()))) continue;
             BlockState s = world.getBlockState(p), above = world.getBlockState(p.up());
-            if ((s.isOf(Blocks.DIRT) || s.isOf(Blocks.GRASS_BLOCK) || s.isOf(Blocks.COARSE_DIRT)) && above.isAir() && till == null && nearWater(world, p)) till = p.toImmutable();
+            if ((s.isOf(Blocks.DIRT) || s.isOf(Blocks.GRASS_BLOCK) || s.isOf(Blocks.COARSE_DIRT)) && (above.isAir() || weed(above)) && till == null && nearWater(world, p)) till = p.toImmutable();
             else if (s.isOf(Blocks.FARMLAND) && above.isAir() && sow == null) sow = p.up().toImmutable();
             else if (above.getBlock() instanceof CropBlock crop && !crop.isMature(above) && feed == null) feed = p.up().toImmutable();
         }
@@ -57,6 +57,7 @@ public final class Farming {
             if (!Gear.has(v, HoeItem.class)) Gear.equipTool(v, village, Chore.HARVEST);
             if (!Gear.wear(v, HoeItem.class)) return;
             Gear.face(v, till);
+            if (weed(world.getBlockState(till.up()))) world.breakBlock(till.up(), false, v);
             world.setBlockState(till, Blocks.FARMLAND.getDefaultState());
             world.playSound(null, till, SoundEvents.ITEM_HOE_TILL, SoundCategory.BLOCKS, 1f, 1f);
             v.swingHand(v.getDominantHand());
@@ -151,6 +152,7 @@ public final class Farming {
             // a new bed hoed beside the old ones (by hand if there is no hoe), to be sown next
             if (!Gear.has(v, HoeItem.class)) Gear.equipTool(v, village, Chore.HARVEST);
             if (Gear.has(v, HoeItem.class)) Gear.wear(v, HoeItem.class);
+            if (weed(world.getBlockState(t))) world.breakBlock(t, false, v); // the grass on it pulled up
             world.setBlockState(t.down(), Blocks.FARMLAND.getDefaultState());
             world.playSound(null, t, SoundEvents.ITEM_HOE_TILL, SoundCategory.BLOCKS, 1f, 1f);
             Anim.set(v, Anim.Act.DIG, 30);
@@ -172,7 +174,8 @@ public final class Farming {
     /** 1 a ripe crop, 2 a bare bed, 3 a growing crop (fed only when there is bone meal to spare), 0 nothing. */
     private static int want(ServerWorld world, BlockPos crop) {
         BlockState s = world.getBlockState(crop), under = world.getBlockState(crop.down());
-        if (!under.isOf(Blocks.FARMLAND)) return (newBed(world, crop.down()) || GARDEN.contains(crop.down().asLong())) && s.isAir() ? 4 : 0;
+        // (grass or a flower standing on the spot is pulled up first: the bare patch in a field, grown over, was never dug)
+        if (!under.isOf(Blocks.FARMLAND)) return (newBed(world, crop.down()) || GARDEN.contains(crop.down().asLong())) && (s.isAir() || weed(s)) ? 4 : 0;
         if (s.getBlock() instanceof CropBlock c) return c.isMature(s) ? 1 : 3;
         return s.isAir() ? 2 : 0;
     }
@@ -228,6 +231,12 @@ public final class Farming {
     }
 
     /** Earth beside a bed of the field, near water: where the field can grow by a bed. */
+    /** Grass, a fern or a flower: pulled up before the ground under it is dug. */
+    private static boolean weed(BlockState s) {
+        return s.isIn(net.minecraft.registry.tag.BlockTags.REPLACEABLE_BY_TREES) && s.getFluidState().isEmpty() && !(s.getBlock() instanceof CropBlock)
+                || s.isIn(net.minecraft.registry.tag.BlockTags.SMALL_FLOWERS);
+    }
+
     private static boolean newBed(ServerWorld world, BlockPos p) {
         BlockState s = world.getBlockState(p);
         if (!(s.isOf(Blocks.DIRT) || s.isOf(Blocks.GRASS_BLOCK))) return false;
