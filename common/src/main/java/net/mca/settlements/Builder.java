@@ -289,10 +289,8 @@ public final class Builder {
             BlockPos o = findSite(world, village, 4, 4);
             if (o == null) break;
             if (!dryUnder(world, o) || !clearOver(world, village, o)) continue;
-            // the shed set a block down into the ground: its floor and first step at the level of the earth, not
-            // a step proud of the grass
-            if (flatMouth(world, o)) return o.down();
-            if (fallback == null) fallback = o.down();
+            if (flatMouth(world, o)) return o;
+            if (fallback == null) fallback = o;
         }
         return fallback;
     }
@@ -1137,7 +1135,12 @@ public final class Builder {
     private static boolean lead(VillagerEntityMCA v, Village village, ServerWorld world) {
         long now = world.getTime();
         Lead l = LEAD.get(village.getId());
-        if (l == null || l.id().equals(v.getUuid()) || now - l.at() > 100) {
+        // the village's builder leads his own work: a hand lent by someone else (a jobless villager, the farmer) had
+        // taken the lead, the builder trailed after as his helper all day, and a house went up two steps a day
+        boolean builder = v.getProfession() == net.minecraft.village.VillagerProfession.CARTOGRAPHER;
+        boolean leaderIsBuilder = l != null && world.getEntity(l.id()) instanceof VillagerEntityMCA lv && lv.isAlive()
+                && lv.getProfession() == net.minecraft.village.VillagerProfession.CARTOGRAPHER;
+        if (l == null || l.id().equals(v.getUuid()) || now - l.at() > 100 || builder && !leaderIsBuilder) {
             LEAD.put(village.getId(), new Lead(v.getUuid(), now));
             return true;
         }

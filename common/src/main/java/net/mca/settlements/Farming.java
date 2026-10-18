@@ -231,6 +231,16 @@ public final class Farming {
     }
 
     /** Earth beside a bed of the field, near water: where the field can grow by a bed. */
+    /** Another farmer's next bed is this one or the one beside it. */
+    private static boolean taken(VillagerEntityMCA v, BlockPos p) {
+        for (Map.Entry<java.util.UUID, BlockPos> e : TARGET.entrySet()) {
+            if (e.getKey().equals(v.getUuid())) continue;
+            BlockPos t = e.getValue();
+            if (Math.abs(t.getX() - p.getX()) <= 1 && Math.abs(t.getZ() - p.getZ()) <= 1 && Math.abs(t.getY() - p.getY()) <= 1) return true;
+        }
+        return false;
+    }
+
     /** Ground with farmland on two sides or more: a hole in a field, not the edge of one. */
     private static boolean gap(ServerWorld world, BlockPos g) {
         int n = 0;
@@ -283,6 +293,7 @@ public final class Farming {
                         // ...but a field's own ground is for beds: a bare patch inside the fence was never dug, the
                         // field being "a plot" like any other
                         for (Built b : village.built) if (Buildings.base(b.type()).equals("farm") && (b.contains(p) || b.contains(p.down()))) plot = false;
+                        if (gap(world, p.down())) plot = false; // a hole among the beds is the field's, whoever's ground it is (the old fields sit in the village's own buildings' bounds)
                         if (plot) break;
                         double d = v.squaredDistanceTo(x + 0.5, yy, z + 0.5);
                         if (seed && d < bedD) {
@@ -300,6 +311,7 @@ public final class Farming {
                     }
                     if (w == 2 && !seed) BARE.put(village.getId(), world.getTime()); // a bed waiting for seed there is none of
                     if (w == 0 || w == 2 && !seed || w == 3 && !meal) continue;
+                    if (taken(v, p)) break; // another farmer is on his way to this one (two walked across the village to the same bed, time after time)
                     double d = v.squaredDistanceTo(x + 0.5, yy, z + 0.5) + (w == 1 ? 0 : w == 2 ? 200 : 900);
                     if (d < bd) {
                         bd = d;

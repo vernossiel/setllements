@@ -37,6 +37,7 @@ public final class Lumberjack {
     private static final java.util.Map<java.util.UUID, long[]> HEADING = new java.util.HashMap<>();
     /** The logs still standing of the tree a lumberjack has started on: once cut at the foot, it comes down whole. */
     private static final java.util.Map<java.util.UUID, List<BlockPos>> FELLING = new java.util.HashMap<>();
+    private static final java.util.Map<java.util.UUID, long[]> AT_TREE = new java.util.HashMap<>(); // woodsman -> {tree, since he took it on}
     /** Until when the lumberjack is picking up the logs of the tree he felled. */
     private static final java.util.Map<java.util.UUID, Long> GATHER = new java.util.HashMap<>();
 
@@ -238,6 +239,34 @@ public final class Lumberjack {
             FELLING.put(v.getUuid(), new ArrayList<>(trunk));
             Speech.say(v, "settlements.say.lumber.fell");
             return true;
+        }
+        // a log within reach but hidden behind leaves (a big oak's crown hanging round its trunk): the leaves in the
+        // way cut first, as a player would - he stood under the tree a minute and walked off to another
+        for (BlockPos p : trunk) {
+            double lx = p.getX() + 0.5 - v.getX(), lz = p.getZ() + 0.5 - v.getZ(), ly = p.getY() - v.getY();
+            if (lx * lx + lz * lz > 20 || ly < -2 || ly > 4) continue;
+            var hit = world.raycast(new net.minecraft.world.RaycastContext(v.getEyePos(), net.minecraft.util.math.Vec3d.ofCenter(p),
+                    net.minecraft.world.RaycastContext.ShapeType.COLLIDER, net.minecraft.world.RaycastContext.FluidHandling.NONE, v));
+            if (hit.getType() != net.minecraft.util.hit.HitResult.Type.BLOCK) continue;
+            BlockPos b = hit.getBlockPos();
+            if (!b.equals(p) && world.getBlockState(b).isIn(BlockTags.LEAVES)) {
+                Gear.face(v, b);
+                Dig.start(v, b);
+                Doing.count("lumber.leaves");
+                return true;
+            }
+        }
+        // a minute at this tree and not a log of it cut: left for another time (and another tree taken)
+        long[] at = AT_TREE.computeIfAbsent(v.getUuid(), k -> new long[]{base.asLong(), world.getTime()});
+        if (at[0] != base.asLong()) {
+            at[0] = base.asLong();
+            at[1] = world.getTime();
+        } else if (felling == null && world.getTime() - at[1] > 20 * 60) {
+            UNREACHABLE.put(base.asLong(), world.getTime() + 12000);
+            v.lumberTarget = null;
+            AT_TREE.remove(v.getUuid());
+            Doing.event(v, "leaves the tree", base, world.getBlockState(base));
+            return false;
         }
         if (felling == null) {
             // nothing of it within reach from here: closer

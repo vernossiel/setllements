@@ -393,6 +393,8 @@ public final class Mining {
     private static final Map<java.util.UUID, long[]> MOUTH_TRY = new HashMap<>(); // miner -> {the block he is trying for, since}
     private static final Map<Long, Long> MOUTH_SKIP = new HashMap<>(); // blocks of the shed not to be got at: left till then
     private static final Map<Integer, java.util.LinkedHashSet<Long>> ASKED = new HashMap<>(); // village -> shed blocks the builder was asked to put in
+    private static final Map<Integer, long[]> HELPER = new HashMap<>(); // village -> {the builder who went (uuid), last second}
+    private static final Map<Integer, long[]> HELP_AT = new HashMap<>(); // village -> {block he is at, since}
 
     /**
      * The builder's turn at the mine's shed: the blocks the miner could not get at and asked him for, put in from his
@@ -402,6 +404,12 @@ public final class Mining {
         var asked = ASKED.get(village.getId());
         BlockPos o = village.mineOrigin;
         if (asked == null || asked.isEmpty() || o == null) return false;
+        // one builder goes (four of them dropped their work and crowded round the shed at once)
+        long now = world.getTime();
+        long[] h = HELPER.get(village.getId());
+        java.util.UUID mine = v.getUuid();
+        if (h != null && !(h[0] == mine.getMostSignificantBits() && h[1] == mine.getLeastSignificantBits()) && now - h[2] < 200) return false;
+        HELPER.put(village.getId(), new long[]{mine.getMostSignificantBits(), mine.getLeastSignificantBits(), now});
         if (MOUTH == null) MOUTH = Blueprints.mineMouth();
         Built site = new Built("shed", o.add(-1, 0, -1), 4, 5, 1, 0);
         java.util.Set<Long> planned = new java.util.HashSet<>(asked);
@@ -416,6 +424,17 @@ public final class Mining {
                 continue;
             }
             Doing.set(v, "settlements.doing.mine.helpshed");
+            // half a minute at one block and no nearer: not to be had from anywhere, left alone for the day
+            long[] at = HELP_AT.computeIfAbsent(village.getId(), k -> new long[]{key, now});
+            if (at[0] != key) {
+                at[0] = key;
+                at[1] = now;
+            } else if (now - at[1] > 20 * 30) {
+                it.remove();
+                MOUTH_SKIP.put(key, now + 24000L);
+                Doing.event(v, "gives up the shed block", target, null);
+                continue;
+            }
             if (!Scaffold.inReach(v, target)) {
                 if (Scaffold.approach(v, village, world, target, site, planned)) return true;
                 if (!Scaffold.inReach(v, target)) {
