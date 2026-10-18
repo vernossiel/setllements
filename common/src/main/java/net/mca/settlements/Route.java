@@ -352,7 +352,7 @@ public final class Route {
                 boolean ok = gr.solid(n.down());
                 for (BlockPos b : new BlockPos[]{n, n.up()}) {
                     if (gr.open(b)) continue;
-                    if (!Move.diggable(world, village, b)) ok = false;
+                    if (!Move.diggable(world, village, b) || scar(world, village, b)) ok = false;
                     blocks++;
                 }
                 if (ok && blocks > 0) add(out, c, n, DIG + PER_BLOCK * blocks, goal, Act.DIG);
@@ -362,7 +362,7 @@ public final class Route {
                     boolean ok2 = true;
                     for (BlockPos b : new BlockPos[]{n.up(), n.up(2), p.up(2)}) {
                         if (gr.open(b)) continue;
-                        if (!Move.diggable(world, village, b)) ok2 = false;
+                        if (!Move.diggable(world, village, b) || scar(world, village, b)) ok2 = false;
                         cut++;
                     }
                     if (ok2 && cut > 0) add(out, c, n.up(), DIG + PER_BLOCK * cut, goal, Act.DIG);
@@ -379,7 +379,7 @@ public final class Route {
                 add(out, c, p.up(), PILLAR, goal, Act.PILLAR);
             // and down where there is no other way: the earth under him dug out, a block at a time, into what lies below
             BlockPos floor2 = p.down(2);
-            if (goal != null && goal.getY() < p.getY() - 1 && Move.diggable(world, village, under) && !gr.water(floor2) && !wetNear(world, under)
+            if (goal != null && goal.getY() < p.getY() - 1 && Move.diggable(world, village, under) && !scar(world, village, under) && !gr.water(floor2) && !wetNear(world, under)
                     && gr.solid(floor2) && !dangerous(world.getBlockState(floor2)))
                 add(out, c, under, DIG_DOWN, goal, Act.DIGDOWN);
         }
@@ -402,6 +402,17 @@ public final class Route {
     private static void add(List<Node> out, Node c, BlockPos n, double cost, BlockPos goal, Act act) {
         double g = c.g + cost;
         out.add(new Node(n.toImmutable(), g, g + h(n, goal), c, act));
+    }
+
+    /**
+     * The village's own ground under the open sky: no way is dug through it (a guard and a hunter dug the grass up
+     * about the houses taking short cuts, and the holes stayed). Out in the hills, or underground, yes.
+     */
+    private static boolean scar(ServerWorld world, Village village, BlockPos b) {
+        if (village == null || !world.isSkyVisible(b.up())) return false;
+        BlockPos c = new BlockPos(village.getCenter());
+        int r = Bounds.radius(village) + 8;
+        return (double) (b.getX() - c.getX()) * (b.getX() - c.getX()) + (double) (b.getZ() - c.getZ()) * (b.getZ() - c.getZ()) <= (double) r * r;
     }
 
     /** A goal down in the village's mine (under its mouth, along the run of the shaft and the drifts). */

@@ -83,6 +83,12 @@ public final class Weather {
             }
         }
         Doing.set(v, "settlements.doing.weather.run");
+        // a step or two from the spot and still in the rain, getting no nearer (the spot taken, no way the last
+        // step): another spot - they stood a pace from shelter, wet, all through the shower
+        if (v.getBlockPos().isWithinDistance(to, 2.5) && !v.getNavigation().isFollowingPath()) {
+            COVER.remove(v.getUuid());
+            return true;
+        }
         Move.to(v, to.getX() + 0.5, to.getY(), to.getZ() + 0.5, 0.7); // a quick step: it is wet
         return true;
     }
