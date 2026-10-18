@@ -220,6 +220,22 @@ public final class Bed {
 
     private static final Map<UUID, Long> NO_HALL = new HashMap<>();
     private static final Map<UUID, Long> SETTLED = new HashMap<>(); // villager -> the night he sat down on the floor for
+
+    /**
+     * Morning: up off the floor he sat the night out on. Nothing stood him up again: one sat there all the next day,
+     * every errand of hers failing while she rode the seat (a woman was found still sitting at the end of the day).
+     */
+    public static void morning(VillagerEntityMCA v, ServerWorld world) {
+        long t = world.getTimeOfDay() % 24000L;
+        if (t < 500 || t >= 12800) return;
+        boolean doze = Seat.dozing(v);
+        if (!SETTLED.containsKey(v.getUuid()) && !doze) return;
+        SETTLED.remove(v.getUuid());
+        if (Seat.seated(v)) {
+            Seat.doze(v, false);
+            Seat.stand(v);
+        }
+    }
     private static final Map<UUID, BlockPos> PLACE = new HashMap<>();
     private static final Map<UUID, Long> PLACE_NIGHT = new HashMap<>();
 

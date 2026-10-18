@@ -174,6 +174,7 @@ public final class Workforce {
 
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld cw0) Haul.closeChests(cw0);
         if (!Talk.talking(v)) Move.elbowRoom(v); // nobody stands pressed into another
+        if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld mw) Bed.morning(v, mw); // up off the floor he slept on
         Unstick.tick(v, village);
         Move.tick(v, village);
         if (v.getWorld() instanceof net.minecraft.server.world.ServerWorld gw) {

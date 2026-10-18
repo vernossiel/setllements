@@ -69,6 +69,9 @@ public final class Move {
 
     public static boolean to(VillagerEntityMCA v, double x, double y, double z, double speed) {
         if (v.isSleeping()) return false; // woken first, or left to sleep
+        // sent off somewhere while still on a seat (not the stocks): up first - riding it, every walk came to nothing,
+        // and she sat on all day
+        if (Seat.seated(v) && !Seat.inStocks(v) && v.squaredDistanceTo(x, y, z) > 3 * 3) Seat.stand(v);
         speed = Math.min(speed, PACE) * Gaze.pace(v); // the tired drag their feet, the keen step out
         BlockPos goal = BlockPos.ofFloored(x, y, z);
         remember(v, goal);
