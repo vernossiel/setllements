@@ -193,10 +193,77 @@ public final class Roads {
         if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
         int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
         BlockPos p = new BlockPos(x, y, z);
+        BlockPos base = postBase(world, p);
+        if (base != null) return postKind(world, base) < wanted(village) && canLight(village, wanted(village)); // a post there: done up when the village has come up in the world
         BlockState top = world.getBlockState(p.down());
         if (top.isOf(Blocks.TORCH) || top.isOf(Blocks.LANTERN) || top.isIn(net.minecraft.registry.tag.BlockTags.FENCES)) return false;
         return world.getBlockState(p).isAir() && world.getBlockState(p.down()).isSolidBlock(world, p.down())
                 && village.storageBuffer.stream().anyMatch(s -> s.isOf(Items.TORCH));
+    }
+
+    // ---------- the lamps along the streets, after the village's means ----------
+
+    /**
+     * The lamp a village of this station puts up by its streets: a torch on a fence post (a hamlet, a village), a
+     * lantern on the post (a well-off village), a lantern on a stone-footed post (a town).
+     */
+    private static int wanted(Village village) {
+        int t = Prosperity.tier(village);
+        return t >= Tiers.CITY ? 2 : t >= Tiers.WEALTHY ? 1 : 0;
+    }
+
+    private static boolean iron(Village village) {
+        return village.storageBuffer.stream().anyMatch(s -> s.isOf(Items.LANTERN) || s.isOf(Items.IRON_INGOT) || s.isOf(Items.IRON_NUGGET) && s.getCount() >= 8);
+    }
+
+    private static boolean canLight(Village village, int kind) {
+        return kind == 0 ? village.storageBuffer.stream().anyMatch(s -> s.isOf(Items.TORCH))
+                : iron(village) && (kind < 2 || village.storageBuffer.stream().anyMatch(s -> s.isOf(Items.COBBLESTONE)));
+    }
+
+    /** The foot of the lamp post whose light is at or just under {@code p} (the column's top), or null if none. */
+    private static BlockPos postBase(ServerWorld world, BlockPos p) {
+        for (BlockPos light : new BlockPos[]{p, p.down()}) {
+            BlockState l = world.getBlockState(light);
+            if (!l.isOf(Blocks.TORCH) && !l.isOf(Blocks.LANTERN)) continue;
+            BlockPos b = light.down();
+            if (!world.getBlockState(b).isIn(net.minecraft.registry.tag.BlockTags.FENCES)) return null; // a torch on the ground, not a post
+            while (world.getBlockState(b.down()).isIn(net.minecraft.registry.tag.BlockTags.FENCES) || world.getBlockState(b.down()).isIn(net.minecraft.registry.tag.BlockTags.WALLS)) b = b.down();
+            return b;
+        }
+        return null;
+    }
+
+    /** What stands there now: 0 a torch on a post, 1 a lantern on it, 2 a lantern on a stone-footed one. */
+    private static int postKind(ServerWorld world, BlockPos base) {
+        BlockPos b = base;
+        boolean stone = world.getBlockState(b).isIn(net.minecraft.registry.tag.BlockTags.WALLS);
+        while (world.getBlockState(b).isIn(net.minecraft.registry.tag.BlockTags.FENCES) || world.getBlockState(b).isIn(net.minecraft.registry.tag.BlockTags.WALLS)) b = b.up();
+        if (!world.getBlockState(b).isOf(Blocks.LANTERN)) return 0;
+        return stone ? 2 : 1;
+    }
+
+    /** Puts up (or puts up anew) a lamp post of the given kind with its foot at {@code base}, paying for it. */
+    private static boolean raise(ServerWorld world, Village village, BlockPos base, int kind) {
+        if (!canLight(village, kind)) return false;
+        if (kind == 0) Builder.takeItem(village, s -> s.isOf(Items.TORCH), 1);
+        else if (!Builder.takeItem(village, s -> s.isOf(Items.LANTERN), 1) && !Builder.takeItem(village, s -> s.isOf(Items.IRON_INGOT), 1))
+            Builder.takeItem(village, s -> s.isOf(Items.IRON_NUGGET), 8);
+        if (kind == 2) Builder.takeItem(village, s -> s.isOf(Items.COBBLESTONE), 1);
+        for (int h = 0; h < 4; h++) { // the old post away
+            BlockState st = world.getBlockState(base.up(h));
+            if (st.isIn(net.minecraft.registry.tag.BlockTags.FENCES) || st.isIn(net.minecraft.registry.tag.BlockTags.WALLS) || st.isOf(Blocks.TORCH) || st.isOf(Blocks.LANTERN))
+                world.setBlockState(base.up(h), Blocks.AIR.getDefaultState(), net.minecraft.block.Block.NOTIFY_LISTENERS);
+        }
+        BlockPos at = base;
+        if (kind == 2) {
+            world.setBlockState(at, Blocks.COBBLESTONE_WALL.getDefaultState());
+            at = at.up();
+        }
+        world.setBlockState(at, Blocks.OAK_FENCE.getDefaultState());
+        world.setBlockState(at.up(), (kind == 0 ? Blocks.TORCH : Blocks.LANTERN).getDefaultState());
+        world.playSound(null, at, net.minecraft.sound.SoundEvents.BLOCK_WOOD_PLACE, net.minecraft.sound.SoundCategory.BLOCKS, 0.8f, 1f);
+        return true;
     }
 
     /** Lays the work at a cell: the road, or the lamp post. */
@@ -281,6 +348,11 @@ public final class Roads {
         if (!world.isChunkLoaded(x >> 4, z >> 4)) return;
         int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
         BlockPos p = new BlockPos(x, y, z);
+        BlockPos old = postBase(world, p);
+        if (old != null) { // the post there done up: a lantern for the torch, a stone foot under it, as the village rises
+            if (postKind(world, old) < wanted(village)) raise(world, village, old, wanted(village));
+            return;
+        }
         if (!world.getBlockState(p).isAir() || !world.getBlockState(p.down()).isSolidBlock(world, p.down())) return;
         // beside the street, never on it: where two roads cross or bend the spot two blocks off one is on the other
         BlockState under = world.getBlockState(p.down());
@@ -291,10 +363,8 @@ public final class Roads {
                 if (world.getBlockState(q.down()).isIn(net.minecraft.registry.tag.BlockTags.FENCES)) return;
             }
         }
-        if (!Builder.takeItem(village, s -> s.isOf(Items.TORCH), 1)) return;
-        world.setBlockState(p, Blocks.OAK_FENCE.getDefaultState());
-        boolean lantern = village.getId() >= 0 && Prosperity.tier(village) >= Tiers.WEALTHY
-                && (Builder.takeItem(village, s -> s.isOf(Items.IRON_INGOT), 1) || Builder.takeItem(village, s -> s.isOf(Items.IRON_NUGGET), 8));
-        world.setBlockState(p.up(), (lantern ? Blocks.LANTERN : Blocks.TORCH).getDefaultState()); // a lantern needs iron
+        int kind = wanted(village);
+        if (!canLight(village, kind)) kind = 0; // no iron for a lantern yet: a torch meanwhile, done up later
+        raise(world, village, p, kind);
     }
 }
