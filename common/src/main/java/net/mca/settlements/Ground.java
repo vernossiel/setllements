@@ -100,6 +100,15 @@ public final class Ground {
                         FILL.put(village.getId(), true);
                         return true;
                     }
+                    // a hollow: banks two blocks higher on both sides within three steps, along either line (a pit or
+                    // a trench some blocks wide, a road along its bottom or not - a natural hollow by the houses was
+                    // left as it was: only lone holes counted)
+                    if (hollow(world, x, h, z) && world.getBlockState(at).isReplaceable() && world.getFluidState(at).isEmpty()
+                            && fillable(world, village, at)) {
+                        TODO.put(village.getId(), at);
+                        FILL.put(village.getId(), true);
+                        return true;
+                    }
                     if (!open(world, village, at)) continue;
                     int higher = 0, lower = 0, n = 0;
                     for (int ox = -1; ox <= 1; ox++) {
@@ -182,6 +191,35 @@ public final class Ground {
             }
         }
         return false;
+    }
+
+    private static boolean hollow(ServerWorld world, int x, int h, int z) {
+        for (int[] ax : new int[][]{{1, 0}, {0, 1}}) {
+            boolean a = false, b = false;
+            for (int i = 1; i <= 3 && !a; i++) a = bank(world, x + ax[0] * i, z + ax[1] * i, h);
+            for (int i = 1; i <= 3 && !b; i++) b = bank(world, x - ax[0] * i, z - ax[1] * i, h);
+            if (a && b) return true;
+        }
+        return false;
+    }
+
+    /** The land (not a wall or a roof: the gap between two houses is no hollow) two blocks or more above {@code h}. */
+    private static boolean bank(ServerWorld world, int x, int z, int h) {
+        int t = top(world, x, z);
+        if (t < h + 2 || t > h + 6) return false;
+        BlockState s = world.getBlockState(new BlockPos(x, t - 1, z));
+        return natural(s) || s.isOf(Blocks.DIRT_PATH);
+    }
+
+    /** Ground of the village that may be filled up: not a building, a field, a plot, the mine, water or a tree; a road may. */
+    private static boolean fillable(ServerWorld world, Village village, BlockPos at) {
+        for (Built b : village.built) if (b.contains(at) || b.contains(at.down())) return false;
+        for (int[] plot : village.plots) if (at.getX() >= plot[0] - 1 && at.getX() <= plot[0] + plot[2] && at.getZ() >= plot[1] - 1 && at.getZ() <= plot[1] + plot[3]) return false;
+        if (village.getBuildingAt(at).isPresent() || village.getBuildingAt(at.down()).isPresent()) return false;
+        if (village.mineOrigin != null && at.isWithinDistance(village.mineOrigin, 6)) return false;
+        BlockState g = world.getBlockState(at.down());
+        if (g.isOf(Blocks.FARMLAND) || !world.getFluidState(at.down()).isEmpty()) return false;
+        return world.isSkyVisible(at) && (natural(g) || g.isOf(Blocks.DIRT_PATH));
     }
 
     /** A door within two blocks whose sill stands two to four blocks above this spot: a pit in the way to it. */
