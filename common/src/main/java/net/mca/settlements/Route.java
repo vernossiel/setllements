@@ -83,13 +83,26 @@ public final class Route {
         State s = STATE.get(v.getUuid());
         if (s == null || s.path == null) return;
         BlockPos feet = v.getBlockPos();
-        for (int j = Math.max(0, s.i - 2); j < Math.min(s.path.size(), s.i + 8); j++) {
-            BlockPos hp = s.path.get(j).pos();
-            if (hp.getX() == feet.getX() && hp.getZ() == feet.getZ() && hp.getY() > feet.getY()) {
-                v.getJumpControl().setActive();
-                v.fallDistance = 0;
-                return;
+        // where on the route he hangs (the hop at his feet), and which way the next one goes: up he pulls himself, down
+        // he lets go. (He used to look back two hops too: going down, the hop he had just left above him had him climb
+        // back up it, and he bobbed at the top of the ladder all night.)
+        int at = -1;
+        for (int j = Math.max(0, s.i - 3); j < Math.min(s.path.size(), s.i + 8); j++) {
+            if (s.path.get(j).pos().equals(feet)) {
+                at = j;
+                break;
             }
+        }
+        BlockPos next = at >= 0 && at + 1 < s.path.size() ? s.path.get(at + 1).pos() : at < 0 && s.i < s.path.size() ? s.path.get(s.i).pos() : null;
+        if (next == null || next.getX() != feet.getX() || next.getZ() != feet.getZ()) return;
+        v.fallDistance = 0;
+        if (next.getY() > feet.getY()) v.getJumpControl().setActive();
+        else if (next.getY() < feet.getY()) {
+            // down: no pushing on (pressed against the ladder he would climb it), straight down it at a ladder's pace
+            v.setJumping(false);
+            v.getNavigation().stop();
+            v.setVelocity(0, Math.min(v.getVelocity().y, -0.15), 0);
+            v.velocityModified = true;
         }
     }
 

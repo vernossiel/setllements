@@ -44,7 +44,8 @@ public final class Rest {
                     for (int i = 0; i < 16 && v.settlementsRestSpot == null; i++) {
                         BlockPos q = v.getBlockPos().add(world.random.nextBetween(-10, 10), 0, world.random.nextBetween(-10, 10));
                         q = new BlockPos(q.getX(), world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, q.getX(), q.getZ()), q.getZ());
-                        if (!world.isSkyVisible(q) && Move.passable(world, q) && Move.passable(world, q.up())) v.settlementsRestSpot = q;
+                        if (!world.isSkyVisible(q) && Move.passable(world, q) && Move.passable(world, q.up()) && world.getFluidState(q).isEmpty()
+                                && world.getFluidState(q.down()).isEmpty() && world.getBlockState(q.down()).isSolidBlock(world, q.down())) v.settlementsRestSpot = q;
                     }
                     if (v.settlementsRestSpot == null) v.settlementsRestSpot = v.getBlockPos();
                 }
@@ -70,8 +71,9 @@ public final class Rest {
     }
 
     private static boolean sitDown(VillagerEntityMCA v, ServerWorld world) {
-        Seat.sitHere(v, v.getYaw());
-        return true;
+        if (Seat.sitHere(v, v.getYaw())) return true;
+        v.settlementsRestSpot = null; // wet or no ground to sit on here: another spot
+        return false;
     }
 
     /** Back to work: up from the seat, the spot forgotten. */

@@ -51,7 +51,7 @@ public final class Bed {
                 for (int dz = 0; dz < fp[1]; dz++) {
                     for (int dy = 0; dy < 12; dy++) {
                         BlockPos q = hall.point(dx, dy, dz);
-                        if (!Move.passable(world, q) || !Move.passable(world, q.up()) || !world.getBlockState(q.down()).isSolidBlock(world, q.down())) continue;
+                        if (!Move.passable(world, q) || !Move.passable(world, q.up()) || !world.getBlockState(q.down()).isSolidBlock(world, q.down()) || byLadder(world, q)) continue;
                         if (world.isSkyVisible(q)) continue;
                         int sky = world.getLightLevel(net.minecraft.world.LightType.SKY, q) + (nearDoor(world, q) ? 8 : 0); // (by the door counts as open)
                         double d = village.hallPos != null ? q.getSquaredDistance(village.hallPos) : 0;
@@ -215,7 +215,7 @@ public final class Bed {
             double inScore = Double.MAX_VALUE;
             for (BlockPos q : BlockPos.iterateOutwards(c, 4, 3, 4)) {
                 if (b.containsPos(q) && !world.isSkyVisible(q) && Move.passable(world, q) && Move.passable(world, q.up())
-                        && world.getBlockState(q.down()).isSolidBlock(world, q.down())) {
+                        && world.getBlockState(q.down()).isSolidBlock(world, q.down()) && !byLadder(world, q)) {
                     double sc = world.getLightLevel(net.minecraft.world.LightType.SKY, q) * 10 + (nearDoor(world, q) ? 200 : 0) + Math.sqrt(q.getSquaredDistance(c));
                     if (sc < inScore) {
                         inScore = sc;
@@ -233,6 +233,21 @@ public final class Bed {
         return best;
     }
 
+    /**
+     * At the foot of a ladder or by a hole in the floor: no place to sit out the night. (The hall's snuggest spot was
+     * the foot of its ladder; the homeless crowded onto it, shoved one another up it and spent the night in the loft.)
+     */
+    private static boolean byLadder(ServerWorld world, BlockPos q) {
+        for (BlockPos o : BlockPos.iterate(q.add(-1, -1, -1), q.add(1, 2, 1))) {
+            if (world.getBlockState(o).isIn(net.minecraft.registry.tag.BlockTags.CLIMBABLE)) return true;
+        }
+        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) {
+            BlockPos n = q.offset(d);
+            if (Move.passable(world, n) && Move.passable(world, n.down())) return true; // a drop beside him
+        }
+        return false;
+    }
+
     /** A door or a gap to the outside within two blocks: not a place to sit out the night. */
     private static boolean nearDoor(ServerWorld world, BlockPos q) {
         for (BlockPos o : BlockPos.iterate(q.add(-2, 0, -2), q.add(2, 1, 2))) {
@@ -247,7 +262,7 @@ public final class Bed {
         BlockPos best = null;
         double bd = Double.MAX_VALUE;
         for (BlockPos q : BlockPos.iterateOutwards(v.getBlockPos(), 16, 4, 16)) {
-            if (world.isSkyVisible(q) || !Move.passable(world, q) || !Move.passable(world, q.up()) || !world.getBlockState(q.down()).isSolidBlock(world, q.down())) continue;
+            if (world.isSkyVisible(q) || !Move.passable(world, q) || !Move.passable(world, q.up()) || !world.getBlockState(q.down()).isSolidBlock(world, q.down()) || byLadder(world, q)) continue;
             double d = q.getSquaredDistance(v.getBlockPos());
             if (d < bd) {
                 bd = d;

@@ -38,7 +38,7 @@ public final class Seat {
 
     /** Sits down with the seat surface at {@code surfaceY}, facing {@code yaw}. */
     public static void sit(VillagerEntityMCA v, double x, double surfaceY, double z, float yaw) {
-        if (!(v.getWorld() instanceof ServerWorld world) || v.hasVehicle()) return;
+        if (!(v.getWorld() instanceof ServerWorld world) || v.hasVehicle() || v.isTouchingWater()) return;
         ArmorStandEntity stand = new ArmorStandEntity(EntityType.ARMOR_STAND, world);
         NbtCompound n = new NbtCompound();
         n.putBoolean("Marker", true);
@@ -122,13 +122,24 @@ public final class Seat {
     public static boolean RISING = false;
 
     /** Sits on a seat block (stair, slab), or on the ground where he stands. */
-    public static void sitHere(VillagerEntityMCA v, float yaw) {
-        if (!(v.getWorld() instanceof ServerWorld world)) return;
+    public static boolean sitHere(VillagerEntityMCA v, float yaw) {
+        if (!(v.getWorld() instanceof ServerWorld world)) return false;
         BlockPos p = v.getBlockPos();
+        if (!dry(world, v)) return false; // never down in the water, nor on a ladder, nor in the air
+
         double h = seatHeight(world, p);
         if (Double.isNaN(h)) h = seatHeight(world, p.down());
         if (Double.isNaN(h)) h = Math.floor(v.getY()) + 0.3; // on a bare floor: low, but his feet not down in the block
         sit(v, p.getX() + 0.5, h, p.getZ() + 0.5, yaw);
+        return true;
+    }
+
+    /** Dry ground under him to sit on: not water (one sat down on a pond), not a ladder, not a drop. */
+    public static boolean dry(ServerWorld world, VillagerEntityMCA v) {
+        BlockPos p = v.getBlockPos();
+        if (v.isTouchingWater() || v.isClimbing() || !world.getFluidState(p).isEmpty() || !world.getFluidState(p.down()).isEmpty()) return false;
+        if (world.getBlockState(p).isIn(net.minecraft.registry.tag.BlockTags.CLIMBABLE)) return false;
+        return v.isOnGround() || !Double.isNaN(seatHeight(world, p)) || !world.getBlockState(p.down()).getCollisionShape(world, p.down()).isEmpty();
     }
 
     public static void stand(VillagerEntityMCA v) {
@@ -141,9 +152,12 @@ public final class Seat {
 
     /** Leftover seats (somebody stood up some other way) are cleared away. */
     public static void cleanup(ServerWorld world) {
+        // gathered first, taken away after: a discard while the world's entities are walked breaks the walk (a crash)
+        java.util.List<Entity> spare = new java.util.ArrayList<>();
         for (Entity e : world.iterateEntities()) {
-            if (e instanceof ArmorStandEntity && e.getCommandTags().contains(TAG) && !e.hasPassengers()) e.discard();
+            if (e instanceof ArmorStandEntity && e.getCommandTags().contains(TAG) && !e.hasPassengers()) spare.add(e);
         }
+        spare.forEach(Entity::discard);
     }
 
     /** A seat block near the villager (a bench, a stair, a slab) with nobody on it, or null. */
