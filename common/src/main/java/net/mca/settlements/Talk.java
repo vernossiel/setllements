@@ -123,6 +123,9 @@ public final class Talk {
         if (partner == null) return false;
         String[] t = topic(v, partner, village, world);
         t[0] = variant(t[0], world.random); // one of the several ways the same talk goes
+        // a talk with no lines written for it (news of a sale to another village): not had at all, rather than the
+        // key itself said out loud
+        if (!net.minecraft.util.Language.getInstance().hasTranslation("settlements.talk." + t[0] + ".a")) return false;
         Conversation conv = new Conversation(v.getUuid(), partner.getUuid(), t[0], t.length > 1 ? new Object[]{t[1]} : new Object[0], now + 20);
         TALKING.put(v.getUuid(), conv);
         TALKING.put(partner.getUuid(), conv);

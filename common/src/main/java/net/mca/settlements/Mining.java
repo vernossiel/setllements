@@ -129,12 +129,13 @@ public final class Mining {
                         fr[0] = key;
                         fr[1] = world.getTime();
                     }
-                    if (world.getTime() - fr[1] > 20 * 60) {
+                    if (world.getTime() - fr[1] > 20 * 20) {
                         village.mineStep++;
                         skips++;
                         continue;
                     }
-                    Move.to(v, target.getX() + 0.5, target.getY(), target.getZ() + 0.5, 0.6);
+                    // (no walking off to it: the way to a block inside the rock is through the rock, and his route
+                    // cut a long tunnel of its own through it, off the plan)
                     break;
                 }
                 // the shed over the mouth: he goes round it to the block, as a builder would; the corner of its roof
@@ -399,12 +400,28 @@ public final class Mining {
         for (Step step : MOUTH) {
             BlockPos target = o.add(step.dx(), step.dy(), step.dz());
             BlockState here = world.getBlockState(target);
-            if (!here.isAir() && !here.isReplaceable()) continue; // standing
-            if (step.kind() == Blueprints.Kind.DOOR && here.getBlock() instanceof net.minecraft.block.DoorBlock) continue;
+            // the shed of the old plan had a post at each front corner: boarded over now like the walls
+            boolean oldPost = step.kind() == Blueprints.Kind.WALL && step.dz() == 0 && here.isIn(net.minecraft.registry.tag.BlockTags.LOGS);
+            if (!here.isAir() && !here.isReplaceable() && !oldPost) continue; // standing
+            if (step.kind() == Blueprints.Kind.DOOR && here.getBlock() instanceof net.minecraft.block.DoorBlock) {
+                // the pair hung as a double door (both leaves were hung the same way)
+                if (here.get(net.minecraft.block.DoorBlock.HALF) == net.minecraft.block.enums.DoubleBlockHalf.LOWER) {
+                    BlockState hung = Builder.pairDoor(world, target, here);
+                    if (hung != here) {
+                        world.setBlockState(target, hung, net.minecraft.block.Block.NOTIFY_LISTENERS | net.minecraft.block.Block.FORCE_STATE);
+                        world.setBlockState(target.up(), hung.with(net.minecraft.block.DoorBlock.HALF, net.minecraft.block.enums.DoubleBlockHalf.UPPER), net.minecraft.block.Block.NOTIFY_LISTENERS | net.minecraft.block.Block.FORCE_STATE);
+                    }
+                }
+                continue;
+            }
             if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 16) {
                 Doing.set(v, "settlements.doing.mine.shed");
                 Move.to(v, target.getX() + 0.5, o.getY(), target.getZ() - 1.5, 0.6); // from in front of the shed
                 return true;
+            }
+            if (oldPost) {
+                world.breakBlock(target, false, v);
+                Workforce.addToTreasury(village, new net.minecraft.item.ItemStack(here.getBlock().asItem()));
             }
             Builder.COLLECTOR = v;
             Builder.Result r;

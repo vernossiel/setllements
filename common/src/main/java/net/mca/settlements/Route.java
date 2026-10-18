@@ -404,6 +404,13 @@ public final class Route {
         out.add(new Node(n.toImmutable(), g, g + h(n, goal), c, act));
     }
 
+    /** A goal down in the village's mine (under its mouth, along the run of the shaft and the drifts). */
+    private static boolean inMine(Village village, BlockPos goal) {
+        if (village == null || village.mineOrigin == null) return false;
+        BlockPos o = village.mineOrigin;
+        return goal.getY() < o.getY() - 2 && Math.abs(goal.getX() - o.getX()) <= 64 && Math.abs(goal.getZ() - o.getZ()) <= 96;
+    }
+
     /** Under a roof or shut in by walls: where a way to anywhere may first have to be a way out. */
     private static boolean shutIn(ServerWorld world, VillagerEntityMCA v) {
         BlockPos feet = v.getBlockPos();
@@ -483,7 +490,9 @@ public final class Route {
             }
         }
         if (s.path == null) {
-            boolean work = s.level >= 2;
+            // no digging a way of his own down in the mine: the workings are dug to their plan (the miner's route cut
+            // a long tunnel off through the rock to a spot of the drift not reached yet); up top and elsewhere, yes
+            boolean work = s.level >= 2 && !inMine(village, goal);
             s.path = find(world, village, v.getBlockPos(), goal, work);
             s.out = false;
             if (s.path == null && shutIn(world, v)) {

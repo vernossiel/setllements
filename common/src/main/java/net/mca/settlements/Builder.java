@@ -1908,13 +1908,16 @@ public final class Builder {
             // (never a door: shaped against its neighbours before its other half is there, it turns to air - which is how
             // every building from a template lost its doors and let the night in)
             case GLASS, FENCE, BARS, GATE, STAIRS_N, STAIRS_S, STAIRS_E, STAIRS_W, RSTAIR_S, RSTAIR_N, PEW, SEAT_W, SEAT_E, STEP, CHAIN, LOG_X, LOG_Z, TPL, TPL_FIT -> {
-                if (!(state.getBlock() instanceof DoorBlock)) state = Block.postProcessState(state, world, target);
+                // (nor a chest: shaped before its other half stood there, each half came out a single chest)
+                if (!(state.getBlock() instanceof DoorBlock) && !(state.getBlock() instanceof ChestBlock)) state = Block.postProcessState(state, world, target);
             }
             default -> {
             }
         }
+        if (state.getBlock() instanceof DoorBlock && state.get(DoorBlock.HALF) == DoubleBlockHalf.LOWER) state = pairDoor(world, target, state);
         world.setBlockState(target, state);
-        if (step.kind() == Kind.CHEST || step.kind() == Kind.HALL_CHEST) pairChest(world, target, state);
+        if (step.kind() == Kind.CHEST || step.kind() == Kind.HALL_CHEST
+                || state.getBlock() instanceof ChestBlock && state.get(ChestBlock.CHEST_TYPE) == net.minecraft.block.enums.ChestType.SINGLE) pairChest(world, target, state);
         // the floor rests on the ground: under it a stone footing goes down to solid earth
         if (step.dy() == 0 && needsFooting(step.kind())) foundation(world, village, target.down());
         if (step.kind() == Kind.CHEST) village.lootChests.add(target.toImmutable());
@@ -1945,6 +1948,31 @@ public final class Builder {
     }
 
     /** Two chests side by side, facing the same way, make one double chest. */
+    /**
+     * A door going in beside another facing the same way: hung as the other leaf of a double door, its hinge on the
+     * outer side (as the game hangs a player's second door). Both leaves were hung the same way, one handle at the
+     * middle and one at the frame.
+     */
+    static BlockState pairDoor(ServerWorld world, BlockPos p, BlockState state) {
+        Direction f = state.get(DoorBlock.FACING);
+        for (int side = 0; side < 2; side++) {
+            Direction toOther = side == 0 ? f.rotateYCounterclockwise() : f.rotateYClockwise();
+            BlockPos q = p.offset(toOther);
+            BlockState o = world.getBlockState(q);
+            if (!(o.getBlock() instanceof DoorBlock) || o.get(DoorBlock.HALF) != DoubleBlockHalf.LOWER || o.get(DoorBlock.FACING) != f) continue;
+            // the other leaf on his left (counter-clockwise of the facing): this one hinges right, that one left
+            net.minecraft.block.enums.DoorHinge mine = side == 0 ? net.minecraft.block.enums.DoorHinge.RIGHT : net.minecraft.block.enums.DoorHinge.LEFT;
+            net.minecraft.block.enums.DoorHinge theirs = side == 0 ? net.minecraft.block.enums.DoorHinge.LEFT : net.minecraft.block.enums.DoorHinge.RIGHT;
+            if (o.get(DoorBlock.HINGE) != theirs) {
+                world.setBlockState(q, o.with(DoorBlock.HINGE, theirs), Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+                BlockState up = world.getBlockState(q.up());
+                if (up.getBlock() instanceof DoorBlock) world.setBlockState(q.up(), up.with(DoorBlock.HINGE, theirs), Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+            }
+            return state.with(DoorBlock.HINGE, mine);
+        }
+        return state;
+    }
+
     private static void pairChest(ServerWorld world, BlockPos p, BlockState state) {
         if (!(state.getBlock() instanceof ChestBlock)) return;
         Direction f = state.get(ChestBlock.FACING);

@@ -642,7 +642,10 @@ public final class Blueprints {
         List<Step> l = new ArrayList<>();
         int depth = MINE_DEPTH;
         // the head of the shaft first: a timber shed over the stairs where they go into the ground, a lantern inside
-        for (int z : new int[]{0, 3}) for (int x : new int[]{-1, 2}) for (int y = 0; y <= 2; y++) l.add(new Step(x, y, z, Kind.PILLAR));
+        // posts at the back corners; the front corners are boarded like the walls, the porch's posts standing before
+        // them (a post at each made a double-width log at the front of the shed's side)
+        for (int x : new int[]{-1, 2}) for (int y = 0; y <= 2; y++) l.add(new Step(x, y, 3, Kind.PILLAR));
+        for (int x : new int[]{-1, 2}) for (int y = 0; y <= 2; y++) l.add(new Step(x, y, 0, Kind.WALL));
         for (int z = 1; z <= 2; z++) {
             for (int y = 0; y <= 2; y++) {
                 l.add(new Step(-1, y, z, Kind.WALL));

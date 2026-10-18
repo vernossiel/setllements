@@ -544,6 +544,19 @@ public final class Move {
      */
     public static void elbowRoom(VillagerEntityMCA v) {
         if (!(v.getWorld() instanceof ServerWorld world) || v.isSleeping() || v.hasVehicle()) return;
+        // a beast standing in his way (a trader's llamas across a doorway, a cow on the path): shooed aside, as
+        // anyone gives a llama a shove, instead of the whole street waiting on it
+        if (v.getNavigation().isFollowingPath()) {
+            for (net.minecraft.entity.passive.PassiveEntity a : world.getEntitiesByClass(net.minecraft.entity.passive.PassiveEntity.class,
+                    v.getBoundingBox().expand(0.6, 0.3, 0.6), a -> !(a instanceof VillagerEntityMCA) && a.isAlive() && !a.hasPassengers() && !a.hasVehicle())) {
+                Vec3d d = a.getPos().subtract(v.getPos()).multiply(1, 0, 1);
+                if (d.lengthSquared() < 1.0E-4) d = new Vec3d(v.getRandom().nextDouble() - 0.5, 0, v.getRandom().nextDouble() - 0.5);
+                d = d.normalize().multiply(0.45);
+                a.addVelocity(d.x, 0.1, d.z);
+                a.velocityModified = true;
+                if (v.getRandom().nextInt(4) == 0) v.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+            }
+        }
         for (VillagerEntityMCA o : world.getEntitiesByClass(VillagerEntityMCA.class, v.getBoundingBox().expand(0.25, 0.5, 0.25),
                 o -> o != v && o.isAlive() && !o.isSleeping())) {
             int n = PRESSED.merge(v.getUuid(), 1, Integer::sum);

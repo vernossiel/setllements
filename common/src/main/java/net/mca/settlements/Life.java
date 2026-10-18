@@ -510,7 +510,7 @@ public final class Life {
         long now = world.getTime();
         if (now < v.settlementsTalkAfter || other.settlementsReplyKey != null) return;
         String[] topic = topic(v, village, world);
-        if (topic == null) return;
+        if (topic == null || !net.minecraft.util.Language.getInstance().hasTranslation("settlements.talk." + topic[0] + ".a")) return;
         Object[] args = topic.length > 1 ? new Object[]{topic[1]} : new Object[0];
         Gaze.at(v, other, 30f, 30f);
         Gaze.at(other, v, 30f, 30f);
