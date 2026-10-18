@@ -177,6 +177,21 @@ public final class Lumberjack {
         double dy = v.getY() - base.getY();
         // close enough to swing at the trunk: at its foot, or (having wandered up into it) right by the trunk
         boolean reach = h2 <= 16 && dy >= -2 && dy <= 4 || h2 <= 6 && dy > 4 && dy <= 10;
+        if (!reach && h2 < 8 * 8) {
+            // the crown hangs to the ground between him and the trunk: he cuts his way in through the leaves, as a
+            // player does, instead of pushing against them (he stood pressed into a low oak's leaves, and gave up)
+            net.minecraft.util.math.Direction toward = Math.abs(hx) > Math.abs(hz) ? (hx > 0 ? net.minecraft.util.math.Direction.EAST : net.minecraft.util.math.Direction.WEST)
+                    : (hz > 0 ? net.minecraft.util.math.Direction.SOUTH : net.minecraft.util.math.Direction.NORTH);
+            BlockPos feet = v.getBlockPos();
+            for (BlockPos b : new BlockPos[]{feet.offset(toward), feet.up().offset(toward), feet.up(2)}) {
+                if (world.getBlockState(b).isIn(BlockTags.LEAVES) && !world.getBlockState(b).get(net.minecraft.block.LeavesBlock.PERSISTENT)) {
+                    Gear.face(v, b);
+                    Dig.start(v, b);
+                    Doing.count("lumber.leaves");
+                    return true;
+                }
+            }
+        }
         if (!reach) {
             // walk to open ground beside the trunk, not to the log itself (that path ends up in the crown);
             // a tree he cannot get to (on a cliff, in a thicket, across water) is left for another
