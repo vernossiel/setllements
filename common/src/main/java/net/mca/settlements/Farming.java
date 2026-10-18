@@ -231,6 +231,13 @@ public final class Farming {
     }
 
     /** Earth beside a bed of the field, near water: where the field can grow by a bed. */
+    /** Ground with farmland on two sides or more: a hole in a field, not the edge of one. */
+    private static boolean gap(ServerWorld world, BlockPos g) {
+        int n = 0;
+        for (net.minecraft.util.math.Direction d : net.minecraft.util.math.Direction.Type.HORIZONTAL) if (world.getBlockState(g.offset(d)).isOf(Blocks.FARMLAND)) n++;
+        return n >= 2;
+    }
+
     /** Grass, a fern or a flower: pulled up before the ground under it is dug. */
     private static boolean weed(BlockState s) {
         return s.isIn(net.minecraft.registry.tag.BlockTags.REPLACEABLE_BY_TREES) && s.getFluidState().isEmpty() && !(s.getBlock() instanceof CropBlock)
@@ -281,6 +288,13 @@ public final class Farming {
                         if (seed && d < bedD) {
                             bedD = d;
                             bed = p;
+                        }
+                        // a gap in a field (a bed gone back to grass among the others): dug and sown again in its turn,
+                        // like a bare bed - not only once there is nothing else at all to do (with a crop always to
+                        // feed, that was never, and the gaps stood grassed over for good)
+                        if (seed && gap(world, p.down()) && d + 200 < bd) {
+                            bd = d + 200;
+                            best = p;
                         }
                         break;
                     }

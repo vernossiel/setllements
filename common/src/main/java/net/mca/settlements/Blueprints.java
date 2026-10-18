@@ -692,6 +692,8 @@ public final class Blueprints {
             if (st.dy() < 0) break; // the shed comes first in the plan, then the shaft
             if (st.kind() != Kind.DIG && st.kind() != Kind.CLEAR) l.add(st);
         }
+        // the doorway cut into the ground, the shed being set a block down into it
+        for (int x = 0; x <= 1; x++) for (int y = 0; y <= 1; y++) l.add(new Step(x, y, -1, Kind.DIG));
         for (int x = 0; x <= 1; x++) l.add(new Step(x, -1, -1, Kind.STONE)); // a sill to stand the doors on
         for (int y = 0; y <= 2; y++) {
             l.add(new Step(-1, y, -1, Kind.PILLAR));

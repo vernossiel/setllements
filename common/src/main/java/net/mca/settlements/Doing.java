@@ -52,8 +52,56 @@ public final class Doing {
         return net.minecraft.registry.Registries.VILLAGER_PROFESSION.getId(p).getPath();
     }
 
+    /**
+     * The trace for the log: every ten seconds, for each grown villager, where he is, what he is doing, where he is
+     * bound and how far he got since the last line - enough to follow anyone's day through the log afterwards
+     * ({@code /settle trace} turns it off and on).
+     */
+    public static boolean TRACE = true;
+    private static final Map<UUID, Vec3d> TRACED = new HashMap<>();
+
+    private static void trace(VillagerEntityMCA v) {
+        if (!TRACE || v.isBaby() || (v.age + (v.getId() & 0xff)) % 200 >= 20) return; // once in ten seconds, spread over the villagers
+        Note n = NOTES.get(v.getUuid());
+        String key = v.isSleeping() ? "sleep" : n == null || v.getWorld().getTime() - n.at() > 40 ? "none" : n.key().replace("settlements.doing.", "").replace("settlements.plan.doing.", "plan.");
+        Vec3d was = TRACED.put(v.getUuid(), v.getPos());
+        double moved = was == null ? 0 : Math.sqrt(was.squaredDistanceTo(v.getPos()));
+        var nav = v.getNavigation().getCurrentPath();
+        String goal = v.settlementsGoal != null ? v.settlementsGoal.toShortString() : "-";
+        String path = nav == null ? "-" : (nav.reachesTarget() ? "to " : "short ") + nav.getTarget().toShortString();
+        String seat = (Seat.seated(v) ? " seated" : "") + (LAID.containsKey(v.getUuid()) ? " laid " + LAID.remove(v.getUuid()) : "");
+        String village = net.mca.server.world.data.Village.findNearest(v).map(x -> x.getName()).orElse("-");
+        net.mca.MCA.LOGGER.info("[Settlements] T {} {}/{} at {} moved {} doing {} goal {} path {}{}", village, v.getName().getString(), trade(v),
+                v.getBlockPos().toShortString(), String.format("%.1f", moved), key, goal, path, seat);
+    }
+
+    /** Blocks he laid for the building in hand since his last trace line. */
+    private static final Map<UUID, Integer> LAID = new HashMap<>();
+
+    /** A block laid for the plan of a building (counted into his next trace line, not a line of its own). */
+    public static void laid(VillagerEntityMCA v) {
+        LAID.merge(v.getUuid(), 1, Integer::sum);
+    }
+
+    /** What he is doing now, short (the key of his last note, if fresh). */
+    static String now(VillagerEntityMCA v) {
+        Note n = NOTES.get(v.getUuid());
+        return v.isSleeping() ? "sleep" : n == null || v.getWorld().getTime() - n.at() > 40 ? "none" : n.key().replace("settlements.doing.", "").replace("settlements.plan.doing.", "plan.");
+    }
+
+    /**
+     * Something he did to the world outside the plan of a building - a block dug, a block put down to walk on or
+     * climb by, a hole filled - a line in the log at once: who, what, where, and at what work (the why).
+     */
+    public static void event(VillagerEntityMCA v, String what, net.minecraft.util.math.BlockPos at, net.minecraft.block.BlockState block) {
+        if (!TRACE || v == null) return;
+        net.mca.MCA.LOGGER.info("[Settlements] E {}/{} {} {} at {} while {}", v.getName().getString(), trade(v), what,
+                block == null ? "" : net.minecraft.registry.Registries.BLOCK.getId(block.getBlock()).getPath(), at.toShortString(), now(v));
+    }
+
     /** Once a second, before the new second's note is written: last second's note, counted for his trade. */
     static void tally(VillagerEntityMCA v) {
+        trace(v);
         if (v.isBaby()) return;
         long tod = v.getWorld().getTimeOfDay() % 24000L;
         current = trade(v);

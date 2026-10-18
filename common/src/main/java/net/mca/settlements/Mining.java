@@ -239,7 +239,7 @@ public final class Mining {
             }
             village.mineStep++;
             if (r == Builder.Result.PLACED) {
-                Doing.count("m.placed");
+                Doing.count("m.placed"); Doing.laid(v);
                 ops++;
                 worked = true;
                 v.swingHand(v.getDominantHand());
@@ -381,7 +381,7 @@ public final class Mining {
                 world.setBlockState(g, put);
                 world.playSound(null, g, put.getSoundGroup().getPlaceSound(), net.minecraft.sound.SoundCategory.BLOCKS, 0.8f, 1f);
                 v.swingHand(v.getDominantHand());
-                Doing.count("m.seal");
+                Doing.count("m.seal"); Doing.event(v, "walls up the shaft with", g, put);
                 return true;
             }
         }
@@ -390,6 +390,8 @@ public final class Mining {
 
     private static List<Step> MOUTH;
     private static final Map<Integer, Long> MOUTH_WAIT = new HashMap<>(); // village -> no stuff for it till then
+    private static final Map<java.util.UUID, long[]> MOUTH_TRY = new HashMap<>(); // miner -> {the block he is trying for, since}
+    private static final Map<Long, Long> MOUTH_SKIP = new HashMap<>(); // blocks of the shed not to be got at: left till then
 
     /** Up by the mouth of the mine, with the shed or its doors not whole: what is missing put in. True while at it. */
     private static boolean mouth(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos o) {
@@ -401,6 +403,21 @@ public final class Mining {
             BlockPos target = o.add(step.dx(), step.dy(), step.dz());
             BlockState here = world.getBlockState(target);
             // the shed of the old plan had a post at each front corner: boarded over now like the walls
+            if (step.kind() == Blueprints.Kind.DIG) { // the doorway cut into the ground
+                boolean earth = here.isIn(net.minecraft.registry.tag.BlockTags.DIRT) || here.isIn(net.minecraft.registry.tag.BlockTags.BASE_STONE_OVERWORLD)
+                        || here.isIn(net.minecraft.registry.tag.BlockTags.SAND) || here.isOf(net.minecraft.block.Blocks.GRAVEL) || here.isReplaceable();
+                if (here.isAir() || !earth || !here.getFluidState().isEmpty()) continue;
+                if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 16) {
+                    Doing.set(v, "settlements.doing.mine.shed");
+                    Move.to(v, target.getX() + 0.5, o.getY() + 1, target.getZ() - 1.5, 0.6);
+                    return true;
+                }
+                Gear.face(v, target);
+                Gear.toolFor(v, village, here);
+                Dig.start(v, target);
+                Doing.count("m.mouth");
+                return true;
+            }
             boolean oldPost = step.kind() == Blueprints.Kind.WALL && step.dz() == 0 && here.isIn(net.minecraft.registry.tag.BlockTags.LOGS);
             if (!here.isAir() && !here.isReplaceable() && !oldPost) continue; // standing
             if (step.kind() == Blueprints.Kind.DOOR && here.getBlock() instanceof net.minecraft.block.DoorBlock) {
@@ -414,10 +431,27 @@ public final class Mining {
                 }
                 continue;
             }
+            long key = target.asLong();
+            if (MOUTH_SKIP.getOrDefault(key, 0L) > world.getTime()) continue; // could not be got at a while ago: the rest first
             if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 16) {
-                Doing.set(v, "settlements.doing.mine.shed");
-                Move.to(v, target.getX() + 0.5, o.getY(), target.getZ() - 1.5, 0.6); // from in front of the shed
-                return true;
+                // a corner of the roof he cannot get at from the ground: twenty seconds, then laid from where he
+                // stands if it is near, else left for later - he walked at the shed all day for one roof block, five
+                // days running, and the mine stood still
+                long[] tr = MOUTH_TRY.computeIfAbsent(v.getUuid(), k -> new long[]{key, world.getTime()});
+                if (tr[0] != key) {
+                    tr[0] = key;
+                    tr[1] = world.getTime();
+                }
+                if (world.getTime() - tr[1] > 20 * 20) {
+                    if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 6.5 * 6.5) {
+                        MOUTH_SKIP.put(key, world.getTime() + 20 * 600);
+                        continue;
+                    }
+                } else {
+                    Doing.set(v, "settlements.doing.mine.shed");
+                    Move.to(v, target.getX() + 0.5, o.getY(), target.getZ() - 1.5, 0.6); // from in front of the shed
+                    return true;
+                }
             }
             if (oldPost) {
                 world.breakBlock(target, false, v);

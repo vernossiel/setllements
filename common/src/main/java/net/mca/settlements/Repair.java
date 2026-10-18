@@ -154,6 +154,8 @@ public final class Repair {
                 return true;
             }
         }
+        Doing.event(v, cell.length > 2 ? "puts up a lamp" : Roads.bridgeLevel(world, cell[0], cell[1]) != Integer.MIN_VALUE ? "lays a bridge plank" : "lays road",
+                new BlockPos(cell[0], y, cell[1]), null);
         Roads.work(world, village, cell);
         v.swingHand(v.getDominantHand());
         Speech.say(v, "settlements.say.build.road");

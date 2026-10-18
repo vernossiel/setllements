@@ -289,8 +289,10 @@ public final class Builder {
             BlockPos o = findSite(world, village, 4, 4);
             if (o == null) break;
             if (!dryUnder(world, o) || !clearOver(world, village, o)) continue;
-            if (flatMouth(world, o)) return o;
-            if (fallback == null) fallback = o;
+            // the shed set a block down into the ground: its floor and first step at the level of the earth, not
+            // a step proud of the grass
+            if (flatMouth(world, o)) return o.down();
+            if (fallback == null) fallback = o.down();
         }
         return fallback;
     }
@@ -982,7 +984,7 @@ public final class Builder {
             village.buildStep++;
             if (r == Result.PLACED) {
                 SHORT.remove(village.getId());
-                Doing.count("b.placed");
+                Doing.count("b.placed"); Doing.laid(v);
                 v.settlementsCarry--;
                 ops++;
                 worked = true;
@@ -1025,7 +1027,7 @@ public final class Builder {
             Result r = execute(world, village, sj, t, village.buildRot);
             if (r != Result.PLACED) continue;
             done.add(j);
-            Doing.count("b.placed.near");
+            Doing.count("b.placed.near"); Doing.laid(v);
             Item held = world.getBlockState(t).getBlock().asItem();
             if (held != Items.AIR) v.setStackInHand(v.getDominantHand(), new ItemStack(held));
             v.swingHand(v.getDominantHand());
@@ -1203,7 +1205,7 @@ public final class Builder {
             if (r == Result.WAIT || r == Result.ABORT) return false;
             done.add(i);
             if (r == Result.PLACED) {
-                Doing.count("b.help.placed");
+                Doing.count("b.help.placed"); Doing.laid(v);
                 Gear.face(v, t);
                 Item held = world.getBlockState(t).getBlock().asItem();
                 if (held != Items.AIR) v.setStackInHand(v.getDominantHand(), new ItemStack(held));

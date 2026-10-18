@@ -130,7 +130,10 @@ public final class Roads {
             if (!world.isChunkLoaded(nx >> 4, nz >> 4)) return Integer.MIN_VALUE;
             int t = top(world, nx, nz);
             if (wet(world, nx, t, nz)) continue; // the river goes on
-            if (t >= g + (water ? 1 : 2)) return t;
+            // over water, or over a dry gap a body cannot walk through (a ravine four deep and more); a dip in the
+            // ground two or three deep is walked down and up, and filled with earth in time - a plank bridge on posts
+            // was put up over a ditch by a house
+            if (t >= g + (water ? 1 : 4)) return t;
         }
         return Integer.MIN_VALUE;
     }

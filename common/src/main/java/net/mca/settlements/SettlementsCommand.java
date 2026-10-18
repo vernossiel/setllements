@@ -229,6 +229,10 @@ public final class SettlementsCommand {
                     var village = Sites.settle((net.minecraft.server.world.ServerWorld) player.getWorld(), player.getBlockX() + 24, player.getBlockZ(), stage, null, new java.util.Random());
                     return say(c, village == null ? "No settlement here (water, unsuitable land or MCA refused the bell)." : "Founded " + village.getName() + ", stage " + stage + ".");
                 })))
+                .then(CommandManager.literal("trace").executes(c -> {
+                    Doing.TRACE = !Doing.TRACE;
+                    return say(c, "Villager trace in the log: " + (Doing.TRACE ? "on (a line per villager every ten seconds)" : "off"));
+                }))
                 .then(CommandManager.literal("fast").then(CommandManager.argument("ops", IntegerArgumentType.integer(1, 200)).executes(c -> {
                     Builder.opsPerSecond = IntegerArgumentType.getInteger(c, "ops");
                     return say(c, "Builder and miner speed: " + Builder.opsPerSecond + " blocks per second (default 2)");

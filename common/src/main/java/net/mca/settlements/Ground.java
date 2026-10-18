@@ -64,6 +64,7 @@ public final class Ground {
         v.getNavigation().stop();
         Gear.face(v, t);
         v.swingHand(v.getDominantHand());
+        Doing.event(v, fill ? "fills" : "levels", t, world.getBlockState(t));
         if (fill) {
             if (v.getBoundingBox().intersects(new net.minecraft.util.math.Box(t))) return true; // not onto his own feet
             boolean grassy = world.getBlockState(t.down()).isOf(Blocks.GRASS_BLOCK) || world.isSkyVisible(t.up());

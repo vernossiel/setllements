@@ -112,6 +112,7 @@ public final class Moves {
                 // at the top of the jump, his feet clear of the cell: the block in under them
                 if (v.getY() >= cell.getY() + 1.0 && world.getBlockState(cell).isReplaceable()) {
                     world.setBlockState(cell, m.block);
+                    Doing.event(v, "pillars up on", cell, m.block);
                     world.playSound(null, cell, m.block.getSoundGroup().getPlaceSound(), net.minecraft.sound.SoundCategory.BLOCKS, 0.8f, 1f);
                     v.swingHand(v.getDominantHand());
                     if (m.placed != null) m.placed.run();

@@ -233,6 +233,7 @@ public final class Move {
         BlockState state = takeFiller(v, village);
         if (state == null) return false;
         world.setBlockState(p, state);
+        Doing.event(v, "puts down", p, state);
         world.playSound(null, p, state.getSoundGroup().getPlaceSound(), SoundCategory.BLOCKS, 0.8f, 1.0f);
         v.swingHand(v.getDominantHand());
         if (village != null) village.markDirty();
