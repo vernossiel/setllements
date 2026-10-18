@@ -49,7 +49,7 @@ public final class Farming {
         for (BlockPos p : BlockPos.iterate(feet.getX() - 4, y, feet.getZ() - 4, feet.getX() + 4, y, feet.getZ() + 4)) {
             if (!inside(farm, p) || !world.getBlockState(p.up()).isAir() && !(world.getBlockState(p.up()).getBlock() instanceof CropBlock) && !weed(world.getBlockState(p.up()))) continue;
             BlockState s = world.getBlockState(p), above = world.getBlockState(p.up());
-            if ((s.isOf(Blocks.DIRT) || s.isOf(Blocks.GRASS_BLOCK) || s.isOf(Blocks.COARSE_DIRT)) && (above.isAir() || weed(above)) && till == null && nearWater(world, p)) till = p.toImmutable();
+            if ((s.isOf(Blocks.DIRT) || s.isOf(Blocks.GRASS_BLOCK) || s.isOf(Blocks.COARSE_DIRT)) && (above.isAir() || weed(above)) && till == null) till = p.toImmutable(); // (water near or not: a bed far from it still bears, only slower - the corner beds of a field lay undug)
             else if (s.isOf(Blocks.FARMLAND) && above.isAir() && sow == null) sow = p.up().toImmutable();
             else if (above.getBlock() instanceof CropBlock crop && !crop.isMature(above) && feed == null) feed = p.up().toImmutable();
         }
@@ -273,6 +273,9 @@ public final class Farming {
                     if (w == 4) {
                         boolean plot = village.getBuildingAt(p).isPresent(); // a new bed: not into a plot or a building
                         for (int[] pl : village.plots) if (x >= pl[0] - 1 && x <= pl[0] + pl[2] && z >= pl[1] - 1 && z <= pl[1] + pl[3]) plot = true;
+                        // ...but a field's own ground is for beds: a bare patch inside the fence was never dug, the
+                        // field being "a plot" like any other
+                        for (Built b : village.built) if (Buildings.base(b.type()).equals("farm") && (b.contains(p) || b.contains(p.down()))) plot = false;
                         if (plot) break;
                         double d = v.squaredDistanceTo(x + 0.5, yy, z + 0.5);
                         if (seed && d < bedD) {
