@@ -392,6 +392,53 @@ public final class Mining {
     private static final Map<Integer, Long> MOUTH_WAIT = new HashMap<>(); // village -> no stuff for it till then
     private static final Map<java.util.UUID, long[]> MOUTH_TRY = new HashMap<>(); // miner -> {the block he is trying for, since}
     private static final Map<Long, Long> MOUTH_SKIP = new HashMap<>(); // blocks of the shed not to be got at: left till then
+    private static final Map<Integer, java.util.LinkedHashSet<Long>> ASKED = new HashMap<>(); // village -> shed blocks the builder was asked to put in
+
+    /**
+     * The builder's turn at the mine's shed: the blocks the miner could not get at and asked him for, put in from his
+     * scaffolding as on any building. True while he is at it.
+     */
+    public static boolean helpAtShed(VillagerEntityMCA v, Village village, ServerWorld world) {
+        var asked = ASKED.get(village.getId());
+        BlockPos o = village.mineOrigin;
+        if (asked == null || asked.isEmpty() || o == null) return false;
+        if (MOUTH == null) MOUTH = Blueprints.mineMouth();
+        Built site = new Built("shed", o.add(-1, 0, -1), 4, 5, 1, 0);
+        java.util.Set<Long> planned = new java.util.HashSet<>(asked);
+        for (java.util.Iterator<Long> it = asked.iterator(); it.hasNext(); ) {
+            long key = it.next();
+            BlockPos target = BlockPos.fromLong(key);
+            Step step = null;
+            for (Step st : MOUTH) if (o.add(st.dx(), st.dy(), st.dz()).equals(target)) step = st;
+            BlockState here = world.getBlockState(target);
+            if (step == null || !here.isAir() && !here.isReplaceable()) { // put in meanwhile
+                it.remove();
+                continue;
+            }
+            Doing.set(v, "settlements.doing.mine.helpshed");
+            if (!Scaffold.inReach(v, target)) {
+                if (Scaffold.approach(v, village, world, target, site, planned)) return true;
+                if (!Scaffold.inReach(v, target)) {
+                    Move.to(v, target.getX() + 0.5, o.getY(), target.getZ() - 1.5, 0.6);
+                    return true;
+                }
+            }
+            Gear.face(v, target);
+            Builder.Result r = Builder.execute(world, village, step, target, 0);
+            if (r == Builder.Result.WAIT) return false; // nothing to make it of yet
+            it.remove();
+            if (r == Builder.Result.PLACED) {
+                v.swingHand(v.getDominantHand());
+                Doing.laid(v);
+                if (asked.isEmpty()) {
+                    Speech.sayAny(v, "settlements.say.mine.shedhelped", 3);
+                    Scaffold.clearAround(village, world, o.add(-1, 0, -1), 4, 5); // his scaffolding down again
+                }
+                return true;
+            }
+        }
+        return false;
+    }
 
     /** Up by the mouth of the mine, with the shed or its doors not whole: what is missing put in. True while at it. */
     private static boolean mouth(VillagerEntityMCA v, Village village, ServerWorld world, BlockPos o) {
@@ -444,7 +491,12 @@ public final class Mining {
                 }
                 if (world.getTime() - tr[1] > 20 * 20) {
                     if (v.squaredDistanceTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) > 6.5 * 6.5) {
+                        // out of his reach: he asks the builder, who has the scaffolding for it, and goes back to his digging
                         MOUTH_SKIP.put(key, world.getTime() + 20 * 600);
+                        if (ASKED.computeIfAbsent(village.getId(), k -> new java.util.LinkedHashSet<>()).add(key)) {
+                            Speech.sayAny(v, "settlements.say.mine.askbuilder", 3);
+                            Doing.event(v, "asks the builder for", target, null);
+                        }
                         continue;
                     }
                 } else {

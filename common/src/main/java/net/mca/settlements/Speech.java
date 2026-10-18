@@ -22,7 +22,9 @@ public final class Speech {
     /** The line in the speaker's own grammar: a woman's lines are kept under the same key with ".f" (Russian verbs change). */
     static String voiced(VillagerEntityMCA v, String key) {
         if (!key.startsWith("settlements.say.") && !key.startsWith("settlements.talk.") && !key.startsWith("settlements.react.")) return key;
-        return v.getGenetics().getGender() == net.mca.entity.ai.relationship.Gender.FEMALE ? key + ".f" : key;
+        if (v.getGenetics().getGender() != net.mca.entity.ai.relationship.Gender.FEMALE) return key;
+        // (a line with no woman's form written falls back on the plain one: the key itself was said out loud)
+        return net.minecraft.util.Language.getInstance().hasTranslation(key + ".f") ? key + ".f" : key;
     }
 
     public static void say(VillagerEntityMCA v, String key, Object... args) {
@@ -40,7 +42,9 @@ public final class Speech {
     /** One of several ways to say the same thing: the base key or base.1 .. base.(n-1). */
     public static void sayAny(VillagerEntityMCA v, String base, int variants, Object... args) {
         int i = v.getRandom().nextInt(variants);
-        say(v, i == 0 ? base : base + "." + i, args);
+        String k = i == 0 ? base : base + "." + i;
+        if (i > 0 && !net.minecraft.util.Language.getInstance().hasTranslation(k)) k = base; // fewer ways written than asked for
+        say(v, k, args);
     }
 
     /** Conversation lines and replies: no gap, but still only when somebody can hear it. */

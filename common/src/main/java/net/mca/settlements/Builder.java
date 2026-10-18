@@ -793,6 +793,7 @@ public final class Builder {
             village.markDirty();
         }
         if (village.buildOrigin == null && Repair.start(village)) Speech.say(v, "settlements.say.build.repair");
+        if (Mining.helpAtShed(v, village, world)) return true; // the miner asked him for the shed's high blocks
         // looking over the land for a site is heavy work: when nothing was found, again in half a minute
         boolean look = village.buildOrigin == null && world.getTime() >= NEXT_LOOK.getOrDefault(village.getId(), 0L);
         if (look) lastNoSite = null;

@@ -4198,5 +4198,12 @@
   "settlements.say.guard.breakin.f": "You won't hide in there, %s!",
   "settlements.say.guard.comedown": "Come down, %s! You'll have to sooner or later.",
   "settlements.say.guard.comedown.f": "Come down, %s! You'll have to sooner or later.",
-  "settlements.doing.bed.floor": "the night on the floor in the hall: no house of his own yet"
+  "settlements.doing.bed.floor": "the night on the floor in the hall: no house of his own yet",
+  "settlements.say.mine.askbuilder": "Can't reach that corner of the roof from here - I'll ask the builder.",
+  "settlements.say.mine.askbuilder.1": "The builder's got the scaffolding for that. I'll tell him.",
+  "settlements.say.mine.askbuilder.2": "Up there? Not me. The builder can see to it.",
+  "settlements.say.mine.shedhelped": "There, the miner's shed is whole again.",
+  "settlements.say.mine.shedhelped.1": "Done with the shed over the mine. He owes me one.",
+  "settlements.say.mine.shedhelped.2": "That roof won't leak now.",
+  "settlements.doing.mine.helpshed": "putting in what the miner could not reach on his shed"
 }

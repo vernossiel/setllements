@@ -153,7 +153,8 @@ public final class Talk {
 
     private static void say(VillagerEntityMCA v, VillagerEntityMCA to, String key, Object[] args) {
         // in the speaker's own grammar, and in the grammar of the one he speaks to ("did you sleep well" changes with her)
-        String k = Speech.voiced(v, key) + (to.getGenetics().getGender() == net.mca.entity.ai.relationship.Gender.FEMALE ? ".lf" : "");
+        String k = Speech.voiced(v, key);
+        if (to.getGenetics().getGender() == net.mca.entity.ai.relationship.Gender.FEMALE && net.minecraft.util.Language.getInstance().hasTranslation(k + ".lf")) k += ".lf";
         net.minecraft.text.MutableText line = Text.translatable(k, args).formatted(Formatting.WHITE);
         for (PlayerEntity p : v.getWorld().getPlayers()) {
             if (p.squaredDistanceTo(v) <= HEAR * HEAR) v.sendChatMessage(line, p);

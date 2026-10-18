@@ -4195,5 +4195,18 @@
   "settlements.say.guard.breakin.f": "Не отсидишься, %s!",
   "settlements.say.guard.comedown": "Слезай, %s! Всё равно ведь слезешь.",
   "settlements.say.guard.comedown.f": "Слезай, %s! Всё равно ведь слезешь.",
-  "settlements.doing.bed.floor": "ночует на полу в ратуше: своего дома пока нет"
+  "settlements.doing.bed.floor": "ночует на полу в ратуше: своего дома пока нет",
+  "settlements.say.mine.askbuilder": "До этого угла крыши мне не достать — попрошу строителя.",
+  "settlements.say.mine.askbuilder.1": "У строителя есть леса, пусть он и сделает. Скажу ему.",
+  "settlements.say.mine.askbuilder.2": "Туда? Не полезу. Строитель сделает.",
+  "settlements.say.mine.askbuilder.f": "До этого угла крыши мне не достать — попрошу строителя.",
+  "settlements.say.mine.askbuilder.1.f": "У строителя есть леса, пусть он и сделает. Скажу ему.",
+  "settlements.say.mine.askbuilder.2.f": "Туда? Не полезу. Строитель сделает.",
+  "settlements.say.mine.shedhelped": "Ну вот, сарай над шахтой опять целый.",
+  "settlements.say.mine.shedhelped.1": "Доделал сарай шахтёру. С него причитается.",
+  "settlements.say.mine.shedhelped.2": "Теперь эта крыша не протечёт.",
+  "settlements.say.mine.shedhelped.f": "Ну вот, сарай над шахтой опять целый.",
+  "settlements.say.mine.shedhelped.1.f": "Доделала сарай шахтёру. С него причитается.",
+  "settlements.say.mine.shedhelped.2.f": "Теперь эта крыша не протечёт.",
+  "settlements.doing.mine.helpshed": "доделывает шахтёру сарай, куда тот не достал"
 }
