@@ -122,10 +122,26 @@ public final class Move {
      * pulling him two ways is what had him stepping to a door and back, or shuffling to and fro on a field.
      */
     public static void hold(VillagerEntityMCA v) {
-        if (v.settlementsGoal == null || v.getWorld().getTime() - v.settlementsGoalAt > 25) return;
+        long now = v.getWorld().getTime();
+        boolean errand = v.settlementsGoal != null && now - v.settlementsGoalAt <= 25;
+        // at work of ours (digging at the face, laying a wall, reaping) with no errand just now: the brain's own
+        // walking (off to the job-site block, to a POI) is kept out all the same - the miner, cutting his stair,
+        // was led off again and again to his stonecutter across the village and back
+        String doing = Doing.now(v);
+        boolean working = Dig.busy(v) || Moves.busy(v) || !(doing.equals("none") || doing.equals("idle") || doing.equals("sleep")
+                || doing.startsWith("pastime") || doing.startsWith("mood") || doing.equals("routine") || doing.equals("morning")
+                || doing.startsWith("fest") || doing.equals("talk") || doing.startsWith("weather"));
+        if (!errand && !working) return;
         var walk = v.getBrain().getOptionalMemory(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET).orElse(null);
-        if (walk != null && walk.getLookTarget().getBlockPos().getSquaredDistance(v.settlementsGoal) > 3 * 3)
+        BlockPos mine = errand ? v.settlementsGoal : v.getBlockPos();
+        if (walk != null && walk.getLookTarget().getBlockPos().getSquaredDistance(mine) > (errand ? 3 * 3 : 6 * 6))
             v.getBrain().forget(net.minecraft.entity.ai.brain.MemoryModuleType.WALK_TARGET);
+        // and a path the brain had already set off on, to somewhere far from what he is about, is stopped
+        if (!errand && v.settlementsGoal != null && now - v.settlementsGoalAt > 25) {
+            var path = v.getNavigation().getCurrentPath();
+            if (path != null && !Route.active(v, v.settlementsGoal) && path.getTarget().getSquaredDistance(v.getBlockPos()) > 12 * 12
+                    && path.getTarget().getSquaredDistance(v.settlementsGoal) > 8 * 8) v.getNavigation().stop();
+        }
     }
 
     /**
