@@ -33,7 +33,8 @@ public final class Ledger {
     public static void tick(ServerWorld world) {
         long today = world.getTimeOfDay() / DAY;
         for (Village v : VillageManager.get(world)) {
-            if (v.hall == null) continue;
+            // (a village with no hall yet keeps its books too: a young one far off stood still for good, its hall
+            // never begun, because only villages with a hall were reckoned)
             if (v.ledgerDay >= 0 && v.ledgerDay < today) {
                 Fame.day(world, v); // a new day: old deeds fade, news travels
                 v.mend(); // and old grudges wear off
@@ -97,7 +98,8 @@ public final class Ledger {
         int food = Forage.food(v), meals = r[MEALS] > 0 ? r[MEALS] + (pop - r[POP]) * 3 : pop * 3;
         Crafts.take(v, ItemStack::isFood, Math.min(food, meals));
         if (food < meals / 2 && pop > 4 && Math.random() < 0.3) v.owedLeavers++; // hunger drives somebody away
-        if (r[BUILD] > 0) v.owedSteps = Math.min(v.owedSteps + r[BUILD] * 90, 3000);
+        // a builder's day of work: a house in a day or two, as when he is watched (it was 90 blocks a day: a house a week)
+        if (r[BUILD] > 0) v.owedSteps = Math.min(v.owedSteps + r[BUILD] * 260, 4000);
         int room = v.getMaxPopulation() - pop;
         if (room > 0 && Forage.food(v) >= pop * 2 && Math.random() < 0.3) v.owedNewcomers++;
         v.markDirty();
@@ -107,7 +109,12 @@ public final class Ledger {
     private static void settle(ServerWorld world, Village v) {
         if (v.owedSteps <= 0 && v.owedNewcomers <= 0 && v.owedLeavers <= 0) return;
         int laid = v.owedSteps > 0 ? Builder.catchUp(world, v, v.owedSteps) : 0;
-        v.owedSteps = 0;
+        // nothing could be laid yet (the land about not loaded the moment he came, no site found): the work stays owed
+        // and is tried again in half a minute, not lost
+        if (laid > 0 || v.owedTries++ > 20) {
+            v.owedSteps = 0;
+            v.owedTries = 0;
+        }
         int came = 0;
         for (int i = 0; i < Math.min(4, v.owedNewcomers); i++) came += Arrivals.newcomers(world, v);
         v.owedNewcomers = 0;

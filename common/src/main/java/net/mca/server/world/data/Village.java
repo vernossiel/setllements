@@ -57,6 +57,7 @@ public class Village implements Iterable<Building> {
     public long ledgerDay = -1;
     public int[] ledgerRoles = new int[0];
     public int owedSteps, owedNewcomers, owedLeavers;
+    public transient int owedTries; // (not saved: times the owed work could not be laid yet)
     /** The village's coffers, in coins: wages are paid out of it, and what people pay for their bread goes back in. */
     public int coffers = 60;
     public int groveSaplings;
